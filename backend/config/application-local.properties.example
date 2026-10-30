@@ -44,3 +44,12 @@ spring.mail.properties[mail.smtp.writetimeout]=10000
 
 # true이면 시작 시 SMTP 연결·인증 실패로 앱 실행이 중단될 수 있습니다.
 spring.mail.test-connection=true
+
+# --------------------------------------------------------
+# 인증 메일 발급 정책 (시간 단위: 초)
+# --------------------------------------------------------
+app.auth.email-verification.code-ttl-seconds=300
+app.auth.email-verification.resend-cooldown-seconds=60
+app.auth.email-verification.rate-window-seconds=3600
+app.auth.email-verification.max-requests-per-email=5
+app.auth.email-verification.max-requests-per-ip=20

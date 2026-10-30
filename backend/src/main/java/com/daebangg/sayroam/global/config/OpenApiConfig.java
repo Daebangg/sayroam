@@ -38,6 +38,8 @@ public class OpenApiConfig {
                 .addProperty("detail", new StringSchema().example("Authentication is required"))
                 .addProperty("instance", new StringSchema().format("uri-reference").example("/api/users/me"))
                 .addProperty("code", new StringSchema().example("UNAUTHENTICATED"))
+                .addProperty("retryAfterSeconds", new IntegerSchema().format("int64")
+                        .description("429 응답의 재시도 대기 초. Retry-After 헤더와 같은 값"))
                 .addProperty("errors", new ArraySchema().items(new Schema<>().$ref("#/components/schemas/FieldError")));
         problem.setRequired(List.of("title", "status", "detail", "instance", "code"));
         var components = new Components()
@@ -49,7 +51,14 @@ public class OpenApiConfig {
                 .addResponses("BadRequest", problemResponse("400: INVALID_INPUT 또는 Spring 요청 오류. 검증 실패 시 errors 포함"))
                 .addResponses("Unauthorized", problemResponse("401: UNAUTHENTICATED"))
                 .addResponses("Forbidden", problemResponse("403: ACCESS_DENIED 또는 INVALID_CSRF_TOKEN"))
-                .addResponses("InternalServerError", problemResponse("500: INTERNAL_SERVER_ERROR"));
+                .addResponses("InternalServerError", problemResponse("500: INTERNAL_SERVER_ERROR"))
+                .addResponses("EmailRequestSuperseded", problemResponse("409: EMAIL_REQUEST_SUPERSEDED. 만료·교체된 요청이며 최신 요청을 사용해야 함"))
+                .addResponses("EmailRateLimited", problemResponse("429: EMAIL_RATE_LIMITED. Retry-After 헤더와 retryAfterSeconds 이후 재요청")
+                        .addHeaderObject("Retry-After", new io.swagger.v3.oas.models.headers.Header()
+                                .description("재시도 전 대기할 초")
+                                .schema(new IntegerSchema().format("int64"))))
+                .addResponses("EmailDeliveryFailed", problemResponse("502: EMAIL_DELIVERY_FAILED. 코드 무효화, 발송 제한 유지. 자동 재시도 없음"))
+                .addResponses("EmailVerificationUnavailable", problemResponse("503: EMAIL_DELIVERY_DISABLED 또는 EMAIL_VERIFICATION_UNAVAILABLE. 설정·저장소 복구 후 재요청"));
         return new OpenAPI().components(components).servers(List.of(new Server().url("/")))
                 .info(new Info().title("Sayroam API").version(buildProperties.map(BuildProperties::getVersion).orElse("dev")));
     }

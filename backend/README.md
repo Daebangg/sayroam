@@ -95,9 +95,9 @@ spring.data.redis.database=0
 Boot가 이 설정으로 Lettuce `RedisConnectionFactory`를 구성하고 `RedisConfig`의 `StringRedisTemplate`이
 이를 사용합니다. 키·값을 문자열로 처리하며 연결·명령 timeout은 각각 3초입니다.
 Redis Repository와 CacheManager는 구성하지 않습니다. 앱 시작만으로 Redis 접속 성공이 보장되지는 않습니다.
-현재는 Redis를 사용하는 업무 코드와 시작 시 연결 검사가 없어 Redis가 꺼져 있어도 앱 시작이
-가능하지만, 실제 문자열 읽기·쓰기에는 Redis 서버가 필요합니다. 앱 내부 메모리 저장소로
-자동 전환하지 않으며, 후속 인증 코드·횟수 제한·일회성 증명은 Redis 장애 시 실패 처리가 필요합니다.
+시작 시 Redis 연결 검사는 없으므로 Redis가 꺼져 있어도 앱 시작이 가능하지만,
+인증 메일 발급 요청의 코드 보관·발송 제한에는 Redis 서버가 필요합니다. 앱 내부 메모리 저장소로
+자동 전환하지 않으며, 발급 요청은 Redis 장애 시 503으로 실패하며, 인메모리 저장소로 우회하지 않습니다.
 Docker Redis는 프로세스 재시작 시 데이터가 사라지는 로컬 임시 저장소입니다.
 
 SMTP 계정을 받은 경우 개인 파일에서 `app.mail.enabled=true`로 바꾸고 공급자 설정을 입력합니다.
@@ -113,8 +113,8 @@ SSL을 끄고 `spring.mail.properties[mail.smtp.starttls.enable]=true`와
 - 연결·읽기·쓰기 timeout: 공통 설정에서 각각 5,000ms, 인코딩 UTF-8
 
 `VerificationMailSender.sendVerificationCode(recipient, code)`는 전달받은 코드를 일반 텍스트 메일로
-발송합니다. 코드를 생성·저장·검증하지 않으며 자동 재시도하지 않습니다. 발송 실패는 `MailException`으로
-호출 측에 전파하고, API 오류 변환과 재시도 정책은 후속 인증 구현에서 정합니다.
+발송합니다. 발송 클래스는 코드를 생성·저장·검증하지 않으며 자동 재시도하지 않습니다. 발급 서비스가
+코드 생성·Redis 보관을 담당하고, SMTP 실패는 `EMAIL_DELIVERY_FAILED`로 변환해 API에서 502로 응답합니다.
 `app.mail.enabled`는 앱에서 추가한 선택 옵션이며 기본값은 `false`입니다. 환경변수는 `APP_MAIL_ENABLED`입니다.
 `false`이면 `JavaMailSender`와 발송 컴포넌트를 등록하지 않습니다. SMTP 설정이나
 `spring.mail.test-connection=true`가 남아 있어도 시작 시 SMTP에 연결하지 않습니다.
@@ -141,7 +141,7 @@ SMTP를 활성화하면 `app.mail.from`을 반드시 지정해야 합니다. 공
 | 상황 | 앱 시작 또는 요청에 미치는 영향 |
 | --- | --- |
 | MySQL 연결 불가·미적용 스키마 | JPA 초기화와 매핑 검증이 실패하면 앱 시작 중단. 먼저 DB 준비·마이그레이션 필요 |
-| Redis 중지·앱 포트 불일치 | 현재 시작 시 검사는 없으며 실제 Redis 접근 시 실패. 앱 시작 성공은 Redis 준비 완료를 의미하지 않음 |
+| Redis 중지·앱 포트 불일치 | 시작 시 검사는 없으며 메일 발급 요청 시 503. 앱 시작 성공은 Redis 준비 완료를 의미하지 않음 |
 | `app.mail.enabled=false` | SMTP 설정·연결 검사 옵션이 남아 있어도 메일 빈과 SMTP 시작 검사 비활성화 |
 | 메일 활성화 + SMTP 호스트 설정 누락 또는 발신 주소 공백 | 필요한 메일 빈 또는 필수 설정이 없어 앱 시작 실패 |
 | 메일 활성화 + `spring.mail.test-connection=true` | DNS·연결·TLS·인증 오류가 있으면 앱 시작 중단 |
@@ -176,13 +176,15 @@ SMTP 계정과 발신 주소는 서로 다른 설정이며, 로그인 계정이 
 Docker의 `REDIS_PORT`는 컨테이너 공개 포트이며 앱의 `SPRING_DATA_REDIS_PORT`와 별도로 맞춥니다.
 SMTP 계정이 없는 환경의 **실제 메일 발송·수신은 미확인**입니다. 앱 시작이나 컴파일 성공은 발송 검증이 아닙니다.
 
-이번 단계는 인프라와 발송 클래스만 구성합니다. 인증 코드 처리/API, 회원가입, JWT는 후속 범위입니다.
+인프라 구성에 이어 인증 코드 발급·재발송 요청 API와 CSRF 최초 쿠키 발급을 구현했습니다.
+[발급 정책·API·오류·실패 처리 명세](docs/email-verification.md)를 참고하세요.
+코드 검증·가입 증명·회원가입·JWT는 아직 후속 범위입니다.
 추가 테스트는 작성·실행하지 않으며 전체 인증 구현 후 검증합니다.
 
 후속 체크리스트:
 
-- [ ] #28: 인증 코드·가입 증명 처리, 이메일 인증 API, 회원가입 구현 및 명세
-- [ ] #28: CSRF 최초 토큰 발급과 쿠키 → `X-XSRF-TOKEN` 헤더 검증 흐름 구성
+- [ ] #28: 코드 검증·입력 횟수 제한·가입 증명 처리, 회원가입 구현 및 명세
+- [ ] #28 전체 구현 후: CSRF 최초 쿠키 발급과 `X-XSRF-TOKEN` 검증 흐름의 실제 동작 검증
 - [ ] #30: Bearer 헤더 인증 경로와 Refresh 쿠키 경로별 CSRF 정책 구성
 - [ ] #34: DB·Redis·선택적 SMTP 상태 점검, 생존·요청 준비 상태 및 접근 정책 구성
 - [ ] 전체 인증 구현 후: 정상 발송·수신, 실패·만료·제한·동시 요청, 실제 CSRF 쿠키·헤더 검증
@@ -193,12 +195,14 @@ SMTP 계정이 없는 환경의 **실제 메일 발송·수신은 미확인**입
 ## 인증 접근 규칙 (기반 설정)
 
 일반 API는 `Authorization: Bearer <Access Token>` 인증을 도입할 예정입니다.
-현재는 접근 규칙만 구성했으며, 토큰 발급·검증과 실제 회원가입·로그인 API는 아직 없습니다.
+인증 메일 발급 요청과 CSRF 쿠키 준비 API를 구현했으며, JWT 발급·검증과 회원가입·로그인 API는 아직 없습니다.
 따라서 현재 보호된 API에 임의의 Bearer 토큰을 전달해도 인증되지 않습니다.
 
 | 요청 | 접근 규칙 |
 | --- | --- |
-| `POST /api/auth/signup`, `POST /api/auth/login` | 인증 없이 접근 가능, CSRF 검증은 적용 |
+| `GET /api/auth/csrf` | 인증 없이 CSRF 쿠키 준비 |
+| `POST /api/auth/email-verifications` | 인증 없이 메일 발급 요청 가능, CSRF 검증 적용 |
+| `POST /api/auth/signup`, `POST /api/auth/login` | 인증 없이 접근 가능하도록 설정. 실제 API는 미구현, CSRF 검증 적용 |
 | `GET /swagger-ui.html`, `/swagger-ui/**`, `/v3/api-docs`, `/v3/api-docs/**`, `/v3/api-docs.yaml` | 인증 없이 조회 가능, 문서 기능은 기본적으로 local에서만 활성화 |
 | `/api/admin`, `/api/admin/**` | `ROLE_ADMIN` 권한 필요 |
 | 그 외 요청 | 인증 필요 |
@@ -234,8 +238,8 @@ Spring 기본 요청 오류에는 `METHOD_NOT_ALLOWED` 등 HTTP 상태 이름을
 CSRF 토큰 저장에 HTTP 세션 대신 쿠키를 사용합니다. 공개 POST 요청도 CSRF 토큰이 없거나
 잘못되면 403입니다. 이 쿠키는 로그인 세션이나 Access Token을 저장하는 쿠키가 아닙니다.
 Bearer 검증을 도입할 때 헤더로만 인증하는 경로의 제외 범위를 정하고, Refresh Token 등
-쿠키를 사용하는 경로는 별도로 방어합니다. 프론트엔드의 CSRF 토큰 전달과 CORS 허용 출처는
-실제 연동 단계에서 구성합니다.
+쿠키를 사용하는 경로는 별도로 방어합니다. SPA 쿠키 → 헤더 CSRF 처리는 구성했으며, 실제 프론트엔드의 토큰 전달과 CORS 허용 출처는
+연동 단계에서 구성합니다. 현재 브라우저 연동 안내는 동일 출처 기준입니다.
 
 접근 정책 테스트는 테스트 전용 API와 인증 정보를 사용합니다. JWT 검증 성공을 의미하지 않습니다.
 
@@ -251,8 +255,8 @@ JSON 명세는 `/v3/api-docs`, YAML 명세는 `/v3/api-docs.yaml`입니다.
 공통 설정은 문서 기능을 끄고, 클래스패스의 `application-local.properties`에서 활성화합니다.
 외부 `config/application-local.properties`에는 개인 DB·Redis·SMTP 연결 정보를 둡니다.
 
-현재 업무 Controller는 없으므로 `paths`는 비어 있습니다. 공통 오류 스키마·응답 정의와
-향후 사용할 `bearerAuth` 형식만 등록했습니다. Swagger의 Authorize 입력은 로그인 기능이
+현재 `paths`에는 CSRF 쿠키 준비와 인증 메일 발급 요청 API를 제공합니다.
+공통 오류 스키마·응답 정의와 향후 사용할 `bearerAuth` 형식도 등록했습니다. Swagger의 Authorize 입력은 로그인 기능이
 아니며, 실제 토큰 발급·검증은 #30에서 구현합니다. 각 API 구현 시 실제 상태 코드에 맞춰
 공통 응답을 참조하고, 보호 API에는 `@SecurityRequirement(name = "bearerAuth")`를 지정합니다.
 공개 API에는 인증 요구사항을 지정하지 않습니다.

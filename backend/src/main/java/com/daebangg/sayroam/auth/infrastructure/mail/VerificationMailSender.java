@@ -1,15 +1,21 @@
 package com.daebangg.sayroam.auth.infrastructure.mail;
 
+import com.daebangg.sayroam.auth.application.AuthErrorCode;
+import com.daebangg.sayroam.auth.application.EmailVerificationException;
+import com.daebangg.sayroam.auth.application.VerificationEmailSender;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.mail.SimpleMailMessage;
+import org.springframework.mail.MailException;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Component;
 import org.springframework.util.Assert;
 
 @Component
+@Slf4j
 @ConditionalOnProperty(prefix = "app.mail", name = "enabled", havingValue = "true")
-public class VerificationMailSender {
+public class VerificationMailSender implements VerificationEmailSender {
     private final JavaMailSender mailSender;
     private final String from;
 
@@ -21,13 +27,19 @@ public class VerificationMailSender {
         this.from = from;
     }
 
-    // 코드 생성·보관·검증은 호출 측 책임이다. SMTP 실패는 MailException으로 전파한다.
+    @Override
     public void sendVerificationCode(String recipient, String code) {
         SimpleMailMessage message = new SimpleMailMessage();
         message.setFrom(from);
         message.setTo(recipient);
         message.setSubject("[Sayroam] 이메일 인증 코드");
         message.setText("이메일 인증 코드: " + code + "\n본인이 요청하지 않았다면 이 메일을 무시해 주세요.");
-        mailSender.send(message);
+        try {
+            mailSender.send(message);
+        } catch (MailException exception) {
+            // SMTP 응답·이메일·인증 코드·접속 비밀값은 클라이언트나 로그로 전달하지 않는다.
+            log.warn("Verification email delivery failed: {}", exception.getClass().getSimpleName());
+            throw new EmailVerificationException(AuthErrorCode.EMAIL_DELIVERY_FAILED);
+        }
     }
 }
