@@ -9,7 +9,7 @@
 설정 방법은 [앱 개발 환경](../README.md)과 [Docker 환경](../../docker/README.md)을 참고하세요.
 
 ```bash
-# DB만 기동한다. 기존 볼륨과 데이터는 유지한다.
+# MySQL·Redis를 기동한다. 기존 MySQL 볼륨과 데이터는 유지한다.
 ./backend/gradlew -p backend dockerInit
 
 # 적용된 버전과 미적용 버전 확인
@@ -25,7 +25,7 @@
 ./backend/gradlew -p backend bootRun --args='--spring.profiles.active=local'
 ```
 
-`dockerInit`은 MySQL 프로세스, DB, 계정만 준비합니다. Docker 초기 SQL로 테이블을 만들지 않습니다.
+`dockerInit`은 MySQL 프로세스·DB·계정과 Redis를 준비합니다. Docker 초기 SQL로 테이블을 만들지 않습니다.
 기존 볼륨에서는 초기 SQL이 다시 실행되지 않으므로 버전 갱신은 `flywayMigrate`가 담당합니다.
 명령을 재실행하면 미적용 버전만 실행하며, 이미 최신 버전이면 변경하지 않습니다.
 

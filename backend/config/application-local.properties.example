@@ -1,6 +1,46 @@
 # --------------------------------------------------------
-# DB connections
+# MySQL 연결 설정
 # --------------------------------------------------------
 spring.datasource.url=jdbc:mysql://localhost:3306/sayroam
 spring.datasource.username=sayroam
 spring.datasource.password=sayroam-local
+
+
+# --------------------------------------------------------
+# Redis 연결 설정: 포트를 docker/.env의 REDIS_PORT와 맞춥니다 (기본값 6379).
+# --------------------------------------------------------
+spring.data.redis.host=127.0.0.1
+spring.data.redis.port=6379
+spring.data.redis.database=0
+# 인증이 필요한 Redis 서버를 사용할 때만 아래 항목을 설정합니다.
+# spring.data.redis.username=default
+# spring.data.redis.password=replace-with-redis-password
+
+
+# --------------------------------------------------------
+# SMTP를 사용하려면 enabled를 true로 바꾸고 아래 설정을 실제 값으로 수정합니다.
+# 실제 계정·비밀번호는 이 예시 파일에 넣거나 커밋하지 않습니다.
+# 아래는 465 포트의 SSL 예시입니다. 공급자의 설정을 따릅니다.
+# --------------------------------------------------------
+
+# false이면 SMTP 설정이 남아 있어도 메일 발송과 시작 시 연결 검사를 비활성화합니다.
+app.mail.enabled=false
+
+app.mail.from=no-reply@example.com
+spring.mail.host=smtp.example.com
+spring.mail.port=465
+spring.mail.username=replace-with-smtp-username
+spring.mail.password=replace-with-smtp-app-password
+spring.mail.properties[mail.smtp.auth]=true
+spring.mail.properties[mail.smtp.starttls.enable]=false
+spring.mail.properties[mail.smtp.starttls.required]=false
+spring.mail.properties[mail.smtp.ssl.enable]=true
+spring.mail.properties[mail.smtp.ssl.checkserveridentity]=true
+
+# 연결·읽기·쓰기 timeout은 밀리초 단위입니다 (10초).
+spring.mail.properties[mail.smtp.connectiontimeout]=10000
+spring.mail.properties[mail.smtp.timeout]=10000
+spring.mail.properties[mail.smtp.writetimeout]=10000
+
+# true이면 시작 시 SMTP 연결·인증 실패로 앱 실행이 중단될 수 있습니다.
+spring.mail.test-connection=true

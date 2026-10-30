@@ -12,7 +12,7 @@ Spring Boot의 기본 프로필 설정 파일을 사용합니다. 앱 전용 `.e
 cp -n backend/config/application-local.properties.example backend/config/application-local.properties
 ```
 
-복사한 파일의 다음 값을 실제 접속할 DB에 맞게 수정합니다.
+복사한 파일의 DB·Redis 값을 실제 접속 환경에 맞게 수정합니다. SMTP 계정이 있으면 아래 메일 설정도 추가합니다.
 
 ```properties
 spring.datasource.url=jdbc:mysql://localhost:3306/sayroam
@@ -37,7 +37,7 @@ Properties는 `키=값`으로 작성하고 값에 따옴표를 붙이지 않습�
 
 ## 실행
 
-DB 준비 후 [마이그레이션 안내](gradle/README.md)에 따라 스키마를 적용하고 앱을 실행합니다.
+MySQL·Redis 준비 후 [마이그레이션 안내](gradle/README.md)에 따라 스키마를 적용하고 앱을 실행합니다.
 
 ```bash
 ./backend/gradlew -p backend flywayMigrate
@@ -77,6 +77,118 @@ private Room room;
 - 다른 도메인 객체가 필요하면 서비스에서 리포지토리로 조회합니다.
 - 화면용 목록 조회는 조인 쿼리로 필요한 값만 DTO로 조회합니다.
 - DB의 FK 제약은 마이그레이션에 그대로 유지합니다.
+
+## Redis 연결 및 인증 메일 발송 기반 (#28 1단계)
+
+먼저 [Docker 환경](../docker/README.md)에 따라 `docker/.env`에 `REDIS_PORT=6379`를 추가하고
+`dockerInit`으로 MySQL과 Redis를 준비합니다. 기존 개인 파일은 덮어쓰지 말고 새 키만 추가합니다.
+앱은 Docker `.env`를 읽지 않으므로 외부 `config/application-local.properties`에도 별도로 설정합니다.
+
+```properties
+spring.data.redis.host=127.0.0.1
+spring.data.redis.port=6379
+spring.data.redis.database=0
+```
+
+`spring.data.redis.port`와 Docker의 `REDIS_PORT`를 맞춥니다. 기본 로컬 Redis에는 인증이 없습니다.
+인증이 필요한 외부 서버에는 `spring.data.redis.username`, `spring.data.redis.password`를 추가합니다.
+Boot가 이 설정으로 Lettuce `RedisConnectionFactory`를 구성하고 `RedisConfig`의 `StringRedisTemplate`이
+이를 사용합니다. 키·값을 문자열로 처리하며 연결·명령 timeout은 각각 3초입니다.
+Redis Repository와 CacheManager는 구성하지 않습니다. 앱 시작만으로 Redis 접속 성공이 보장되지는 않습니다.
+현재는 Redis를 사용하는 업무 코드와 시작 시 연결 검사가 없어 Redis가 꺼져 있어도 앱 시작이
+가능하지만, 실제 문자열 읽기·쓰기에는 Redis 서버가 필요합니다. 앱 내부 메모리 저장소로
+자동 전환하지 않으며, 후속 인증 코드·횟수 제한·일회성 증명은 Redis 장애 시 실패 처리가 필요합니다.
+Docker Redis는 프로세스 재시작 시 데이터가 사라지는 로컬 임시 저장소입니다.
+
+SMTP 계정을 받은 경우 개인 파일에서 `app.mail.enabled=true`로 바꾸고 공급자 설정을 입력합니다.
+예시는 465 포트의 인증 + SSL이며 STARTTLS는 끕니다. 587 포트의 STARTTLS를 쓰는 공급자는
+SSL을 끄고 `spring.mail.properties[mail.smtp.starttls.enable]=true`와
+`spring.mail.properties[mail.smtp.starttls.required]=true`로 설정합니다.
+`spring.mail.username`은 로그인 계정이고 `app.mail.from`은 공급자가 허용하는 발신 주소입니다.
+계정 비밀번호 대신 앱 비밀번호가 필요하면 공급자의 안내를 따릅니다. 실제 값은 커밋하지 않습니다.
+
+- `spring.mail.host`, `spring.mail.port`: SMTP 서버와 포트
+- `spring.mail.username`, `spring.mail.password`: SMTP 인증 정보
+- `app.mail.from`: 모든 인증 메일의 From 주소 (SMTP 활성화 시 필수)
+- 연결·읽기·쓰기 timeout: 공통 설정에서 각각 5,000ms, 인코딩 UTF-8
+
+`VerificationMailSender.sendVerificationCode(recipient, code)`는 전달받은 코드를 일반 텍스트 메일로
+발송합니다. 코드를 생성·저장·검증하지 않으며 자동 재시도하지 않습니다. 발송 실패는 `MailException`으로
+호출 측에 전파하고, API 오류 변환과 재시도 정책은 후속 인증 구현에서 정합니다.
+`app.mail.enabled`는 앱에서 추가한 선택 옵션이며 기본값은 `false`입니다. 환경변수는 `APP_MAIL_ENABLED`입니다.
+`false`이면 `JavaMailSender`와 발송 컴포넌트를 등록하지 않습니다. SMTP 설정이나
+`spring.mail.test-connection=true`가 남아 있어도 시작 시 SMTP에 연결하지 않습니다.
+`true`이면 Boot의 메일 자동 설정을 활성화하며 SMTP 호스트와 발신 주소가 필요합니다.
+`spring.mail.test-connection`은 연결 검사 여부만 제어하며 기능 전체를 끄는 옵션은 아닙니다.
+
+```properties
+# SMTP 없이 실행
+app.mail.enabled=false
+
+# SMTP 사용 시 위 값을 true로 변경
+# app.mail.enabled=true
+```
+
+공유 예시는 비활성화 상태입니다. 실제 SMTP 설정을 준비한 뒤 개인 파일에서 활성화합니다.
+SMTP를 활성화하면 `app.mail.from`을 반드시 지정해야 합니다. 공통 설정은 시작 시 연결 검사를 끄지만,
+외부 설정 예시는 `spring.mail.test-connection=true`로 연결·인증을 검사합니다. 이때 SMTP 연결이나 인증에
+실패하면 앱 시작도 실패할 수 있습니다. 메일을 발송하는 검사는 아닙니다.
+외부 예시의 timeout 10,000ms는 공통 설정의 5,000ms보다 우선합니다.
+후속 API를 연결할 때는 SMTP 설정 없이 발송 기능이 정상 동작한다고 처리하지 않아야 합니다.
+
+### 실행 차단 조건
+
+| 상황 | 앱 시작 또는 요청에 미치는 영향 |
+| --- | --- |
+| MySQL 연결 불가·미적용 스키마 | JPA 초기화와 매핑 검증이 실패하면 앱 시작 중단. 먼저 DB 준비·마이그레이션 필요 |
+| Redis 중지·앱 포트 불일치 | 현재 시작 시 검사는 없으며 실제 Redis 접근 시 실패. 앱 시작 성공은 Redis 준비 완료를 의미하지 않음 |
+| `app.mail.enabled=false` | SMTP 설정·연결 검사 옵션이 남아 있어도 메일 빈과 SMTP 시작 검사 비활성화 |
+| 메일 활성화 + SMTP 호스트 설정 누락 또는 발신 주소 공백 | 필요한 메일 빈 또는 필수 설정이 없어 앱 시작 실패 |
+| 메일 활성화 + `spring.mail.test-connection=true` | DNS·연결·TLS·인증 오류가 있으면 앱 시작 중단 |
+| 메일 활성화 + `spring.mail.test-connection=false` | 시작 시 SMTP 연결 생략. SMTP 연결·인증 오류는 실제 발송 시 발생 |
+
+메일을 사용하면서 SMTP 장애 때문에 앱 시작이 막히지 않게 하려면 다음과 같이 설정합니다.
+발신 주소 등 필수 설정은 여전히 필요합니다.
+
+```properties
+app.mail.enabled=true
+spring.mail.test-connection=false
+```
+
+`smtp.example.com`, `replace-with-*`, `no-reply@example.com`은 접속 가능한 실제 설정이 아닙니다.
+예시 파일을 복사한 뒤 메일 기능을 켜려면 공급자가 발급한 연결 정보와 허용된 발신 주소로 교체합니다.
+SMTP 계정과 발신 주소는 서로 다른 설정이며, 로그인 계정이 발신 이메일 주소라는 보장은 없습니다.
+
+운영에서도 비밀값을 소스에 넣지 않고 외부 설정으로 주입합니다. 대응 환경변수는 다음과 같습니다.
+
+| 설정 | 환경변수 |
+| --- | --- |
+| Redis 호스트·포트·DB | `SPRING_DATA_REDIS_HOST`, `SPRING_DATA_REDIS_PORT`, `SPRING_DATA_REDIS_DATABASE` |
+| Redis 인증 | `SPRING_DATA_REDIS_USERNAME`, `SPRING_DATA_REDIS_PASSWORD` |
+| 메일 기능 사용 여부 | `APP_MAIL_ENABLED` |
+| 시작 시 SMTP 연결 검사 | `SPRING_MAIL_TESTCONNECTION` |
+| SMTP 서버·포트 | `SPRING_MAIL_HOST`, `SPRING_MAIL_PORT` |
+| SMTP 계정 | `SPRING_MAIL_USERNAME`, `SPRING_MAIL_PASSWORD` |
+| 메일 발신 주소 | `APP_MAIL_FROM` |
+
+환경변수는 파일보다 우선하며 운영 SMTP의 TLS·인증 설정도 별도로 주입해야 합니다.
+`SMTP_HOST`, `EMAIL_ENABLED` 등 다른 프로젝트의 키를 그대로 읽지는 않습니다.
+Docker의 `REDIS_PORT`는 컨테이너 공개 포트이며 앱의 `SPRING_DATA_REDIS_PORT`와 별도로 맞춥니다.
+SMTP 계정이 없는 환경의 **실제 메일 발송·수신은 미확인**입니다. 앱 시작이나 컴파일 성공은 발송 검증이 아닙니다.
+
+이번 단계는 인프라와 발송 클래스만 구성합니다. 인증 코드 처리/API, 회원가입, JWT는 후속 범위입니다.
+추가 테스트는 작성·실행하지 않으며 전체 인증 구현 후 검증합니다.
+
+후속 체크리스트:
+
+- [ ] #28: 인증 코드·가입 증명 처리, 이메일 인증 API, 회원가입 구현 및 명세
+- [ ] #28: CSRF 최초 토큰 발급과 쿠키 → `X-XSRF-TOKEN` 헤더 검증 흐름 구성
+- [ ] #30: Bearer 헤더 인증 경로와 Refresh 쿠키 경로별 CSRF 정책 구성
+- [ ] #34: DB·Redis·선택적 SMTP 상태 점검, 생존·요청 준비 상태 및 접근 정책 구성
+- [ ] 전체 인증 구현 후: 정상 발송·수신, 실패·만료·제한·동시 요청, 실제 CSRF 쿠키·헤더 검증
+
+설정 근거: [Spring Boot Redis 연결](https://docs.spring.io/spring-boot/reference/data/nosql.html#data.nosql.redis.connecting),
+[메일 자동 설정과 timeout](https://docs.spring.io/spring-boot/reference/io/email.html).
 
 ## 인증 접근 규칙 (기반 설정)
 
@@ -137,7 +249,7 @@ Bearer 검증을 도입할 때 헤더로만 인증하는 경로의 제외 범위
 `local` 프로필 실행 후 `http://localhost:8080/swagger-ui/index.html`에서 확인합니다.
 JSON 명세는 `/v3/api-docs`, YAML 명세는 `/v3/api-docs.yaml`입니다.
 공통 설정은 문서 기능을 끄고, 클래스패스의 `application-local.properties`에서 활성화합니다.
-외부 `config/application-local.properties`에는 기존처럼 개인 DB 연결 정보만 두면 됩니다.
+외부 `config/application-local.properties`에는 개인 DB·Redis·SMTP 연결 정보를 둡니다.
 
 현재 업무 Controller는 없으므로 `paths`는 비어 있습니다. 공통 오류 스키마·응답 정의와
 향후 사용할 `bearerAuth` 형식만 등록했습니다. Swagger의 Authorize 입력은 로그인 기능이
