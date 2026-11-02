@@ -53,3 +53,6 @@ app.auth.email-verification.resend-cooldown-seconds=60
 app.auth.email-verification.rate-window-seconds=3600
 app.auth.email-verification.max-requests-per-email=5
 app.auth.email-verification.max-requests-per-ip=20
+# 발급 요청당 코드 입력 실패 한도와 가입용 증명 유효기간
+app.auth.email-verification.max-verification-attempts=5
+app.auth.email-verification.signup-proof-ttl-seconds=600

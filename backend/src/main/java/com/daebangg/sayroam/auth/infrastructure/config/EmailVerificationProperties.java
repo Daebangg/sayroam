@@ -13,5 +13,7 @@ public record EmailVerificationProperties(
         @DefaultValue("60") @Min(1) @Max(900) int resendCooldownSeconds,
         @DefaultValue("3600") @Min(60) @Max(86400) int rateWindowSeconds,
         @DefaultValue("5") @Min(1) @Max(100) int maxRequestsPerEmail,
-        @DefaultValue("20") @Min(1) @Max(1000) int maxRequestsPerIp) {
+        @DefaultValue("20") @Min(1) @Max(1000) int maxRequestsPerIp,
+        @DefaultValue("5") @Min(1) @Max(10) int maxVerificationAttempts,
+        @DefaultValue("600") @Min(60) @Max(3600) int signupProofTtlSeconds) {
 }

@@ -33,7 +33,8 @@ public class SecurityConfig {
                                 "/v3/api-docs", "/v3/api-docs/**", "/v3/api-docs.yaml").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/auth/signup", "/api/auth/login").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/auth/csrf").permitAll()
-                        .requestMatchers(HttpMethod.POST, "/api/auth/email-verifications").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/auth/email-verifications",
+                                "/api/auth/email-verifications/verify").permitAll()
                         .requestMatchers("/api/admin", "/api/admin/**").hasRole("ADMIN")
                         .anyRequest().authenticated()
                 )

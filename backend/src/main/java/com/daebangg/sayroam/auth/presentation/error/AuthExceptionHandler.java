@@ -45,6 +45,13 @@ public class AuthExceptionHandler {
                     "Email verification storage is unavailable");
             case EMAIL_REQUEST_SUPERSEDED -> new HttpError(HttpStatus.CONFLICT,
                     "Verification request expired or was replaced; use the latest request");
+            case EMAIL_CODE_INVALID -> new HttpError(HttpStatus.BAD_REQUEST, "Verification code is invalid");
+            case EMAIL_CODE_EXPIRED -> new HttpError(HttpStatus.GONE,
+                    "Verification code expired or is unavailable; request a new code");
+            case EMAIL_CODE_ATTEMPTS_EXCEEDED -> new HttpError(HttpStatus.TOO_MANY_REQUESTS,
+                    "Verification attempt limit reached; request a new code");
+            case EMAIL_CODE_ALREADY_USED -> new HttpError(HttpStatus.CONFLICT,
+                    "Verification code was already used; use the issued proof or request a new code");
         };
     }
 

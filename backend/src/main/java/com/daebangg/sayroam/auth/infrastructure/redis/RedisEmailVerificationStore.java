@@ -23,6 +23,7 @@ public class RedisEmailVerificationStore implements EmailVerificationStore {
     private static final String PREFIX = "sayroam:auth:{email-verification}:";
     private static final DefaultRedisScript<List> RESERVE = script("email-verification-reserve.lua");
     private static final DefaultRedisScript<List> ACTIVATE = script("email-verification-activate.lua");
+    private static final DefaultRedisScript<List> CONFIRM = script("email-verification-confirm.lua");
     private static final DefaultRedisScript<Long> DISCARD = new DefaultRedisScript<>();
 
     static {
@@ -44,7 +45,7 @@ public class RedisEmailVerificationStore implements EmailVerificationStore {
         String ipHash = VerificationDigests.sha256(remoteAddress);
         List<?> result = execute(RESERVE,
                 List.of(stateKey(emailHash), cooldownKey(emailHash), PREFIX + "email-limit:" + emailHash,
-                        PREFIX + "ip-limit:" + ipHash),
+                        PREFIX + "ip-limit:" + ipHash, proofKey(emailHash)),
                 requestId, codeDigest, millis(policy.codeTtlSeconds()), millis(policy.resendCooldownSeconds()),
                 millis(policy.rateWindowSeconds()), Integer.toString(policy.maxRequestsPerEmail()),
                 Integer.toString(policy.maxRequestsPerIp()));
@@ -67,6 +68,28 @@ public class RedisEmailVerificationStore implements EmailVerificationStore {
             return Optional.empty();
         }
         return Optional.of(new ActiveRequest(seconds(ttl), seconds(number(result, 1))));
+    }
+
+    @Override
+    public ConfirmationResult confirm(String email, String requestId, String codeDigest, String signupProofDigest) {
+        String emailHash = VerificationDigests.sha256(email);
+        List<?> result = execute(CONFIRM, List.of(stateKey(emailHash), proofKey(emailHash)),
+                requestId, codeDigest, signupProofDigest, Integer.toString(policy.maxVerificationAttempts()),
+                millis(policy.signupProofTtlSeconds()));
+        ConfirmationStatus status = switch (Math.toIntExact(number(result, 0))) {
+            case 0 -> ConfirmationStatus.CONFIRMED;
+            case 1 -> ConfirmationStatus.EXPIRED;
+            case 2 -> ConfirmationStatus.SUPERSEDED;
+            case 3 -> ConfirmationStatus.INVALID_CODE;
+            case 4 -> ConfirmationStatus.ATTEMPTS_EXCEEDED;
+            case 5 -> ConfirmationStatus.ALREADY_CONFIRMED;
+            default -> throw new IllegalStateException("Unexpected verification confirmation result");
+        };
+        long ttl = number(result, 1);
+        if (status == ConfirmationStatus.CONFIRMED && ttl <= 0) {
+            throw new IllegalStateException("Invalid signup proof lifetime");
+        }
+        return new ConfirmationResult(status, status == ConfirmationStatus.CONFIRMED ? seconds(ttl) : 0);
     }
 
     @Override
@@ -97,6 +120,10 @@ public class RedisEmailVerificationStore implements EmailVerificationStore {
 
     private static String stateKey(String emailHash) {
         return PREFIX + "state:" + emailHash;
+    }
+
+    private static String proofKey(String emailHash) {
+        return PREFIX + "proof:" + emailHash;
     }
 
     private static String cooldownKey(String emailHash) {

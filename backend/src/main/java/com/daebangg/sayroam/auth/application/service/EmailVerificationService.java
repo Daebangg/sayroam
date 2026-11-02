@@ -9,6 +9,7 @@ import com.daebangg.sayroam.auth.domain.VerificationDigests;
 import org.springframework.stereotype.Service;
 
 import java.security.SecureRandom;
+import java.util.Base64;
 import java.util.Locale;
 import java.util.Optional;
 import java.util.UUID;
@@ -51,6 +52,30 @@ public class EmailVerificationService {
         var active = store.activate(email, requestId).orElseThrow(
                 () -> new AuthException(AuthErrorCode.EMAIL_REQUEST_SUPERSEDED));
         return new IssuedRequest(requestId, active.expiresInSeconds(), active.resendAfterSeconds());
+    }
+
+    public ConfirmedRequest confirm(String rawEmail, String requestId, String code) {
+        String email = EmailAddress.normalize(rawEmail);
+        byte[] secret = new byte[32];
+        random.nextBytes(secret);
+        String signupProof = Base64.getUrlEncoder().withoutPadding().encodeToString(secret);
+        var result = store.confirm(email, requestId, VerificationDigests.sha256(requestId + ":" + code),
+                VerificationDigests.sha256(signupProof));
+        return switch (result.status()) {
+            case CONFIRMED -> new ConfirmedRequest(signupProof, result.proofExpiresInSeconds());
+            case EXPIRED -> throw new AuthException(AuthErrorCode.EMAIL_CODE_EXPIRED);
+            case SUPERSEDED -> throw new AuthException(AuthErrorCode.EMAIL_REQUEST_SUPERSEDED);
+            case INVALID_CODE -> throw new AuthException(AuthErrorCode.EMAIL_CODE_INVALID);
+            case ATTEMPTS_EXCEEDED -> throw new AuthException(AuthErrorCode.EMAIL_CODE_ATTEMPTS_EXCEEDED);
+            case ALREADY_CONFIRMED -> throw new AuthException(AuthErrorCode.EMAIL_CODE_ALREADY_USED);
+        };
+    }
+
+    public record ConfirmedRequest(String signupProof, long expiresInSeconds) {
+        @Override
+        public String toString() {
+            return "ConfirmedRequest[signupProof=<redacted>, expiresInSeconds=" + expiresInSeconds + "]";
+        }
     }
 
     public record IssuedRequest(String verificationId, long expiresInSeconds, long resendAfterSeconds) {

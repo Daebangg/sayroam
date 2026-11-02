@@ -14,7 +14,7 @@ if retry > 0 then return {1, retry} end
 if redis.call('INCR', KEYS[3]) == 1 then redis.call('PEXPIRE', KEYS[3], ARGV[5]) end
 if redis.call('INCR', KEYS[4]) == 1 then redis.call('PEXPIRE', KEYS[4], ARGV[5]) end
 redis.call('SET', KEYS[2], ARGV[1], 'PX', ARGV[4])
-redis.call('DEL', KEYS[1])
-redis.call('HSET', KEYS[1], 'requestId', ARGV[1], 'codeDigest', ARGV[2], 'status', 'pending')
+redis.call('DEL', KEYS[1], KEYS[5])
+redis.call('HSET', KEYS[1], 'requestId', ARGV[1], 'codeDigest', ARGV[2], 'status', 'pending', 'failedAttempts', '0')
 redis.call('PEXPIRE', KEYS[1], ARGV[3])
 return {0, 0}
