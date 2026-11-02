@@ -1,4 +1,4 @@
-package com.daebangg.sayroam.auth.application;
+package com.daebangg.sayroam.auth.infrastructure.config;
 
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;

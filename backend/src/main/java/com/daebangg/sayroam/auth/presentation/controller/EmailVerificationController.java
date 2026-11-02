@@ -1,18 +1,15 @@
-package com.daebangg.sayroam.auth.presentation;
+package com.daebangg.sayroam.auth.presentation.controller;
 
-import com.daebangg.sayroam.auth.application.EmailVerificationService;
+import com.daebangg.sayroam.auth.application.service.EmailVerificationService;
+import com.daebangg.sayroam.auth.presentation.dto.EmailRequest;
+import com.daebangg.sayroam.auth.presentation.dto.EmailVerificationResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.enums.ParameterIn;
-import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.Email;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Pattern;
-import jakarta.validation.constraints.Size;
 import org.springframework.http.CacheControl;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -43,18 +40,11 @@ public class EmailVerificationController {
     })
     @Parameter(name = "X-XSRF-TOKEN", in = ParameterIn.HEADER, required = true, description = "XSRF-TOKEN 쿠키에서 복사한 원문 토큰")
     @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<EmailVerificationService.IssuedRequest> request(
+    public ResponseEntity<EmailVerificationResponse> request(
             @Valid @RequestBody EmailRequest body, HttpServletRequest request) {
         // Forwarded/X-Forwarded-For는 신뢰하지 않는다. 프록시 구성은 별도 신뢰 경계 설정이 필요하다.
         var issued = service.request(body.email(), request.getRemoteAddr());
-        return ResponseEntity.accepted().cacheControl(CacheControl.noStore()).body(issued);
+        return ResponseEntity.accepted().cacheControl(CacheControl.noStore()).body(EmailVerificationResponse.from(issued));
     }
 
-    public record EmailRequest(
-            @Schema(description = "앞뒤 공백 제거 후 ASCII 이메일을 소문자로 정규화. 가입·로그인에도 같은 기준 적용 예정", example = "user@example.com")
-            @NotBlank @Email @Size(max = 254) @Pattern(regexp = "^[!-~]+$", message = "must be an ASCII email address") String email) {
-        public EmailRequest {
-            email = email == null ? null : email.strip();
-        }
-    }
 }

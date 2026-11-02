@@ -1,9 +1,9 @@
 package com.daebangg.sayroam.auth.infrastructure.redis;
 
-import com.daebangg.sayroam.auth.application.AuthErrorCode;
-import com.daebangg.sayroam.auth.application.EmailVerificationException;
-import com.daebangg.sayroam.auth.application.EmailVerificationProperties;
-import com.daebangg.sayroam.auth.application.EmailVerificationStore;
+import com.daebangg.sayroam.auth.application.error.AuthErrorCode;
+import com.daebangg.sayroam.auth.application.error.AuthException;
+import com.daebangg.sayroam.auth.infrastructure.config.EmailVerificationProperties;
+import com.daebangg.sayroam.auth.application.port.out.EmailVerificationStore;
 import com.daebangg.sayroam.auth.domain.VerificationDigests;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.ClassPathResource;
@@ -12,7 +12,9 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.stereotype.Repository;
 
+import java.time.Duration;
 import java.util.List;
+import java.util.Optional;
 
 @Slf4j
 @Repository
@@ -37,7 +39,7 @@ public class RedisEmailVerificationStore implements EmailVerificationStore {
     }
 
     @Override
-    public void reserve(String email, String remoteAddress, String requestId, String codeDigest) {
+    public Duration reserve(String email, String remoteAddress, String requestId, String codeDigest) {
         String emailHash = VerificationDigests.sha256(email);
         String ipHash = VerificationDigests.sha256(remoteAddress);
         List<?> result = execute(RESERVE,
@@ -46,20 +48,25 @@ public class RedisEmailVerificationStore implements EmailVerificationStore {
                 requestId, codeDigest, millis(policy.codeTtlSeconds()), millis(policy.resendCooldownSeconds()),
                 millis(policy.rateWindowSeconds()), Integer.toString(policy.maxRequestsPerEmail()),
                 Integer.toString(policy.maxRequestsPerIp()));
-        if (number(result, 0) != 0) {
-            throw new EmailVerificationException(AuthErrorCode.EMAIL_RATE_LIMITED, seconds(number(result, 1)));
+        long outcome = number(result, 0);
+        if (outcome == 0) {
+            return Duration.ZERO;
         }
+        if (outcome == 1 && number(result, 1) > 0) {
+            return Duration.ofMillis(number(result, 1));
+        }
+        throw new IllegalStateException("Unexpected verification reservation result");
     }
 
     @Override
-    public ActiveRequest activate(String email, String requestId) {
+    public Optional<ActiveRequest> activate(String email, String requestId) {
         String emailHash = VerificationDigests.sha256(email);
         List<?> result = execute(ACTIVATE, List.of(stateKey(emailHash), cooldownKey(emailHash)), requestId);
         long ttl = number(result, 0);
         if (ttl <= 0) {
-            throw new EmailVerificationException(AuthErrorCode.EMAIL_REQUEST_SUPERSEDED);
+            return Optional.empty();
         }
-        return new ActiveRequest(seconds(ttl), seconds(number(result, 1)));
+        return Optional.of(new ActiveRequest(seconds(ttl), seconds(number(result, 1))));
     }
 
     @Override
@@ -71,19 +78,19 @@ public class RedisEmailVerificationStore implements EmailVerificationStore {
         try {
             T result = redis.execute(script, keys, (Object[]) args);
             if (result == null) {
-                throw new EmailVerificationException(AuthErrorCode.EMAIL_VERIFICATION_UNAVAILABLE);
+                throw new IllegalStateException("Missing verification script result");
             }
             return result;
         } catch (DataAccessException exception) {
             // 이메일·IP·코드·Redis 접속 비밀값은 로그에 기록하지 않는다.
             log.warn("Email verification Redis operation failed: {}", exception.getClass().getSimpleName());
-            throw new EmailVerificationException(AuthErrorCode.EMAIL_VERIFICATION_UNAVAILABLE);
+            throw new AuthException(AuthErrorCode.EMAIL_VERIFICATION_UNAVAILABLE, exception);
         }
     }
 
     private static long number(List<?> result, int index) {
         if (result.size() != 2 || !(result.get(index) instanceof Number number)) {
-            throw new EmailVerificationException(AuthErrorCode.EMAIL_VERIFICATION_UNAVAILABLE);
+            throw new IllegalStateException("Unexpected verification script result");
         }
         return number.longValue();
     }

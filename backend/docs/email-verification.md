@@ -99,6 +99,46 @@ SMTP 수락 후 Redis 활성화가 실패하면 503을 반환하고 복구 후 �
 실행 결과가 네트워크 장애로 불확실할 때는 이미 코드가 바뀌었거나 제한이 소비됐을 수 있으므로
 자동 재발송하지 않습니다. 이후의 정리·활성화는 요청 ID를 비교하며 만료된 코드를 되살리지 않습니다.
 
+## 코드 구조와 오류 책임
+
+```text
+auth/
+  application/
+    service/EmailVerificationService
+    port/out/EmailVerificationStore, VerificationEmailSender
+    error/AuthErrorCode, AuthException
+  presentation/
+    controller/AuthCsrfController, EmailVerificationController
+    dto/EmailRequest, EmailVerificationResponse
+    error/AuthExceptionHandler
+  infrastructure/
+    config/EmailVerificationProperties
+    redis/RedisEmailVerificationStore
+    smtp/SmtpVerificationEmailSender
+```
+
+서비스는 저장·발송 포트에 의존합니다. SMTP 선택 의존성은 Java Optional로 전달하며 비활성화 시
+Redis 예약 전에 실패합니다. 설정 바인딩은 infrastructure/config, 공통 연결 설정은 기존 global/config에 둡니다.
+
+- `AuthErrorCode`: HTTP·Spring·공개 문구에 의존하지 않는 실패 식별자
+- `AuthException`: 실패 코드, 선택적 Duration 대기시간, 원본 기술 예외 cause 보관
+- Redis 어댑터: 제한 대기시간과 만료·교체 결과를 반환. 연결 등 DataAccessException은 애플리케이션 오류로 변환
+- SMTP 어댑터: MailException을 발송 실패로 변환하고 cause 보존
+- 서비스: 제한·만료 결과를 실패로 판단하고 SMTP 실패 시 같은 pending 요청 정리
+- `AuthExceptionHandler`: HTTP 상태·공개 문구·ProblemDetail·Retry-After를 한곳에서 결정
+
+HTTP 503은 현재 인증 기능을 처리할 수 없음을 표현하며 메일 비활성화·Redis 장애에 사용합니다.
+SMTP 발송 실패의 기존 502 응답은 유지합니다. 503 자체가 앱 프로세스 종료를 의미하지는 않습니다.
+시작 시 SMTP 연결 검사에 따른 종료 조건과 API 요청 처리 중의 HTTP 실패 응답은 별개입니다.
+
+cause·suppressed는 내부 진단용이며 응답에 포함하지 않습니다. 어댑터 로그는 예외 타입만 기록하고
+원문 SMTP 응답·메일 내용·접속 비밀값을 그대로 출력하지 않습니다. Redis 정리 장애가 나면 그 장애를
+우선 전달하되 SMTP 실패도 suppressed로 보존합니다. 예상하지 못한 프로그래밍 오류는 AuthException으로
+일괄 변환하지 않고 기존 글로벌 500 처리로 보냅니다. 누락·비정상 형식의 Lua 결과도 예상 밖 오류로 처리합니다.
+
+기존 공통 Security/MVC 오류 처리와 MySQL 도메인 엔티티는 이번 인증 구조 개선 범위에서 변경하지 않습니다.
+별도 ErrorResponse를 추가하지 않고 ProblemDetail 계약과 기존 OpenAPI 스키마 이름을 유지합니다.
+
 ## 확인 범위
 
 추가 테스트는 작성·실행하지 않으며 전체 인증 구현 후 검증합니다. 이번 단계에서는 컴파일·패키징과
