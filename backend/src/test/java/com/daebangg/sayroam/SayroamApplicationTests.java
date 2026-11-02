@@ -83,7 +83,8 @@ class SayroamApplicationTests {
         Room room = Room.builder().type(RoomType.TRIP).name("날짜 미정 여행").build();
         entityManager.persist(user);
         entityManager.persist(room);
-        Trip trip = Trip.builder().room(room).build();
+        Long roomId = (Long) entityManagerFactory.getPersistenceUnitUtil().getIdentifier(room);
+        Trip trip = Trip.builder().roomId(roomId).build();
         entityManager.persist(trip);
         entityManager.flush();
         Object tripId = entityManagerFactory.getPersistenceUnitUtil().getIdentifier(trip);
