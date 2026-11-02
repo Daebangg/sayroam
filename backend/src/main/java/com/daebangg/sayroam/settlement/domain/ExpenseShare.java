@@ -2,7 +2,7 @@ package com.daebangg.sayroam.settlement.domain;
 
 import com.daebangg.sayroam.common.domain.Money;
 import com.daebangg.sayroam.global.entity.BaseTimeEntity;
-import com.daebangg.sayroam.user.domain.User;
+import jakarta.persistence.Column;
 import jakarta.persistence.Embedded;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -32,17 +32,16 @@ public class ExpenseShare extends BaseTimeEntity {
     @JoinColumn(name = "expense_id", nullable = false)
     private Expense expense;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", nullable = false)
-    private User user;
+    @Column(name = "user_id", nullable = false)
+    private Long userId;
 
     @Embedded
     private Money amount;
 
     // Expense.addShare로만 만든다
-    ExpenseShare(Expense expense, User user, Money amount) {
+    ExpenseShare(Expense expense, Long userId, Money amount) {
         this.expense = expense;
-        this.user = user;
+        this.userId = userId;
         this.amount = amount;
     }
 

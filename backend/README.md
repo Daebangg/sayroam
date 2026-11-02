@@ -56,6 +56,28 @@ IntelliJ Run Configuration:
 테이블 생성·변경은 `flywayMigrate`로 실행하고 앱은 엔티티와 DB 매핑을 검증합니다.
 빈 DB 또는 미적용 변경이 있으면 마이그레이션을 먼저 실행하세요.
 
+## 엔티티 참조 규칙
+
+다른 패키지의 엔티티는 객체 대신 `Long xxxId`로 참조합니다.
+객체로 들고 있으면 한 도메인 코드에서 다른 도메인 엔티티의 상태가 경고 없이 바뀔 수 있고,
+테스트에서 엔티티 하나를 만들 때 참조하는 엔티티까지 유효한 상태로 만들어야 하기 때문입니다.
+
+```java
+// 다른 패키지(user)의 엔티티: ID로 참조
+@Column(name = "sender_id", nullable = false)
+private Long senderId;
+
+// 같은 패키지(room)의 엔티티: 객체 참조 허용
+@ManyToOne(fetch = FetchType.LAZY)
+@JoinColumn(name = "room_id", nullable = false)
+private Room room;
+```
+
+- 같은 패키지 안의 객체 참조는 허용하되, 참조한 엔티티의 상태를 바꾸지 않습니다.
+- 다른 도메인 객체가 필요하면 서비스에서 리포지토리로 조회합니다.
+- 화면용 목록 조회는 조인 쿼리로 필요한 값만 DTO로 조회합니다.
+- DB의 FK 제약은 마이그레이션에 그대로 유지합니다.
+
 ## 인증 접근 규칙 (기반 설정)
 
 일반 API는 `Authorization: Bearer <Access Token>` 인증을 도입할 예정입니다.

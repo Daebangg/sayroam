@@ -1,8 +1,7 @@
 package com.daebangg.sayroam.trip.domain;
 
 import com.daebangg.sayroam.global.entity.BaseTimeEntity;
-import com.daebangg.sayroam.place.domain.Place;
-import com.daebangg.sayroam.user.domain.User;
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
@@ -28,9 +27,8 @@ public class TripPlace extends BaseTimeEntity {
     @JoinColumn(name = "trip_id", nullable = false)
     private Trip trip;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "place_id", nullable = false)
-    private Place place;
+    @Column(name = "place_id", nullable = false)
+    private Long placeId;
 
     // 일차 미배정은 NULL
     private Integer dayNumber;
@@ -39,18 +37,17 @@ public class TripPlace extends BaseTimeEntity {
 
     private String memo;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "added_by", nullable = false)
-    private User addedBy;
+    @Column(name = "added_by", nullable = false)
+    private Long addedById;
 
     @Builder
-    private TripPlace(Trip trip, Place place, Integer dayNumber, Integer visitOrder, String memo, User addedBy) {
+    private TripPlace(Trip trip, Long placeId, Integer dayNumber, Integer visitOrder, String memo, Long addedById) {
         this.trip = trip;
-        this.place = place;
+        this.placeId = placeId;
         this.dayNumber = dayNumber;
         this.visitOrder = visitOrder;
         this.memo = memo;
-        this.addedBy = addedBy;
+        this.addedById = addedById;
     }
 
 }

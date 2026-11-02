@@ -2,20 +2,15 @@ package com.daebangg.sayroam.settlement.domain;
 
 import com.daebangg.sayroam.common.domain.Money;
 import com.daebangg.sayroam.global.entity.BaseTimeEntity;
-import com.daebangg.sayroam.trip.domain.Trip;
-import com.daebangg.sayroam.user.domain.User;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Embedded;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
-import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
@@ -35,18 +30,15 @@ public class Expense extends BaseTimeEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "trip_id", nullable = false)
-    private Trip trip;
+    @Column(name = "trip_id", nullable = false)
+    private Long tripId;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "payer_id", nullable = false)
-    private User payer;
+    @Column(name = "payer_id", nullable = false)
+    private Long payerId;
 
     // 결제자가 아닌 사람이 대신 등록할 수 있어 따로 둔다
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "created_by", nullable = false)
-    private User createdBy;
+    @Column(name = "created_by", nullable = false)
+    private Long createdById;
 
     @Column(nullable = false, length = 100)
     private String title;
@@ -66,19 +58,19 @@ public class Expense extends BaseTimeEntity {
     private List<ExpenseShare> shares = new ArrayList<>();
 
     @Builder
-    private Expense(Trip trip, User payer, User createdBy, String title, Money amount, SplitType splitType,
+    private Expense(Long tripId, Long payerId, Long createdById, String title, Money amount, SplitType splitType,
                     LocalDateTime spentAt) {
-        this.trip = trip;
-        this.payer = payer;
-        this.createdBy = createdBy;
+        this.tripId = tripId;
+        this.payerId = payerId;
+        this.createdById = createdById;
         this.title = title;
         this.amount = amount;
         this.splitType = splitType;
         this.spentAt = spentAt;
     }
 
-    public void addShare(User user, Money amount) {
-        shares.add(new ExpenseShare(this, user, amount));
+    public void addShare(Long userId, Money amount) {
+        shares.add(new ExpenseShare(this, userId, amount));
     }
 
 }

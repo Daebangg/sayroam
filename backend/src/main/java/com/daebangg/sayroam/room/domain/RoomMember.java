@@ -1,7 +1,6 @@
 package com.daebangg.sayroam.room.domain;
 
 import com.daebangg.sayroam.global.entity.BaseTimeEntity;
-import com.daebangg.sayroam.user.domain.User;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -37,9 +36,8 @@ public class RoomMember extends BaseTimeEntity {
     @JoinColumn(name = "room_id", nullable = false)
     private Room room;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", nullable = false)
-    private User user;
+    @Column(name = "user_id", nullable = false)
+    private Long userId;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
@@ -62,9 +60,9 @@ public class RoomMember extends BaseTimeEntity {
     private LocalDateTime leftAt;
 
     @Builder
-    private RoomMember(Room room, User user, RoomMemberRole role) {
+    private RoomMember(Room room, Long userId, RoomMemberRole role) {
         this.room = room;
-        this.user = user;
+        this.userId = userId;
         this.role = role;
         this.status = RoomMemberStatus.JOINED;
         this.joinedAt = LocalDateTime.now();

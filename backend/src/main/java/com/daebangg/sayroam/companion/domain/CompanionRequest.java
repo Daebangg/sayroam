@@ -1,8 +1,6 @@
 package com.daebangg.sayroam.companion.domain;
 
 import com.daebangg.sayroam.global.entity.BaseTimeEntity;
-import com.daebangg.sayroam.room.domain.Room;
-import com.daebangg.sayroam.user.domain.User;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -13,7 +11,6 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
-import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import lombok.AccessLevel;
@@ -36,22 +33,19 @@ public class CompanionRequest extends BaseTimeEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "sender_id", nullable = false)
-    private User sender;
+    @Column(name = "sender_id", nullable = false)
+    private Long senderId;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "receiver_id", nullable = false)
-    private User receiver;
+    @Column(name = "receiver_id", nullable = false)
+    private Long receiverId;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "companion_search_id", nullable = false)
     private CompanionSearch companionSearch;
 
     // 수락 시 생성되는 1:1 방. 수락 전에는 NULL
-    @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "room_id", unique = true)
-    private Room room;
+    @Column(name = "room_id", unique = true)
+    private Long roomId;
 
     @Column(length = 300)
     private String message;
@@ -63,9 +57,9 @@ public class CompanionRequest extends BaseTimeEntity {
     private LocalDateTime respondedAt;
 
     // 받은 회원이 동행 찾기 등록자와 어긋나지 않도록 CompanionSearch.requestBy로만 만든다
-    CompanionRequest(User sender, User receiver, CompanionSearch companionSearch, String message) {
-        this.sender = sender;
-        this.receiver = receiver;
+    CompanionRequest(Long senderId, Long receiverId, CompanionSearch companionSearch, String message) {
+        this.senderId = senderId;
+        this.receiverId = receiverId;
         this.companionSearch = companionSearch;
         this.message = message;
         this.status = CompanionRequestStatus.PENDING;

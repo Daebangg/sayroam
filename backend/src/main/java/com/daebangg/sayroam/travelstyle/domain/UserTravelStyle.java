@@ -1,7 +1,6 @@
 package com.daebangg.sayroam.travelstyle.domain;
 
 import com.daebangg.sayroam.global.entity.BaseTimeEntity;
-import com.daebangg.sayroam.user.domain.User;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -28,9 +27,8 @@ public class UserTravelStyle extends BaseTimeEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", nullable = false)
-    private User user;
+    @Column(name = "user_id", nullable = false)
+    private Long userId;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "item_id", nullable = false)
@@ -40,8 +38,8 @@ public class UserTravelStyle extends BaseTimeEntity {
     private int score;
 
     @Builder
-    private UserTravelStyle(User user, TravelStyleItem item, int score) {
-        this.user = user;
+    private UserTravelStyle(Long userId, TravelStyleItem item, int score) {
+        this.userId = userId;
         this.item = item;
         this.score = score;
     }

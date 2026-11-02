@@ -3,19 +3,15 @@ package com.daebangg.sayroam.companion.domain;
 import com.daebangg.sayroam.common.domain.TravelPeriod;
 import com.daebangg.sayroam.global.entity.BaseTimeEntity;
 import com.daebangg.sayroam.user.domain.Gender;
-import com.daebangg.sayroam.user.domain.User;
 import jakarta.persistence.AttributeOverride;
 import jakarta.persistence.Column;
 import jakarta.persistence.Embedded;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
-import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.Builder;
@@ -30,9 +26,8 @@ public class CompanionSearch extends BaseTimeEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", nullable = false)
-    private User user;
+    @Column(name = "user_id", nullable = false)
+    private Long userId;
 
     @Column(nullable = false, length = 50)
     private String region;
@@ -61,9 +56,9 @@ public class CompanionSearch extends BaseTimeEntity {
     private CompanionSearchStatus status;
 
     @Builder
-    private CompanionSearch(User user, String region, TravelPeriod period, Gender preferredGender,
+    private CompanionSearch(Long userId, String region, TravelPeriod period, Gender preferredGender,
                           AgeRange preferredAgeRange, String introduction) {
-        this.user = user;
+        this.userId = userId;
         this.region = region;
         this.period = period;
         this.preferredGender = preferredGender;
@@ -72,8 +67,8 @@ public class CompanionSearch extends BaseTimeEntity {
         this.status = CompanionSearchStatus.ACTIVE;
     }
 
-    public CompanionRequest requestBy(User sender, String message) {
-        return new CompanionRequest(sender, user, this, message);
+    public CompanionRequest requestBy(Long senderId, String message) {
+        return new CompanionRequest(senderId, userId, this, message);
     }
 
 }
