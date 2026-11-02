@@ -178,12 +178,13 @@ SMTP 계정이 없는 환경의 **실제 메일 발송·수신은 미확인**입
 
 인프라 구성에 이어 인증 코드 발급·재발송 요청 API와 CSRF 최초 쿠키 발급을 구현했습니다.
 [발급 정책·API·오류·실패 처리 명세](docs/email-verification.md)를 참고하세요.
-코드 검증·입력 실패 제한·가입용 증명 발급까지 구현했습니다. 회원가입과 증명 소비·JWT는 아직 후속 범위입니다.
+코드 검증·입력 실패 제한·가입용 증명 발급과 실제 회원가입까지 구현했습니다.
+[회원가입 API·증명 소비·DB 실패 및 재시도 정책](docs/signup.md)을 참고하세요. JWT·로그인은 #30 후속 범위입니다.
 추가 테스트는 작성·실행하지 않으며 전체 인증 구현 후 검증합니다.
 
 후속 체크리스트:
 
-- [ ] #28: 가입 증명 일회성 소비·회원가입·저장 실패 보상 처리 및 명세
+- [ ] #28: 가입 증명 일회성 소비·회원가입·DB 실패·동시 가입의 실제 동작 검증
 - [ ] #28 전체 구현 후: CSRF 최초 쿠키 발급과 `X-XSRF-TOKEN` 검증 흐름의 실제 동작 검증
 - [ ] #30: Bearer 헤더 인증 경로와 Refresh 쿠키 경로별 CSRF 정책 구성
 - [ ] #34: DB·Redis·선택적 SMTP 상태 점검, 생존·요청 준비 상태 및 접근 정책 구성
@@ -195,7 +196,7 @@ SMTP 계정이 없는 환경의 **실제 메일 발송·수신은 미확인**입
 ## 인증 접근 규칙 (기반 설정)
 
 일반 API는 `Authorization: Bearer <Access Token>` 인증을 도입할 예정입니다.
-인증 메일 발급·코드 검증과 CSRF 쿠키 준비 API를 구현했으며, JWT 발급·검증과 회원가입·로그인 API는 아직 없습니다.
+인증 메일 발급·코드 검증·회원가입과 CSRF 쿠키 준비 API를 구현했으며, JWT 발급·검증과 로그인 API는 아직 없습니다.
 따라서 현재 보호된 API에 임의의 Bearer 토큰을 전달해도 인증되지 않습니다.
 
 | 요청 | 접근 규칙 |
@@ -203,7 +204,8 @@ SMTP 계정이 없는 환경의 **실제 메일 발송·수신은 미확인**입
 | `GET /api/auth/csrf` | 인증 없이 CSRF 쿠키 준비 |
 | `POST /api/auth/email-verifications` | 인증 없이 메일 발급 요청 가능, CSRF 검증 적용 |
 | `POST /api/auth/email-verifications/verify` | 인증 없이 코드 검증·가입용 증명 발급 가능, CSRF 검증 적용 |
-| `POST /api/auth/signup`, `POST /api/auth/login` | 인증 없이 접근 가능하도록 설정. 실제 API는 미구현, CSRF 검증 적용 |
+| `POST /api/auth/signup` | 인증 없이 가입용 증명으로 회원가입, CSRF 검증 적용 |
+| `POST /api/auth/login` | 인증 없이 접근 가능하도록 설정. 실제 API는 미구현, CSRF 검증 적용 |
 | `GET /swagger-ui.html`, `/swagger-ui/**`, `/v3/api-docs`, `/v3/api-docs/**`, `/v3/api-docs.yaml` | 인증 없이 조회 가능, 문서 기능은 기본적으로 local에서만 활성화 |
 | `/api/admin`, `/api/admin/**` | `ROLE_ADMIN` 권한 필요 |
 | 그 외 요청 | 인증 필요 |
@@ -256,7 +258,7 @@ JSON 명세는 `/v3/api-docs`, YAML 명세는 `/v3/api-docs.yaml`입니다.
 공통 설정은 문서 기능을 끄고, 클래스패스의 `application-local.properties`에서 활성화합니다.
 외부 `config/application-local.properties`에는 개인 DB·Redis·SMTP 연결 정보를 둡니다.
 
-현재 `paths`에는 CSRF 쿠키 준비, 인증 메일 발급 요청, 코드 검증·가입용 증명 발급 API를 제공합니다.
+현재 `paths`에는 CSRF 쿠키 준비, 인증 메일 발급 요청, 코드 검증·가입용 증명 발급, 회원가입 API를 제공합니다.
 공통 오류 스키마·응답 정의와 향후 사용할 `bearerAuth` 형식도 등록했습니다. Swagger의 Authorize 입력은 로그인 기능이
 아니며, 실제 토큰 발급·검증은 #30에서 구현합니다. 각 API 구현 시 실제 상태 코드에 맞춰
 공통 응답을 참조하고, 보호 API에는 `@SecurityRequirement(name = "bearerAuth")`를 지정합니다.

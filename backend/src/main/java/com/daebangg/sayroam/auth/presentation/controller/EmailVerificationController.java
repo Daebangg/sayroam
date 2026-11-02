@@ -49,7 +49,7 @@ public class EmailVerificationController {
         return ResponseEntity.accepted().cacheControl(CacheControl.noStore()).body(EmailVerificationResponse.from(issued));
     }
 
-    @Operation(summary = "이메일 인증 코드 검증 및 가입용 증명 발급", description = "이메일·요청 ID·코드를 원자적으로 확인하고 코드를 소비합니다. 성공한 코드는 다시 사용할 수 없습니다. SMTP 설정 없이 기존 코드 검증은 가능하지만 Redis는 필요합니다. 회원가입과 증명 소비는 후속 구현입니다.")
+    @Operation(summary = "이메일 인증 코드 검증 및 가입용 증명 발급", description = "이메일·요청 ID·코드를 원자적으로 확인하고 코드를 소비합니다. 성공한 코드는 다시 사용할 수 없습니다. SMTP 설정 없이 기존 코드 검증은 가능하지만 Redis는 필요합니다. 가입용 증명은 POST /api/auth/signup에서 한 번 사용할 수 있습니다.")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "이메일에 바인딩된 가입용 증명 발급. Cache-Control: no-store"),
             @ApiResponse(responseCode = "400", ref = "#/components/responses/EmailCodeInvalid"),

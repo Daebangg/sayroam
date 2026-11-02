@@ -63,7 +63,11 @@ public class OpenApiConfig {
                 .addResponses("EmailVerificationConflict", problemResponse("409: EMAIL_REQUEST_SUPERSEDED 또는 EMAIL_CODE_ALREADY_USED. 최신 요청 또는 이미 받은 증명을 사용"))
                 .addResponses("EmailCodeExpired", problemResponse("410: EMAIL_CODE_EXPIRED. 없거나 만료된 코드. 새 코드 발급 필요"))
                 .addResponses("EmailCodeAttemptsExceeded", problemResponse("429: EMAIL_CODE_ATTEMPTS_EXCEEDED. 이 코드는 더 사용할 수 없으며 새 코드 발급 필요. Retry-After는 제공하지 않음"))
-                .addResponses("EmailConfirmationUnavailable", problemResponse("503: EMAIL_VERIFICATION_UNAVAILABLE. Redis 작업 결과가 불확실할 수 있음. 코드가 소비됐으면 새 코드 발급 필요"));
+                .addResponses("EmailConfirmationUnavailable", problemResponse("503: EMAIL_VERIFICATION_UNAVAILABLE. Redis 작업 결과가 불확실할 수 있음. 코드가 소비됐으면 새 코드 발급 필요"))
+                .addResponses("SignupBadRequest", problemResponse("400: INVALID_INPUT, SIGNUP_PROOF_INVALID 또는 Spring 요청 오류. 입력 검증 실패는 증명을 소비하지 않음"))
+                .addResponses("SignupConflict", problemResponse("409: SIGNUP_PROOF_ALREADY_USED 또는 EMAIL_ALREADY_REGISTERED. 이미 소비한 증명은 복구하지 않음"))
+                .addResponses("SignupProofExpired", problemResponse("410: SIGNUP_PROOF_EXPIRED. 없거나 만료된 증명. 새 이메일 인증 필요"))
+                .addResponses("SignupUnavailable", problemResponse("503: EMAIL_VERIFICATION_UNAVAILABLE 또는 SIGNUP_UNAVAILABLE. 증명 소비·DB 커밋 결과가 불확실할 수 있음. 자동 재시도 없이 새 인증 필요; 계정은 이미 생성됐을 수도 있음"));
         return new OpenAPI().components(components).servers(List.of(new Server().url("/")))
                 .info(new Info().title("Sayroam API").version(buildProperties.map(BuildProperties::getVersion).orElse("dev")));
     }

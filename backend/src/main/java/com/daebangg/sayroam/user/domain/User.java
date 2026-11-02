@@ -15,6 +15,7 @@ import lombok.Builder;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.util.Objects;
 
 // 테이블명 user는 예약어라 users를 쓴다
 @Entity
@@ -51,6 +52,17 @@ public class User extends BaseTimeEntity {
     private Role role;
 
     private LocalDateTime deletedAt;
+
+    public static User verifiedEmailMember(String email, String nickname, LocalDateTime emailVerifiedAt) {
+        User user = new User(Objects.requireNonNull(email), Objects.requireNonNull(nickname),
+                null, null, null, Role.USER);
+        user.emailVerifiedAt = Objects.requireNonNull(emailVerifiedAt);
+        return user;
+    }
+
+    public Long getId() {
+        return id;
+    }
 
     @Builder
     private User(String email, String nickname, String profileImageUrl, Gender gender, Integer birthYear, Role role) {

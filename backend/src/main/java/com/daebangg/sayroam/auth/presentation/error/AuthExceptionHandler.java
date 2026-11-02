@@ -52,6 +52,16 @@ public class AuthExceptionHandler {
                     "Verification attempt limit reached; request a new code");
             case EMAIL_CODE_ALREADY_USED -> new HttpError(HttpStatus.CONFLICT,
                     "Verification code was already used; use the issued proof or request a new code");
+            case SIGNUP_PROOF_INVALID -> new HttpError(HttpStatus.BAD_REQUEST,
+                    "Signup proof is invalid for this email");
+            case SIGNUP_PROOF_EXPIRED -> new HttpError(HttpStatus.GONE,
+                    "Signup proof expired or is unavailable; verify your email again");
+            case SIGNUP_PROOF_ALREADY_USED -> new HttpError(HttpStatus.CONFLICT,
+                    "Signup proof was already used; verify your email again if signup did not complete");
+            case EMAIL_ALREADY_REGISTERED -> new HttpError(HttpStatus.CONFLICT,
+                    "Email is already registered");
+            case SIGNUP_UNAVAILABLE -> new HttpError(HttpStatus.SERVICE_UNAVAILABLE,
+                    "Signup could not be confirmed; the proof is not restored. Verify your email again before retrying; the account may already exist");
         };
     }
 

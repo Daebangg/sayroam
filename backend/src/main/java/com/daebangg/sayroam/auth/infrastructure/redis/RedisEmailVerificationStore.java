@@ -13,6 +13,7 @@ import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.stereotype.Repository;
 
 import java.time.Duration;
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 
@@ -24,6 +25,7 @@ public class RedisEmailVerificationStore implements EmailVerificationStore {
     private static final DefaultRedisScript<List> RESERVE = script("email-verification-reserve.lua");
     private static final DefaultRedisScript<List> ACTIVATE = script("email-verification-activate.lua");
     private static final DefaultRedisScript<List> CONFIRM = script("email-verification-confirm.lua");
+    private static final DefaultRedisScript<List> CONSUME_PROOF = script("signup-proof-consume.lua");
     private static final DefaultRedisScript<Long> DISCARD = new DefaultRedisScript<>();
 
     static {
@@ -90,6 +92,25 @@ public class RedisEmailVerificationStore implements EmailVerificationStore {
             throw new IllegalStateException("Invalid signup proof lifetime");
         }
         return new ConfirmationResult(status, status == ConfirmationStatus.CONFIRMED ? seconds(ttl) : 0);
+    }
+
+    @Override
+    public ProofConsumption consumeSignupProof(String email, String signupProofDigest) {
+        List<?> result = execute(CONSUME_PROOF,
+                List.of(proofKey(VerificationDigests.sha256(email))), signupProofDigest);
+        ProofStatus status = switch (Math.toIntExact(number(result, 0))) {
+            case 0 -> ProofStatus.CONSUMED;
+            case 1 -> ProofStatus.EXPIRED;
+            case 2 -> ProofStatus.INVALID;
+            case 3 -> ProofStatus.ALREADY_USED;
+            default -> throw new IllegalStateException("Unexpected signup proof consumption result");
+        };
+        long verifiedAt = number(result, 1);
+        if (status == ProofStatus.CONSUMED && verifiedAt <= 0) {
+            throw new IllegalStateException("Invalid email verification timestamp");
+        }
+        return new ProofConsumption(status,
+                status == ProofStatus.CONSUMED ? Instant.ofEpochMilli(verifiedAt) : null);
     }
 
     @Override
