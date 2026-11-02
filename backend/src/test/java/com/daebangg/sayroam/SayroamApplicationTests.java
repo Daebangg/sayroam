@@ -1,7 +1,6 @@
 package com.daebangg.sayroam;
 
 import com.daebangg.sayroam.room.domain.Room;
-import com.daebangg.sayroam.room.domain.RoomType;
 import com.daebangg.sayroam.trip.domain.Trip;
 import com.daebangg.sayroam.user.domain.Role;
 import com.daebangg.sayroam.user.domain.User;
@@ -69,18 +68,18 @@ class SayroamApplicationTests {
                 SELECT COUNT(*) FROM information_schema.tables
                 WHERE table_schema = DATABASE() AND table_type = 'BASE TABLE'
                 """, Integer.class)).isEqualTo(18);
-        assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("1");
+        assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("2");
         flyway.validate();
         assertThat(flyway.migrate().migrationsExecuted).isZero();
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM flyway_schema_history WHERE success = 1",
-                Integer.class)).isEqualTo(1);
+                Integer.class)).isEqualTo(2);
     }
 
     @Test
     @Transactional
     void jpaPersistsAuditingEnumsAndOptionalTravelPeriod() {
         User user = User.builder().nickname("테스트 회원").role(Role.USER).build();
-        Room room = Room.builder().type(RoomType.TRIP).name("날짜 미정 여행").build();
+        Room room = Room.builder().name("날짜 미정 여행").build();
         entityManager.persist(user);
         entityManager.persist(room);
         Long roomId = (Long) entityManagerFactory.getPersistenceUnitUtil().getIdentifier(room);
@@ -112,7 +111,7 @@ class SayroamApplicationTests {
                 """)).isInstanceOf(DataIntegrityViolationException.class);
 
         Long userId = jdbc.queryForObject("SELECT id FROM users WHERE email = 'member@example.test'", Long.class);
-        jdbc.update("INSERT INTO room (type, created_at, updated_at) VALUES ('DIRECT', NOW(), NOW())");
+        jdbc.update("INSERT INTO room (created_at, updated_at) VALUES (NOW(), NOW())");
         Long roomId = jdbc.queryForObject("SELECT id FROM room", Long.class);
         String insertMember = """
                 INSERT INTO room_member (room_id, user_id, role, status, notification_muted, joined_at, created_at, updated_at)
