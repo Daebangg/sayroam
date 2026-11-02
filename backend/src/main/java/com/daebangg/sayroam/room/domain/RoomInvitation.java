@@ -1,7 +1,6 @@
 package com.daebangg.sayroam.room.domain;
 
 import com.daebangg.sayroam.global.entity.BaseTimeEntity;
-import com.daebangg.sayroam.user.domain.User;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -38,14 +37,12 @@ public class RoomInvitation extends BaseTimeEntity {
     @JoinColumn(name = "room_id", nullable = false)
     private Room room;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "inviter_id", nullable = false)
-    private User inviter;
+    @Column(name = "inviter_id", nullable = false)
+    private Long inviterId;
 
     // 서비스 안 초대만 있다. 공유 초대는 NULL
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "invitee_id")
-    private User invitee;
+    @Column(name = "invitee_id")
+    private Long inviteeId;
 
     // 공유 초대만 있다. 서비스 안 초대는 NULL
     @Column(length = 50)
@@ -59,22 +56,22 @@ public class RoomInvitation extends BaseTimeEntity {
     @Column(nullable = false)
     private LocalDateTime expiresAt;
 
-    private RoomInvitation(Room room, User inviter, User invitee, String code, RoomInvitationStatus status,
+    private RoomInvitation(Room room, Long inviterId, Long inviteeId, String code, RoomInvitationStatus status,
                            LocalDateTime expiresAt) {
         this.room = room;
-        this.inviter = inviter;
-        this.invitee = invitee;
+        this.inviterId = inviterId;
+        this.inviteeId = inviteeId;
         this.code = code;
         this.status = status;
         this.expiresAt = expiresAt;
     }
 
-    public static RoomInvitation toMember(Room room, User inviter, User invitee, LocalDateTime expiresAt) {
-        return new RoomInvitation(room, inviter, invitee, null, RoomInvitationStatus.PENDING, expiresAt);
+    public static RoomInvitation toMember(Room room, Long inviterId, Long inviteeId, LocalDateTime expiresAt) {
+        return new RoomInvitation(room, inviterId, inviteeId, null, RoomInvitationStatus.PENDING, expiresAt);
     }
 
-    public static RoomInvitation byShare(Room room, User inviter, String code, LocalDateTime expiresAt) {
-        return new RoomInvitation(room, inviter, null, code, null, expiresAt);
+    public static RoomInvitation byShare(Room room, Long inviterId, String code, LocalDateTime expiresAt) {
+        return new RoomInvitation(room, inviterId, null, code, null, expiresAt);
     }
 
 }

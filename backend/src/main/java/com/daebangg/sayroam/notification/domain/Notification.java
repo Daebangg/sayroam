@@ -1,17 +1,13 @@
 package com.daebangg.sayroam.notification.domain;
 
 import com.daebangg.sayroam.global.entity.BaseTimeEntity;
-import com.daebangg.sayroam.user.domain.User;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
-import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.Builder;
@@ -28,9 +24,8 @@ public class Notification extends BaseTimeEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "receiver_id", nullable = false)
-    private User receiver;
+    @Column(name = "receiver_id", nullable = false)
+    private Long receiverId;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 30)
@@ -50,9 +45,9 @@ public class Notification extends BaseTimeEntity {
     private LocalDateTime readAt;
 
     @Builder
-    private Notification(User receiver, NotificationType type, NotificationTargetType targetType, Long targetId,
+    private Notification(Long receiverId, NotificationType type, NotificationTargetType targetType, Long targetId,
                          String content) {
-        this.receiver = receiver;
+        this.receiverId = receiverId;
         this.type = type;
         this.targetType = targetType;
         this.targetId = targetId;

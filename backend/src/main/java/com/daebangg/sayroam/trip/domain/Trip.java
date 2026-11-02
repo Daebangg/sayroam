@@ -1,19 +1,13 @@
 package com.daebangg.sayroam.trip.domain;
 
 import com.daebangg.sayroam.common.domain.TravelPeriod;
-import com.daebangg.sayroam.companion.domain.CompanionRequest;
 import com.daebangg.sayroam.global.entity.BaseTimeEntity;
-import com.daebangg.sayroam.room.domain.Room;
 import jakarta.persistence.Column;
 import jakarta.persistence.Embedded;
 import jakarta.persistence.Entity;
-import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
-import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.Builder;
@@ -29,14 +23,12 @@ public class Trip extends BaseTimeEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "room_id", nullable = false, unique = true)
-    private Room room;
+    @Column(name = "room_id", nullable = false, unique = true)
+    private Long roomId;
 
     // 동행 매칭으로 만들어진 여행이면 그 요청, 친구끼리 만든 여행은 NULL
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "source_companion_request_id")
-    private CompanionRequest sourceCompanionRequest;
+    @Column(name = "source_companion_request_id")
+    private Long sourceCompanionRequestId;
 
     @Column(length = 50)
     private String region;
@@ -46,9 +38,9 @@ public class Trip extends BaseTimeEntity {
     private TravelPeriod period;
 
     @Builder
-    private Trip(Room room, CompanionRequest sourceCompanionRequest, String region, TravelPeriod period) {
-        this.room = room;
-        this.sourceCompanionRequest = sourceCompanionRequest;
+    private Trip(Long roomId, Long sourceCompanionRequestId, String region, TravelPeriod period) {
+        this.roomId = roomId;
+        this.sourceCompanionRequestId = sourceCompanionRequestId;
         this.region = region;
         this.period = period;
     }
