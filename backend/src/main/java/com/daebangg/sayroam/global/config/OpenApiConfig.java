@@ -38,6 +38,8 @@ public class OpenApiConfig {
                 .addProperty("detail", new StringSchema().example("Authentication is required"))
                 .addProperty("instance", new StringSchema().format("uri-reference").example("/api/users/me"))
                 .addProperty("code", new StringSchema().example("UNAUTHENTICATED"))
+                .addProperty("retryAfterSeconds", new IntegerSchema().format("int64")
+                        .description("재시도 대기가 있는 429 응답에만 포함하는 대기 초. Retry-After 헤더와 같은 값"))
                 .addProperty("errors", new ArraySchema().items(new Schema<>().$ref("#/components/schemas/FieldError")));
         problem.setRequired(List.of("title", "status", "detail", "instance", "code"));
         var components = new Components()
@@ -49,7 +51,23 @@ public class OpenApiConfig {
                 .addResponses("BadRequest", problemResponse("400: INVALID_INPUT 또는 Spring 요청 오류. 검증 실패 시 errors 포함"))
                 .addResponses("Unauthorized", problemResponse("401: UNAUTHENTICATED"))
                 .addResponses("Forbidden", problemResponse("403: ACCESS_DENIED 또는 INVALID_CSRF_TOKEN"))
-                .addResponses("InternalServerError", problemResponse("500: INTERNAL_SERVER_ERROR"));
+                .addResponses("InternalServerError", problemResponse("500: INTERNAL_SERVER_ERROR"))
+                .addResponses("EmailRequestSuperseded", problemResponse("409: EMAIL_REQUEST_SUPERSEDED. 만료·교체된 요청이며 최신 요청을 사용해야 함"))
+                .addResponses("EmailRateLimited", problemResponse("429: EMAIL_RATE_LIMITED. Retry-After 헤더와 retryAfterSeconds 이후 재요청")
+                        .addHeaderObject("Retry-After", new io.swagger.v3.oas.models.headers.Header()
+                                .description("재시도 전 대기할 초")
+                                .schema(new IntegerSchema().format("int64"))))
+                .addResponses("EmailDeliveryFailed", problemResponse("502: EMAIL_DELIVERY_FAILED. 코드 무효화, 발송 제한 유지. 자동 재시도 없음"))
+                .addResponses("EmailVerificationUnavailable", problemResponse("503: EMAIL_DELIVERY_DISABLED 또는 EMAIL_VERIFICATION_UNAVAILABLE. 설정·저장소 복구 후 재요청"))
+                .addResponses("EmailCodeInvalid", problemResponse("400: INVALID_INPUT, EMAIL_CODE_INVALID 또는 Spring 요청 오류. 형식 오류는 수정, 코드 불일치는 남은 횟수 안에서 재입력"))
+                .addResponses("EmailVerificationConflict", problemResponse("409: EMAIL_REQUEST_SUPERSEDED 또는 EMAIL_CODE_ALREADY_USED. 최신 요청 또는 이미 받은 증명을 사용"))
+                .addResponses("EmailCodeExpired", problemResponse("410: EMAIL_CODE_EXPIRED. 없거나 만료된 코드. 새 코드 발급 필요"))
+                .addResponses("EmailCodeAttemptsExceeded", problemResponse("429: EMAIL_CODE_ATTEMPTS_EXCEEDED. 이 코드는 더 사용할 수 없으며 새 코드 발급 필요. Retry-After는 제공하지 않음"))
+                .addResponses("EmailConfirmationUnavailable", problemResponse("503: EMAIL_VERIFICATION_UNAVAILABLE. Redis 작업 결과가 불확실할 수 있음. 코드가 소비됐으면 새 코드 발급 필요"))
+                .addResponses("SignupBadRequest", problemResponse("400: INVALID_INPUT, SIGNUP_PROOF_INVALID 또는 Spring 요청 오류. 입력 검증 실패는 증명을 소비하지 않음"))
+                .addResponses("SignupConflict", problemResponse("409: SIGNUP_PROOF_ALREADY_USED 또는 EMAIL_ALREADY_REGISTERED. 이미 소비한 증명은 복구하지 않음"))
+                .addResponses("SignupProofExpired", problemResponse("410: SIGNUP_PROOF_EXPIRED. 없거나 만료된 증명. 새 이메일 인증 필요"))
+                .addResponses("SignupUnavailable", problemResponse("503: EMAIL_VERIFICATION_UNAVAILABLE 또는 SIGNUP_UNAVAILABLE. 증명 소비·DB 커밋 결과가 불확실할 수 있음. 자동 재시도 없이 새 인증 필요; 계정은 이미 생성됐을 수도 있음"));
         return new OpenAPI().components(components).servers(List.of(new Server().url("/")))
                 .info(new Info().title("Sayroam API").version(buildProperties.map(BuildProperties::getVersion).orElse("dev")));
     }

@@ -1,6 +1,18 @@
 name: sayroam
 
 services:
+    redis:
+        image: redis:7.4-alpine
+        command: ["redis-server", "--save", "", "--appendonly", "no"]
+        ports:
+            - "127.0.0.1:${REDIS_PORT:?Set REDIS_PORT in docker/.env}:6379"
+        healthcheck:
+            test: ["CMD", "redis-cli", "ping"]
+            interval: 5s
+            timeout: 3s
+            retries: 10
+            start_period: 5s
+
     mysql:
         image: mysql:8.4
         environment:

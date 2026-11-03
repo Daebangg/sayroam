@@ -31,6 +31,8 @@ repositories {
 
 dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+    implementation 'org.springframework.boot:spring-boot-starter-data-redis'
+    implementation 'org.springframework.boot:spring-boot-starter-mail'
     implementation 'org.springframework.boot:spring-boot-starter-security'
     implementation 'org.springframework.boot:spring-boot-starter-validation'
     implementation 'org.springframework.boot:spring-boot-starter-webmvc'
@@ -66,11 +68,11 @@ tasks.named('bootRun') {
 
 apply from: 'gradle/flyway.gradle'
 def composeTasks = [
-    dockerInit: [description: 'Create and start local MySQL, waiting until healthy (preserves data).', args: ['up', '-d', '--wait', '--wait-timeout', '180']],
-    dockerStop: [description: 'Stop local MySQL without removing containers or data.', args: ['stop']],
+    dockerInit: [description: 'Create and start local MySQL and Redis, waiting until healthy (preserves MySQL data).', args: ['up', '-d', '--wait', '--wait-timeout', '180']],
+    dockerStop: [description: 'Stop local MySQL and Redis without removing containers.', args: ['stop']],
     dockerDown: [description: 'Remove local containers and network, preserving database volumes.', args: ['down']],
     dockerStatus: [description: 'Show local Docker Compose service status.', args: ['ps', '--all']],
-    dockerLogs: [description: 'Show the last 100 lines of local MySQL logs.', args: ['logs', '--tail', '100', 'mysql']]
+    dockerLogs: [description: 'Show the last 100 lines of local MySQL and Redis logs.', args: ['logs', '--tail', '100', 'mysql', 'redis']]
 ]
 
 composeTasks.each { taskName, config ->
