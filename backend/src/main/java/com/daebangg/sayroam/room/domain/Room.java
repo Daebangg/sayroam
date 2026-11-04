@@ -38,7 +38,7 @@ public class Room extends BaseTimeEntity {
             throw new BusinessException(RoomErrorCode.ROOM_NAME_TOO_LONG);
         }
 
-        this.name = name.isBlank() ? null : name.trim();
+        this.name = name.isBlank() ? null : trimmed;
     }
 
     public Long getId() {
