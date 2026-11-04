@@ -79,7 +79,7 @@ class SayroamApplicationTests {
     @Transactional
     void jpaPersistsAuditingEnumsAndOptionalTravelPeriod() {
         User user = User.builder().nickname("테스트 회원").role(Role.USER).build();
-        Room room = Room.builder().name("날짜 미정 여행").build();
+        Room room = new Room("날짜 미정 여행");
         entityManager.persist(user);
         entityManager.persist(room);
         Long roomId = (Long) entityManagerFactory.getPersistenceUnitUtil().getIdentifier(room);
