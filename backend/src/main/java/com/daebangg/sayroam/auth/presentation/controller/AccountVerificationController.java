@@ -8,7 +8,6 @@ import com.daebangg.sayroam.auth.presentation.dto.AccountVerificationRequest;
 import com.daebangg.sayroam.auth.presentation.dto.AccountVerificationResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
-import io.swagger.v3.oas.annotations.enums.ParameterIn;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -24,7 +23,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-@Tag(name = "Account verification")
+@Tag(name = "Account Verification")
 @RestController
 @RequestMapping("/api/auth/account-verifications")
 @SecurityRequirement(name = "bearerAuth")
@@ -47,7 +46,6 @@ public class AccountVerificationController {
             @ApiResponse(responseCode = "503", ref = "#/components/responses/AccountVerificationUnavailable"),
             @ApiResponse(responseCode = "500", ref = "#/components/responses/InternalServerError")
     })
-    @Parameter(name = "X-XSRF-TOKEN", in = ParameterIn.HEADER, required = true, description = "XSRF-TOKEN 쿠키에서 복사한 원문 토큰")
     @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<AccountVerificationResponse> request(
             @Parameter(hidden = true) @AuthenticationPrincipal AuthenticatedAccount account,
@@ -70,7 +68,6 @@ public class AccountVerificationController {
             @ApiResponse(responseCode = "503", ref = "#/components/responses/AccountConfirmationUnavailable"),
             @ApiResponse(responseCode = "500", ref = "#/components/responses/InternalServerError")
     })
-    @Parameter(name = "X-XSRF-TOKEN", in = ParameterIn.HEADER, required = true, description = "XSRF-TOKEN 쿠키에서 복사한 원문 토큰")
     @PostMapping(path = "/verify", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<AccountVerificationConfirmResponse> confirm(
             @Parameter(hidden = true) @AuthenticationPrincipal AuthenticatedAccount account,

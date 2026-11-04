@@ -37,8 +37,6 @@ public class LogoutController {
             @ApiResponse(responseCode = "503", ref = "#/components/responses/LogoutUnavailable"),
             @ApiResponse(responseCode = "500", ref = "#/components/responses/InternalServerError")
     })
-    @Parameter(name = "X-XSRF-TOKEN", in = ParameterIn.HEADER, required = true,
-            description = "동일한 브라우저의 XSRF-TOKEN 쿠키에서 복사한 원문. Refresh 쿠키가 없어도 필요")
     @Parameter(name = RefreshTokenCookie.NAME, in = ParameterIn.COOKIE, required = false,
             description = "브라우저가 자동 전송하는 HttpOnly 쿠키. 없는 경우에도 CSRF 검증 후 204로 브라우저 정리")
     @PostMapping("/api/auth/logout")

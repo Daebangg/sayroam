@@ -4,8 +4,6 @@ import com.daebangg.sayroam.auth.application.service.RefreshTokenService;
 import com.daebangg.sayroam.auth.presentation.cookie.RefreshTokenCookie;
 import com.daebangg.sayroam.auth.presentation.dto.LoginResponse;
 import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.Parameter;
-import io.swagger.v3.oas.annotations.enums.ParameterIn;
 import io.swagger.v3.oas.annotations.headers.Header;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -41,8 +39,6 @@ public class RefreshTokenController {
             @ApiResponse(responseCode = "503", ref = "#/components/responses/AuthenticationUnavailable"),
             @ApiResponse(responseCode = "500", ref = "#/components/responses/InternalServerError")
     })
-    @Parameter(name = "X-XSRF-TOKEN", in = ParameterIn.HEADER, required = true,
-            description = "동일한 브라우저의 XSRF-TOKEN 쿠키에서 복사한 원문 토큰")
     @PostMapping(value = "/api/auth/refresh", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<LoginResponse> refresh(HttpServletRequest request) {
         var pair = service.refresh(refreshCookie.read(request));

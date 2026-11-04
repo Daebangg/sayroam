@@ -144,6 +144,5 @@ Infrastructure가 DB 정리를 담당하고 Presentation이 principal·본문·�
 | 500 | INTERNAL_SERVER_ERROR. 예상하지 못한 매핑·프로그래밍 오류 |
 
 503 중 ACCOUNT_DELETION_UNAVAILABLE에서만 Refresh 쿠키를 만료시킵니다.
-실제 탈퇴 API를 호출하는 기능 테스트는 전체 인증 구현 후 진행합니다. 기존 테스트 파일은 유지합니다.
-컴파일·패키징·앱 기동·OpenAPI 확인은 실제 탈퇴 성공을 입증하는 검증과 구분합니다.
-개인정보/자격 정보/개인 설정 정리·참조 보존·재가입·모든 기기 차단·동시 요청·롤백·응답 유실·CSRF는 최종 검증 대상입니다.
+테스트 전용 MySQL·Redis를 사용하는 API 통합 검증을 추가했습니다.
+실행 방법, 확인한 흐름과 남은 검증 범위는 [인증 테스트 안내](auth-testing.md)를 참고하세요.

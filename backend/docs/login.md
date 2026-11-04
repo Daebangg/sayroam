@@ -175,13 +175,8 @@ CSRF 쿠키·헤더를 준비합니다. Swagger의 인증 입력은 CSRF 헤더�
 Application은 JPA·Spring Security·JWT 라이브러리·HTTP 타입을 직접 참조하지 않습니다.
 기존 user 엔티티와 스키마를 유지하며 auth에 별도 회원 엔티티를 만들지 않습니다.
 
-이번 단계에서는 Java 21 컴파일·JAR 패키징·앱 시작·OpenAPI 생성을 확인합니다.
-이슈의 지침에 따라 새 테스트 작성·기존 테스트 실행·로그인 시나리오 검증은 하지 않습니다.
-기존 테스트 파일은 유지합니다. 기존 Security MVC 슬라이스의 JwtDecoder·회원 변환기 구성과
-전체 컨텍스트 테스트의 서명 키 주입은 전체 인증 구현 후 테스트 단계에서 갱신해야 합니다.
-실제 가입 계정 로그인, 잘못된 비밀번호, 만료·변조·issuer/audience 불일치, 권한 부족·탈퇴,
-DB·Redis 장애·CSRF 정상·누락·변조, Refresh 쿠키 속성·교체·재사용·동시 요청은 미검증입니다.
-로그아웃 반복·동시 갱신·폐기 후 재요청과 Access Token 잔여 시간도 미검증이며 전체 인증 구현 후 #24에서 검증합니다.
+테스트 전용 MySQL·Redis를 사용하는 API 통합 검증을 추가했습니다.
+실행 방법, 확인한 흐름과 남은 검증 범위는 [인증 테스트 안내](auth-testing.md)를 참고하세요.
 
 참고: [Spring JWT Resource Server](https://docs.spring.io/spring-security/reference/servlet/oauth2/resource-server/jwt.html),
 [Spring CSRF](https://docs.spring.io/spring-security/reference/servlet/exploits/csrf.html).

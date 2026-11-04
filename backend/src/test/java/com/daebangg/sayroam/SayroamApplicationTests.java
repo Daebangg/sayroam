@@ -5,48 +5,21 @@ import com.daebangg.sayroam.room.domain.RoomType;
 import com.daebangg.sayroam.trip.domain.Trip;
 import com.daebangg.sayroam.user.domain.Role;
 import com.daebangg.sayroam.user.domain.User;
+import com.daebangg.sayroam.support.DatabaseIntegrationTest;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityManagerFactory;
 import jakarta.persistence.PersistenceContext;
-import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.core.env.Environment;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.transaction.annotation.Transactional;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.mysql.MySQLContainer;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-@SpringBootTest
-@Testcontainers
-class SayroamApplicationTests {
-
-    @Container
-    static final MySQLContainer MYSQL = new MySQLContainer("mysql:8.4");
-
-    static Flyway flyway;
-
-    @DynamicPropertySource
-    static void database(DynamicPropertyRegistry registry) {
-        // CLI와 동일하게 앱 컨텍스트 시작 전에 명시적으로 스키마를 적용한다.
-        flyway = Flyway.configure()
-                .dataSource(MYSQL.getJdbcUrl(), MYSQL.getUsername(), MYSQL.getPassword())
-                .cleanDisabled(true)
-                .validateMigrationNaming(true)
-                .load();
-        flyway.migrate();
-        registry.add("spring.datasource.url", MYSQL::getJdbcUrl);
-        registry.add("spring.datasource.username", MYSQL::getUsername);
-        registry.add("spring.datasource.password", MYSQL::getPassword);
-    }
+class SayroamApplicationTests extends DatabaseIntegrationTest {
 
     @Autowired
     EntityManagerFactory entityManagerFactory;
@@ -69,11 +42,11 @@ class SayroamApplicationTests {
                 SELECT COUNT(*) FROM information_schema.tables
                 WHERE table_schema = DATABASE() AND table_type = 'BASE TABLE'
                 """, Integer.class)).isEqualTo(18);
-        assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("1");
+        assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("2");
         flyway.validate();
         assertThat(flyway.migrate().migrationsExecuted).isZero();
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM flyway_schema_history WHERE success = 1",
-                Integer.class)).isEqualTo(1);
+                Integer.class)).isEqualTo(2);
     }
 
     @Test

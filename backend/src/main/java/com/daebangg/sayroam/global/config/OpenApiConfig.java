@@ -2,6 +2,7 @@ package com.daebangg.sayroam.global.config;
 
 import io.swagger.v3.oas.models.Components;
 import io.swagger.v3.oas.models.OpenAPI;
+import io.swagger.v3.oas.models.PathItem;
 import io.swagger.v3.oas.models.info.Info;
 import io.swagger.v3.oas.models.media.ArraySchema;
 import io.swagger.v3.oas.models.media.Content;
@@ -10,16 +11,39 @@ import io.swagger.v3.oas.models.media.Schema;
 import io.swagger.v3.oas.models.media.StringSchema;
 import io.swagger.v3.oas.models.responses.ApiResponse;
 import io.swagger.v3.oas.models.security.SecurityScheme;
+import io.swagger.v3.oas.models.security.SecurityRequirement;
 import io.swagger.v3.oas.models.servers.Server;
 import org.springframework.boot.info.BuildProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springdoc.core.customizers.OpenApiCustomizer;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 @Configuration
 public class OpenApiConfig {
+    @Bean
+    OpenApiCustomizer authCsrfSecurity() {
+        // 필수 입력 파라미터 대신 보안 조건으로 표시해 Swagger의 자동 헤더 전달을 허용한다.
+        // 기존 Bearer/Refresh 조건과 같은 객체에 넣어 OR가 아닌 AND 조건을 유지한다.
+        var safeMethods = Set.of(PathItem.HttpMethod.GET, PathItem.HttpMethod.HEAD,
+                PathItem.HttpMethod.OPTIONS, PathItem.HttpMethod.TRACE);
+        return api -> api.getPaths().forEach((path, item) -> {
+            if (!path.equals("/api/auth") && !path.startsWith("/api/auth/")) return;
+            item.readOperationsMap().forEach((method, operation) -> {
+                if (safeMethods.contains(method)) return;
+                var requirements = operation.getSecurity();
+                if (requirements == null || requirements.isEmpty()) {
+                    operation.setSecurity(List.of(new SecurityRequirement().addList("csrfToken")));
+                } else {
+                    requirements.forEach(requirement -> requirement.addList("csrfToken"));
+                }
+            });
+        });
+    }
+
     @Bean
     OpenAPI openAPI(Optional<BuildProperties> buildProperties) {
         // ProblemDetail의 동적 확장 필드도 프론트엔드 타입 생성기에 명시적으로 노출한다.
@@ -43,9 +67,12 @@ public class OpenApiConfig {
                 .addProperty("errors", new ArraySchema().items(new Schema<>().$ref("#/components/schemas/FieldError")));
         problem.setRequired(List.of("title", "status", "detail", "instance", "code"));
         var components = new Components()
+                .addSecuritySchemes("csrfToken", new SecurityScheme()
+                        .type(SecurityScheme.Type.APIKEY).in(SecurityScheme.In.HEADER).name("X-XSRF-TOKEN")
+                        .description("XSRF-TOKEN 쿠키의 원문을 전달합니다. local Swagger UI는 쿠키에서 자동 입력하므로 Authorize에 입력할 필요가 없습니다. 일반 클라이언트는 GET /api/auth/csrf로 쿠키를 준비한 뒤 헤더를 직접 전달해야 합니다."))
                 .addSecuritySchemes("bearerAuth", new SecurityScheme()
                         .type(SecurityScheme.Type.HTTP).scheme("bearer").bearerFormat("JWT")
-                        .description("로그인·갱신 응답의 Access Token 원문을 입력합니다. Authorization: Bearer 헤더만 지원하며 쿠키·쿼리·본문 토큰은 사용하지 않습니다. 로그인·이메일 인증·가입·갱신·로그아웃·계정 본인 확인·비밀번호 변경·탈퇴는 별도로 XSRF-TOKEN 쿠키와 X-XSRF-TOKEN 헤더가 필요합니다."))
+                        .description("local Swagger는 로그인·갱신 성공 응답의 Access Token을 자동 등록합니다. 직접 등록할 때는 Bearer 접두사 없이 원문만 입력합니다. Authorization: Bearer 헤더만 지원하며 쿠키·쿼리·본문 토큰은 사용하지 않습니다. auth 변경 요청은 별도로 CSRF 쿠키·헤더가 필요합니다."))
                 .addSecuritySchemes("refreshCookie", new SecurityScheme()
                         .type(SecurityScheme.Type.APIKEY).in(SecurityScheme.In.COOKIE).name("sayroam_refresh")
                         .description("로그인에서 설정하는 HttpOnly Refresh 쿠키. 브라우저가 같은 호스트의 갱신·로그아웃 요청에 자동 전송합니다. Authorize에 값을 수동 입력하는 방식이 아니며, XSRF-TOKEN 쿠키와 X-XSRF-TOKEN 헤더도 필요합니다. 갱신·로그아웃에서는 Authorization 헤더를 사용하지 않습니다. 로그아웃은 Refresh 쿠키가 없어도 브라우저 정리를 허용합니다."))

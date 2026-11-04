@@ -115,7 +115,5 @@ User.deletedAt과 UserCredential.passwordChangedAt 필드가 있다는 사실만
 | global/security/SecurityConfig | Access Token 없이 로그아웃 허용, Bearer 제외, auth CSRF 검사 유지 |
 
 Application은 Redis·JPA·JWT·Servlet·HTTP 또는 Infrastructure/Presentation에 직접 의존하지 않습니다.
-이번 단계에서는 Java 21 컴파일·JAR 패키징·앱 시작·OpenAPI 생성·Swagger 표시를 확인합니다.
-새 테스트 작성·기존 테스트 변경/실행은 하지 않으며 전체 인증 구현 후 #24에서 검증합니다.
-로그아웃 → 갱신 차단, 반복·동시 갱신·다른 로그인 격리·Redis 장애·쿠키 속성·CSRF 정상/누락/변조와
-Access Token 잔여 시간의 실제 요청 검증은 미완료입니다.
+테스트 전용 MySQL·Redis를 사용하는 API 통합 검증을 추가했습니다.
+실행 방법, 확인한 흐름과 남은 검증 범위는 [인증 테스트 안내](auth-testing.md)를 참고하세요.

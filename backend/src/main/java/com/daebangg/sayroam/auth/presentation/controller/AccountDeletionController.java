@@ -6,7 +6,6 @@ import com.daebangg.sayroam.auth.presentation.cookie.RefreshTokenCookie;
 import com.daebangg.sayroam.auth.presentation.dto.AccountDeletionRequest;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
-import io.swagger.v3.oas.annotations.enums.ParameterIn;
 import io.swagger.v3.oas.annotations.headers.Header;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -23,7 +22,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
-@Tag(name = "Account management")
+@Tag(name = "Account Management")
 @SecurityRequirement(name = "bearerAuth")
 @RestController
 public class AccountDeletionController {
@@ -47,7 +46,6 @@ public class AccountDeletionController {
             @ApiResponse(responseCode = "503", ref = "#/components/responses/AccountDeletionUnavailable"),
             @ApiResponse(responseCode = "500", ref = "#/components/responses/InternalServerError")
     })
-    @Parameter(name = "X-XSRF-TOKEN", in = ParameterIn.HEADER, required = true, description = "XSRF-TOKEN 쿠키의 원문")
     @PostMapping(value = "/api/auth/account-deletion", consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<Void> delete(
             @Parameter(hidden = true) @AuthenticationPrincipal AuthenticatedAccount account,

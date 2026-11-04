@@ -4,8 +4,6 @@ import com.daebangg.sayroam.auth.application.service.SignupService;
 import com.daebangg.sayroam.auth.presentation.dto.SignupRequest;
 import com.daebangg.sayroam.auth.presentation.dto.SignupResponse;
 import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.Parameter;
-import io.swagger.v3.oas.annotations.enums.ParameterIn;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -39,7 +37,6 @@ public class SignupController {
             @ApiResponse(responseCode = "503", ref = "#/components/responses/SignupUnavailable"),
             @ApiResponse(responseCode = "500", ref = "#/components/responses/InternalServerError")
     })
-    @Parameter(name = "X-XSRF-TOKEN", in = ParameterIn.HEADER, required = true, description = "XSRF-TOKEN 쿠키에서 복사한 원문 토큰")
     @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<SignupResponse> signup(@Valid @RequestBody SignupRequest body) {
         long userId = service.signup(body.email(), body.password(), body.nickname(), body.signupProof());

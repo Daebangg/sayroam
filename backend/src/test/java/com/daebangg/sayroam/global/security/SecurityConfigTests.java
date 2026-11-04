@@ -1,6 +1,8 @@
 package com.daebangg.sayroam.global.security;
 
 import com.daebangg.sayroam.auth.presentation.controller.AuthCsrfController;
+import com.daebangg.sayroam.auth.presentation.cookie.RefreshTokenCookie;
+import com.daebangg.sayroam.auth.presentation.config.RefreshCookieProperties;
 import jakarta.servlet.DispatcherType;
 import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.Test;
@@ -8,13 +10,18 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Import;
 import org.springframework.mock.web.MockHttpSession;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.AuthorityUtils;
 import org.springframework.security.core.context.SecurityContextImpl;
 import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -23,18 +30,32 @@ import org.springframework.web.bind.annotation.RestController;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.httpBasic;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.cookie;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest({SecurityConfigTests.TestEndpoints.class, AuthCsrfController.class})
-@Import({SecurityConfig.class, SecurityConfigTests.TestEndpoints.class})
+@Import({SecurityConfig.class, SecurityConfigTests.TestEndpoints.class, AuthCsrfController.class, RefreshTokenCookie.class})
+@EnableConfigurationProperties(RefreshCookieProperties.class)
 class SecurityConfigTests {
 
     @Autowired
     MockMvc mvc;
+
+    @MockitoBean
+    JwtDecoder accessTokenDecoder;
+
+    @MockitoBean
+    ActiveAccountJwtConverter accountConverter;
+
+    // 실제 서블릿 경로를 지정해 auth 경로의 CSRF 적용 조건까지 검증한다.
+    private static MockHttpServletRequestBuilder get(String path) {
+        return MockMvcRequestBuilders.get(path).servletPath(path);
+    }
+
+    private static MockHttpServletRequestBuilder post(String path) {
+        return MockMvcRequestBuilders.post(path).servletPath(path);
+    }
 
     @ParameterizedTest
     @ValueSource(strings = {"/api/auth/signup", "/api/auth/login"})
@@ -97,7 +118,7 @@ class SecurityConfigTests {
     void basicCredentialsDoNotAuthenticateRequests() throws Exception {
         mvc.perform(get("/api/users/me").with(httpBasic("user", "password")))
                 .andExpect(status().isUnauthorized())
-                .andExpect(header().doesNotExist("WWW-Authenticate"));
+                .andExpect(header().string("WWW-Authenticate", "Bearer"));
     }
 
     @Test

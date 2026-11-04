@@ -5,8 +5,6 @@ import com.daebangg.sayroam.auth.presentation.dto.LoginRequest;
 import com.daebangg.sayroam.auth.presentation.dto.LoginResponse;
 import com.daebangg.sayroam.auth.presentation.cookie.RefreshTokenCookie;
 import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.Parameter;
-import io.swagger.v3.oas.annotations.enums.ParameterIn;
 import io.swagger.v3.oas.annotations.headers.Header;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -42,8 +40,6 @@ public class LoginController {
             @ApiResponse(responseCode = "503", ref = "#/components/responses/AuthenticationUnavailable"),
             @ApiResponse(responseCode = "500", ref = "#/components/responses/InternalServerError")
     })
-    @Parameter(name = "X-XSRF-TOKEN", in = ParameterIn.HEADER, required = true,
-            description = "XSRF-TOKEN 쿠키에서 복사한 원문 토큰")
     @PostMapping(value = "/api/auth/login", consumes = MediaType.APPLICATION_JSON_VALUE,
             produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<LoginResponse> login(@Valid @RequestBody LoginRequest request) {

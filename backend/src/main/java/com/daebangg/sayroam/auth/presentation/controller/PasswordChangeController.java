@@ -6,7 +6,6 @@ import com.daebangg.sayroam.auth.presentation.cookie.RefreshTokenCookie;
 import com.daebangg.sayroam.auth.presentation.dto.PasswordChangeRequest;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
-import io.swagger.v3.oas.annotations.enums.ParameterIn;
 import io.swagger.v3.oas.annotations.headers.Header;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -23,7 +22,7 @@ import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
-@Tag(name = "Account management")
+@Tag(name = "Account Management")
 @SecurityRequirement(name = "bearerAuth")
 @RestController
 public class PasswordChangeController {
@@ -47,7 +46,6 @@ public class PasswordChangeController {
             @ApiResponse(responseCode = "503", ref = "#/components/responses/PasswordChangeUnavailable"),
             @ApiResponse(responseCode = "500", ref = "#/components/responses/InternalServerError")
     })
-    @Parameter(name = "X-XSRF-TOKEN", in = ParameterIn.HEADER, required = true, description = "XSRF-TOKEN 쿠키의 원문")
     @PatchMapping(value = "/api/auth/password", consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<Void> change(
             @Parameter(hidden = true) @AuthenticationPrincipal AuthenticatedAccount account,

@@ -6,10 +6,9 @@ import com.daebangg.sayroam.auth.presentation.dto.EmailVerificationConfirmReques
 import com.daebangg.sayroam.auth.presentation.dto.EmailVerificationConfirmResponse;
 import com.daebangg.sayroam.auth.presentation.dto.EmailVerificationResponse;
 import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.Parameter;
-import io.swagger.v3.oas.annotations.enums.ParameterIn;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.springframework.http.CacheControl;
@@ -20,6 +19,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+@Tag(name = "Email Verification")
 @RestController
 @RequestMapping("/api/auth/email-verifications")
 public class EmailVerificationController {
@@ -40,7 +40,6 @@ public class EmailVerificationController {
             @ApiResponse(responseCode = "503", ref = "#/components/responses/EmailVerificationUnavailable"),
             @ApiResponse(responseCode = "500", ref = "#/components/responses/InternalServerError")
     })
-    @Parameter(name = "X-XSRF-TOKEN", in = ParameterIn.HEADER, required = true, description = "XSRF-TOKEN 쿠키에서 복사한 원문 토큰")
     @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<EmailVerificationResponse> request(
             @Valid @RequestBody EmailRequest body, HttpServletRequest request) {
@@ -60,7 +59,6 @@ public class EmailVerificationController {
             @ApiResponse(responseCode = "503", ref = "#/components/responses/EmailConfirmationUnavailable"),
             @ApiResponse(responseCode = "500", ref = "#/components/responses/InternalServerError")
     })
-    @Parameter(name = "X-XSRF-TOKEN", in = ParameterIn.HEADER, required = true, description = "XSRF-TOKEN 쿠키에서 복사한 원문 토큰")
     @PostMapping(path = "/verify", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<EmailVerificationConfirmResponse> confirm(
             @Valid @RequestBody EmailVerificationConfirmRequest body) {

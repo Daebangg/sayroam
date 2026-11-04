@@ -188,25 +188,25 @@ SMTP 계정이 없는 환경의 **실제 메일 발송·수신은 미확인**입
 인프라 구성에 이어 인증 코드 발급·재발송 요청 API와 CSRF 최초 쿠키 발급을 구현했습니다.
 [발급 정책·API·오류·실패 처리 명세](docs/email-verification.md)를 참고하세요.
 코드 검증·입력 실패 제한·가입용 증명 발급과 실제 회원가입까지 구현했습니다.
-[회원가입 API·증명 소비·DB 실패 및 재시도 정책](docs/signup.md)을 참고하세요. JWT·로그인은 #30 후속 범위입니다.
-추가 테스트는 작성·실행하지 않으며 전체 인증 구현 후 검증합니다.
+[회원가입 API·증명 소비·DB 실패 및 재시도 정책](docs/signup.md)과 [JWT 로그인](docs/login.md)을 참고하세요.
+인증 테스트는 개발 DB·Redis와 분리된 임시 컨테이너에서 실행합니다. [인증 테스트 안내](docs/auth-testing.md)를 참고하세요.
 
 후속 체크리스트:
 
-- [ ] #28: 가입 증명 일회성 소비·회원가입·DB 실패·동시 가입의 실제 동작 검증
-- [ ] #28 전체 구현 후: CSRF 최초 쿠키 발급과 `X-XSRF-TOKEN` 검증 흐름의 실제 동작 검증
-- [ ] #30: Bearer 헤더 인증 경로와 Refresh 쿠키 경로별 CSRF 정책 구성
+- [x] #28: 가입 증명 일회성 소비·회원가입·동시 가입의 MySQL/Redis 통합 검증
+- [x] #30: 실제 CSRF 쿠키·헤더를 사용한 필터 통합 검증
+- [x] #30: Bearer 헤더 인증 경로와 Refresh 쿠키 경로별 CSRF 정책 구성
 - [ ] #34: DB·Redis·선택적 SMTP 상태 점검, 생존·요청 준비 상태 및 접근 정책 구성
-- [ ] 전체 인증 구현 후: 정상 발송·수신, 실패·만료·제한·동시 요청, 실제 CSRF 쿠키·헤더 검증
+- [ ] #24: 실제 SMTP 수신·프론트 연동과 추가 만료·제한·장애 조합 검증 ([현재 범위](docs/auth-testing.md))
 
 설정 근거: [Spring Boot Redis 연결](https://docs.spring.io/spring-boot/reference/data/nosql.html#data.nosql.redis.connecting),
 [메일 자동 설정과 timeout](https://docs.spring.io/spring-boot/reference/io/email.html).
 
 ## 인증 접근 규칙 (기반 설정)
 
-일반 API는 `Authorization: Bearer <Access Token>` 인증을 도입할 예정입니다.
-인증 메일 발급·코드 검증·회원가입과 CSRF 쿠키 준비 API를 구현했으며, JWT 발급·검증과 로그인 API는 아직 없습니다.
-따라서 현재 보호된 API에 임의의 Bearer 토큰을 전달해도 인증되지 않습니다.
+일반 API는 `Authorization: Bearer <Access Token>`으로 인증합니다.
+로그인 응답은 Access Token을 본문에, Refresh Token을 HttpOnly 쿠키에 발급합니다.
+갱신·로그아웃은 Refresh 쿠키를 사용하며, `/api/auth/**`의 변경 요청에는 CSRF 검증을 적용합니다.
 
 | 요청 | 접근 규칙 |
 | --- | --- |
@@ -214,7 +214,10 @@ SMTP 계정이 없는 환경의 **실제 메일 발송·수신은 미확인**입
 | `POST /api/auth/email-verifications` | 인증 없이 메일 발급 요청 가능, CSRF 검증 적용 |
 | `POST /api/auth/email-verifications/verify` | 인증 없이 코드 검증·가입용 증명 발급 가능, CSRF 검증 적용 |
 | `POST /api/auth/signup` | 인증 없이 가입용 증명으로 회원가입, CSRF 검증 적용 |
-| `POST /api/auth/login` | 인증 없이 접근 가능하도록 설정. 실제 API는 미구현, CSRF 검증 적용 |
+| `POST /api/auth/login` | 이메일·비밀번호 확인 후 Access Token과 Refresh 쿠키 발급, CSRF 검증 적용 |
+| `POST /api/auth/refresh`, `/api/auth/logout` | Refresh 쿠키 사용, CSRF 검증 적용. Access Token은 사용하지 않음 |
+| 계정 본인 확인·비밀번호 변경·회원 탈퇴 | Bearer 인증과 CSRF 검증 모두 필요 |
+| `GET /api/users/me` | Bearer 인증 필요 |
 | `GET /swagger-ui.html`, `/swagger-ui/**`, `/v3/api-docs`, `/v3/api-docs/**`, `/v3/api-docs.yaml` | 인증 없이 조회 가능, 문서 기능은 기본적으로 local에서만 활성화 |
 | `/api/admin`, `/api/admin/**` | `ROLE_ADMIN` 권한 필요 |
 | 그 외 요청 | 인증 필요 |
@@ -249,8 +252,7 @@ Spring 기본 요청 오류에는 `METHOD_NOT_ALLOWED` 등 HTTP 상태 이름을
 무상태 설정만으로 CSRF 방어가 불필요해지는 것은 아닙니다. 현재 CSRF 검증을 유지하고
 CSRF 토큰 저장에 HTTP 세션 대신 쿠키를 사용합니다. 공개 POST 요청도 CSRF 토큰이 없거나
 잘못되면 403입니다. 이 쿠키는 로그인 세션이나 Access Token을 저장하는 쿠키가 아닙니다.
-Bearer 검증을 도입할 때 헤더로만 인증하는 경로의 제외 범위를 정하고, Refresh Token 등
-쿠키를 사용하는 경로는 별도로 방어합니다. SPA 쿠키 → 헤더 CSRF 처리는 구성했으며, 실제 프론트엔드의 토큰 전달과 CORS 허용 출처는
+일반 Bearer API는 CSRF 검사에서 제외하고, 로그인·갱신·로그아웃을 포함한 auth 변경 요청은 검사합니다. SPA 쿠키 → 헤더 CSRF 처리는 구성했으며, 실제 프론트엔드의 토큰 전달과 CORS 허용 출처는
 연동 단계에서 구성합니다. 현재 브라우저 연동 안내는 동일 출처 기준입니다.
 
 접근 정책 테스트는 테스트 전용 API와 인증 정보를 사용합니다. JWT 검증 성공을 의미하지 않습니다.
@@ -267,11 +269,15 @@ JSON 명세는 `/v3/api-docs`, YAML 명세는 `/v3/api-docs.yaml`입니다.
 공통 설정은 문서 기능을 끄고, 클래스패스의 `application-local.properties`에서 활성화합니다.
 외부 `config/application-local.properties`에는 개인 DB·Redis·SMTP 연결 정보를 둡니다.
 
-현재 `paths`에는 CSRF 쿠키 준비, 인증 메일 발급 요청, 코드 검증·가입용 증명 발급, 회원가입 API를 제공합니다.
-공통 오류 스키마·응답 정의와 향후 사용할 `bearerAuth` 형식도 등록했습니다. Swagger의 Authorize 입력은 로그인 기능이
-아니며, 실제 토큰 발급·검증은 #30에서 구현합니다. 각 API 구현 시 실제 상태 코드에 맞춰
+현재 명세에는 가입·로그인·갱신·로그아웃·계정 본인 확인·비밀번호 변경·탈퇴와 내 정보 조회 API를 제공합니다.
+로그인 응답의 Access Token을 Swagger Authorize의 `bearerAuth`에 입력하면 보호 API를 호출할 수 있습니다. 각 API 구현 시 실제 상태 코드에 맞춰
 공통 응답을 참조하고, 보호 API에는 `@SecurityRequirement(name = "bearerAuth")`를 지정합니다.
-공개 API에는 인증 요구사항을 지정하지 않습니다.
+auth 변경 API는 `csrfToken`을 보안 조건으로 표시합니다. Bearer/Refresh가 필요한 경우 같은 조건에 결합합니다.
+
+`local` Swagger는 `springdoc.swagger-ui.csrf.enabled=true`로 CSRF 쿠키 값을 헤더에 자동 전달합니다.
+페이지를 열면 쿠키가 준비되므로 CSRF를 복사하거나 Authorize의 `csrfToken`에 입력할 필요가 없습니다.
+쿠키를 삭제했다면 페이지를 새로고침하거나 `GET /api/auth/csrf`를 실행합니다.
+서버 검증은 동일하며 일반 클라이언트는 쿠키와 `X-XSRF-TOKEN` 헤더를 직접 전달해야 합니다.
 
 실행 중인 앱에서 프론트엔드 전달용 파일을 생성합니다(서버를 자동 기동하지 않습니다).
 
@@ -287,9 +293,7 @@ API 변경 시 버전을 관리하고 전달 파일과 소스 커밋을 함께 �
 명세의 서버 URL은 `/`로 고정하여 개발자별 호스트·포트가 계약 파일에 섞이지 않게 합니다.
 프론트엔드는 이 파일을 타입 생성기의 입력으로 사용할 수 있습니다.
 
-추가 테스트 작성·실행은 인증 기능 전체 구현 후 진행합니다. 현재 확인 범위는
-컴파일, 비인증 요청의 401, CSRF 누락 요청의 403, 문서 HTTP 응답 및 파일 생성입니다.
-인증된 사용자의 권한 부족, 입력 검증 API와 명세 일치 등은 후속 검증 대상입니다.
+테스트 구성과 실제 검증 범위는 [인증 테스트 안내](docs/auth-testing.md)를 참고하세요.
 
 `localhost:8080` 내보내기가 404인데 브라우저에서는 정상이라면 IPv4/IPv6의 포트 점유가
 다른지 확인하세요. 예를 들어 Spring 앱이 IPv6에서 실행 중이면 다음처럼 명시합니다.

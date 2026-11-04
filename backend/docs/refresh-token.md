@@ -143,10 +143,8 @@ Redis 교체 실행·응답 유실, HTTP 성공 응답 유실에서는 이전 �
 Application은 Redis·JPA·JWT·Spring Security·Servlet·HTTP 타입이나 Infrastructure/Presentation을 참조하지 않습니다.
 쿠키 설정도 Presentation에 두며 Application이나 Redis 어댑터에 전달하지 않습니다.
 
-이번 단계의 확인은 Java 21 컴파일·JAR 패키징·앱 시작·OpenAPI 생성과 명세 검토까지입니다.
-기존 테스트 파일은 변경하지 않으며 추가 테스트 작성·실행은 전체 인증 구현 후 진행합니다.
-실제 로그인·쿠키 수신/전송·교체·만료·한도·재사용·동시 요청·다른 로그인 격리·탈퇴·장애·CSRF는 미검증입니다.
-기존 테스트의 JWT/쿠키 구성 보완과 Redis 통합 테스트도 #24의 후속 검증에서 수행해야 합니다.
+테스트 전용 MySQL·Redis를 사용하는 API 통합 검증을 추가했습니다.
+실행 방법, 확인한 흐름과 남은 검증 범위는 [인증 테스트 안내](auth-testing.md)를 참고하세요.
 
 참고: [Refresh Token 회전·재사용 탐지](https://datatracker.ietf.org/doc/html/rfc9700#section-4.14.2),
 [Redis Lua 원자적 실행](https://redis.io/docs/latest/develop/programmability/eval-intro/),
