@@ -2,6 +2,7 @@ package com.daebangg.sayroam.auth.presentation.error;
 
 import com.daebangg.sayroam.auth.application.error.AuthErrorCode;
 import com.daebangg.sayroam.auth.application.error.AuthException;
+import com.daebangg.sayroam.auth.presentation.cookie.RefreshTokenCookie;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.CacheControl;
@@ -15,12 +16,22 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 @Order(Ordered.HIGHEST_PRECEDENCE)
 @RestControllerAdvice(basePackages = "com.daebangg.sayroam.auth.presentation")
 public class AuthExceptionHandler {
+    private final RefreshTokenCookie refreshCookie;
+
+    public AuthExceptionHandler(RefreshTokenCookie refreshCookie) {
+        this.refreshCookie = refreshCookie;
+    }
+
     @ExceptionHandler(AuthException.class)
     public ResponseEntity<ProblemDetail> handle(AuthException exception) {
         HttpError error = httpError(exception.getErrorCode());
         var problem = ProblemDetail.forStatusAndDetail(error.status(), error.detail());
         problem.setProperty("code", exception.getErrorCode().name());
         var response = ResponseEntity.status(error.status()).cacheControl(CacheControl.noStore());
+        if (exception.getErrorCode() == AuthErrorCode.REFRESH_TOKEN_INVALID
+                || exception.getErrorCode() == AuthErrorCode.REFRESH_TOKEN_REUSED) {
+            response.header(HttpHeaders.SET_COOKIE, refreshCookie.clear().toString());
+        }
         if (exception.getRetryAfter() != null) {
             long seconds = exception.getRetryAfter().toSeconds();
             if (exception.getRetryAfter().getNano() != 0) {
@@ -35,6 +46,14 @@ public class AuthExceptionHandler {
 
     private HttpError httpError(AuthErrorCode code) {
         return switch (code) {
+            case REFRESH_TOKEN_INVALID -> new HttpError(HttpStatus.UNAUTHORIZED,
+                    "Refresh token is invalid or expired; sign in again");
+            case REFRESH_TOKEN_REUSED -> new HttpError(HttpStatus.UNAUTHORIZED,
+                    "Refresh token was reused; this login can no longer be refreshed. Sign in again");
+            case INVALID_CREDENTIALS -> new HttpError(HttpStatus.UNAUTHORIZED,
+                    "Email or password is incorrect");
+            case AUTHENTICATION_UNAVAILABLE -> new HttpError(HttpStatus.SERVICE_UNAVAILABLE,
+                    "Authentication is temporarily unavailable");
             case EMAIL_DELIVERY_DISABLED -> new HttpError(HttpStatus.SERVICE_UNAVAILABLE,
                     "Email delivery is disabled");
             case EMAIL_RATE_LIMITED -> new HttpError(HttpStatus.TOO_MANY_REQUESTS,

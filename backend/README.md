@@ -13,6 +13,11 @@ cp -n backend/config/application-local.properties.example backend/config/applica
 ```
 
 복사한 파일의 DB·Redis 값을 실제 접속 환경에 맞게 수정합니다. SMTP 계정이 있으면 아래 메일 설정도 추가합니다.
+앱 시작에는 Access Token 서명 키도 필수입니다. `openssl rand -base64 32`로 생성한 값을
+개인 파일의 `app.auth.access-token.secret-base64`에 입력합니다. 상세 정책은 [로그인 문서](docs/login.md)를 참고합니다.
+로그인·토큰 갱신에는 MySQL과 Redis가 필요하며 [Refresh 쿠키·교체 정책](docs/refresh-token.md)을 함께 따릅니다.
+현재 로그인 종료는 [로그아웃·Access Token 잔여 시간 정책](docs/logout.md)을 따릅니다.
+운영 Refresh 쿠키는 기본 Secure=true이고, HTTP `local` 프로필에서만 false를 사용합니다.
 
 ```properties
 spring.datasource.url=jdbc:mysql://localhost:3306/sayroam
@@ -53,6 +58,7 @@ IntelliJ Run Configuration:
 환경변수 `SPRING_DATASOURCE_URL`, `SPRING_DATASOURCE_USERNAME`, `SPRING_DATASOURCE_PASSWORD`는
 파일의 연결 설정보다 우선합니다. 운영에서는 `local` 프로필 없이 이 환경변수로 연결 정보를 주입합니다.
 앱 실행은 Docker를 자동 기동하거나 스키마를 변경하지 않습니다.
+운영에서는 `APP_AUTH_ACCESSTOKEN_SECRETBASE64`로 Access Token 서명 키를 주입할 수 있습니다.
 테이블 생성·변경은 `flywayMigrate`로 실행하고 앱은 엔티티와 DB 매핑을 검증합니다.
 빈 DB 또는 미적용 변경이 있으면 마이그레이션을 먼저 실행하세요.
 

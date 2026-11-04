@@ -1,0 +1,53 @@
+package com.daebangg.sayroam.auth.presentation.controller;
+
+import com.daebangg.sayroam.auth.application.service.RefreshTokenService;
+import com.daebangg.sayroam.auth.presentation.cookie.RefreshTokenCookie;
+import com.daebangg.sayroam.auth.presentation.dto.LoginResponse;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.enums.ParameterIn;
+import io.swagger.v3.oas.annotations.headers.Header;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.http.CacheControl;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+@Tag(name = "Auth")
+@RestController
+public class RefreshTokenController {
+    private final RefreshTokenService service;
+    private final RefreshTokenCookie refreshCookie;
+
+    public RefreshTokenController(RefreshTokenService service, RefreshTokenCookie refreshCookie) {
+        this.service = service;
+        this.refreshCookie = refreshCookie;
+    }
+
+    @Operation(summary = "토큰 갱신", description = "브라우저의 sayroam_refresh HttpOnly 쿠키와 XSRF-TOKEN 쿠키·X-XSRF-TOKEN 헤더가 필요합니다. Access Token 없이 호출하며 이 경로에서는 Authorization 헤더를 인증에 사용하지 않습니다. 활성 회원을 확인한 뒤 Refresh Token을 일회성 교체합니다. 이전 값 재사용·동시 갱신은 해당 로그인의 갱신 권한을 폐기합니다. 클라이언트는 갱신 요청을 직렬화하고 불확실한 응답을 자동 재시도하지 않아야 합니다. 절대 만료는 연장하지 않습니다.")
+    @SecurityRequirement(name = "refreshCookie")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "새 Access Token과 교체된 Refresh 쿠키. Cache-Control: no-store",
+                    headers = @Header(name = "Set-Cookie", schema = @Schema(type = "string"), description = "sayroam_refresh 교체. 남은 절대 유효기간만 Max-Age로 지정")),
+            @ApiResponse(responseCode = "401", ref = "#/components/responses/RefreshUnauthorized"),
+            @ApiResponse(responseCode = "403", ref = "#/components/responses/Forbidden"),
+            @ApiResponse(responseCode = "503", ref = "#/components/responses/AuthenticationUnavailable"),
+            @ApiResponse(responseCode = "500", ref = "#/components/responses/InternalServerError")
+    })
+    @Parameter(name = "X-XSRF-TOKEN", in = ParameterIn.HEADER, required = true,
+            description = "동일한 브라우저의 XSRF-TOKEN 쿠키에서 복사한 원문 토큰")
+    @PostMapping(value = "/api/auth/refresh", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<LoginResponse> refresh(HttpServletRequest request) {
+        var pair = service.refresh(refreshCookie.read(request));
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore())
+                .header(HttpHeaders.SET_COOKIE, refreshCookie.issue(pair.refreshToken(), pair.refreshExpiresIn()).toString())
+                .body(new LoginResponse(pair.access().accessToken(), "Bearer", pair.access().expiresIn()));
+    }
+}
