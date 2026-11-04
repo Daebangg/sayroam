@@ -33,10 +33,11 @@ public class LoginService {
             throw new AuthException(AuthErrorCode.INVALID_CREDENTIALS);
         }
         long userId = account.orElseThrow().userId();
+        long authVersion = account.orElseThrow().authVersion();
         RefreshToken refresh = RefreshToken.create();
-        var access = tokens.issue(userId);
+        var access = tokens.issue(userId, authVersion);
         // Redis 저장이 성공한 경우에만 두 토큰을 클라이언트에 전달한다.
-        long expiresIn = refreshTokens.create(refresh.sessionId(), userId, refresh.digest());
+        long expiresIn = refreshTokens.create(refresh.sessionId(), userId, refresh.digest(), authVersion);
         return new TokenPair(access, refresh.value(), expiresIn);
     }
 }

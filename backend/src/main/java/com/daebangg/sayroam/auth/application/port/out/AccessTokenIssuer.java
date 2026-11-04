@@ -1,7 +1,7 @@
 package com.daebangg.sayroam.auth.application.port.out;
 
 public interface AccessTokenIssuer {
-    IssuedAccessToken issue(long userId);
+    IssuedAccessToken issue(long userId, long authVersion);
 
     record IssuedAccessToken(String accessToken, long expiresIn) {
         @Override

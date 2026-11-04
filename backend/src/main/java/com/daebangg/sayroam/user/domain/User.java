@@ -53,6 +53,9 @@ public class User extends BaseTimeEntity {
 
     private LocalDateTime deletedAt;
 
+    @Column(nullable = false)
+    private long authVersion;
+
     public static User verifiedEmailMember(String email, String nickname, LocalDateTime emailVerifiedAt) {
         User user = new User(Objects.requireNonNull(email), Objects.requireNonNull(nickname),
                 null, null, null, Role.USER);
@@ -62,6 +65,16 @@ public class User extends BaseTimeEntity {
 
     public Long getId() {
         return id;
+    }
+
+    public boolean allowsAccountChange(String verifiedEmail, long expectedAuthVersion) {
+        return deletedAt == null && emailVerifiedAt != null && email != null
+                && email.equals(verifiedEmail) && authVersion == expectedAuthVersion;
+    }
+
+    /** 자격 정보 변경과 같은 트랜잭션에서 호출한다. */
+    public void invalidateLogins() {
+        authVersion = Math.incrementExact(authVersion);
     }
 
     @Builder

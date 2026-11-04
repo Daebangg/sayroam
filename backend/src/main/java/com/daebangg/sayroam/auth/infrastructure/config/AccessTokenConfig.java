@@ -55,6 +55,8 @@ public class AccessTokenConfig {
                     && jwt.getAudience() != null && jwt.getAudience().contains(properties.audience())
                     && jwt.getSubject() != null && jwt.getSubject().matches("[1-9][0-9]{0,18}")
                     && jwt.getId() != null && !jwt.getId().isBlank()
+                    && jwt.getClaims().get("auth_ver") instanceof String version
+                    && version.matches("0|[1-9][0-9]{0,18}")
                     && issuedAt != null && expiresAt != null && expiresAt.isAfter(issuedAt)
                     && !issuedAt.isAfter(Instant.now().plusSeconds(30));
             return valid ? OAuth2TokenValidatorResult.success()

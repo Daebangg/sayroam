@@ -35,7 +35,8 @@ public class JpaAccountLookup implements AccountLookup {
     @Override
     public Optional<Credentials> findActiveCredentials(String normalizedEmail) {
         return read(() -> entityManager.createQuery("""
-                select new com.daebangg.sayroam.auth.application.port.out.AccountLookup$Credentials(u.id, c.passwordHash)
+                select new com.daebangg.sayroam.auth.application.port.out.AccountLookup$Credentials(
+                    u.id, c.passwordHash, u.authVersion)
                 from UserCredential c join c.user u
                 where u.email = :email and u.deletedAt is null and u.emailVerifiedAt is not null
                 """, Credentials.class).setParameter("email", normalizedEmail).getResultList().stream().findFirst());
@@ -45,9 +46,19 @@ public class JpaAccountLookup implements AccountLookup {
     public Optional<AuthenticatedAccount> findActiveAccount(long userId) {
         return read(() -> entityManager.createQuery("""
                 select new com.daebangg.sayroam.auth.domain.AuthenticatedAccount(
-                    u.id, u.email, u.nickname, u.profileImageUrl, u.role)
+                    u.id, u.email, u.nickname, u.profileImageUrl, u.role, u.authVersion)
                 from User u where u.id = :id and u.deletedAt is null
                 """, AuthenticatedAccount.class).setParameter("id", userId).getResultList().stream().findFirst());
+    }
+
+    @Override
+    public Optional<VerifiedAccount> findActiveVerifiedAccount(long userId) {
+        return read(() -> entityManager.createQuery("""
+                select new com.daebangg.sayroam.auth.application.port.out.AccountLookup$VerifiedAccount(
+                    u.email, u.authVersion) from User u
+                where u.id = :id and u.deletedAt is null
+                    and u.emailVerifiedAt is not null and u.email is not null
+                """, VerifiedAccount.class).setParameter("id", userId).getResultList().stream().findFirst());
     }
 
     private <T> T read(Supplier<T> query) {

@@ -9,7 +9,17 @@ public interface AccountLookup {
 
     Optional<AuthenticatedAccount> findActiveAccount(long userId);
 
-    record Credentials(long userId, String passwordHash) {
+    /** 민감 작업은 활성 회원의 현재 인증된 대표 이메일로만 진행한다. */
+    Optional<VerifiedAccount> findActiveVerifiedAccount(long userId);
+
+    record VerifiedAccount(String email, long authVersion) {
+        @Override
+        public String toString() {
+            return "VerifiedAccount[redacted]";
+        }
+    }
+
+    record Credentials(long userId, String passwordHash, long authVersion) {
         @Override
         public String toString() {
             return "Credentials[redacted]";

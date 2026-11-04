@@ -33,9 +33,13 @@ public class RedisRefreshTokenStore implements RefreshTokenStore {
     }
 
     @Override
-    public long create(String sessionId, long userId, String tokenDigest) {
+    public long create(String sessionId, long userId, String tokenDigest, long authVersion) {
+        if (authVersion < 0) {
+            throw new IllegalArgumentException("Authentication version must be nonnegative");
+        }
         long ttl = execute(CREATE, sessionId, Long.toString(userId), tokenDigest,
-                Long.toString(policy.ttlSeconds() * 1000L), Integer.toString(policy.maxRotations()));
+                Long.toString(policy.ttlSeconds() * 1000L), Integer.toString(policy.maxRotations()),
+                Long.toString(authVersion));
         if (ttl < 1000) {
             throw new IllegalStateException("Refresh session could not be created");
         }
@@ -59,23 +63,25 @@ public class RedisRefreshTokenStore implements RefreshTokenStore {
 
     private SessionResult use(String sessionId, String mode, String digest, String nextDigest) {
         List<?> result = execute(USE, sessionId, mode, digest, nextDigest);
-        if (result.size() != 3 || !(result.get(0) instanceof Number status)
+        if (result.size() != 4 || !(result.get(0) instanceof Number status)
                 || !(result.get(2) instanceof Number ttl)) {
             throw new IllegalStateException("Unexpected refresh session result");
         }
         return switch (status.intValue()) {
             case 0 -> {
-                if (!(result.get(1) instanceof String userId) || ttl.longValue() < 1000) {
+                if (!(result.get(1) instanceof String userId) || ttl.longValue() < 1000
+                        || !(result.get(3) instanceof String authVersion)) {
                     throw new IllegalStateException("Invalid active refresh session");
                 }
                 long id = Long.parseLong(userId);
-                if (id <= 0) {
+                long version = Long.parseLong(authVersion);
+                if (id <= 0 || version < 0) {
                     throw new IllegalStateException("Invalid refresh session account");
                 }
-                yield new SessionResult(Status.ACTIVE, id, ttl.longValue() / 1000);
+                yield new SessionResult(Status.ACTIVE, id, ttl.longValue() / 1000, version);
             }
-            case 1 -> new SessionResult(Status.INVALID, 0, 0);
-            case 2 -> new SessionResult(Status.REUSED, 0, 0);
+            case 1 -> new SessionResult(Status.INVALID, 0, 0, 0);
+            case 2 -> new SessionResult(Status.REUSED, 0, 0, 0);
             default -> throw new IllegalStateException("Invalid refresh session state");
         };
     }

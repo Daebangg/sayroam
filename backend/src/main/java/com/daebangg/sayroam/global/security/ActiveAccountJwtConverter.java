@@ -25,14 +25,23 @@ public class ActiveAccountJwtConverter implements Converter<Jwt, AbstractAuthent
     @Override
     public AbstractAuthenticationToken convert(Jwt jwt) {
         long userId;
+        long authVersion;
         try {
             userId = Long.parseLong(jwt.getSubject());
+            Object claim = jwt.getClaims().get("auth_ver");
+            if (!(claim instanceof String version)) {
+                throw new BadCredentialsException("Invalid access token");
+            }
+            authVersion = Long.parseLong(version);
         } catch (NumberFormatException exception) {
             throw new BadCredentialsException("Invalid access token");
         }
         try {
             var account = accounts.findActiveAccount(userId)
                     .orElseThrow(() -> new BadCredentialsException("Authentication is required"));
+            if (authVersion < 0 || account.authVersion() != authVersion) {
+                throw new BadCredentialsException("Authentication is required");
+            }
             // 토큰의 권한 클레임을 신뢰하지 않고 DB의 현재 회원 권한을 사용한다.
             return UsernamePasswordAuthenticationToken.authenticated(account, null,
                     List.of(new SimpleGrantedAuthority("ROLE_" + account.role().name())));
