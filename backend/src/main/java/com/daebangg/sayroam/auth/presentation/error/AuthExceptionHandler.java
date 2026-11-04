@@ -31,7 +31,8 @@ public class AuthExceptionHandler {
         var response = ResponseEntity.status(error.status()).cacheControl(CacheControl.noStore());
         if (exception.getErrorCode() == AuthErrorCode.REFRESH_TOKEN_INVALID
                 || exception.getErrorCode() == AuthErrorCode.REFRESH_TOKEN_REUSED
-                || exception.getErrorCode() == AuthErrorCode.PASSWORD_CHANGE_UNAVAILABLE) {
+                || exception.getErrorCode() == AuthErrorCode.PASSWORD_CHANGE_UNAVAILABLE
+                || exception.getErrorCode() == AuthErrorCode.ACCOUNT_DELETION_UNAVAILABLE) {
             response.header(HttpHeaders.SET_COOKIE, refreshCookie.clear().toString());
         }
         if (exception.getErrorCode() == AuthErrorCode.AUTHENTICATION_REVOKED) {
@@ -54,6 +55,10 @@ public class AuthExceptionHandler {
             case PASSWORD_POLICY_VIOLATION -> new HttpError(HttpStatus.BAD_REQUEST,
                     "Password must contain %d to %d characters and must not be blank"
                             .formatted(PasswordPolicy.MIN_LENGTH, PasswordPolicy.MAX_LENGTH));
+            case ACCOUNT_DELETION_CONFLICT -> new HttpError(HttpStatus.CONFLICT,
+                    "Account state changed; if the account is still active, sign in and verify your email again before retrying");
+            case ACCOUNT_DELETION_UNAVAILABLE -> new HttpError(HttpStatus.SERVICE_UNAVAILABLE,
+                    "Account deletion could not be confirmed; the proof is not restored. Clear local login state and do not retry or create a new account automatically");
             case AUTHENTICATION_REVOKED -> new HttpError(HttpStatus.UNAUTHORIZED,
                     "Authentication was revoked; sign in again");
             case PASSWORD_CHANGE_NOT_ALLOWED -> new HttpError(HttpStatus.FORBIDDEN,

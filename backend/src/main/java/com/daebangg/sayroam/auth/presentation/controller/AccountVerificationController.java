@@ -58,7 +58,7 @@ public class AccountVerificationController {
                 .body(AccountVerificationResponse.from(issued));
     }
 
-    @Operation(summary = "계정 관리용 코드 검증·일회성 증명 발급", description = "같은 회원·현재 이메일·목적·인증 버전·요청 ID·코드를 확인한 후 코드를 소비하고 accountProof를 한 번 반환합니다. 증명은 해당 목적의 작업에서 한 번만 소비할 수 있습니다. 가입용 signupProof와 호환되지 않습니다. 확인 응답을 잃으면 코드를 재사용하지 말고 새로 발급해야 합니다. PASSWORD_CHANGE 증명은 PATCH /api/auth/password에서 사용하며, 탈퇴 실행 API는 후속 단계입니다.")
+    @Operation(summary = "계정 관리용 코드 검증·일회성 증명 발급", description = "같은 회원·현재 이메일·목적·인증 버전·요청 ID·코드를 확인한 후 코드를 소비하고 accountProof를 한 번 반환합니다. 증명은 해당 목적의 작업에서 한 번만 소비할 수 있습니다. 가입용 signupProof와 호환되지 않습니다. 확인 응답을 잃으면 코드를 재사용하지 말고 새로 발급해야 합니다. PASSWORD_CHANGE 증명은 PATCH /api/auth/password, ACCOUNT_DELETION 증명은 POST /api/auth/account-deletion에서 사용합니다.")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "목적별 일회성 accountProof. Cache-Control: no-store"),
             @ApiResponse(responseCode = "400", ref = "#/components/responses/EmailCodeInvalid"),
