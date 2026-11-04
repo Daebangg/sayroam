@@ -47,6 +47,13 @@ class RoomTest {
     }
 
     @Test
+    void 방_이름의_앞뒤_전각_공백도_제거하고_저장한다() {
+        Room room = new Room("　제주 3박 4일　");
+
+        assertThat(room.getName()).isEqualTo("제주 3박 4일");
+    }
+
+    @Test
     void 이모지는_한_글자로_센다() {
         String name = "😀".repeat(20);
 

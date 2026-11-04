@@ -32,7 +32,7 @@ public class Room extends BaseTimeEntity {
             return;
         }
 
-        String trimmed = name.trim();
+        String trimmed = name.strip();
 
         if (trimmed.codePointCount(0, trimmed.length()) > MAX_NAME_LENGTH) {
             throw new BusinessException(RoomErrorCode.ROOM_NAME_TOO_LONG);
