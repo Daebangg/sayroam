@@ -124,11 +124,24 @@ async function main(): Promise<void> {
                 throw new Error("OpenAPI 주소는 http 또는 https여야 합니다.");
             }
             const backendDir = resolve(frontendDir, "../backend");
-            const result = spawnSync(
-                resolve(backendDir, "gradlew"),
-                ["-p", backendDir, "exportOpenApi", `-PapiDocsUrl=${url.href}`],
-                { cwd: frontendDir, stdio: "inherit" },
-            );
+            const gradleArgs = ["-p", backendDir, "exportOpenApi", `-PapiDocsUrl=${url.href}`];
+            let executable = resolve(backendDir, "gradlew");
+            if (process.platform === "win32") {
+                // 배치 셸을 거치지 않아 경로의 공백과 URL의 셸 문자를 그대로 전달합니다.
+                executable = process.env.JAVA_HOME
+                    ? resolve(process.env.JAVA_HOME, "bin/java.exe")
+                    : "java.exe";
+                gradleArgs.unshift(
+                    "-classpath",
+                    resolve(backendDir, "gradle/wrapper/gradle-wrapper.jar"),
+                    "org.gradle.wrapper.GradleWrapperMain",
+                );
+            }
+            const result = spawnSync(executable, gradleArgs, {
+                cwd: frontendDir,
+                stdio: "inherit",
+                shell: false,
+            });
             if (result.error || result.status !== 0) {
                 throw new Error(
                     "백엔드 명세 내보내기에 실패했습니다. 서버와 OPENAPI_URL 또는 --url을 확인하세요.",

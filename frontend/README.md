@@ -109,6 +109,8 @@ pnpm api:pull --file ../backend/build/openapi/openapi.json
 주소는 빌드용 설정이며 브라우저 환경변수에 넣지 않습니다. 수신은 Java/Gradle과 실행 중인 백엔드가
 필요하고, `--file`은 해당 파일만 사용합니다. HTTP·연결·JSON·스키마·참조 오류는 실패로 처리하며
 검증·타입 생성을 마치기 전에는 기존 프론트 계약 파일을 교체하지 않습니다.
+Windows에서는 `JAVA_HOME/bin/java.exe` 또는 PATH의 `java.exe`로 같은 Gradle Wrapper JAR를
+셸 없이 실행합니다. macOS·Linux에서는 기존 `gradlew`를 사용합니다.
 
 | 파일                          | 역할                                                   |
 | ----------------------------- | ------------------------------------------------------ |

@@ -405,11 +405,6 @@ export interface components {
              */
             roomId: number;
         };
-        CsrfToken: {
-            headerName?: string;
-            parameterName?: string;
-            token?: string;
-        };
         CurrentUserResponse: {
             /** @example user@example.com */
             email: string | null;
@@ -957,9 +952,7 @@ export interface operations {
     };
     csrf: {
         parameters: {
-            query: {
-                token: components["schemas"]["CsrfToken"];
-            };
+            query?: never;
             header?: never;
             path?: never;
             cookie?: never;
