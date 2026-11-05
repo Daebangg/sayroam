@@ -83,7 +83,8 @@ export function ProfileMenu({ onLogin, onBrand, onSettings, mobile = false }: Pr
                     role="menu"
                     aria-label={t("common.account")}
                 >
-                    <button
+                    <Button
+                        variant="plain"
                         type="button"
                         role="menuitem"
                         className="profile-menu__item"
@@ -92,8 +93,9 @@ export function ProfileMenu({ onLogin, onBrand, onSettings, mobile = false }: Pr
                         <Icon name="settings" />
                         <span>{t("profile.settings")}</span>
                         <KeyboardShortcut keys={["mod", ","]} />
-                    </button>
-                    <button
+                    </Button>
+                    <Button
+                        variant="plain"
                         type="button"
                         role="menuitem"
                         className="profile-menu__item"
@@ -101,7 +103,7 @@ export function ProfileMenu({ onLogin, onBrand, onSettings, mobile = false }: Pr
                     >
                         <Icon name="grid" />
                         <span>{t("brand.guide")}</span>
-                    </button>
+                    </Button>
                     <div className="profile-menu__welcome">
                         <strong>{t("profile.welcome")}</strong>
                         <p>{t("profile.description")}</p>

@@ -36,10 +36,15 @@ export function HomePage({ onStart, onOpenBrand }: HomePageProps) {
                     <Icon name="arrow" />
                 </Button>
             </div>
-            <button type="button" className="brand-guide-link" onClick={onOpenBrand}>
+            <Button
+                variant="plain"
+                type="button"
+                className="brand-guide-link"
+                onClick={onOpenBrand}
+            >
                 {t("brand.guide")}
                 <Icon name="arrow" />
-            </button>
+            </Button>
         </main>
     );
 }

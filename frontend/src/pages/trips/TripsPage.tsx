@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { Button, Icon, Tag } from "@/components/ui";
+import { Button, Card, Icon, Tag } from "@/components/ui";
 import { tripPreviews } from "@/data/preview";
 
 export function TripsPage() {
@@ -19,7 +19,7 @@ export function TripsPage() {
             </div>
             <div className="trip-grid">
                 {tripPreviews.map((trip) => (
-                    <article className="trip-card" key={trip.id}>
+                    <Card className="trip-card" key={trip.id}>
                         <img src={trip.image} alt={t(trip.title)} />
                         <div className="trip-card__body">
                             <h2>{t(trip.title)}</h2>
@@ -37,14 +37,14 @@ export function TripsPage() {
                                 <Icon name="matching" />
                             </div>
                         </div>
-                    </article>
+                    </Card>
                 ))}
-                <button type="button" className="new-trip-card">
+                <Button variant="plain" type="button" className="new-trip-card">
                     <span className="new-trip-card__icon">
                         <Icon name="plus" />
                     </span>
                     <span>{t("trips.create")}</span>
-                </button>
+                </Button>
             </div>
         </main>
     );

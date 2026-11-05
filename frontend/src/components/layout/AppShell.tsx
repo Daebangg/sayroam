@@ -50,17 +50,19 @@ export function AppShell({
         >
             <div className={`app-shell ${view === "plaza" ? "app-shell--home" : ""}`}>
                 <header className="site-header">
-                    <button
+                    <Button
+                        variant="plain"
                         className="brand-button"
                         type="button"
                         onClick={() => onViewChange("plaza")}
                         aria-label={t("navigation.home")}
                     >
                         <Brand />
-                    </button>
+                    </Button>
                     <nav className="desktop-nav" aria-label={t("navigation.main")}>
                         {previewNavigation.map((item) => (
-                            <button
+                            <Button
+                                variant="plain"
                                 key={item.view}
                                 type="button"
                                 className={`nav-item ${view === item.view ? "is-active" : ""}`}
@@ -69,7 +71,7 @@ export function AppShell({
                             >
                                 <Icon name={item.icon} />
                                 <span>{t(item.label)}</span>
-                            </button>
+                            </Button>
                         ))}
                     </nav>
                     <div className="header-actions">
@@ -127,7 +129,8 @@ export function AppShell({
                 {children}
                 <nav className="mobile-nav" aria-label={t("navigation.main")}>
                     {previewNavigation.map((item) => (
-                        <button
+                        <Button
+                            variant="plain"
                             key={item.view}
                             type="button"
                             className={`mobile-nav__item ${view === item.view ? "is-active" : ""}`}
@@ -136,7 +139,7 @@ export function AppShell({
                             onClick={() => onViewChange(item.view)}
                         >
                             <Icon name={item.icon} />
-                        </button>
+                        </Button>
                     ))}
                     <ProfileMenu
                         mobile

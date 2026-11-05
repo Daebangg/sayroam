@@ -5,6 +5,21 @@ import reactRefresh from "eslint-plugin-react-refresh";
 import tseslint from "typescript-eslint";
 import { defineConfig, globalIgnores } from "eslint/config";
 
+const sharedJsxRestrictions = [
+    {
+        selector: "JSXAttribute[name.name='style']",
+        message: "외형은 src/styles/app.css의 공용 클래스와 토큰으로 관리합니다.",
+    },
+    {
+        selector: "JSXOpeningElement[name.name='style']",
+        message: "style 태그 대신 src/styles/app.css를 사용합니다.",
+    },
+    {
+        selector: "JSXText[value=/\\S/]",
+        message: "사용자 노출 문구는 src/locales의 번역 키로 관리합니다.",
+    },
+];
+
 export default defineConfig([
     globalIgnores(["dist", "src/api/generated/**"]),
     {
@@ -26,19 +41,23 @@ export default defineConfig([
     {
         files: ["src/**/*.{ts,tsx}"],
         rules: {
+            "no-restricted-syntax": ["error", ...sharedJsxRestrictions],
+        },
+    },
+    {
+        files: [
+            "src/pages/**/*.tsx",
+            "src/components/layout/**/*.tsx",
+            "src/components/features/**/*.tsx",
+        ],
+        rules: {
             "no-restricted-syntax": [
                 "error",
+                ...sharedJsxRestrictions,
                 {
-                    selector: "JSXAttribute[name.name='style']",
-                    message: "외형은 src/styles/app.css의 공용 클래스와 토큰으로 관리합니다.",
-                },
-                {
-                    selector: "JSXOpeningElement[name.name='style']",
-                    message: "style 태그 대신 src/styles/app.css를 사용합니다.",
-                },
-                {
-                    selector: "JSXText[value=/\\S/]",
-                    message: "사용자 노출 문구는 src/locales의 번역 키로 관리합니다.",
+                    selector: "JSXOpeningElement[name.name=/^(button|input|select|textarea)$/]",
+                    message:
+                        "직접 컨트롤을 만들지 말고 components/ui의 Button·TextField·Checkbox·DropdownMenu를 사용합니다.",
                 },
             ],
         },
