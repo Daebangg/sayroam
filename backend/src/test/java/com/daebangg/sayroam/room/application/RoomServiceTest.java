@@ -3,7 +3,7 @@ package com.daebangg.sayroam.room.application;
 import com.daebangg.sayroam.room.domain.RoomMember;
 import com.daebangg.sayroam.room.domain.RoomMemberRepository;
 import com.daebangg.sayroam.room.domain.RoomRepository;
-import com.daebangg.sayroam.support.IntegrationTest;
+import com.daebangg.sayroam.support.DatabaseIntegrationTest;
 import com.daebangg.sayroam.user.domain.Role;
 import com.daebangg.sayroam.user.domain.User;
 import jakarta.persistence.EntityManager;
@@ -17,7 +17,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-class RoomServiceTest extends IntegrationTest {
+class RoomServiceTest extends DatabaseIntegrationTest {
 
     @Autowired
     RoomService roomService;

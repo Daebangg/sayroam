@@ -1,10 +1,10 @@
 package com.daebangg.sayroam.room.presentation;
 
+import com.daebangg.sayroam.auth.domain.AuthenticatedAccount;
 import com.daebangg.sayroam.room.presentation.dto.CreateRoomRequest;
 import com.daebangg.sayroam.room.presentation.dto.CreateRoomResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
-import io.swagger.v3.oas.annotations.enums.ParameterIn;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -21,10 +21,9 @@ public interface RoomApi {
             @ApiResponse(responseCode = "201", description = "방과 방장 멤버 생성 완료"),
             @ApiResponse(responseCode = "400", ref = "#/components/responses/RoomBadRequest"),
             @ApiResponse(responseCode = "401", ref = "#/components/responses/Unauthorized"),
-            @ApiResponse(responseCode = "403", ref = "#/components/responses/Forbidden"),
+            @ApiResponse(responseCode = "503", ref = "#/components/responses/AuthenticationUnavailable"),
             @ApiResponse(responseCode = "500", ref = "#/components/responses/InternalServerError")
     })
-    @Parameter(name = "X-XSRF-TOKEN", in = ParameterIn.HEADER, required = true, description = "XSRF-TOKEN 쿠키에서 복사한 원문 토큰")
-    ResponseEntity<CreateRoomResponse> create(@Parameter(hidden = true) @AuthenticationPrincipal Long userId,
+    ResponseEntity<CreateRoomResponse> create(@Parameter(hidden = true) @AuthenticationPrincipal AuthenticatedAccount account,
                                               @RequestBody CreateRoomRequest request);
 }
