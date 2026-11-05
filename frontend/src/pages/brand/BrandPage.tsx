@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import {
     Brand,
     Button,
+    Card,
     Checkbox,
     DropdownMenu,
     Icon,
@@ -26,11 +27,13 @@ export function BrandPage({ onOpenAuth, onLanguageChange }: BrandPageProps) {
     const { t } = useTranslation();
     const [selection, setSelection] = useState("planning");
     const [dialogOpen, setDialogOpen] = useState(false);
+    const [pressed, setPressed] = useState(false);
     const [tagVisible, setTagVisible] = useState(true);
     const options = [
         { value: "planning", label: t("brand.planning") },
         { value: "looking", label: t("brand.looking") },
         { value: "ready", label: t("brand.ready") },
+        { value: "unavailable", label: t("brand.unavailable"), disabled: true },
     ];
 
     return (
@@ -137,6 +140,7 @@ export function BrandPage({ onOpenAuth, onLanguageChange }: BrandPageProps) {
                 <h2 id="brand-components-heading" className="section-label">
                     {t("brand.components")}
                 </h2>
+                <p className="catalogue-help">{t("brand.statesHelp")}</p>
                 <div className="button-showcase">
                     <Button onClick={onOpenAuth}>
                         {t("home.start")}
@@ -155,7 +159,7 @@ export function BrandPage({ onOpenAuth, onLanguageChange }: BrandPageProps) {
                 </div>
 
                 <div className="component-catalogue">
-                    <article className="component-example">
+                    <Card className="component-example">
                         <h3>{t("brand.buttons")}</h3>
                         <div className="component-example__row">
                             <Button variant="brand">{t("brand.primaryButton")}</Button>
@@ -163,12 +167,20 @@ export function BrandPage({ onOpenAuth, onLanguageChange }: BrandPageProps) {
                             <Button variant="soft">{t("common.join")}</Button>
                             <Button variant="danger">{t("brand.delete")}</Button>
                             <Button disabled>{t("common.disabled")}</Button>
+                            <Button
+                                variant="outline"
+                                aria-pressed={pressed}
+                                onClick={() => setPressed(!pressed)}
+                            >
+                                {t("brand.selected")}
+                            </Button>
+                            <Button variant="outline">{t("brand.longAction")}</Button>
                             <Button variant="brand" loading>
                                 {t("brand.save")}
                             </Button>
                         </div>
-                    </article>
-                    <article className="component-example">
+                    </Card>
+                    <Card className="component-example">
                         <h3>{t("brand.dropdowns")}</h3>
                         <div className="component-example__row">
                             <DropdownMenu
@@ -185,8 +197,8 @@ export function BrandPage({ onOpenAuth, onLanguageChange }: BrandPageProps) {
                                 disabled
                             />
                         </div>
-                    </article>
-                    <article className="component-example">
+                    </Card>
+                    <Card className="component-example">
                         <h3>{t("brand.tags")}</h3>
                         <div className="component-example__row">
                             <Tag label={t("brand.tagFree")} />
@@ -204,8 +216,8 @@ export function BrandPage({ onOpenAuth, onLanguageChange }: BrandPageProps) {
                                 </Button>
                             )}
                         </div>
-                    </article>
-                    <article className="component-example">
+                    </Card>
+                    <Card className="component-example">
                         <h3>{t("brand.tooltips")}</h3>
                         <div className="component-example__row">
                             <Tooltip content={t("common.search")} shortcut={["mod", "K"]}>
@@ -231,19 +243,40 @@ export function BrandPage({ onOpenAuth, onLanguageChange }: BrandPageProps) {
                             </Tooltip>
                             <KeyboardShortcut keys={["mod", "shift", "K"]} />
                         </div>
-                    </article>
-                    <article className="component-example">
+                    </Card>
+                    <Card className="component-example">
                         <h3>{t("brand.inputs")}</h3>
                         <div className="component-example__fields">
                             <TextField
                                 label={t("auth.emailLabel")}
                                 type="email"
                                 placeholder={t("brand.emailPlaceholder")}
+                                hint={t("brand.inputHint")}
+                            />
+                            <TextField
+                                label={t("brand.errorInput")}
+                                defaultValue="invalid-email"
+                                error={t("brand.inputError")}
+                            />
+                            <TextField
+                                label={t("brand.disabledInput")}
+                                disabled
+                                placeholder={t("brand.emailPlaceholder")}
                             />
                             <Checkbox label={t("auth.remember")} />
+                            <Checkbox label={t("brand.selected")} defaultChecked />
+                            <Checkbox label={t("common.disabled")} defaultChecked disabled />
+                            <Checkbox label={t("brand.longLabel")} />
                         </div>
-                    </article>
-                    <article className="component-example">
+                    </Card>
+                    <Card className="component-example">
+                        <h3>{t("brand.cards")}</h3>
+                        <Card className="ui-card--example">
+                            <h3>{t("brand.cardTitle")}</h3>
+                            <p>{t("brand.cardDescription")}</p>
+                        </Card>
+                    </Card>
+                    <Card className="component-example">
                         <h3>{t("brand.modals")}</h3>
                         <div className="component-example__row">
                             <Button variant="outline" onClick={() => setDialogOpen(true)}>
@@ -253,7 +286,7 @@ export function BrandPage({ onOpenAuth, onLanguageChange }: BrandPageProps) {
                                 {t("brand.openAuth")}
                             </Button>
                         </div>
-                    </article>
+                    </Card>
                 </div>
             </section>
             <Modal

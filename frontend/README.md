@@ -37,9 +37,10 @@ pnpm install --frozen-lockfile
 | `pnpm dev`          | 개발 서버 실행: `http://localhost:5173`            |
 | `pnpm typecheck`    | 앱과 Vite 설정의 TypeScript 검사                   |
 | `pnpm lint`         | ESLint 검사, 경고도 실패로 처리                    |
+| `pnpm ui:check`     | 공용 CSS 소유권·동일 규칙의 중복 선언 검사         |
 | `pnpm format:check` | 공통 설정·프론트엔드 포맷 검사                     |
 | `pnpm format`       | 공통 설정·프론트엔드 포맷 적용                     |
-| `pnpm check`        | 타입·ESLint·포맷 검사 순서대로 실행                |
+| `pnpm check`        | 타입·ESLint·UI 스타일·포맷 검사 순서대로 실행                |
 | `pnpm build`        | 타입 검사 후 배포용 파일을 `frontend/dist/`에 생성 |
 | `pnpm preview`      | 빌드 결과 미리보기: `http://localhost:4173`        |
 

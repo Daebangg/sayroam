@@ -1,10 +1,14 @@
 import type { ButtonHTMLAttributes, Ref } from "react";
 
 type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
-    variant?: "primary" | "brand" | "soft" | "outline" | "ghost" | "danger";
-    loading?: boolean;
     ref?: Ref<HTMLButtonElement>;
-};
+} & (
+        | { variant: "plain"; loading?: never }
+        | {
+              variant?: "primary" | "brand" | "soft" | "outline" | "ghost" | "danger";
+              loading?: boolean;
+          }
+    );
 
 export function Button({
     variant = "primary",
@@ -18,12 +22,16 @@ export function Button({
     return (
         <button
             type={type}
-            className={`ui-button ui-button--${variant} ${loading ? "ui-button--loading" : ""} ${className}`}
+            className={
+                variant === "plain"
+                    ? className
+                    : `ui-button ui-button--${variant} ${loading ? "ui-button--loading" : ""} ${className}`
+            }
             disabled={disabled || loading}
             aria-busy={loading || undefined}
             {...props}
         >
-            <span className="ui-button__label">{children}</span>
+            {variant === "plain" ? children : <span className="ui-button__label">{children}</span>}
             {loading && <span className="ui-spinner" aria-hidden="true" />}
         </button>
     );

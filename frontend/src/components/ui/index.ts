@@ -1,5 +1,6 @@
 export { Brand } from "./brand/Brand";
 export { Button } from "./buttons/Button";
+export { Card } from "./cards/Card";
 export { Icon } from "./icons/Icon";
 export type { IconName } from "./icons/Icon";
 export { Modal } from "./overlays/Modal";

@@ -53,10 +53,16 @@ export function AuthPreview({ open, onClose }: AuthPreviewProps) {
             </form>
             <div className="auth-preview__links">
                 <p>
-                    {t("auth.newHere")} <button type="button">{t("auth.signup")}</button>
+                    {t("auth.newHere")}{" "}
+                    <Button variant="plain" type="button">
+                        {t("auth.signup")}
+                    </Button>
                 </p>
                 <p>
-                    {t("auth.forgot")} <button type="button">{t("auth.reset")}</button>
+                    {t("auth.forgot")}{" "}
+                    <Button variant="plain" type="button">
+                        {t("auth.reset")}
+                    </Button>
                 </p>
             </div>
         </Modal>

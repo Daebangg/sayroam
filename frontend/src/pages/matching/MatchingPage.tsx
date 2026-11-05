@@ -1,5 +1,6 @@
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Button, DropdownMenu, Icon, Tag, Tooltip } from "@/components/ui";
+import { Button, Card, DropdownMenu, Icon, Tag, Tooltip } from "@/components/ui";
 import { matchingPreviews } from "@/data/preview";
 
 export function MatchingPage() {
@@ -22,7 +23,7 @@ export function MatchingPage() {
             </div>
             <div className="matching-list">
                 {matchingPreviews.map((item) => (
-                    <article className="matching-card" key={item.id}>
+                    <Card className="matching-card" key={item.id}>
                         <img src={item.image} alt="" />
                         <div className="matching-card__content">
                             <h2>{t(item.title)}</h2>
@@ -44,10 +45,9 @@ export function MatchingPage() {
                                 <Icon name="bookmark" />
                             </Button>
                         </Tooltip>
-                    </article>
+                    </Card>
                 ))}
             </div>
         </main>
     );
 }
-import { useState } from "react";

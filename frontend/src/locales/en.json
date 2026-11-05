@@ -152,7 +152,19 @@
         "downloadMarkPng": "Mark PNG",
         "downloadLightMarkPng": "Light mark PNG",
         "downloadIconPng": "App icon PNG",
-        "downloadFaviconPng": "Favicon PNG"
+        "downloadFaviconPng": "Favicon PNG",
+        "statesHelp": "Use a pointer for hover and Tab for focus. Compare selected, loading, disabled and error states using the shared components below.",
+        "selected": "Selected",
+        "longAction": "A shared button with a longer label that stays readable and usable",
+        "inputHint": "Help text is associated with the input for assistive technology.",
+        "inputError": "Please check your email address.",
+        "disabledInput": "Disabled input",
+        "errorInput": "Input with an error",
+        "cards": "Cards",
+        "cardTitle": "A travel card with a shared surface",
+        "cardDescription": "Trip and companion cards share border, surface and radius tokens.",
+        "longLabel": "Send travel notifications and itinerary updates to this browser.",
+        "unavailable": "Unavailable option"
     },
     "profile": {
         "settings": "Settings",
