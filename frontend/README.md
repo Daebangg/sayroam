@@ -21,6 +21,10 @@ pnpm install --frozen-lockfile
 
 현재 기준은 Node.js 24.18.0, pnpm 12.16.1입니다. nvm 이외의 도구로 Node.js를 관리한다면
 동일한 버전을 준비합니다. 기존 pnpm이 있다면 프로젝트에서 고정한 버전을 사용하는지 확인합니다.
+`devEngines.runtime`에도 Node 24.18.0을 고정했습니다. `pnpm install`은 처음 한 번 필요한 런타임을
+설치하고 이후 프로젝트 명령에 사용하므로, 터미널의 기본 Node가 20이어도 pnpm 명령은 Node 24로
+실행됩니다. `.mts` 실행에서 `ERR_UNKNOWN_FILE_EXTENSION`이 발생하면 `pnpm install` 후 다시
+실행하거나 `.nvmrc`에 맞춰 `nvm use`를 실행합니다.
 의존성을 추가·갱신할 때는 `pnpm install`로 이 디렉터리의 `pnpm-lock.yaml`도 함께 갱신합니다.
 `pnpm-workspace.yaml`은 이 앱의 pnpm 설치 정책 설정이며 루트 JavaScript workspace를 만들지 않습니다.
 
