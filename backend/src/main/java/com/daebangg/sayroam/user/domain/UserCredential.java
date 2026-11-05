@@ -15,6 +15,7 @@ import lombok.Builder;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.util.Objects;
 
 @Entity
 @Table(name = "user_credential")
@@ -33,6 +34,11 @@ public class UserCredential extends BaseTimeEntity {
     private String passwordHash;
 
     private LocalDateTime passwordChangedAt;
+
+    public void changePassword(String passwordHash, LocalDateTime changedAt) {
+        this.passwordHash = Objects.requireNonNull(passwordHash);
+        this.passwordChangedAt = Objects.requireNonNull(changedAt);
+    }
 
     @Builder
     private UserCredential(User user, String passwordHash) {

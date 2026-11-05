@@ -71,11 +71,11 @@ IntelliJ Run Configuration에만 지정한 환경변수는 터미널에 전달�
 
 ```text
 V1__create_initial_schema.sql
-V2__add_example_column.sql
+V2__add_user_auth_version.sql
 ```
 
-`V2`는 파일명 예시이며 아직 존재하지 않습니다.
 현재 V1은 업무 테이블 17개를 생성하며 Flyway는 이력 테이블을 별도로 만듭니다.
+V2는 비밀번호 변경 시 모든 기존 로그인을 차단하기 위한 `users.auth_version`을 추가합니다.
 샘플 데이터는 포함하지 않습니다. enum은 현재 Hibernate/MySQL 매핑에 맞춘 MySQL ENUM입니다.
 
 - 공유 환경에 적용된 SQL은 수정하지 않고 다음 버전을 추가합니다.
