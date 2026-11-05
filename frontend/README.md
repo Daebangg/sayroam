@@ -32,17 +32,19 @@ pnpm install --frozen-lockfile
 
 아래 명령은 모두 `frontend/`에서 실행합니다.
 
-| 명령                | 용도                                               |
-| ------------------- | -------------------------------------------------- |
-| `pnpm dev`          | 개발 서버 실행: `http://localhost:5173`            |
-| `pnpm typecheck`    | 앱과 Vite 설정의 TypeScript 검사                   |
-| `pnpm lint`         | ESLint 검사, 경고도 실패로 처리                    |
-| `pnpm ui:check`     | 공용 CSS 소유권·동일 규칙의 중복 선언 검사         |
-| `pnpm format:check` | 공통 설정·프론트엔드 포맷 검사                     |
-| `pnpm format`       | 공통 설정·프론트엔드 포맷 적용                     |
-| `pnpm check`        | 타입·ESLint·UI 스타일·포맷 검사 순서대로 실행                |
-| `pnpm build`        | 타입 검사 후 배포용 파일을 `frontend/dist/`에 생성 |
-| `pnpm preview`      | 빌드 결과 미리보기: `http://localhost:4173`        |
+| 명령                    | 용도                                                         |
+| ----------------------- | ------------------------------------------------------------ |
+| `pnpm dev`              | 개발 서버 실행: `http://localhost:5173`                      |
+| `pnpm typecheck`        | 앱과 Vite 설정의 TypeScript 검사                             |
+| `pnpm lint`             | ESLint 검사, 경고도 실패로 처리                              |
+| `pnpm ui:check`         | 공용 CSS 소유권·동일 규칙의 중복 선언 검사                   |
+| `pnpm i18n:check`       | 한국어·영어 번역 키·치환 변수 일치 검사                      |
+| `pnpm test:preferences` | 테마 저장·복원·시스템 연동과 지역화 회귀 검사                |
+| `pnpm format:check`     | 공통 설정·프론트엔드 포맷 검사                               |
+| `pnpm format`           | 공통 설정·프론트엔드 포맷 적용                               |
+| `pnpm check`            | 타입·ESLint·UI 스타일·번역·설정 회귀·포맷 검사 순서대로 실행 |
+| `pnpm build`            | 타입 검사 후 배포용 파일을 `frontend/dist/`에 생성           |
+| `pnpm preview`          | 빌드 결과 미리보기: `http://localhost:4173`                  |
 
 개발 서버와 미리보기는 지정 포트를 사용합니다. 포트가 사용 중이면 다른 포트로 자동 이동하지 않고
 실패하므로 기존 프로세스를 확인하거나 `pnpm dev --port 5174`처럼 포트를 지정합니다.
@@ -62,13 +64,15 @@ pnpm install --frozen-lockfile
 ## 구성 및 범위
 
 - `src/main.tsx`: React 시작점, 개발 중 StrictMode 적용
-- `src/App.tsx`: 화면·테마·모달 미리보기 상태와 화면 조합
+- `src/App.tsx`: 화면·모달 미리보기 상태와 테마 설정·화면 조합
 - `src/pages/`: 홈·여행·동행·내 방·브랜드 보기의 정적 초안
 - `src/components/ui/`: 공용 버튼·입력·드롭다운·태그·모달·툴팁·단축키 표시
 - `src/components/features/`: 로그인 모달·프로필 메뉴·설정 미리보기
 - `src/components/layout/`: 데스크톱 상단·모바일 하단 메뉴와 앱 셸
 - `src/data/preview.ts`: 업무 API와 연결하지 않는 예시 데이터
 - `public/brand/`: SVG·PNG 로고·심볼·워드마크·앱 아이콘과 공식 로그인 제공자 자산
+- `public/assets/theme.js`: 첫 화면 전 테마 적용, 저장·복원·시스템 변경 구독
+- `src/hooks/useTheme.ts`: 브라우저와 React가 공유하는 테마 상태
 - `src/styles/app.css`: 공통 스타일·색상·간격·크기 토큰
 - `src/locales/ko.json`: 기본 한국어 문구
 - `src/locales/en.json`: 영어 문구
@@ -82,21 +86,38 @@ pnpm install --frozen-lockfile
 
 ## 기본 언어와 번역
 
-기본 언어와 대체 언어는 한국어(`ko`)이며 영어(`en`) 리소스를 함께 제공합니다.
-브라우저 언어와 무관하게 한국어로 시작하고 컴포넌트는 `useTranslation()`의 `t()`를 사용합니다.
-새 문구는 두 JSON 사전에 같은 키로 추가합니다. 한국어 사전을 기준으로 번역 키 타입을 검사하며
-영어 사전의 필수 키가 빠지면 타입 검사에서 실패합니다.
+기본 언어와 대체 언어는 한국어(`ko`)이며 영어(`en`)를 지원합니다. 저장된 선택이 없거나
+지원하지 않는 값이면 브라우저 언어와 무관하게 한국어로 시작합니다. 헤더의 언어 버튼이나
+프로필 → 설정의 언어 메뉴로 변경하며 `src/i18n/index.ts`의 `setLanguage()`가 문구·HTML `lang`·
+문서 설명과 저장 값을 함께 갱신합니다. 다른 탭의 변경도 반영합니다.
 
-언어는 공용 i18n 인스턴스의 `changeLanguage("en")` 또는 `changeLanguage("ko")`로 바꿀 수 있습니다.
-변경 시 React 문구·HTML `lang`·문서 설명을 함께 갱신합니다. 현재 헤더·설정의 언어 및 테마 전환은
-미리보기용 로컬 상태이며 선택 저장·날짜/숫자 지역화·운영 설정 연동은 후속 #59에서 진행합니다.
+새 문구는 두 JSON 사전에 같은 키로 추가합니다. 한국어 사전을 기준으로 번역 키 타입을 검사하고,
+`pnpm i18n:check`는 두 사전의 누락·추가 키, 빈 번역문, 치환 변수 이름 차이를 검사합니다.
+여행 날짜는 날짜 전용 값과 UTC 기준 `Intl.DateTimeFormat`, 인원·숫자는 `Intl.NumberFormat`을
+사용합니다. 브랜드 보기에서 한영 날짜·숫자 표시를 비교할 수 있습니다.
+
+## 테마와 선택 저장
+
+프로필 → 설정에서 시스템·라이트·다크를 선택합니다. 기본값은 시스템이며 시스템 선택 중에는
+OS 테마 변경을 추적합니다. 헤더의 해·달 버튼은 현재 화면과 반대되는 명시적 테마를 선택합니다.
+`public/assets/theme.js`를 HTML head에서 먼저 실행하고 `html[data-theme]`의 공통 토큰을 적용합니다.
+React는 같은 상태를 구독하므로 첫 화면과 앱 실행 후 테마를 따로 계산하지 않습니다.
+
+선택은 같은 브라우저·출처의 `localStorage`에 `sayroam.theme.v1`, `sayroam.language.v1`로 저장하며
+다른 탭의 변경·삭제도 반영합니다. 저장소 사용이 제한되면 현재 화면에서만 선택을 유지합니다.
+계정·서버 간 동기화는 포함하지 않습니다. 테마·언어 설정은 업무 API 없이 동작합니다.
+
+`?theme=dark|light|system`, `?lang=en|ko`는 저장하지 않는 일회성 미리보기 값으로 저장된 선택보다
+우선합니다. UI에서 해당 설정을 고르면 저장하고 그 매개변수만 URL에서 제거하므로 다음 로드부터
+사용자 선택이 적용됩니다. 설정 회귀 검사는 Node 내장 테스트로 실행하며 별도 테스트 프레임워크를
+설치하지 않습니다.
 
 ## 화면 초안과 계약 범위
 
 기본 주소는 한국어 홈입니다. `?view=trips`, `?view=matching`, `?view=rooms`, `?view=brand`,
 `?theme=dark`, `?lang=en`, `?modal=auth`를 조합해 정적 화면을 미리 볼 수 있습니다.
 상단 메뉴·모바일 메뉴는 미리보기 화면만 전환하며 실제 라우터는 아직 연결하지 않습니다.
-브랜드 보기에서 공용 UI의 기본·비활성·로딩 상태와 SVG·PNG 자산을 확인할 수 있습니다.
+브랜드 보기에서 공용 UI의 기본·선택·비활성·로딩·오류·긴 문구 상태와 SVG·PNG 자산을 확인할 수 있습니다.
 
 로그인 모달은 Google·카카오·네이버의 공식 로고와 이메일 입력 UI를 제공합니다.
 OAuth 이동·이메일 인증·계정 생성·비밀번호 찾기·계정 기억·여행 저장·채팅은 실행하지 않습니다.

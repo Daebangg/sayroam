@@ -4,8 +4,8 @@ import { AppearancePreview } from "@/components/features/profile/AppearancePrevi
 import { useTranslation } from "react-i18next";
 import { Brand, Button, Icon, Tooltip } from "@/components/ui";
 import { previewNavigation, type PreviewView } from "@/data/preview";
-
 import type { ResolvedTheme, ThemePreference } from "@/hooks/useTheme";
+import type { Language } from "@/i18n/locale";
 
 type AppShellProps = {
     view: PreviewView;
@@ -13,7 +13,7 @@ type AppShellProps = {
     themePreference: ThemePreference;
     onViewChange: (view: PreviewView) => void;
     onThemeChange: (preference: ThemePreference) => void;
-    onLanguageChange: () => void;
+    onLanguageChange: (language: Language) => void;
     onOpenAuth: () => void;
     children: ReactNode;
 };
@@ -92,7 +92,9 @@ export function AppShell({
                             <Button
                                 variant="ghost"
                                 className="language-button desktop-only"
-                                onClick={onLanguageChange}
+                                onClick={() =>
+                                    onLanguageChange(i18n.resolvedLanguage === "ko" ? "en" : "ko")
+                                }
                                 aria-label={t("common.changeLanguage")}
                             >
                                 {i18n.resolvedLanguage === "ko"

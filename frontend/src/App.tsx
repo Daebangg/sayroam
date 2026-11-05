@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { AppShell } from "@/components/layout/AppShell";
 import { AuthPreview } from "@/components/features/auth/AuthPreview";
 import type { PreviewView } from "@/data/preview";
+import { setLanguage } from "@/i18n";
 import { useTheme } from "@/hooks/useTheme";
 import { HomePage } from "@/pages/home/HomePage";
 import { TripsPage } from "@/pages/trips/TripsPage";
@@ -34,7 +35,7 @@ export default function App() {
     );
 
     function changeLanguage(): void {
-        void i18n.changeLanguage(i18n.resolvedLanguage === "ko" ? "en" : "ko");
+        setLanguage(i18n.resolvedLanguage === "ko" ? "en" : "ko");
     }
 
     return (
@@ -44,7 +45,7 @@ export default function App() {
             themePreference={theme.preference}
             onViewChange={setView}
             onThemeChange={theme.setPreference}
-            onLanguageChange={changeLanguage}
+            onLanguageChange={setLanguage}
             onOpenAuth={() => setAuthOpen(true)}
         >
             {view === "plaza" && (

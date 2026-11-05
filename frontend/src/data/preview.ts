@@ -12,13 +12,15 @@ export const tripPreviews = [
         id: "swiss",
         image: "/images/alpine-dawn.png",
         title: "trips.swiss",
-        dates: "trips.swissDates",
+        startDate: "2026-02-10",
+        endDate: "2026-02-13",
     },
     {
         id: "italy",
         image: "/images/amalfi-coast.png",
         title: "trips.italy",
-        dates: "trips.italyDates",
+        startDate: "2026-03-01",
+        endDate: "2026-03-08",
     },
 ] as const;
 
@@ -27,15 +29,19 @@ export const matchingPreviews = [
         id: "italy",
         image: "/images/amalfi-coast.png",
         title: "matching.italy",
-        dates: "matching.italyDates",
-        people: "2 / 4",
+        startDate: "2026-03-01",
+        endDate: "2026-03-08",
+        participants: 2,
+        capacity: 4,
     },
     {
         id: "swiss",
         image: "/images/alpine-dawn.png",
         title: "matching.swiss",
-        dates: "matching.swissDates",
-        people: "3 / 6",
+        startDate: "2026-02-10",
+        endDate: "2026-02-13",
+        participants: 3,
+        capacity: 6,
     },
 ] as const;
 

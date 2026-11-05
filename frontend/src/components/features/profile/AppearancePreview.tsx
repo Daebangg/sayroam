@@ -1,6 +1,7 @@
 import { useId } from "react";
 import { useTranslation } from "react-i18next";
 import { Button, DropdownMenu, Icon, Modal } from "@/components/ui";
+import { normalizeLanguage, type Language } from "@/i18n/locale";
 import type { ThemePreference } from "@/hooks/useTheme";
 
 type AppearancePreviewProps = {
@@ -8,7 +9,7 @@ type AppearancePreviewProps = {
     onClose: () => void;
     theme: ThemePreference;
     onThemeChange: (preference: ThemePreference) => void;
-    onLanguageChange: () => void;
+    onLanguageChange: (language: Language) => void;
 };
 
 export function AppearancePreview({
@@ -59,9 +60,7 @@ export function AppearancePreview({
                             { value: "ko", label: t("profile.korean") },
                             { value: "en", label: t("profile.english") },
                         ]}
-                        onChange={(language) => {
-                            if (language !== i18n.resolvedLanguage) onLanguageChange();
-                        }}
+                        onChange={(language) => onLanguageChange(normalizeLanguage(language))}
                     />
                 </div>
             </div>
