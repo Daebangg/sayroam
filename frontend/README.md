@@ -49,6 +49,15 @@ pnpm install --frozen-lockfile
 `frontend/` 안에서는 `pnpm dev`, `pnpm typecheck`, `pnpm lint`, `pnpm build`, `pnpm preview`를
 직접 실행할 수 있습니다. 저장소 루트에는 프론트엔드 명령이나 Node 의존성을 두지 않습니다.
 
+배포 시에는 저장소 루트에서 `./backend/gradlew -p backend clean build -PincludeFrontend`를 실행하면
+프론트 설치·타입 검사·빌드 후 Spring Boot JAR에 화면을 포함합니다. 결과는
+`backend/build/generated/frontend/`에 생성하며 `frontend/dist/`를 사용하지 않습니다.
+백엔드 실행 후 같은 주소의 `/`에서 화면을 열 수 있습니다.
+설정·실행·화면 경로 정책은 [통합 빌드 안내](../backend/README.md#프론트엔드를-포함한-배포용-빌드)를 따릅니다.
+로컬에서 함께 실행할 때는 `./backend/gradlew -p backend bootRun -PincludeFrontend --args='--spring.profiles.active=local'`을
+저장소 루트에서 사용합니다. IntelliJ Run은 `frontendBuild` 또는 통합 빌드로 결과를 준비한 뒤
+`local` 프로필·`backend/` 작업 디렉터리로 실행하면 같은 화면을 제공합니다.
+
 ## 구성 및 범위
 
 - `src/main.tsx`: React 시작점, 개발 중 StrictMode 적용

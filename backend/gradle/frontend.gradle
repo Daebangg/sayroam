@@ -1,0 +1,53 @@
+// includeFrontend는 JAR 패키징 또는 로컬 실행 전에 프론트를 빌드한다.
+// 옵션 없는 백엔드 명령은 Node 없이 사용하고, local 실행은 기존 생성 결과를 읽을 수 있다.
+def includeFrontend = providers.gradleProperty('includeFrontend').map { it.isEmpty() || it.toBoolean() }.getOrElse(false)
+def frontendDirectory = layout.projectDirectory.dir('../frontend')
+def frontendOutput = layout.buildDirectory.dir('generated/frontend')
+
+def prepareFrontend = tasks.register('prepareFrontend', Delete) {
+    group = 'frontend'
+    description = 'Remove previous frontend output and deployable JAR before the integrated build.'
+    delete frontendOutput
+    // 설치·타입 검사에 실패해도 이전 배포 파일을 새 결과로 사용하지 못하게 한다.
+    // 정리 대상을 실행 전에 선언해 프론트 출력이 없는 경우에도 이전 JAR를 제거한다.
+    delete { tasks.named('bootJar').get().archiveFile.get().asFile }
+}
+
+def frontendInstall = tasks.register('frontendInstall', Exec) {
+    group = 'frontend'
+    description = 'Install the pinned frontend dependencies with the frozen lockfile.'
+    dependsOn prepareFrontend
+    workingDir frontendDirectory
+    commandLine 'pnpm', 'install', '--frozen-lockfile'
+    doNotTrackState('Check the lockfile and installed runtime on every integrated build.')
+}
+
+def frontendBuild = tasks.register('frontendBuild', Exec) {
+    group = 'frontend'
+    description = 'Type-check and build the frontend into backend/build/generated/frontend.'
+    dependsOn frontendInstall
+    workingDir frontendDirectory
+    commandLine 'pnpm', 'run', 'build', '--outDir', frontendOutput.get().asFile.absolutePath, '--emptyOutDir'
+    outputs.dir frontendOutput
+    doNotTrackState('Rebuild with the current frontend sources and Vite environment for deployment.')
+    doLast {
+        if (!frontendOutput.get().file('index.html').asFile.isFile()) {
+            throw new GradleException('Frontend build did not produce index.html')
+        }
+    }
+}
+
+tasks.named('bootJar') {
+    inputs.property 'includeFrontend', includeFrontend
+    if (includeFrontend) {
+        from(frontendBuild) {
+            into 'BOOT-INF/classes/static'
+        }
+    }
+}
+
+tasks.named('bootRun') {
+    if (includeFrontend) {
+        dependsOn frontendBuild
+    }
+}
