@@ -14,7 +14,6 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import lombok.AccessLevel;
-import lombok.Builder;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
@@ -59,13 +58,20 @@ public class RoomMember extends BaseTimeEntity {
 
     private LocalDateTime leftAt;
 
-    @Builder
     private RoomMember(Room room, Long userId, RoomMemberRole role) {
         this.room = room;
         this.userId = userId;
         this.role = role;
         this.status = RoomMemberStatus.JOINED;
         this.joinedAt = LocalDateTime.now();
+    }
+
+    public static RoomMember joinAsOwner(Room room, Long userId) {
+        return new RoomMember(room, userId, RoomMemberRole.OWNER);
+    }
+
+    public boolean isOwner() {
+        return role.equals(RoomMemberRole.OWNER);
     }
 
 }
