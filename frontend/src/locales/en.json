@@ -56,16 +56,13 @@
         "heading": "My trips",
         "create": "Plan a new trip",
         "swiss": "A Swiss winter escape",
-        "swissDates": "Feb 10 – 13, 2026",
-        "italy": "A little southern Italy",
-        "italyDates": "Mar 1 – 8, 2026"
+        "italy": "A little southern Italy"
     },
     "matching": {
         "heading": "Find your people",
         "swiss": "Let’s explore a Swiss winter",
-        "swissDates": "Mar 10 – Mar 18",
         "italy": "Four days in Italy, anyone?",
-        "italyDates": "Feb 18 – Feb 21"
+        "people": "{{current}} / {{total}}"
     },
     "rooms": {
         "heading": "My rooms",
@@ -164,7 +161,9 @@
         "cardTitle": "A travel card with a shared surface",
         "cardDescription": "Trip and companion cards share border, surface and radius tokens.",
         "longLabel": "Send travel notifications and itinerary updates to this browser.",
-        "unavailable": "Unavailable option"
+        "unavailable": "Unavailable option",
+        "localeHeading": "Dates and numbers",
+        "localizedExample": "{{date}} · {{number}}"
     },
     "profile": {
         "settings": "Settings",
@@ -176,6 +175,7 @@
         "dark": "Dark",
         "language": "Language",
         "korean": "한국어",
-        "english": "English"
+        "english": "English",
+        "system": "System"
     }
 }

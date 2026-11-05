@@ -3,14 +3,17 @@ import { ProfileMenu } from "@/components/features/profile/ProfileMenu";
 import { AppearancePreview } from "@/components/features/profile/AppearancePreview";
 import { useTranslation } from "react-i18next";
 import { Brand, Button, Icon, Tooltip } from "@/components/ui";
-import { previewNavigation, type PreviewTheme, type PreviewView } from "@/data/preview";
+import { previewNavigation, type PreviewView } from "@/data/preview";
+import type { ResolvedTheme, ThemePreference } from "@/hooks/useTheme";
+import type { Language } from "@/i18n/locale";
 
 type AppShellProps = {
     view: PreviewView;
-    theme: PreviewTheme;
+    theme: ResolvedTheme;
+    themePreference: ThemePreference;
     onViewChange: (view: PreviewView) => void;
-    onThemeChange: () => void;
-    onLanguageChange: () => void;
+    onThemeChange: (preference: ThemePreference) => void;
+    onLanguageChange: (language: Language) => void;
     onOpenAuth: () => void;
     children: ReactNode;
 };
@@ -18,6 +21,7 @@ type AppShellProps = {
 export function AppShell({
     view,
     theme,
+    themePreference,
     onViewChange,
     onThemeChange,
     onLanguageChange,
@@ -88,7 +92,9 @@ export function AppShell({
                             <Button
                                 variant="ghost"
                                 className="language-button desktop-only"
-                                onClick={onLanguageChange}
+                                onClick={() =>
+                                    onLanguageChange(i18n.resolvedLanguage === "ko" ? "en" : "ko")
+                                }
                                 aria-label={t("common.changeLanguage")}
                             >
                                 {i18n.resolvedLanguage === "ko"
@@ -102,7 +108,7 @@ export function AppShell({
                             <Button
                                 variant="ghost"
                                 className="icon-button"
-                                onClick={onThemeChange}
+                                onClick={() => onThemeChange(theme === "light" ? "dark" : "light")}
                                 aria-label={t(
                                     theme === "light" ? "common.darkMode" : "common.lightMode",
                                 )}
@@ -151,7 +157,7 @@ export function AppShell({
                 <AppearancePreview
                     open={settingsOpen}
                     onClose={() => setSettingsOpen(false)}
-                    theme={theme}
+                    theme={themePreference}
                     onThemeChange={onThemeChange}
                     onLanguageChange={onLanguageChange}
                 />

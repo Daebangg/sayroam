@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Button, Card, DropdownMenu, Icon, Tag, Tooltip } from "@/components/ui";
+import { formatDateRange, formatNumber } from "@/i18n/locale";
 import { matchingPreviews } from "@/data/preview";
 
 export function MatchingPage() {
-    const { t } = useTranslation();
+    const { t, i18n } = useTranslation();
     const [status, setStatus] = useState("looking");
 
     return (
@@ -27,13 +28,28 @@ export function MatchingPage() {
                         <img src={item.image} alt="" />
                         <div className="matching-card__content">
                             <h2>{t(item.title)}</h2>
-                            <p>{t(item.dates)}</p>
+                            <p>
+                                {formatDateRange(
+                                    i18n.resolvedLanguage ?? "ko",
+                                    item.startDate,
+                                    item.endDate,
+                                )}
+                            </p>
                             <div className="matching-card__tags">
                                 <Tag label={t("brand.tagTogether")} tone="primary" />
                             </div>
                             <span className="matching-card__people">
                                 <Icon name="matching" />
-                                {item.people}
+                                {t("matching.people", {
+                                    current: formatNumber(
+                                        i18n.resolvedLanguage ?? "ko",
+                                        item.participants,
+                                    ),
+                                    total: formatNumber(
+                                        i18n.resolvedLanguage ?? "ko",
+                                        item.capacity,
+                                    ),
+                                })}
                             </span>
                         </div>
                         <Tooltip content={t("common.bookmark")} className="matching-card__bookmark">

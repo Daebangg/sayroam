@@ -1,14 +1,15 @@
 import { useId } from "react";
 import { useTranslation } from "react-i18next";
 import { Button, DropdownMenu, Icon, Modal } from "@/components/ui";
-import type { PreviewTheme } from "@/data/preview";
+import { normalizeLanguage, type Language } from "@/i18n/locale";
+import type { ThemePreference } from "@/hooks/useTheme";
 
 type AppearancePreviewProps = {
     open: boolean;
     onClose: () => void;
-    theme: PreviewTheme;
-    onThemeChange: () => void;
-    onLanguageChange: () => void;
+    theme: ThemePreference;
+    onThemeChange: (preference: ThemePreference) => void;
+    onLanguageChange: (language: Language) => void;
 };
 
 export function AppearancePreview({
@@ -35,26 +36,19 @@ export function AppearancePreview({
                 <div>
                     <h3>{t("profile.theme")}</h3>
                     <div className="component-example__row">
-                        <Button
-                            variant={theme === "light" ? "soft" : "outline"}
-                            aria-pressed={theme === "light"}
-                            onClick={() => {
-                                if (theme !== "light") onThemeChange();
-                            }}
-                        >
-                            <Icon name="sun" />
-                            {t("profile.light")}
-                        </Button>
-                        <Button
-                            variant={theme === "dark" ? "soft" : "outline"}
-                            aria-pressed={theme === "dark"}
-                            onClick={() => {
-                                if (theme !== "dark") onThemeChange();
-                            }}
-                        >
-                            <Icon name="moon" />
-                            {t("profile.dark")}
-                        </Button>
+                        {(["system", "light", "dark"] as const).map((option) => (
+                            <Button
+                                key={option}
+                                variant={theme === option ? "soft" : "outline"}
+                                aria-pressed={theme === option}
+                                onClick={() => onThemeChange(option)}
+                            >
+                                {option !== "system" && (
+                                    <Icon name={option === "light" ? "sun" : "moon"} />
+                                )}
+                                {t(`profile.${option}`)}
+                            </Button>
+                        ))}
                     </div>
                 </div>
                 <div>
@@ -66,9 +60,7 @@ export function AppearancePreview({
                             { value: "ko", label: t("profile.korean") },
                             { value: "en", label: t("profile.english") },
                         ]}
-                        onChange={(language) => {
-                            if (language !== i18n.resolvedLanguage) onLanguageChange();
-                        }}
+                        onChange={(language) => onLanguageChange(normalizeLanguage(language))}
                     />
                 </div>
             </div>

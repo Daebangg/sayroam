@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { formatDateRange, formatNumber } from "@/i18n/locale";
 import { useTranslation } from "react-i18next";
 import {
     Brand,
@@ -24,7 +25,7 @@ const colors = ["primary", "sky", "sand", "surface", "text", "muted"] as const;
 const icons: IconName[] = ["home", "trips", "matching", "rooms", "bookmark", "profile"];
 
 export function BrandPage({ onOpenAuth, onLanguageChange }: BrandPageProps) {
-    const { t } = useTranslation();
+    const { t, i18n } = useTranslation();
     const [selection, setSelection] = useState("planning");
     const [dialogOpen, setDialogOpen] = useState(false);
     const [pressed, setPressed] = useState(false);
@@ -275,6 +276,19 @@ export function BrandPage({ onOpenAuth, onLanguageChange }: BrandPageProps) {
                             <h3>{t("brand.cardTitle")}</h3>
                             <p>{t("brand.cardDescription")}</p>
                         </Card>
+                    </Card>
+                    <Card className="component-example ui-card--example">
+                        <h3>{t("brand.localeHeading")}</h3>
+                        <p>
+                            {t("brand.localizedExample", {
+                                date: formatDateRange(
+                                    i18n.resolvedLanguage ?? "ko",
+                                    "2026-02-10",
+                                    "2026-02-13",
+                                ),
+                                number: formatNumber(i18n.resolvedLanguage ?? "ko", 1234567.89),
+                            })}
+                        </p>
                     </Card>
                     <Card className="component-example">
                         <h3>{t("brand.modals")}</h3>

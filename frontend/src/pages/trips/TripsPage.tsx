@@ -1,9 +1,10 @@
 import { useTranslation } from "react-i18next";
 import { Button, Card, Icon, Tag } from "@/components/ui";
+import { formatDateRange } from "@/i18n/locale";
 import { tripPreviews } from "@/data/preview";
 
 export function TripsPage() {
-    const { t } = useTranslation();
+    const { t, i18n } = useTranslation();
 
     return (
         <main className="workspace-page">
@@ -33,7 +34,13 @@ export function TripsPage() {
                                 <Tag label={t("brand.planning")} />
                             </div>
                             <div className="trip-card__meta">
-                                <p>{t(trip.dates)}</p>
+                                <p>
+                                    {formatDateRange(
+                                        i18n.resolvedLanguage ?? "ko",
+                                        trip.startDate,
+                                        trip.endDate,
+                                    )}
+                                </p>
                                 <Icon name="matching" />
                             </div>
                         </div>
