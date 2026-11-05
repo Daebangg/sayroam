@@ -1,6 +1,7 @@
 package com.daebangg.sayroam.room.domain;
 
 import com.daebangg.sayroam.global.entity.BaseTimeEntity;
+import com.daebangg.sayroam.global.exception.BusinessException;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -68,6 +69,12 @@ public class RoomMember extends BaseTimeEntity {
 
     public static RoomMember joinAsOwner(Room room, Long userId) {
         return new RoomMember(room, userId, RoomMemberRole.OWNER);
+    }
+
+    public void ensureJoined() {
+        if (status != RoomMemberStatus.JOINED) {
+            throw new BusinessException(RoomErrorCode.ROOM_ACCESS_DENIED);
+        }
     }
 
     public boolean isOwner() {
