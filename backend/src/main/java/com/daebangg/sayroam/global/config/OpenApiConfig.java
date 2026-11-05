@@ -1,5 +1,9 @@
 package com.daebangg.sayroam.global.config;
 
+import com.daebangg.sayroam.auth.application.error.AuthErrorCode;
+import com.daebangg.sayroam.global.exception.CommonErrorCode;
+import com.daebangg.sayroam.global.exception.ErrorCode;
+import com.daebangg.sayroam.room.domain.RoomErrorCode;
 import io.swagger.v3.oas.models.Components;
 import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.PathItem;
@@ -18,9 +22,11 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springdoc.core.customizers.OpenApiCustomizer;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Stream;
 
 @Configuration
 public class OpenApiConfig {
@@ -46,6 +52,10 @@ public class OpenApiConfig {
 
     @Bean
     OpenAPI openAPI(Optional<BuildProperties> buildProperties) {
+        var errorCode = new StringSchema();
+        errorCode.setEnum(Stream.of(CommonErrorCode.values(), AuthErrorCode.values(), RoomErrorCode.values())
+                .flatMap(Arrays::stream).map(ErrorCode::getCode).distinct().sorted().toList());
+        errorCode.setDescription("백엔드에 정의된 업무·공통 오류 코드. Spring 기본 요청 오류와 향후 추가 코드는 별도 문자열로 받을 수 있습니다.");
         // ProblemDetail의 동적 확장 필드도 프론트엔드 타입 생성기에 명시적으로 노출한다.
         Schema<Object> fieldError = new Schema<>();
         fieldError.setType("object");
@@ -61,7 +71,9 @@ public class OpenApiConfig {
                 .addProperty("status", new IntegerSchema().example(401))
                 .addProperty("detail", new StringSchema().example("Authentication is required"))
                 .addProperty("instance", new StringSchema().format("uri-reference").example("/api/users/me"))
-                .addProperty("code", new StringSchema().example("UNAUTHENTICATED"))
+                .addProperty("code", new Schema<>().addAnyOfItem(new Schema<>().$ref("#/components/schemas/ApiErrorCode"))
+                        .addAnyOfItem(new StringSchema().description("Spring HTTP 상태 이름·HTTP_<상태 코드> 및 알 수 없는 향후 코드"))
+                        .example("UNAUTHENTICATED"))
                 .addProperty("retryAfterSeconds", new IntegerSchema().format("int64")
                         .description("재시도 대기가 있는 429 응답에만 포함하는 대기 초. Retry-After 헤더와 같은 값"))
                 .addProperty("errors", new ArraySchema().items(new Schema<>().$ref("#/components/schemas/FieldError")));
@@ -77,6 +89,7 @@ public class OpenApiConfig {
                         .type(SecurityScheme.Type.APIKEY).in(SecurityScheme.In.COOKIE).name("sayroam_refresh")
                         .description("로그인에서 설정하는 HttpOnly Refresh 쿠키. 브라우저가 같은 호스트의 갱신·로그아웃 요청에 자동 전송합니다. Authorize에 값을 수동 입력하는 방식이 아니며, XSRF-TOKEN 쿠키와 X-XSRF-TOKEN 헤더도 필요합니다. 갱신·로그아웃에서는 Authorization 헤더를 사용하지 않습니다. 로그아웃은 Refresh 쿠키가 없어도 브라우저 정리를 허용합니다."))
                 .addSchemas("ApiProblem", problem)
+                .addSchemas("ApiErrorCode", errorCode)
                 .addSchemas("FieldError", fieldError)
                 .addResponses("BadRequest", problemResponse("400: INVALID_INPUT 또는 Spring 요청 오류. 검증 실패 시 errors 포함"))
                 .addResponses("Unauthorized", problemResponse("401: UNAUTHENTICATED. 토큰 누락·만료·변조·잘못된 발급자/대상·유형·인증 버전 또는 탈퇴·삭제 회원. WWW-Authenticate: Bearer"))

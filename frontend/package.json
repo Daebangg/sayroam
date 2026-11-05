@@ -15,7 +15,10 @@
         "preview": "vite preview",
         "format": "prettier --write .",
         "format:check": "prettier --check .",
-        "check": "pnpm typecheck && pnpm lint && pnpm format:check"
+        "check": "pnpm typecheck && pnpm lint && pnpm format:check",
+        "api:pull": "node scripts/openapi.mts pull",
+        "api:generate": "node scripts/openapi.mts generate",
+        "api:check": "node scripts/openapi.mts check"
     },
     "dependencies": {
         "i18next": "26.7.1",
@@ -33,6 +36,7 @@
         "eslint-plugin-react-hooks": "7.1.1",
         "eslint-plugin-react-refresh": "0.5.7",
         "globals": "17.13.0",
+        "openapi-typescript": "7.13.0",
         "prettier": "3.9.10",
         "typescript": "6.0.3",
         "typescript-eslint": "8.72.1",
