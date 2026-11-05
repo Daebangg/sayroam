@@ -21,6 +21,10 @@ pnpm install --frozen-lockfile
 
 현재 기준은 Node.js 24.18.0, pnpm 12.16.1입니다. nvm 이외의 도구로 Node.js를 관리한다면
 동일한 버전을 준비합니다. 기존 pnpm이 있다면 프로젝트에서 고정한 버전을 사용하는지 확인합니다.
+`devEngines.runtime`에도 Node 24.18.0을 고정했습니다. `pnpm install`은 처음 한 번 필요한 런타임을
+설치하고 이후 프로젝트 명령에 사용하므로, 터미널의 기본 Node가 20이어도 pnpm 명령은 Node 24로
+실행됩니다. `.mts` 실행에서 `ERR_UNKNOWN_FILE_EXTENSION`이 발생하면 `pnpm install` 후 다시
+실행하거나 `.nvmrc`에 맞춰 `nvm use`를 실행합니다.
 의존성을 추가·갱신할 때는 `pnpm install`로 이 디렉터리의 `pnpm-lock.yaml`도 함께 갱신합니다.
 `pnpm-workspace.yaml`은 이 앱의 pnpm 설치 정책 설정이며 루트 JavaScript workspace를 만들지 않습니다.
 
@@ -88,11 +92,70 @@ pnpm install --frozen-lockfile
 OAuth 이동·이메일 인증·계정 생성·비밀번호 찾기·계정 기억·여행 저장·채팅은 실행하지 않습니다.
 설정 메뉴의 단축키는 macOS `⌘,`, 다른 환경 `Ctrl+,`이며 입력 중이나 다른 모달 안에서는 실행하지 않습니다.
 
-OpenAPI 명세 수신·스냅샷·타입 생성은 #53에서 구현할 예정이며 `contracts/`나 생성 API 타입은
-아직 없습니다. 현재 화면은 API를 호출하지 않으므로 임시 요청 타입이나 수기 API 계약을 추가하지 않습니다.
-후속 연결에서는 `FRONTEND.md`의 생성 타입 → API·오류 → 도메인 훅 → 페이지 방향을 따릅니다.
+화면은 API를 호출하지 않습니다. 후속 연결에서는 `FRONTEND.md`의 생성 타입 → API·오류 → 도메인 훅
+→ 페이지 방향을 따릅니다. 요청·응답을 수기로 중복 선언하지 않습니다.
 
-프로젝트 설정은 [#52](https://github.com/Daebangg/sayroam/issues/52) 범위입니다.
+## OpenAPI 계약 갱신
+
+백엔드의 기존 `exportOpenApi` 명령으로 실행 중인 local 서버에서 JSON을 받아 검증한 뒤,
+명세와 타입을 함께 저장합니다. 아래 명령은 모두 `frontend/`에서 실행합니다.
+
+```bash
+pnpm api:pull
+# 주소를 명시하거나 환경변수로 설정
+pnpm api:pull --url http://127.0.0.1:18080/v3/api-docs
+OPENAPI_URL='http://[::1]:8080/v3/api-docs' pnpm api:pull
+# 백엔드가 이미 내보낸 파일을 사용하는 경우
+pnpm api:pull --file ../backend/build/openapi/openapi.json
+```
+
+주소 우선순위는 `--url` → 셸의 `OPENAPI_URL` → `.env.local`의 `OPENAPI_URL` →
+`http://localhost:8080/v3/api-docs`입니다. 개인 서버 주소는 `.env.example`을 `.env.local`로 복사해
+설정합니다. IPv4/IPv6에서 서로 다른 프로세스가 8080 포트를 사용하면 실제 Spring 서버가 응답하는
+주소(예: `http://[::1]:8080/v3/api-docs`)를 지정합니다. `.env.local`은 Git에서 제외합니다.
+주소는 빌드용 설정이며 브라우저 환경변수에 넣지 않습니다. 수신은 Java/Gradle과 실행 중인 백엔드가
+필요하고, `--file`은 해당 파일만 사용합니다. HTTP·연결·JSON·스키마·참조 오류는 실패로 처리하며
+검증·타입 생성을 마치기 전에는 기존 프론트 계약 파일을 교체하지 않습니다.
+Windows에서는 `JAVA_HOME/bin/java.exe` 또는 PATH의 `java.exe`로 같은 Gradle Wrapper JAR를
+셸 없이 실행합니다. macOS·Linux에서는 기존 `gradlew`를 사용합니다.
+
+| 파일                          | 역할                                                   |
+| ----------------------------- | ------------------------------------------------------ |
+| `contracts/openapi.json`      | Git으로 관리하는 백엔드 명세 스냅샷                    |
+| `src/api/generated/schema.ts` | `openapi-typescript`로 생성한 경로·요청·응답·오류 타입 |
+| `scripts/openapi.mts`         | 명세 수신·검증·생성 및 일치 여부 확인                  |
+
+```bash
+pnpm api:generate # 저장된 명세로 재생성: 백엔드·네트워크 불필요
+pnpm api:check    # 스냅샷 형식과 생성 타입의 일치 검사, 파일을 수정하지 않음
+pnpm build       # 저장된 계약으로 빌드: 백엔드 불필요
+git diff -- contracts/openapi.json src/api/generated/schema.ts
+```
+
+백엔드 API 변경 시 `api:pull` → diff 검토 → `api:check` → 빌드 후 명세와 타입을 같이 커밋합니다.
+`api:check`는 저장된 명세와 생성 결과만 비교합니다. 실행 중인 서버와의 차이는 다시 수신한 뒤
+Git diff로 확인합니다. 오프라인 재생성을 보장하기 위해 외부 `$ref`는 받지 않습니다.
+키를 정렬하고 저장소 포맷으로 생성하며, 생성 파일은 직접 수정하거나 수동 린트 수정을 하지 않습니다.
+앱은 TypeScript 6을 사용하고, 생성기 내부는 해당 도구의 peer 요구에 맞는 TypeScript 5.9로 분리합니다.
+
+```ts
+import type { components, paths } from "@/api/generated/schema";
+
+type LoginRequest = paths["/api/auth/login"]["post"]["requestBody"]["content"]["application/json"];
+type LoginResponse =
+    paths["/api/auth/login"]["post"]["responses"][200]["content"]["application/json"];
+type ApiProblem = components["schemas"]["ApiProblem"];
+type KnownErrorCode = components["schemas"]["ApiErrorCode"];
+```
+
+상태 코드별 응답·헤더와 `application/problem+json`, 오류의 `code`·필드별 `errors`·선택적인
+`retryAfterSeconds`를 그대로 가져옵니다. `ApiErrorCode`는 백엔드 오류 enum에서 생성한 알려진 코드이고,
+`ApiProblem.code`는 Spring 기본 요청 오류와 새 코드도 수용하는 문자열입니다. 알 수 없는 코드는
+공통 오류 처리에서 대체 메시지로 다룹니다(#55). 응답 필수값·선택값·nullable과 enum을 유지하며,
+문자열 길이·패턴·이메일 형식 등은 명세에 남습니다. TypeScript 타입 자체가 런타임 입력 검증을
+수행하지는 않습니다.
+
+프로젝트 설정과 화면 초안은 [#60](https://github.com/Daebangg/sayroam/issues/60)으로 통합했습니다.
 OpenAPI 명세·타입 연동은 [#53](https://github.com/Daebangg/sayroam/issues/53),
 백엔드 빌드의 정적 파일 포함은 [#54](https://github.com/Daebangg/sayroam/issues/54),
 공통 API·인증 처리는 [#55](https://github.com/Daebangg/sayroam/issues/55),

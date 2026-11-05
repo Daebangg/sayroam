@@ -38,6 +38,7 @@ public class LogoutController {
             @ApiResponse(responseCode = "500", ref = "#/components/responses/InternalServerError")
     })
     @Parameter(name = RefreshTokenCookie.NAME, in = ParameterIn.COOKIE, required = false,
+            schema = @Schema(type = "string"),
             description = "브라우저가 자동 전송하는 HttpOnly 쿠키. 없는 경우에도 CSRF 검증 후 204로 브라우저 정리")
     @PostMapping("/api/auth/logout")
     public ResponseEntity<Void> logout(HttpServletRequest request) {

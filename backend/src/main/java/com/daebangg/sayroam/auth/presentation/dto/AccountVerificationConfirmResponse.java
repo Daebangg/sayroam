@@ -4,6 +4,7 @@ import com.daebangg.sayroam.auth.application.service.AccountVerificationService;
 import com.daebangg.sayroam.auth.domain.AccountVerificationPurpose;
 import io.swagger.v3.oas.annotations.media.Schema;
 
+@Schema(requiredProperties = {"accountProof", "purpose", "expiresInSeconds"})
 public record AccountVerificationConfirmResponse(
         @Schema(description = "회원·현재 이메일·목적에 묶인 일회성 난수 증명. 가입용 증명·로그인 토큰이 아님")
         String accountProof,

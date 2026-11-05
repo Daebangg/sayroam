@@ -301,6 +301,12 @@ API 변경 시 버전을 관리하고 전달 파일과 소스 커밋을 함께 �
 명세의 서버 URL은 `/`로 고정하여 개발자별 호스트·포트가 계약 파일에 섞이지 않게 합니다.
 프론트엔드는 이 파일을 타입 생성기의 입력으로 사용할 수 있습니다.
 
+프론트엔드의 `pnpm api:pull`도 이 내보내기 작업을 호출하며 명세 스냅샷과 생성 타입을 함께 갱신합니다.
+이미 내보낸 파일은 `pnpm api:pull --file ../backend/build/openapi/openapi.json`으로 가져옵니다
+(`frontend/`에서 실행). 재생성·변경 확인은 [프론트엔드 계약 안내](../frontend/README.md#openapi-계약-갱신)를 따릅니다.
+응답 DTO의 필수 필드와 nullable을 명세에 표시하고, 업무·공통 오류 enum은 `ApiErrorCode`로 제공합니다.
+`ApiProblem.code`는 Spring 기본 요청 오류나 새 코드도 받을 수 있도록 문자열 대체를 유지합니다.
+
 테스트 구성과 실제 검증 범위는 [인증 테스트 안내](docs/auth-testing.md)를 참고하세요.
 
 `localhost:8080` 내보내기가 404인데 브라우저에서는 정상이라면 IPv4/IPv6의 포트 점유가
