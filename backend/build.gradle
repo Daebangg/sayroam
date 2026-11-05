@@ -68,6 +68,7 @@ tasks.named('bootRun') {
 }
 
 apply from: 'gradle/flyway.gradle'
+apply from: 'gradle/frontend.gradle'
 def composeTasks = [
     dockerInit: [description: 'Create and start local MySQL and Redis, waiting until healthy (preserves MySQL data).', args: ['up', '-d', '--wait', '--wait-timeout', '180']],
     dockerStop: [description: 'Stop local MySQL and Redis without removing containers.', args: ['stop']],
