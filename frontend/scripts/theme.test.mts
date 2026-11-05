@@ -108,6 +108,25 @@ test("미리보기 URL은 저장하지 않고 UI 선택 시 해당 매개변수�
     assert.equal(app.window.location.search, "?view=brand&lang=en");
 });
 
+test("테마 미리보기 중에는 다른 탭의 저장 변경·삭제보다 URL이 우선", () => {
+    const app = browser({ saved: "light", query: "?theme=dark" });
+    app.stored("light");
+    assert.equal(app.root.dataset.theme, "dark");
+    app.stored();
+    assert.equal(app.root.dataset.theme, "dark");
+});
+
+test("UI 선택으로 미리보기를 해제하면 다른 탭의 변경·삭제를 다시 반영", () => {
+    const app = browser({ saved: "light", query: "?theme=dark&lang=en" });
+    app.controller.setPreference("light");
+    assert.equal(app.window.location.search, "?lang=en");
+    app.stored("dark");
+    assert.equal(app.root.dataset.theme, "dark");
+    app.stored();
+    assert.equal(app.controller.getSnapshot().preference, "system");
+    assert.equal(app.root.dataset.theme, "light");
+});
+
 test("동일 상태의 snapshot을 유지하고 구독 해제 후 알림 중단", () => {
     const app = browser();
     const initial = app.controller.getSnapshot();

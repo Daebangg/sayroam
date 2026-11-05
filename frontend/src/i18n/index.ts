@@ -67,6 +67,7 @@ export function setLanguage(language: Language): void {
 
 if (typeof window !== "undefined") {
     window.addEventListener("storage", (event) => {
+        if (new URLSearchParams(window.location.search).has("lang")) return;
         if (event.key === languageStorageKey || event.key === null) {
             void i18n.changeLanguage(savedLanguage());
         }

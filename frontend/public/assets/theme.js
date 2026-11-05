@@ -46,6 +46,7 @@
         if (snapshot.preference === "system") apply("system");
     });
     window.addEventListener("storage", (event) => {
+        if (new URLSearchParams(window.location.search).has("theme")) return;
         if (event.key === storageKey || event.key === null) apply(read());
     });
 })();
