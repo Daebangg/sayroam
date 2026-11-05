@@ -4,6 +4,7 @@ import { dirname, resolve } from "node:path";
 import { loadEnvFile } from "node:process";
 import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
+import { createConfig } from "@redocly/openapi-core";
 import openapiTS, { astToString } from "openapi-typescript";
 import { format, resolveConfig } from "prettier";
 
@@ -80,7 +81,15 @@ async function render(source: string): Promise<{ snapshot: string; types: string
         ...config,
         parser: "json",
     });
-    const ast = await openapiTS(snapshot, { alphabetize: true });
+    const redocly = await createConfig({
+        extends: [],
+        rules: {
+            struct: "error",
+            "operation-operationId-unique": "error",
+            "no-unresolved-refs": "error",
+        },
+    });
+    const ast = await openapiTS(snapshot, { alphabetize: true, redocly });
     const types = await format(
         "/** OpenAPI에서 자동 생성합니다. 직접 수정하지 말고 pnpm api:generate를 실행하세요. */\n" +
             astToString(ast),

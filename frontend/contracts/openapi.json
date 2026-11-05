@@ -961,7 +961,8 @@
                     {
                         "description": "브라우저가 자동 전송하는 HttpOnly 쿠키. 없는 경우에도 CSRF 검증 후 204로 브라우저 정리",
                         "in": "cookie",
-                        "name": "sayroam_refresh"
+                        "name": "sayroam_refresh",
+                        "schema": { "type": "string" }
                     }
                 ],
                 "responses": {

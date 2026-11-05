@@ -121,6 +121,9 @@ class AuthIntegrationTests extends DatabaseIntegrationTest {
         assertThat(passwordSecurity.get(0).has("csrfToken")).isTrue();
         assertThat(spec.path("paths").path("/api/auth/login").path("post").path("parameters").isMissingNode()).isTrue();
         assertThat(spec.path("paths").path("/api/auth/csrf").path("get").path("parameters").isMissingNode()).isTrue();
+        var logoutCookie = spec.path("paths").path("/api/auth/logout").path("post").path("parameters").get(0);
+        assertThat(logoutCookie.path("name").asText()).isEqualTo("sayroam_refresh");
+        assertThat(logoutCookie.path("schema").path("type").asText()).isEqualTo("string");
         for (String path : new String[]{"/api/auth/login", "/api/auth/refresh", "/api/auth/logout"}) {
             mvc.perform(post(path).servletPath(path).cookie(csrf).header("Referer", "http://localhost/swagger-ui/index.html"))
                     .andExpect(status().isForbidden());
