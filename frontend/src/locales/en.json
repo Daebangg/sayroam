@@ -1,0 +1,169 @@
+{
+    "app": {
+        "name": "Sayroam",
+        "description": "A place to plan your trip, find your people, and make memories together."
+    },
+    "navigation": {
+        "plaza": "Plaza",
+        "trips": "Trips",
+        "matching": "Matching",
+        "rooms": "Rooms",
+        "home": "Go home",
+        "main": "Main navigation"
+    },
+    "common": {
+        "search": "Search",
+        "changeLanguage": "Change language",
+        "englishShort": "EN",
+        "koreanShort": "KO",
+        "darkMode": "View dark theme",
+        "lightMode": "View light theme",
+        "notifications": "Notifications",
+        "account": "My account",
+        "close": "Close",
+        "filter": "Filter",
+        "bookmark": "Save",
+        "join": "Join the journey",
+        "disabled": "Coming soon",
+        "removeTag": "Remove {{name}} tag"
+    },
+    "home": {
+        "titleFirst": "Travel together.",
+        "titleSecond": "Roam a little freer.",
+        "descriptionFirst": "Plan your trip. Find your people.",
+        "descriptionSecond": "Make memories along the way.",
+        "start": "Start your journey"
+    },
+    "auth": {
+        "welcome": "Welcome to Sayroam.",
+        "description": "A little closer. A little more together.",
+        "google": "Continue with Google",
+        "haveAccount": "Already have an account?",
+        "login": "Log in",
+        "kakao": "Continue with Kakao",
+        "naver": "Continue with NAVER",
+        "title": "Log in or join Sayroam",
+        "or": "or",
+        "remember": "Remember me on this browser",
+        "emailLabel": "Email",
+        "startEmail": "Continue with email",
+        "newHere": "New here?",
+        "signup": "Create an account",
+        "forgot": "Forgot your password?",
+        "reset": "Reset password"
+    },
+    "trips": {
+        "heading": "My trips",
+        "create": "Plan a new trip",
+        "swiss": "A Swiss winter escape",
+        "swissDates": "Feb 10 – 13, 2026",
+        "italy": "A little southern Italy",
+        "italyDates": "Mar 1 – 8, 2026"
+    },
+    "matching": {
+        "heading": "Find your people",
+        "swiss": "Let’s explore a Swiss winter",
+        "swissDates": "Mar 10 – Mar 18",
+        "italy": "Four days in Italy, anyone?",
+        "italyDates": "Feb 18 – Feb 21"
+    },
+    "rooms": {
+        "heading": "My rooms",
+        "create": "Create a room",
+        "swiss": "The Swiss escape",
+        "swissMessage": "Already dreaming of our next trip · 5 min ago",
+        "italy": "Planning for Italy",
+        "italyMessage": "Sounds good, see you there! · 2 hr ago"
+    },
+    "brand": {
+        "guide": "Explore the brand",
+        "heading": "Sayroam Brand",
+        "logo": "Brand",
+        "appIcon": "Sayroam app icon",
+        "mark": "Sayroam mountain mark",
+        "downloadLogo": "Logo SVG",
+        "downloadIcon": "App icon SVG",
+        "wordmarks": "Wordmark Variations",
+        "wordmarkPrimary": "Sayroam",
+        "wordmarkCamel": "SayRoam",
+        "wordmarkLower": "sayroam",
+        "wordmarkDot": "Say·Roam",
+        "palette": "Color Palette",
+        "icons": "Icon Set · Outline, 2px",
+        "components": "UI Components",
+        "colors": {
+            "primary": {
+                "name": "Primary",
+                "hex": "#4F7CFF"
+            },
+            "sky": {
+                "name": "Sky",
+                "hex": "#E8F1FF"
+            },
+            "sand": {
+                "name": "Sand",
+                "hex": "#FFF7E9"
+            },
+            "surface": {
+                "name": "Surface",
+                "hex": "#FFFFFF"
+            },
+            "text": {
+                "name": "Text",
+                "hex": "#1F2937"
+            },
+            "muted": {
+                "name": "Muted",
+                "hex": "#94A3B8"
+            }
+        },
+        "buttons": "Buttons",
+        "primaryButton": "Primary",
+        "secondaryButton": "Secondary",
+        "delete": "Delete",
+        "save": "Save",
+        "dropdowns": "Dropdowns",
+        "tripStatus": "Trip status",
+        "planning": "Planning",
+        "looking": "Finding people",
+        "ready": "Ready to go",
+        "tags": "Tags",
+        "tagFree": "Free to roam",
+        "tagWinter": "Winter escape",
+        "tagTogether": "Better together",
+        "tagRemovable": "Removable tag",
+        "reset": "Show again",
+        "tooltips": "Tooltips · Shortcuts",
+        "selectTool": "Select",
+        "hoverFocus": "Hover or focus",
+        "inputs": "Input · Checkbox",
+        "emailPlaceholder": "you@example.com",
+        "modals": "Modals",
+        "openModal": "Open a modal",
+        "openAuth": "Open login",
+        "modalTitle": "Ready for your next journey?",
+        "modalDescription": "From the first spark of a plan to the stories you bring home, make it together with Sayroam.",
+        "cancel": "Not now",
+        "continue": "Continue",
+        "downloadLogoPng": "Logo PNG",
+        "downloadLightLogoPng": "Light logo PNG",
+        "downloadWordmarkPng": "Wordmark PNG",
+        "downloadLightWordmarkPng": "Light wordmark PNG",
+        "downloadMarkPng": "Mark PNG",
+        "downloadLightMarkPng": "Light mark PNG",
+        "downloadIconPng": "App icon PNG",
+        "downloadFaviconPng": "Favicon PNG"
+    },
+    "profile": {
+        "settings": "Settings",
+        "welcome": "Ready for your next journey?",
+        "description": "Plan a trip. Find your people.",
+        "login": "Log in",
+        "theme": "Appearance",
+        "light": "Light",
+        "dark": "Dark",
+        "language": "Language",
+        "korean": "한국어",
+        "english": "English"
+    }
+}
