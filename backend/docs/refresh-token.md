@@ -7,7 +7,10 @@
 ## 실행 설정과 토큰 전달
 
 로그인·갱신은 MySQL과 Redis를 모두 사용합니다. Access Token으로 보호 API에 접근할 때는 Redis를 사용하지 않습니다.
-새 비밀값·DB 테이블·마이그레이션은 추가하지 않으며 기존 서명 키와 Redis 연결 설정을 사용합니다.
+새 비밀값·DB 테이블은 추가하지 않고 기존 서명 키와 Redis 연결 설정을 사용합니다.
+배포 전에 `V2__add_user_auth_version.sql`로 `users.auth_version`을 추가해야 합니다.
+미적용 상태에서는 로그인·갱신·Bearer 인증을 정상 처리할 수 없습니다.
+인증 버전이 없는 이전 형식의 Access Token·Refresh Token은 인증·갱신에 사용할 수 없으므로 재로그인이 필요합니다.
 
 | 설정 | 기본값 | 허용 범위·의미 |
 | --- | --- | --- |
@@ -67,7 +70,7 @@ Swagger의 인증 입력은 CSRF 헤더를 대신하지 않습니다.
 
 로그인마다 독립적인 UUID를 만듭니다. Redis 키는 `sayroam:auth:refresh:{UUID}`이며 다음을 저장합니다.
 
-- userId, status(active/revoked), currentDigest(토큰 전체 원문의 SHA-256)
+- userId, authVersion, status(active/revoked), currentDigest(토큰 전체 원문의 SHA-256)
 - expiresAtEpochMillis, Redis TTL, rotations, maxRotations
 - used:<이전 토큰 다이제스트> 사용 이력
 
