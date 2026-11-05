@@ -6,6 +6,7 @@ import com.daebangg.sayroam.auth.application.port.out.AccountRegistration;
 import com.daebangg.sayroam.auth.application.port.out.EmailVerificationStore;
 import com.daebangg.sayroam.auth.application.port.out.PasswordHasher;
 import com.daebangg.sayroam.auth.domain.EmailAddress;
+import com.daebangg.sayroam.auth.domain.PasswordPolicy;
 import com.daebangg.sayroam.auth.domain.VerificationDigests;
 import org.springframework.stereotype.Service;
 
@@ -23,6 +24,9 @@ public class SignupService {
     }
 
     public long signup(String rawEmail, String password, String nickname, String signupProof) {
+        if (!PasswordPolicy.isValid(password)) {
+            throw new AuthException(AuthErrorCode.PASSWORD_POLICY_VIOLATION);
+        }
         String email = EmailAddress.normalize(rawEmail);
         var proof = verificationStore.consumeSignupProof(email, VerificationDigests.sha256(signupProof));
         switch (proof.status()) {

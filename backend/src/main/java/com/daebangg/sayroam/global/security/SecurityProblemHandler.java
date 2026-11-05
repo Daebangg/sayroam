@@ -5,6 +5,8 @@ import com.daebangg.sayroam.global.exception.CommonErrorCode;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.http.MediaType;
+import org.springframework.http.HttpHeaders;
+import org.springframework.security.authentication.AuthenticationServiceException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.web.AuthenticationEntryPoint;
@@ -25,7 +27,12 @@ public final class SecurityProblemHandler implements AuthenticationEntryPoint, A
     @Override
     public void commence(HttpServletRequest request, HttpServletResponse response,
                          AuthenticationException exception) throws IOException {
-        write(request, response, CommonErrorCode.UNAUTHENTICATED);
+        boolean unavailable = exception instanceof AuthenticationServiceException;
+        if (!unavailable) {
+            response.setHeader(HttpHeaders.WWW_AUTHENTICATE, "Bearer");
+        }
+        write(request, response, unavailable
+                ? CommonErrorCode.AUTHENTICATION_UNAVAILABLE : CommonErrorCode.UNAUTHENTICATED);
     }
 
     @Override
@@ -40,6 +47,7 @@ public final class SecurityProblemHandler implements AuthenticationEntryPoint, A
         var problem = ApiProblems.of(code);
         problem.setInstance(URI.create(request.getRequestURI()));
         response.setStatus(code.getStatus().value());
+        response.setHeader(HttpHeaders.CACHE_CONTROL, "no-store");
         response.setContentType(MediaType.APPLICATION_PROBLEM_JSON_VALUE);
         jsonMapper.writeValue(response.getOutputStream(), problem);
     }

@@ -9,6 +9,7 @@ import org.springframework.http.HttpStatus;
 @RequiredArgsConstructor
 public enum CommonErrorCode implements ErrorCode {
     UNAUTHENTICATED(HttpStatus.UNAUTHORIZED, "UNAUTHENTICATED", "Authentication is required"),
+    AUTHENTICATION_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "AUTHENTICATION_UNAVAILABLE", "Authentication is temporarily unavailable"),
     ACCESS_DENIED(HttpStatus.FORBIDDEN, "ACCESS_DENIED", "Access is denied"),
     INVALID_CSRF_TOKEN(HttpStatus.FORBIDDEN, "INVALID_CSRF_TOKEN", "CSRF token is missing or invalid"),
     INVALID_INPUT(HttpStatus.BAD_REQUEST, "INVALID_INPUT", "Invalid input value"),

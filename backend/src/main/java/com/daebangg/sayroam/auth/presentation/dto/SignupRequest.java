@@ -1,5 +1,6 @@
 package com.daebangg.sayroam.auth.presentation.dto;
 
+import com.daebangg.sayroam.auth.domain.PasswordPolicy;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
@@ -11,7 +12,7 @@ public record SignupRequest(
         @NotBlank @Email @Size(min = 1, max = 254)
         @Pattern(regexp = "^[!-~]+$", message = "must be an ASCII email address") String email,
         @Schema(description = "8~128자. 공백 제거·대소문자 변환 없이 해시 처리", accessMode = Schema.AccessMode.WRITE_ONLY)
-        @NotBlank @Size(min = 8, max = 128) String password,
+        @NotBlank @Size(min = PasswordPolicy.MIN_LENGTH, max = PasswordPolicy.MAX_LENGTH) String password,
         @Schema(description = "앞뒤 공백 제거 후 1~50자. 제어 문자 불가", example = "여행자")
         @NotBlank @Size(min = 1, max = 50)
         @Pattern(regexp = "^[^\\x00-\\x1F\\x7F]+$", message = "must not contain control characters") String nickname,

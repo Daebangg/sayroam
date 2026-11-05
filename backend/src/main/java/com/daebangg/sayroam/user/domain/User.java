@@ -53,6 +53,9 @@ public class User extends BaseTimeEntity {
 
     private LocalDateTime deletedAt;
 
+    @Column(nullable = false)
+    private long authVersion;
+
     public static User verifiedEmailMember(String email, String nickname, LocalDateTime emailVerifiedAt) {
         User user = new User(Objects.requireNonNull(email), Objects.requireNonNull(nickname),
                 null, null, null, Role.USER);
@@ -62,6 +65,33 @@ public class User extends BaseTimeEntity {
 
     public Long getId() {
         return id;
+    }
+
+    public boolean allowsAccountChange(String verifiedEmail, long expectedAuthVersion) {
+        return deletedAt == null && emailVerifiedAt != null && email != null
+                && email.equals(verifiedEmail) && authVersion == expectedAuthVersion;
+    }
+
+    /** 자격 정보 변경과 같은 트랜잭션에서 호출한다. */
+    public void invalidateLogins() {
+        authVersion = Math.incrementExact(authVersion);
+    }
+
+    /** 회원 ID는 공유 기록의 참조용으로 남기고 계정 프로필과 권한을 정리한다. */
+    public void withdraw(LocalDateTime withdrawnAt) {
+        Objects.requireNonNull(withdrawnAt, "withdrawnAt");
+        if (deletedAt != null) {
+            throw new IllegalStateException("Account is already withdrawn");
+        }
+        invalidateLogins();
+        deletedAt = withdrawnAt;
+        email = null;
+        emailVerifiedAt = null;
+        nickname = "탈퇴한 회원";
+        profileImageUrl = null;
+        gender = null;
+        birthYear = null;
+        role = Role.USER;
     }
 
     @Builder

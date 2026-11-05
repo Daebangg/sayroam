@@ -3,6 +3,7 @@ package com.daebangg.sayroam.auth.infrastructure.smtp;
 import com.daebangg.sayroam.auth.application.error.AuthErrorCode;
 import com.daebangg.sayroam.auth.application.error.AuthException;
 import com.daebangg.sayroam.auth.application.port.out.VerificationEmailSender;
+import com.daebangg.sayroam.auth.domain.AccountVerificationPurpose;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -29,11 +30,25 @@ public class SmtpVerificationEmailSender implements VerificationEmailSender {
 
     @Override
     public void sendVerificationCode(String recipient, String code) {
+        send(recipient, "이메일 인증", "이메일 인증 코드: " + code);
+    }
+
+    @Override
+    public void sendAccountVerificationCode(String recipient, String code, AccountVerificationPurpose purpose) {
+        String action = switch (purpose) {
+            case PASSWORD_CHANGE -> "비밀번호 변경";
+            case ACCOUNT_DELETION -> "회원 탈퇴";
+        };
+        send(recipient, action + " 본인 확인", action + " 본인 확인 코드: " + code
+                + "\n이 코드는 " + action + " 본인 확인에만 사용할 수 있습니다.");
+    }
+
+    private void send(String recipient, String subject, String body) {
         SimpleMailMessage message = new SimpleMailMessage();
         message.setFrom(from);
         message.setTo(recipient);
-        message.setSubject("[Sayroam] 이메일 인증 코드");
-        message.setText("이메일 인증 코드: " + code + "\n본인이 요청하지 않았다면 이 메일을 무시해 주세요.");
+        message.setSubject("[Sayroam] " + subject + " 코드");
+        message.setText(body + "\n본인이 요청하지 않았다면 이 메일을 무시해 주세요.");
         try {
             mailSender.send(message);
         } catch (MailException exception) {

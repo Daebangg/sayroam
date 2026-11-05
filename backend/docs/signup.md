@@ -49,12 +49,12 @@ Cookie: XSRF-TOKEN=<동일한 값>
 }
 ```
 
-로그인 토큰·비밀번호·증명은 반환하지 않습니다. 회원 조회 API는 아직 없으므로 Location 헤더도 생성하지 않습니다.
+로그인 토큰·비밀번호·증명은 반환하지 않으며 Location 헤더도 생성하지 않습니다. 로그인 후 `GET /api/users/me`로 본인 정보를 조회할 수 있습니다.
 
 ## 증명 소비와 DB 저장
 
 1. Presentation에서 입력을 검증합니다. 형식 오류·CSRF 실패는 증명을 소비하지 않습니다.
-2. Application에서 이메일을 정규화하고 증명 원문의 SHA-256 다이제스트를 만듭니다.
+2. Application이 공통 도메인 `PasswordPolicy`로 비밀번호를 먼저 검사한 뒤 이메일을 정규화하고 증명 원문의 SHA-256 다이제스트를 만듭니다.
 3. Redis Lua에서 해당 이메일 키의 TTL·purpose=signup·다이제스트·available 상태·인증 시각을 확인합니다.
 4. 같은 Lua에서 상태를 consumed로 바꾸고 기존 TTL은 유지합니다. 동일 증명을 동시에 소비하는 요청 중 하나만 통과합니다.
 5. 통과한 요청만 비밀번호를 해시합니다. 입력 비밀번호·증명 원문은 Redis나 MySQL에 저장하지 않습니다.
@@ -98,6 +98,7 @@ CSRF 실패는 SecurityProblemHandler가 처리합니다. 내부 SQL·접속 정
 | HTTP | code | 의미 |
 | --- | --- | --- |
 | 400 | INVALID_INPUT / BAD_REQUEST | 필수값·길이·형식 또는 JSON 오류 |
+| 400 | PASSWORD_POLICY_VIOLATION | 서비스 직접 호출에도 적용하는 8~128자·공백만 있는 값 금지 정책. 증명 소비 전 거절 |
 | 400 | SIGNUP_PROOF_INVALID | 해당 이메일의 증명 다이제스트·목적·상태 불일치 |
 | 403 | INVALID_CSRF_TOKEN | CSRF 쿠키·헤더 누락·변조 |
 | 409 | SIGNUP_PROOF_ALREADY_USED | 같은 증명 재사용 |
@@ -114,7 +115,8 @@ DB 실패 응답에 Retry-After를 제공하지 않습니다. 일정 시간 기�
 
 | 위치 | 책임 |
 | --- | --- |
-| auth/application/service/SignupService | 증명 결과 판단 → 비밀번호 해시 → 계정 생성 포트 호출 |
+| auth/application/service/SignupService | 비밀번호 정책 확인 → 증명 결과 판단 → 비밀번호 해시 → 계정 생성 포트 호출 |
+| auth/domain/PasswordPolicy | 가입·비밀번호 변경 공통 정책. 원문을 정규화하거나 보관하지 않음 |
 | auth/application/port/out/EmailVerificationStore | 이메일 인증 상태와 가입 증명 소비 계약 |
 | auth/application/port/out/PasswordHasher | 외부 인코더와 독립적인 비밀번호 해시 계약 |
 | auth/application/port/out/AccountRegistration | 일반 회원·비밀번호를 함께 커밋하는 계약 |
@@ -138,7 +140,5 @@ Application은 JPA·Redis·SMTP·Spring Security 인코더를 직접 참조하�
 
 ## 확인 범위
 
-이번 단계의 확인은 컴파일·패키징·앱 시작·OpenAPI 생성까지입니다. 추가 테스트는 작성·실행하지 않습니다.
-실제 SMTP 수신 → 코드 검증 → 회원 저장, 비밀번호 검증, 만료·재발급·다른 이메일·중복·동시 가입,
-저장 실패·커밋 결과 불확실·Redis 장애·CSRF 누락과 변조는 전체 인증 구현 후 검증합니다.
-이 문서의 처리 정책과 실제 운영 동작의 검증 완료를 구분합니다. 관련 이슈 #28, #30, #34.
+테스트 전용 MySQL·Redis를 사용하는 API 통합 검증을 추가했습니다.
+실행 방법, 확인한 흐름과 남은 검증 범위는 [인증 테스트 안내](auth-testing.md)를 참고하세요.
