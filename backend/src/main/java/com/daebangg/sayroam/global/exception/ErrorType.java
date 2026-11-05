@@ -5,6 +5,10 @@ public enum ErrorType {
     INVALID,
     UNAUTHENTICATED,
     FORBIDDEN,
+    CONFLICT,
+    EXPIRED,
+    RATE_LIMITED,
     UNAVAILABLE,
+    EXTERNAL_FAILURE,
     INTERNAL
 }

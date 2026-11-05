@@ -91,8 +91,9 @@ Redis 소비와 MySQL 저장은 하나의 분산 트랜잭션이 아닙니다. �
 
 ## 오류 응답
 
-업무·인프라 실패는 `AuthException`으로 전달하고 `AuthExceptionHandler`에서 HTTP 상태와 공개 문구를 정합니다.
-요청 검증·JSON 오류와 예상하지 못한 버그는 기존 GlobalExceptionHandler가 처리하며,
+업무·인프라 실패는 공통 `BusinessException`을 상속한 `AuthException`으로 전달합니다.
+`AuthErrorCode`가 공통 `ErrorCode` 계약으로 실패 종류·코드·공개 문구를 정의하고, `ApiProblems`가 실패 종류를 HTTP 상태로 변환합니다.
+인증 예외와 요청 검증·JSON 오류, 예상하지 못한 버그는 `GlobalExceptionHandler`가 처리하며,
 CSRF 실패는 SecurityProblemHandler가 처리합니다. 내부 SQL·접속 정보·원본 예외는 응답에 포함하지 않습니다.
 
 | HTTP | code | 의미 |
@@ -126,7 +127,8 @@ DB 실패 응답에 Retry-After를 제공하지 않습니다. 일정 시간 기�
 | global/config/PasswordConfig | 공통 비밀번호 인코더 설정. 후속 로그인에서 재사용 |
 | user/domain/User, UserCredential | 영속 회원과 비밀번호 해시. 일반 회원 생성 시 인증 시각 기록 |
 | auth/presentation/controller/SignupController | 요청 검증과 201 응답, Swagger 명세 |
-| auth/presentation/error/AuthExceptionHandler | 인증 실패의 HTTP 상태·공개 문구 매핑 |
+| auth/application/error/AuthErrorCode, AuthException | 공통 오류 계약에 따른 인증 실패 종류·공개 문구와 예외·추가 정보 |
+| global/exception/ApiProblems, GlobalExceptionHandler | 공통 HTTP 변환과 MVC 오류 응답·인증 전용 헤더·쿠키 처리 |
 
 Application은 JPA·Redis·SMTP·Spring Security 인코더를 직접 참조하지 않습니다.
 회원 모델은 기존 user 도메인에 유지하고 auth에 별도 회원 엔티티를 만들지 않습니다.

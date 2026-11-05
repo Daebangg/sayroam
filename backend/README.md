@@ -227,6 +227,14 @@ SMTP 계정이 없는 환경의 **실제 메일 발송·수신은 미확인**입
 내부 ERROR 디스패치만 허용하며, 외부에서 직접 `/error`로 접근하는 요청은 공개하지 않습니다.
 인증되지 않은 일반 보호 요청은 401, 인증된 회원의 권한 부족은 403으로 처리합니다.
 MVC 예외와 Security 필터 예외는 `application/problem+json` 형식과 `code` 필드를 공유합니다.
+`AuthErrorCode`는 공통 `ErrorCode`로 실패 종류·코드·공개 문구를 정의하고, `ApiProblems`가 실패 종류를 HTTP 상태로 변환합니다.
+인증 MVC 예외도 `GlobalExceptionHandler`에서 처리하며, 기존 Refresh 쿠키 만료·캐시 금지·재시도 및 인증 헤더 조건을 유지합니다.
+Security 필터의 JWT·권한·CSRF 오류는 기존 `SecurityProblemHandler`가 처리합니다.
+
+`GlobalExceptionHandler`는 HTTP 응답을 만드는 웹 계층 구성요소이므로 Application의 `AuthException`을 참조할 수 있습니다.
+현재 추가 응답 정책은 인증에만 있으므로, `handleAuth()`에서 쿠키·헤더 처리를 유지합니다. 글로벌 핸들러가 인증 예외와
+Refresh 쿠키 컴포넌트를 아는 결합은 허용하고, 별도 응답 확장 인터페이스는 추가하지 않습니다.
+다른 기능에도 전용 응답 정책이 늘어나면 공통 응답 확장 계약과 기능별 구현체로 분리하는 방식을 검토합니다.
 
 | 상황 | HTTP 상태 | code |
 | --- | --- | --- |
