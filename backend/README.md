@@ -394,3 +394,13 @@ API 변경 시 버전을 관리하고 전달 파일과 소스 커밋을 함께 �
 ```bash
 ./backend/gradlew -p backend exportOpenApi '-PapiDocsUrl=http://[::1]:8080/v3/api-docs'
 ```
+
+### 화면 URL과 404
+
+화면 주소는 `/`, `/trips`, `/matching`, `/rooms`, `/brand`입니다. 그 외 일반 화면 URL은
+HTTP 404 상태로 앱 셸을 제공하고 프론트엔드에서 공통 404 화면을 표시합니다. 이동 후 새로고침해도
+같은 화면이 표시됩니다. `/brand`의 페이지 상태 예시에서 404·오류·로딩을 확인할 수 있습니다.
+
+`FrontendPaths`는 MVC와 Security가 공유하는 화면·서버 경로의 경계입니다. API, 정적 파일,
+Swagger, actuator/error 및 login/logout/oauth2 예약 경로는 기존 서버 처리를 유지합니다.
+없는 파일은 HTML 200으로 대체하지 않습니다. 공개 화면 제공은 GET·HEAD에만 적용합니다.

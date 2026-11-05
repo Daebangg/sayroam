@@ -1,5 +1,6 @@
 package com.daebangg.sayroam.global.security;
 
+import com.daebangg.sayroam.global.web.FrontendPaths;
 import jakarta.servlet.DispatcherType;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -23,8 +24,7 @@ public class SecurityConfig {
 
     // 공개 정적 자원·SPA 주소 목록을 GET·HEAD 규칙에서 공유한다.
     private static final String[] PUBLIC_FRONTEND_PATHS = {
-            "/", "/index.html", "/assets/**", "/brand/**", "/fonts/**", "/images/**",
-            "/trips", "/trips/**", "/matching", "/matching/**", "/rooms", "/rooms/**", "/brand"
+            "/", "/index.html", "/assets/**", "/brand/**", "/fonts/**", "/images/**"
     };
 
     @Bean
@@ -64,6 +64,7 @@ public class SecurityConfig {
                         // 내부 오류 디스패치가 인증 오류로 덮이지 않도록 허용한다.
                         .dispatcherTypeMatchers(DispatcherType.ERROR).permitAll()
                         // 공개 화면과 빌드된 정적 자원만 허용한다. API 접근 규칙은 아래에서 유지한다.
+                        .requestMatchers(FrontendPaths::isPageRequest).permitAll()
                         .requestMatchers(HttpMethod.GET, PUBLIC_FRONTEND_PATHS).permitAll()
                         .requestMatchers(HttpMethod.HEAD, PUBLIC_FRONTEND_PATHS).permitAll()
                         .requestMatchers(HttpMethod.GET, "/swagger-ui.html", "/swagger-ui/**",
