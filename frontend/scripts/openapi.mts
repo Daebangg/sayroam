@@ -1,6 +1,7 @@
 import { spawnSync } from "node:child_process";
 import { mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
+import { loadEnvFile } from "node:process";
 import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
 import openapiTS, { astToString } from "openapi-typescript";
@@ -117,6 +118,11 @@ async function main(): Promise<void> {
         if (values.file) {
             inputPath = resolve(frontendDir, values.file);
         } else {
+            try {
+                loadEnvFile(resolve(frontendDir, ".env.local"));
+            } catch (error) {
+                if (!isObject(error) || error.code !== "ENOENT") throw error;
+            }
             const endpoint =
                 values.url ?? process.env.OPENAPI_URL ?? "http://localhost:8080/v3/api-docs";
             const url = new URL(endpoint);
@@ -139,12 +145,18 @@ async function main(): Promise<void> {
             }
             const result = spawnSync(executable, gradleArgs, {
                 cwd: frontendDir,
-                stdio: "inherit",
+                stdio: ["inherit", "pipe", "pipe"],
+                encoding: "utf8",
                 shell: false,
             });
+            process.stdout.write(result.stdout ?? "");
+            process.stderr.write(result.stderr ?? "");
             if (result.error || result.status !== 0) {
+                const details = result.stderr
+                    ?.match(/\* What went wrong:\s*([\s\S]*?)(?:\n\s*\n|\n\* Try:)/)?.[1]
+                    ?.trim();
                 throw new Error(
-                    "백엔드 명세 내보내기에 실패했습니다. 서버와 OPENAPI_URL 또는 --url을 확인하세요.",
+                    `백엔드 명세 내보내기 실패 (${url.href}): ${details ?? result.error?.message ?? "서버와 OPENAPI_URL 또는 --url을 확인하세요."}`,
                 );
             }
             inputPath = resolve(backendDir, "build/openapi/openapi.json");

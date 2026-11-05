@@ -109,7 +109,10 @@ OPENAPI_URL='http://[::1]:8080/v3/api-docs' pnpm api:pull
 pnpm api:pull --file ../backend/build/openapi/openapi.json
 ```
 
-주소 우선순위는 `--url` → `OPENAPI_URL` → `http://localhost:8080/v3/api-docs`입니다.
+주소 우선순위는 `--url` → 셸의 `OPENAPI_URL` → `.env.local`의 `OPENAPI_URL` →
+`http://localhost:8080/v3/api-docs`입니다. 개인 서버 주소는 `.env.example`을 `.env.local`로 복사해
+설정합니다. IPv4/IPv6에서 서로 다른 프로세스가 8080 포트를 사용하면 실제 Spring 서버가 응답하는
+주소(예: `http://[::1]:8080/v3/api-docs`)를 지정합니다. `.env.local`은 Git에서 제외합니다.
 주소는 빌드용 설정이며 브라우저 환경변수에 넣지 않습니다. 수신은 Java/Gradle과 실행 중인 백엔드가
 필요하고, `--file`은 해당 파일만 사용합니다. HTTP·연결·JSON·스키마·참조 오류는 실패로 처리하며
 검증·타입 생성을 마치기 전에는 기존 프론트 계약 파일을 교체하지 않습니다.
