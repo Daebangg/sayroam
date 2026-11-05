@@ -169,22 +169,25 @@ auth/
   presentation/
     controller/AuthCsrfController, EmailVerificationController
     dto/EmailRequest, EmailVerificationResponse, EmailVerificationConfirmRequest, EmailVerificationConfirmResponse
-    error/AuthExceptionHandler
   infrastructure/
     config/EmailVerificationProperties
     redis/RedisEmailVerificationStore
     smtp/SmtpVerificationEmailSender
+global/exception/
+  ErrorCode, ErrorType, BusinessException
+  ApiProblems, GlobalExceptionHandler
 ```
 
 서비스는 저장·발송 포트에 의존합니다. SMTP 선택 의존성은 Java Optional로 전달하며 비활성화 시
 Redis 예약 전에 실패합니다. 설정 바인딩은 infrastructure/config, 공통 연결 설정은 기존 global/config에 둡니다.
 
-- `AuthErrorCode`: HTTP·Spring·공개 문구에 의존하지 않는 실패 식별자
-- `AuthException`: 실패 코드, 선택적 Duration 대기시간, 원본 기술 예외 cause 보관
+- `AuthErrorCode`: 공통 `ErrorCode`를 구현하며 HTTP·Spring 타입 없이 실패 종류·코드·공개 문구를 정의
+- `AuthException`: `BusinessException`을 상속하며 인증 실패 코드, 선택적 Duration 대기시간, 원본 기술 예외 cause 보관
 - Redis 어댑터: 발급·검증 결과와 제한·만료·소비 상태를 반환. 연결 등 DataAccessException은 애플리케이션 오류로 변환
 - SMTP 어댑터: MailException을 발송 실패로 변환하고 cause 보존
 - 서비스: 발급·검증 결과를 실패로 판단하고 SMTP 실패 시 같은 pending 요청 정리, 가입용 증명 생성
-- `AuthExceptionHandler`: HTTP 상태·공개 문구·ProblemDetail·Retry-After를 한곳에서 결정
+- `ApiProblems`: 공통 실패 종류를 HTTP 상태와 ProblemDetail로 변환. 충돌·만료·요청 제한·외부 처리 실패도 같은 규칙 사용
+- `GlobalExceptionHandler`: 인증 예외를 포함한 MVC 예외를 처리하고 인증의 쿠키 만료·no-store·WWW-Authenticate·Retry-After 조건을 적용
 
 HTTP 503은 현재 인증 기능을 처리할 수 없음을 표현하며 메일 비활성화·Redis 장애에 사용합니다.
 SMTP 발송 실패의 기존 502 응답은 유지합니다. 503 자체가 앱 프로세스 종료를 의미하지는 않습니다.

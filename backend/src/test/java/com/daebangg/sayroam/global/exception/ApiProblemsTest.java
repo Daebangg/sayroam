@@ -32,7 +32,11 @@ class ApiProblemsTest {
             "INVALID, 400",
             "UNAUTHENTICATED, 401",
             "FORBIDDEN, 403",
+            "CONFLICT, 409",
+            "EXPIRED, 410",
+            "RATE_LIMITED, 429",
             "UNAVAILABLE, 503",
+            "EXTERNAL_FAILURE, 502",
             "INTERNAL, 500"
     })
     void 실패_종류를_HTTP_상태로_바꾼다(ErrorType type, int status) {

@@ -1,5 +1,8 @@
 package com.daebangg.sayroam.global.exception;
 
+import com.daebangg.sayroam.auth.application.error.AuthErrorCode;
+import com.daebangg.sayroam.auth.application.error.AuthException;
+import com.daebangg.sayroam.auth.presentation.cookie.RefreshTokenCookie;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.*;
 import org.springframework.security.access.AccessDeniedException;
@@ -19,12 +22,42 @@ import java.util.Map;
 public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
     private static final String CODE = "code";
+    private final RefreshTokenCookie refreshCookie;
+
+    public GlobalExceptionHandler(RefreshTokenCookie refreshCookie) {
+        this.refreshCookie = refreshCookie;
+    }
 
     // 우리가 던지는 예외
     @ExceptionHandler(BusinessException.class)
     public ResponseEntity<ProblemDetail> handleBusiness(BusinessException e) {
         ProblemDetail body = ApiProblems.of(e.getErrorCode());
         return ResponseEntity.status(body.getStatus()).body(body);
+    }
+
+    @ExceptionHandler(AuthException.class)
+    public ResponseEntity<ProblemDetail> handleAuth(AuthException exception) {
+        ProblemDetail problem = ApiProblems.of(exception.getErrorCode());
+        var response = ResponseEntity.status(problem.getStatus()).cacheControl(CacheControl.noStore());
+        if (exception.getErrorCode() == AuthErrorCode.REFRESH_TOKEN_INVALID
+                || exception.getErrorCode() == AuthErrorCode.REFRESH_TOKEN_REUSED
+                || exception.getErrorCode() == AuthErrorCode.PASSWORD_CHANGE_UNAVAILABLE
+                || exception.getErrorCode() == AuthErrorCode.ACCOUNT_DELETION_UNAVAILABLE) {
+            response.header(HttpHeaders.SET_COOKIE, refreshCookie.clear().toString());
+        }
+        if (exception.getErrorCode() == AuthErrorCode.AUTHENTICATION_REVOKED) {
+            response.header(HttpHeaders.WWW_AUTHENTICATE, "Bearer");
+        }
+        if (exception.getRetryAfter() != null) {
+            long seconds = exception.getRetryAfter().toSeconds();
+            if (exception.getRetryAfter().getNano() != 0) {
+                seconds++;
+            }
+            problem.setProperty("retryAfterSeconds", seconds);
+            response.header(HttpHeaders.RETRY_AFTER, Long.toString(seconds));
+        }
+        // cause·suppressed를 포함한 내부 정보는 공개 응답에 포함하지 않는다.
+        return response.body(problem);
     }
 
     // @Valid 실패 -> 필드별 사유 포함
