@@ -176,6 +176,7 @@
         "dark": "다크",
         "language": "언어",
         "korean": "한국어",
-        "english": "English"
+        "english": "English",
+        "system": "시스템 설정"
     }
 }

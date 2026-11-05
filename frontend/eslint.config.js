@@ -35,6 +35,11 @@ export default defineConfig([
         },
     },
     {
+        files: ["public/assets/theme.js"],
+        extends: [js.configs.recommended],
+        languageOptions: { globals: globals.browser },
+    },
+    {
         files: ["scripts/**/*.mts"],
         languageOptions: { globals: globals.node },
     },

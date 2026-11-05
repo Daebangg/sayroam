@@ -1,5 +1,4 @@
 export type PreviewView = "plaza" | "trips" | "matching" | "rooms" | "brand";
-export type PreviewTheme = "light" | "dark";
 
 export const previewNavigation = [
     { view: "plaza", icon: "home", label: "navigation.plaza" },

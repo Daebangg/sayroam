@@ -13,6 +13,14 @@
 }
 
 :root {
+    --bg: #fcfcff;
+    --border: #e8eaf0;
+    --secondary-text: #697381;
+    --active-bg: #e8efff;
+    --button-bg: #29333e;
+    --button-text: #ffffff;
+    --accent-text: #315aca;
+    color-scheme: light;
     --primary: #4f7cff;
     --sky: #e8f1ff;
     --sand: #fff7e9;
@@ -39,7 +47,7 @@
     --scrollbar-thumb-hover: #98a6bb;
     font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Segoe UI", sans-serif;
     color: var(--text);
-    background: #f7f8fb;
+    background: var(--bg);
     font-synthesis: none;
     text-rendering: optimizeLegibility;
     -webkit-font-smoothing: antialiased;
@@ -72,7 +80,7 @@
         scrollbar-color: var(--scrollbar-thumb) transparent;
     }
 }
-:root:has(.app-theme--dark) {
+:root[data-theme="dark"] {
     --scrollbar-thumb: #56677e;
     --scrollbar-thumb-hover: #7f93ae;
     background: #19222e;
@@ -133,20 +141,15 @@ p {
 }
 
 .app-theme {
-    --bg: #fcfcff;
-    --border: #e8eaf0;
-    --secondary-text: #697381;
-    --active-bg: #e8efff;
-    --button-bg: #29333e;
-    --button-text: #ffffff;
     min-height: 100svh;
     padding: 0;
-    background: radial-gradient(ellipse at 75% 15%, #f4f1fa, transparent 70%), #f8f9fc;
+    background: var(--bg);
     color: var(--text);
 }
 
-.app-theme--dark {
+:root[data-theme="dark"] {
     --bg: #19222e;
+    --accent-text: #b2c5ff;
     --surface: #222d3a;
     --text: #f3f5fa;
     --border: #344152;
@@ -155,7 +158,7 @@ p {
     --button-bg: #f8fafc;
     --button-text: #263345;
     --sky: #354663;
-    background: #101721;
+    background: var(--bg);
     color-scheme: dark;
 }
 
@@ -274,7 +277,7 @@ p {
 }
 .ui-button--soft {
     background: var(--sky);
-    color: var(--primary);
+    color: var(--accent-text);
 }
 .ui-button--outline {
     background: transparent;
@@ -812,7 +815,7 @@ p {
 }
 .icon-showcase__item.is-active {
     background: var(--active-bg);
-    color: var(--primary);
+    color: var(--accent-text);
 }
 .button-showcase {
     display: flex;
@@ -936,7 +939,7 @@ p {
         height: 22px;
     }
     .mobile-nav__item.is-active {
-        color: var(--primary);
+        color: var(--accent-text);
         background: var(--active-bg);
     }
     .home-page {
@@ -1244,7 +1247,7 @@ p {
     opacity: 0.65;
     font-size: 10px;
 }
-:root:has(.app-theme--dark) .ui-tooltip-content {
+:root[data-theme="dark"] .ui-tooltip-content {
     background: #f1f2f5;
     color: #22262d;
 }
@@ -1322,7 +1325,7 @@ p {
     width: 17px;
     height: 17px;
     margin: 0;
-    accent-color: var(--primary);
+    accent-color: var(--accent-text);
     flex-shrink: 0;
 }
 .auth-preview__links {
@@ -1455,7 +1458,7 @@ p {
     line-height: 16px;
     opacity: 1;
 }
-:root:has(.app-theme--dark) .ui-tooltip-content .ui-shortcut span {
+:root[data-theme="dark"] .ui-tooltip-content .ui-shortcut span {
     color: #222;
     background: #0000000c;
 }
@@ -1580,20 +1583,20 @@ p {
     border-radius: 50%;
     background: var(--primary);
 }
-:root:has(.app-theme--dark) .ui-dropdown__menu {
+:root[data-theme="dark"] .ui-dropdown__menu {
     border-color: #353e4d;
     background: #252c37;
     color: #edf0f5;
 }
-:root:has(.app-theme--dark) .ui-dropdown__menu button:hover,
-:root:has(.app-theme--dark) .ui-dropdown__menu button:focus-visible {
+:root[data-theme="dark"] .ui-dropdown__menu button:hover,
+:root[data-theme="dark"] .ui-dropdown__menu button:focus-visible {
     background: #ffffff0a;
 }
-:root:has(.app-theme--dark) .ui-tag--primary {
+:root[data-theme="dark"] .ui-tag--primary {
     color: #a5bfff;
     background: #4f7cff1f;
 }
-:root:has(.app-theme--dark) .ui-tag--success {
+:root[data-theme="dark"] .ui-tag--success {
     color: #9bd7c1;
 }
 .ui-modal__close {
@@ -1627,20 +1630,20 @@ p {
 }
 
 :root {
-    --action-bg: #4f7cff;
-    --action-hover: #426ff0;
+    --action-bg: #3158c4;
+    --action-hover: #274caf;
     --action-border: #6b91ff;
     --input-border: #c9d7ff;
     --input-focus: #4f7cff;
 }
 .ui-button--brand {
-    background: linear-gradient(160deg, #5b85ff, var(--action-bg));
+    background: linear-gradient(160deg, #3b64d8, var(--action-bg));
     border-color: var(--action-border);
     color: #fff;
     box-shadow: inset 0 1px 0 #ffffff25;
 }
 .ui-button--brand:hover:not(:disabled) {
-    background: linear-gradient(160deg, #527dff, var(--action-hover));
+    background: linear-gradient(160deg, #3158c4, var(--action-hover));
 }
 .ui-button--soft {
     border-color: #d9e5ff;
@@ -1665,9 +1668,9 @@ p {
     box-shadow: 0 0 0 3px #4f7cff12;
 }
 .ui-input::placeholder {
-    color: var(--muted);
+    color: var(--secondary-text);
 }
-.app-theme--dark {
+:root[data-theme="dark"] {
     --input-border: #465163;
     --input-focus: #4f7cff;
 }
@@ -1680,10 +1683,6 @@ p {
 }
 .app-theme--dark .ui-button--soft {
     border-color: #415370;
-}
-.app-theme--dark .ui-button--brand {
-    background: linear-gradient(160deg, #5b85ff, #4f7cff);
-    border-color: #6b91ff;
 }
 .auth-preview__email > .ui-button {
     min-height: 42px;
@@ -1725,7 +1724,7 @@ p {
     color: #1f2937;
     box-shadow: 0 12px 40px #1f293716;
 }
-:root:has(.app-theme--dark) .ui-menu-surface {
+:root[data-theme="dark"] .ui-menu-surface {
     border-color: #363b45;
     background: #25282f;
     color: #edf0f5;
@@ -1915,4 +1914,8 @@ p {
     .ui-modal__footer {
         flex-wrap: wrap;
     }
+}
+.ui-dropdown__menu button:focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: -2px;
 }

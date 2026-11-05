@@ -2,7 +2,8 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { AppShell } from "@/components/layout/AppShell";
 import { AuthPreview } from "@/components/features/auth/AuthPreview";
-import type { PreviewTheme, PreviewView } from "@/data/preview";
+import type { PreviewView } from "@/data/preview";
+import { useTheme } from "@/hooks/useTheme";
 import { HomePage } from "@/pages/home/HomePage";
 import { TripsPage } from "@/pages/trips/TripsPage";
 import { MatchingPage } from "@/pages/matching/MatchingPage";
@@ -27,9 +28,7 @@ function initialView(): PreviewView {
 export default function App() {
     const { i18n } = useTranslation();
     const [view, setView] = useState<PreviewView>(initialView);
-    const [theme, setTheme] = useState<PreviewTheme>(() =>
-        new URLSearchParams(window.location.search).get("theme") === "dark" ? "dark" : "light",
-    );
+    const theme = useTheme();
     const [authOpen, setAuthOpen] = useState(
         () => new URLSearchParams(window.location.search).get("modal") === "auth",
     );
@@ -41,9 +40,10 @@ export default function App() {
     return (
         <AppShell
             view={view}
-            theme={theme}
+            theme={theme.resolved}
+            themePreference={theme.preference}
             onViewChange={setView}
-            onThemeChange={() => setTheme(theme === "light" ? "dark" : "light")}
+            onThemeChange={theme.setPreference}
             onLanguageChange={changeLanguage}
             onOpenAuth={() => setAuthOpen(true)}
         >
