@@ -21,7 +21,9 @@ function flatten(
 function variables(value: string): string {
     return [
         ...new Set(
-            [...value.matchAll(/{{\s*-?\s*([\w.]+)(?:,[^}]*)?\s*}}/g)].map((match) => match[1]),
+            [...value.matchAll(/{{\s*-?\s*([^,}]+?)(?:,[^}]*)?\s*}}/g)].map((match) =>
+                match[1].trim(),
+            ),
         ),
     ]
         .sort()
