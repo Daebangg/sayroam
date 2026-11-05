@@ -46,7 +46,7 @@ public final class SecurityProblemHandler implements AuthenticationEntryPoint, A
                        CommonErrorCode code) throws IOException {
         var problem = ApiProblems.of(code);
         problem.setInstance(URI.create(request.getRequestURI()));
-        response.setStatus(code.getStatus().value());
+        response.setStatus(problem.getStatus());
         response.setHeader(HttpHeaders.CACHE_CONTROL, "no-store");
         response.setContentType(MediaType.APPLICATION_PROBLEM_JSON_VALUE);
         jsonMapper.writeValue(response.getOutputStream(), problem);

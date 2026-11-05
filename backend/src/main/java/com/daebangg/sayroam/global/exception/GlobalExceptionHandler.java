@@ -23,9 +23,8 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     // 우리가 던지는 예외
     @ExceptionHandler(BusinessException.class)
     public ResponseEntity<ProblemDetail> handleBusiness(BusinessException e) {
-        ErrorCode code = e.getErrorCode();
-        ProblemDetail body = ApiProblems.of(code);
-        return ResponseEntity.status(code.getStatus()).body(body);
+        ProblemDetail body = ApiProblems.of(e.getErrorCode());
+        return ResponseEntity.status(body.getStatus()).body(body);
     }
 
     // @Valid 실패 -> 필드별 사유 포함
@@ -63,9 +62,8 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ProblemDetail> handleUnexpected(Exception e) {
         log.error("Unhandled exception", e);
-        CommonErrorCode code = CommonErrorCode.INTERNAL_SERVER_ERROR;
-        ProblemDetail body = ApiProblems.of(code);
-        return ResponseEntity.status(code.getStatus()).body(body);
+        ProblemDetail body = ApiProblems.of(CommonErrorCode.INTERNAL_SERVER_ERROR);
+        return ResponseEntity.status(body.getStatus()).body(body);
     }
 
     private List<Map<String, String>> toFieldErrors(List<FieldError> fieldErrors) {
