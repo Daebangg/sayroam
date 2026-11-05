@@ -7,7 +7,7 @@ export function TripsPage() {
     const { t, i18n } = useTranslation();
 
     return (
-        <main className="workspace-page">
+        <main id="main-content" tabIndex={-1} className="workspace-page">
             <div className="page-heading">
                 <h1>{t("trips.heading")}</h1>
                 <Button

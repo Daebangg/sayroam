@@ -1,16 +1,15 @@
 import { useTranslation } from "react-i18next";
 import { Button, Icon } from "@/components/ui";
 
-type HomePageProps = {
-    onStart: () => void;
-    onOpenBrand: () => void;
-};
+import { Link, useOutletContext } from "react-router";
+import type { PageContext } from "@/routing/context";
 
-export function HomePage({ onStart, onOpenBrand }: HomePageProps) {
+export function HomePage() {
+    const { onOpenAuth: onStart } = useOutletContext<PageContext>();
     const { t } = useTranslation();
 
     return (
-        <main className="home-page">
+        <main id="main-content" tabIndex={-1} className="home-page">
             <img
                 className="home-page__landscape"
                 src="/images/alpine-dawn.png"
@@ -36,15 +35,10 @@ export function HomePage({ onStart, onOpenBrand }: HomePageProps) {
                     <Icon name="arrow" />
                 </Button>
             </div>
-            <Button
-                variant="plain"
-                type="button"
-                className="brand-guide-link"
-                onClick={onOpenBrand}
-            >
+            <Link className="brand-guide-link" to="/brand">
                 {t("brand.guide")}
                 <Icon name="arrow" />
-            </Button>
+            </Link>
         </main>
     );
 }

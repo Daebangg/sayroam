@@ -1,9 +1,14 @@
+import { useOutletContext } from "react-router";
+import type { PageContext } from "@/routing/context";
 import { useState } from "react";
 import { formatDateRange, formatNumber } from "@/i18n/locale";
 import { useTranslation } from "react-i18next";
 import {
     Brand,
     Button,
+    ButtonLink,
+    PageState,
+    type PageStateKind,
     Card,
     Checkbox,
     DropdownMenu,
@@ -16,15 +21,12 @@ import {
     type IconName,
 } from "@/components/ui";
 
-type BrandPageProps = {
-    onOpenAuth: () => void;
-    onLanguageChange: () => void;
-};
-
 const colors = ["primary", "sky", "sand", "surface", "text", "muted"] as const;
 const icons: IconName[] = ["home", "trips", "matching", "rooms", "bookmark", "profile"];
 
-export function BrandPage({ onOpenAuth, onLanguageChange }: BrandPageProps) {
+export function BrandPage() {
+    const { onOpenAuth, onLanguageChange } = useOutletContext<PageContext>();
+    const [pageState, setPageState] = useState<PageStateKind>("notFound");
     const { t, i18n } = useTranslation();
     const [selection, setSelection] = useState("planning");
     const [dialogOpen, setDialogOpen] = useState(false);
@@ -38,13 +40,60 @@ export function BrandPage({ onOpenAuth, onLanguageChange }: BrandPageProps) {
     ];
 
     return (
-        <main className="brand-page">
+        <main id="main-content" tabIndex={-1} className="brand-page">
             <div className="page-heading">
                 <h1>{t("brand.heading")}</h1>
                 <Button variant="outline" onClick={onLanguageChange}>
                     {t("common.changeLanguage")}
                 </Button>
             </div>
+            <section className="brand-section" aria-labelledby="brand-page-states-heading">
+                <h2 id="brand-page-states-heading" className="section-label">
+                    {t("brand.pageStates")}
+                </h2>
+                <div
+                    className="page-state-controls"
+                    role="group"
+                    aria-label={t("brand.pageStates")}
+                >
+                    {(["notFound", "error", "loading"] as const).map((kind) => (
+                        <Button
+                            key={kind}
+                            variant="outline"
+                            aria-pressed={pageState === kind}
+                            onClick={() => setPageState(kind)}
+                        >
+                            {t(`pageState.${kind}.label`)}
+                        </Button>
+                    ))}
+                    <ButtonLink to="/page-that-does-not-exist" variant="outline">
+                        {t("brand.open404")}
+                    </ButtonLink>
+                </div>
+                <Card className="page-state-preview">
+                    <PageState
+                        kind={pageState}
+                        headingAs="h3"
+                        title={t(`pageState.${pageState}.title`)}
+                        description={t(`pageState.${pageState}.description`)}
+                        actions={
+                            pageState !== "loading" ? (
+                                <>
+                                    <ButtonLink to="/">{t("pageState.home")}</ButtonLink>
+                                    {pageState === "error" && (
+                                        <Button
+                                            variant="outline"
+                                            onClick={() => setPageState("loading")}
+                                        >
+                                            {t("pageState.retry")}
+                                        </Button>
+                                    )}
+                                </>
+                            ) : undefined
+                        }
+                    />
+                </Card>
+            </section>
             <section className="brand-section" aria-labelledby="brand-logo-heading">
                 <h2 id="brand-logo-heading" className="section-label">
                     {t("brand.logo")}

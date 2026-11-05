@@ -6,7 +6,7 @@ export function RoomsPage() {
     const { t } = useTranslation();
 
     return (
-        <main className="workspace-page workspace-page--list">
+        <main id="main-content" tabIndex={-1} className="workspace-page workspace-page--list">
             <div className="page-heading">
                 <h1>{t("rooms.heading")}</h1>
                 <Button variant="ghost" className="icon-button" aria-label={t("rooms.create")}>
