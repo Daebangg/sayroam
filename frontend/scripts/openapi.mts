@@ -11,7 +11,6 @@ import { format, resolveConfig } from "prettier";
 const frontendDir = fileURLToPath(new URL("../", import.meta.url));
 const snapshotPath = resolve(frontendDir, "contracts/openapi.json");
 const typesPath = resolve(frontendDir, "src/api/generated/schema.ts");
-
 function isObject(value: unknown): value is Record<string, unknown> {
     return typeof value === "object" && value !== null && !Array.isArray(value);
 }
@@ -66,7 +65,99 @@ function sortKeys(value: unknown): unknown {
     );
 }
 
-async function render(source: string): Promise<{ snapshot: string; types: string }> {
+function resolveObject(value: unknown, document: Record<string, unknown>): Record<string, unknown> {
+    const seen = new Set<string>();
+    while (isObject(value) && typeof value.$ref === "string") {
+        const reference = value.$ref;
+        if (seen.has(reference)) throw new Error(`순환된 경로 참조: ${reference}`);
+        seen.add(reference);
+        value = document;
+        for (const segment of reference.slice(2).split("/")) {
+            const key = decodeURIComponent(segment).replace(/~1/g, "/").replace(/~0/g, "~");
+            value = isObject(value) ? value[key] : undefined;
+        }
+    }
+    if (!isObject(value)) throw new Error("경로·보안·응답 정의에는 객체가 필요합니다.");
+    return value;
+}
+
+// 실행 코드를 복제하지 않고 공통 라우터가 소비할 최소 경로표만 만든다.
+function collectRoutes(document: Record<string, unknown>): Record<string, unknown> {
+    const routes = new Map<string, unknown>();
+    const methods = new Set(["get", "post", "put", "patch", "delete", "head", "options", "trace"]);
+    const components = isObject(document.components) ? document.components : {};
+    const schemes = isObject(components.securitySchemes) ? components.securitySchemes : {};
+    for (const [path, item] of Object.entries(resolveObject(document.paths, document))) {
+        if (!path.startsWith("/api/")) throw new Error(`지원하지 않는 API 경로: ${path}`);
+        for (const [method, value] of Object.entries(resolveObject(item, document))) {
+            if (!methods.has(method)) continue;
+            const operation = resolveObject(value, document);
+            const id = operation.operationId;
+            if (typeof id !== "string" || !id.trim() || id === "__proto__" || routes.has(id)) {
+                throw new Error(`고유한 operationId가 필요합니다: ${path} ${method}`);
+            }
+            const security = operation.security ?? document.security ?? [];
+            if (!Array.isArray(security)) throw new Error(`${id}: security 배열이 필요합니다.`);
+            const profiles = (security.length ? security : [{}]).map((requirement: unknown) => {
+                if (!isObject(requirement)) throw new Error(`${id}: 잘못된 security 정의입니다.`);
+                let auth: "required" | "none" = "none";
+                let csrf = false;
+                for (const name of Object.keys(requirement)) {
+                    const scheme = resolveObject(schemes[name], document);
+                    if (
+                        scheme.type === "http" &&
+                        typeof scheme.scheme === "string" &&
+                        scheme.scheme.toLowerCase() === "bearer"
+                    )
+                        auth = "required";
+                    else if (
+                        scheme.type === "apiKey" &&
+                        scheme.in === "header" &&
+                        scheme.name === "X-XSRF-TOKEN"
+                    )
+                        csrf = true;
+                    else if (!(
+                        scheme.type === "apiKey" &&
+                        scheme.in === "cookie" &&
+                        scheme.name === "sayroam_refresh"
+                    )) {
+                        throw new Error(`${id}: 지원하지 않는 인증 방식 ${name}`);
+                    }
+                }
+                return { auth, csrf };
+            });
+            if (new Set(profiles.map((profile) => JSON.stringify(profile))).size !== 1) {
+                throw new Error(`${id}: 서로 다른 인증 대안은 공통 정책을 먼저 정의해야 합니다.`);
+            }
+            const responses = Object.fromEntries(
+                Object.entries(resolveObject(operation.responses, document))
+                    .filter(([status]) => /^2(?:\d{2}|XX)$/.test(status))
+                    .map(([status, response]) => {
+                        const content = resolveObject(response, document).content;
+                        const hasBody = isObject(content) && Object.keys(content).length > 0;
+                        if (
+                            hasBody &&
+                            !Object.keys(content).some(
+                                (media) => media === "application/json" || media.endsWith("+json"),
+                            )
+                        ) {
+                            throw new Error(`${id}: JSON 응답 계약이 필요합니다.`);
+                        }
+                        return [
+                            status,
+                            method !== "head" && status !== "204" && status !== "205" && hasBody,
+                        ];
+                    }),
+            );
+            if (!Object.keys(responses).length)
+                throw new Error(`${id}: 성공 응답 계약이 필요합니다.`);
+            routes.set(id, { method, path, ...profiles[0], responses });
+        }
+    }
+    return Object.fromEntries([...routes].sort(([a], [b]) => a.localeCompare(b, "en")));
+}
+
+export async function renderOpenApi(source: string): Promise<{ snapshot: string; types: string }> {
     let document: unknown;
     try {
         document = JSON.parse(source);
@@ -76,6 +167,7 @@ async function render(source: string): Promise<{ snapshot: string; types: string
         );
     }
     validateDocument(document);
+    const routes = collectRoutes(document);
     const config = await resolveConfig(resolve(frontendDir, ".prettierrc.json"));
     const snapshot = await format(JSON.stringify(sortKeys(document)), {
         ...config,
@@ -92,7 +184,8 @@ async function render(source: string): Promise<{ snapshot: string; types: string
     const ast = await openapiTS(snapshot, { alphabetize: true, redocly });
     const types = await format(
         "/** OpenAPI에서 자동 생성합니다. 직접 수정하지 말고 pnpm api:generate를 실행하세요. */\n" +
-            astToString(ast),
+            astToString(ast) +
+            `\n/** operationId별 공통 실행 정보. 직접 수정하지 않습니다. */\nexport const apiRoutes = ${JSON.stringify(routes)} as const satisfies Record<keyof operations, { method: string; path: keyof paths; auth: "none" | "required"; csrf: boolean; responses: Readonly<Record<string, boolean>> }>;\n`,
         { ...config, parser: "typescript" },
     );
     return { snapshot, types };
@@ -181,25 +274,27 @@ async function main(): Promise<void> {
         );
     }
     // 검증과 타입 생성을 모두 마친 뒤 기존 계약 파일을 교체합니다.
-    const output = await render(source);
+    const output = await renderOpenApi(source);
     if (command === "check") {
         const savedTypes = await readFile(typesPath, "utf8").catch(() => "");
         if (source !== output.snapshot || savedTypes !== output.types) {
             throw new Error(
-                "명세 또는 생성 타입이 최신 결과와 다릅니다. pnpm api:generate 후 변경을 확인하세요.",
+                "명세·생성 타입·경로표가 최신 결과와 다릅니다. pnpm api:generate 후 변경을 확인하세요.",
             );
         }
-        console.log("OpenAPI 명세와 생성 타입이 일치합니다.");
+        console.log("OpenAPI 명세·생성 타입·경로표가 일치합니다.");
         return;
     }
     await writeOutput(snapshotPath, output.snapshot);
     await writeOutput(typesPath, output.types);
     console.log(
-        "OpenAPI 저장 및 타입 생성 완료: contracts/openapi.json → src/api/generated/schema.ts",
+        "OpenAPI 타입·경로표 생성 완료: contracts/openapi.json → src/api/generated/schema.ts",
     );
 }
 
-main().catch((error: unknown) => {
-    console.error(`[OpenAPI] ${error instanceof Error ? error.message : String(error)}`);
-    process.exitCode = 1;
-});
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+    main().catch((error: unknown) => {
+        console.error(`[OpenAPI] ${error instanceof Error ? error.message : String(error)}`);
+        process.exitCode = 1;
+    });
+}

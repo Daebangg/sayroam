@@ -6,6 +6,8 @@
 - 이 디렉터리는 같은 저장소의 일반 디렉터리입니다. 브랜치·커밋·PR은 저장소 루트에서 관리합니다.
 - React·TypeScript strict와 이 디렉터리의 Prettier 설정을 유지합니다. 기본 선언은 `type`, Props는 `XxxProps`입니다.
 - API 타입은 OpenAPI 생성 결과를 사용합니다. 페이지 → 도메인 훅 → API·오류 매핑의 책임을 지킵니다.
+- API 생성 결과는 `src/api/generated/schema.ts`의 타입·경로표 한 파일로 관리합니다. 일반 API는 `api.ts`의 `api.call(operationId, options)`로 호출하며 URL·메서드·인증 요구를 복제하지 않습니다. 부가 처리는 `api.ts`의 엔드포인트별 `parseResponse`·`wrap` 확장에 등록하고 핵심 응답 검증을 유지합니다.
+- 로그인·복원·로그아웃은 `authSession.ts`, 갱신·CSRF·토큰 전달은 공통 기반이 소유합니다. 변경 요청과 결과 불확실 요청을 자동 반복하지 않습니다.
 - 페이지가 도메인 훅을 호출합니다. 기능 컴포넌트는 상태·액션을 props로 받고 공용 UI는 도메인을 모릅니다.
 - UI 추가 전 공용 UI·레이아웃·동일 화면 유형을 확인합니다. 공유 UI → 기능 조합 → 페이지 순서로 구성합니다.
 - CSS는 `src/styles/app.css`에서 관리합니다. 외형을 JSX 인라인 스타일이나 화면별 CSS로 복제하지 않습니다.
