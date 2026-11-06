@@ -3,7 +3,15 @@ import assert from "node:assert/strict";
 import { afterEach, beforeEach, test } from "node:test";
 import { ApiError } from "../src/api/apiError.ts";
 import { ensureCsrfToken, readCsrfToken } from "../src/api/csrf.ts";
-import { request } from "../src/api/http.ts";
+import { withRequestPolicy } from "../src/api/http.ts";
+import { sendRequest, type RequestOptions } from "../src/api/transport.ts";
+
+function request(
+    path: `/api/${string}`,
+    options: RequestOptions & { auth?: "none" | "required" } = {},
+): Promise<unknown> {
+    return withRequestPolicy(path, options, sendRequest);
+}
 
 const originalDocument = Object.getOwnPropertyDescriptor(globalThis, "document");
 const browserDocument = { cookie: "" };

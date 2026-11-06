@@ -22,7 +22,7 @@
         "preview": "vite preview",
         "format": "prettier --write .",
         "format:check": "prettier --check .",
-        "check": "pnpm typecheck && pnpm lint && pnpm ui:check && pnpm i18n:check && pnpm test:preferences && pnpm test:routing && pnpm test:csrf && pnpm test:auth && pnpm test:sdk && pnpm api:check && pnpm format:check",
+        "check": "pnpm typecheck && pnpm lint && pnpm ui:check && pnpm i18n:check && pnpm test:preferences && pnpm test:routing && pnpm test:csrf && pnpm test:auth && pnpm test:api && pnpm api:check && pnpm format:check",
         "api:pull": "node scripts/openapi.mts pull",
         "api:generate": "node scripts/openapi.mts generate",
         "api:check": "node scripts/openapi.mts check",
@@ -32,19 +32,18 @@
         "test:routing": "node --test scripts/routing.test.mts",
         "test:csrf": "node --test scripts/csrf.test.mts",
         "test:auth": "node --test scripts/auth.test.mts scripts/refresh.test.mts scripts/cookie-coordination.test.mts",
-        "test:sdk": "node --test scripts/sdk.test.mts scripts/openapi.test.mts scripts/api-boundaries.test.mts"
+        "test:api": "node --test scripts/http.test.mts scripts/openapi.test.mts scripts/api-boundaries.test.mts"
     },
     "dependencies": {
         "i18next": "26.7.1",
+        "openapi-fetch": "0.15.0",
         "react": "19.3.1",
         "react-dom": "19.3.1",
         "react-i18next": "17.1.12",
-        "react-router": "8.5.1",
-        "valibot": "1.5.0"
+        "react-router": "8.5.1"
     },
     "devDependencies": {
         "@eslint/js": "10.0.1",
-        "@hey-api/openapi-ts": "0.99.0",
         "@redocly/openapi-core": "1.34.23",
         "@types/node": "24.19.2",
         "@types/react": "19.3.0",

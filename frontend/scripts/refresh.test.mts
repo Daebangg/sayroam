@@ -11,7 +11,18 @@ import {
     getAuthRevision,
     setAccessToken,
 } from "../src/api/auth/tokenStore.ts";
-import { create, me } from "../src/api/sdk.ts";
+import { request } from "../src/api/http.ts";
+import { getCurrentUser as me } from "../src/api/users/userApi.ts";
+
+function create(): Promise<unknown> {
+    return request(
+        async (client) => {
+            const { data } = await client.POST("/api/rooms", { body: { name: "여행" } });
+            return data;
+        },
+        { auth: "required" },
+    );
+}
 
 const originalDocument = Object.getOwnPropertyDescriptor(globalThis, "document");
 const token = { accessToken: "old-token", tokenType: "Bearer", expiresIn: 900 } as const;
@@ -196,7 +207,7 @@ test("변경 요청의 401은 자동 갱신·재전송 없이 전달", async (t)
         paths.push(path);
         return Response.json({ code: "UNAUTHENTICATED" }, { status: 401 });
     });
-    await assert.rejects(create({ body: { name: "여행" } }), hasKind("http"));
+    await assert.rejects(create(), hasKind("http"));
     assert.deepEqual(paths, ["/api/rooms"]);
     assert.equal(getAccessToken(), undefined);
 });
@@ -206,7 +217,7 @@ test("변경 요청의 응답 유실은 토큰을 유지하고 자동 반복하�
     const fetchMock = t.mock.method(globalThis, "fetch", async () => {
         throw new TypeError("lost");
     });
-    await assert.rejects(create({ body: { name: "여행" } }), hasKind("network"));
+    await assert.rejects(create(), hasKind("network"));
     assert.equal(fetchMock.mock.callCount(), 1);
     assert.equal(getAccessToken(), "old-token");
 });

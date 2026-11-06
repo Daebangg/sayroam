@@ -3,20 +3,26 @@ import type { components } from "../generated/schema.ts";
 
 type LoginResponse = components["schemas"]["LoginResponse"];
 
-export function validateToken(value: LoginResponse): LoginResponse {
-    // 구조 검증은 생성 SDK가 담당하고 토큰 사용에 필요한 추가 조건만 확인한다.
-    assertTokenUsage(value.accessToken, value.expiresIn);
-    return value;
-}
-
-export function assertTokenUsage(accessToken: unknown, expiresIn: unknown): void {
+export function validateToken(value: unknown, status: number): LoginResponse {
     if (
-        typeof accessToken !== "string" ||
-        !accessToken ||
-        /\s/.test(accessToken) ||
-        typeof expiresIn !== "number" ||
-        expiresIn <= 0
+        typeof value !== "object" ||
+        value === null ||
+        !("accessToken" in value) ||
+        typeof value.accessToken !== "string" ||
+        !value.accessToken ||
+        /\s/.test(value.accessToken) ||
+        !("tokenType" in value) ||
+        value.tokenType !== "Bearer" ||
+        !("expiresIn" in value) ||
+        typeof value.expiresIn !== "number" ||
+        !Number.isSafeInteger(value.expiresIn) ||
+        value.expiresIn <= 0
     ) {
-        throw new ApiError("invalid-response");
+        throw new ApiError("invalid-response", { status });
     }
+    return {
+        accessToken: value.accessToken,
+        tokenType: value.tokenType,
+        expiresIn: value.expiresIn,
+    };
 }

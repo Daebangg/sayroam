@@ -1,5 +1,9 @@
+import createClient, { type Client } from "openapi-fetch";
 import { ApiError } from "./apiError.ts";
 import { waitForSharedRequest } from "./abort.ts";
+import { refreshApi } from "./auth/authApi.ts";
+import { invalidateOtherTabs, withAuthCookieLock } from "./auth/cookieCoordination.ts";
+import { refreshAccessToken } from "./auth/refreshSession.ts";
 import {
     clearAccessToken,
     getAccessTokenSnapshot,
@@ -7,9 +11,18 @@ import {
     type AccessTokenSnapshot,
 } from "./auth/tokenStore.ts";
 import { ensureCsrfToken, requiresCsrf } from "./csrf.ts";
-import { sendRequest, type RequestOptions as TransportOptions } from "./transport.ts";
+import type { paths } from "./generated/schema.ts";
+import { sendResponse, type RequestOptions as TransportOptions } from "./transport.ts";
 
-export type RequestOptions = TransportOptions & { auth?: "none" | "required" };
+type PolicyOptions = TransportOptions & { auth?: "none" | "required" };
+export type RequestOptions = Pick<TransportOptions, "signal"> & {
+    auth?: "none" | "required";
+    cookieAction?: "login" | "refresh" | "logout";
+};
+
+function isApiPath(path: string): path is `/api/${string}` {
+    return path.startsWith("/api/");
+}
 
 function assertCurrentRequest(
     snapshot: AccessTokenSnapshot | undefined,
@@ -22,7 +35,7 @@ function assertCurrentRequest(
 
 export async function withRequestPolicy<T>(
     path: `/api/${string}`,
-    options: RequestOptions,
+    options: PolicyOptions,
     execute: (path: `/api/${string}`, options: TransportOptions) => Promise<T>,
     recover?: (revision: number) => Promise<AccessTokenSnapshot>,
 ): Promise<T> {
@@ -76,9 +89,74 @@ export async function withRequestPolicy<T>(
     }
 }
 
-export async function request(
-    path: `/api/${string}`,
+// 요청마다 인증 버전을 고정한다. 파싱·도메인 검증도 같은 취소·쿠키 잠금 범위에 둔다.
+export async function request<T>(
+    execute: (client: Client<paths>) => Promise<T>,
     options: RequestOptions = {},
-): Promise<unknown> {
-    return withRequestPolicy(path, options, sendRequest);
+): Promise<T> {
+    const revision = getAuthRevision();
+    let status: number | undefined;
+    const assertCurrent = (): void => {
+        if (options.signal?.aborted || revision !== getAuthRevision()) {
+            throw new ApiError("aborted", { cause: options.signal?.reason });
+        }
+    };
+    assertCurrent();
+    const origin =
+        typeof window === "undefined" ? "http://sayroam.invalid" : window.location.origin;
+    const client = createClient<paths>({
+        baseUrl: origin,
+        credentials: "same-origin",
+        headers: { Accept: "application/json, application/problem+json" },
+        signal: options.signal ?? null,
+        fetch: async (input) => {
+            assertCurrent();
+            const url = new URL(input.url);
+            const path = url.pathname + url.search;
+            if (url.origin !== origin || !isApiPath(path)) {
+                throw new ApiError("invalid-response");
+            }
+            const transport: TransportOptions = {
+                method: input.method,
+                headers: input.headers,
+                signal: input.signal,
+                cache: input.cache,
+            };
+            if (input.body !== null) transport.body = await input.text();
+            assertCurrent();
+            const response = await withRequestPolicy(
+                path,
+                { ...transport, auth: options.auth ?? "none" },
+                (path, transport) => {
+                    assertCurrent();
+                    return sendResponse(path, transport);
+                },
+                (currentRevision) => refreshAccessToken(refreshApi, currentRevision),
+            );
+            status = response.status;
+            return response;
+        },
+    });
+    const run = async (): Promise<T> => {
+        try {
+            assertCurrent();
+            if (options.cookieAction === "login" || options.cookieAction === "logout") {
+                invalidateOtherTabs();
+            }
+            const value = await execute(client);
+            assertCurrent();
+            return value;
+        } catch (cause) {
+            if (cause instanceof ApiError) throw cause;
+            assertCurrent();
+            throw new ApiError("invalid-response", {
+                ...(status === undefined ? {} : { status }),
+                cause,
+            });
+        }
+    };
+    return waitForSharedRequest(
+        options.cookieAction ? withAuthCookieLock(options.cookieAction, run) : run(),
+        options.signal,
+    );
 }

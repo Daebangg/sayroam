@@ -49,8 +49,7 @@ export async function sendResponse(
         if (contentType !== "application/json" && !contentType?.endsWith("+json")) {
             throw new ApiError("invalid-response", { status: response.status });
         }
-        // 생성 클라이언트는 Content-Length: 0이면 응답 검증기를 건너뛴다.
-        // JSON 응답 경계에서 먼저 거절해 빈 객체가 정상 DTO로 전달되지 않게 한다.
+        // 본문 없는 성공은 204·205·HEAD로 구분하고, JSON 응답의 빈 본문은 거절한다.
         if (!body.trim() || response.headers.get("Content-Length") === "0") {
             throw new ApiError("invalid-response", { status: response.status });
         }

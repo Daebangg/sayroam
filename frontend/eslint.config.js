@@ -8,21 +8,21 @@ import { defineConfig, globalIgnores } from "eslint/config";
 const sharedJsxRestrictions = [
     {
         selector: "CallExpression[callee.name='fetch']",
-        message: "API 호출은 도메인 API와 src/api/sdk.ts를 거칩니다.",
+        message: "API 호출은 도메인 API와 src/api/http.ts를 거칩니다.",
     },
     {
         selector:
             "CallExpression[callee.object.name=/^(window|globalThis|self)$/][callee.property.name='fetch']",
-        message: "API 호출은 도메인 API와 src/api/sdk.ts를 거칩니다.",
+        message: "API 호출은 도메인 API와 src/api/http.ts를 거칩니다.",
     },
     {
         selector: "NewExpression[callee.name='XMLHttpRequest']",
-        message: "API 호출은 도메인 API와 src/api/sdk.ts를 거칩니다.",
+        message: "API 호출은 도메인 API와 src/api/http.ts를 거칩니다.",
     },
     {
         selector:
             "ImportExpression[source.value=/generated/], ImportExpression[source.value=/transport/], ImportExpression[source.value=/http\\.ts/], ImportExpression[source.value=/csrf\\.ts/]",
-        message: "생성 SDK와 전송 계층을 동적 import로 우회하지 않습니다.",
+        message: "공통 요청과 전송 계층을 동적 import로 우회하지 않습니다.",
     },
     {
         selector: "JSXAttribute[name.name='style']",
@@ -40,10 +40,10 @@ const sharedJsxRestrictions = [
 
 const apiBoundaryPatterns = [
     {
-        group: ["**/generated/sdk/**", "**/http.ts", "**/transport.ts", "**/csrf.ts"],
+        group: ["openapi-fetch", "**/generated/**", "**/http.ts", "**/transport.ts", "**/csrf.ts"],
         allowTypeImports: true,
         message:
-            "공통 정책을 거치는 src/api/sdk.ts를 사용합니다. 전송 계층은 기반 모듈만 참조합니다.",
+            "공통 정책을 거치는 src/api/http.ts를 사용합니다. 전송 계층은 기반 모듈만 참조합니다.",
     },
 ];
 
@@ -114,7 +114,34 @@ export default defineConfig([
         },
     },
     {
-        files: ["src/api/{sdk,http,csrf,transport}.ts"],
+        files: ["src/api/**/*Api.ts"],
+        rules: {
+            "no-restricted-imports": [
+                "error",
+                {
+                    patterns: [
+                        {
+                            group: [
+                                "openapi-fetch",
+                                "**/generated/**",
+                                "**/transport.ts",
+                                "**/csrf.ts",
+                            ],
+                            allowTypeImports: true,
+                            message: "도메인 API는 http.ts의 공통 요청을 사용합니다.",
+                        },
+                        {
+                            group: ["**/http.ts"],
+                            importNames: ["withRequestPolicy"],
+                            message: "전송 정책을 직접 조합하지 않고 request()를 사용합니다.",
+                        },
+                    ],
+                },
+            ],
+        },
+    },
+    {
+        files: ["src/api/{http,csrf,transport}.ts"],
         rules: {
             "no-restricted-imports": "off",
         },

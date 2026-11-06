@@ -11,7 +11,15 @@ import {
     getAuthRevision,
     setAccessToken,
 } from "../src/api/auth/tokenStore.ts";
-import { request } from "../src/api/http.ts";
+import { withRequestPolicy } from "../src/api/http.ts";
+import { sendRequest, type RequestOptions } from "../src/api/transport.ts";
+
+function request(
+    path: `/api/${string}`,
+    options: RequestOptions & { auth?: "none" | "required" } = {},
+): Promise<unknown> {
+    return withRequestPolicy(path, options, sendRequest);
+}
 import { getCurrentUser } from "../src/api/users/userApi.ts";
 
 const originalDocument = Object.getOwnPropertyDescriptor(globalThis, "document");
@@ -152,11 +160,13 @@ test("잘못된 로그인 응답은 저장하거나 회원 조회에 사용하�
         { ...issued, accessToken: "a\nb" },
         { ...issued, tokenType: "Basic" },
         { ...issued, expiresIn: 0 },
+        { ...issued, expiresIn: 0.5 },
+        { ...issued, expiresIn: Number.MAX_SAFE_INTEGER + 1 },
     ]) {
         await assert.rejects(signIn(input), hasKind("invalid-response"));
         assert.equal(getAccessToken(), undefined);
     }
-    assert.equal(fetchMock.mock.callCount(), 6);
+    assert.equal(fetchMock.mock.callCount(), 8);
 });
 
 test("생성 계약의 nullable 회원 정보는 허용하고 잘못된 역할·필수 필드는 거절", async (t) => {

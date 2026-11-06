@@ -18,25 +18,26 @@ React 함수 컴포넌트와 TypeScript strict를 사용합니다. 컴포넌트�
 
 다음은 기능이 추가될 때 사용하는 배치 기준입니다. 아직 필요한 기능이 없는 빈 디렉터리는 만들지 않습니다.
 
-| 위치                                | 책임                                        |
-| ----------------------------------- | ------------------------------------------- |
-| `src/api/generated/`                | OpenAPI 생성 타입, 직접 수정하지 않음       |
-| `src/api/generated/sdk/`            | 생성 SDK·응답 검증 런타임과 선언 타입       |
-| `src/api/sdk.ts`                    | 생성 SDK 공개 진입점·공통 요청 정책 연결    |
-| `src/api/<domain>/`                 | 도메인 API 요청과 오류 매핑                 |
-| `src/hooks/api/<domain>/`           | 도메인 요청 수명주기·상태·액션              |
-| `src/hooks/`                        | UI·인증 문맥·테마 등 비 API 훅              |
-| `src/pages/<group>/`                | 페이지별 도메인 훅 호출·상태 연결·기능 조합 |
-| `src/components/features/<domain>/` | props로 상태·액션을 받는 도메인 UI          |
-| `src/components/ui/<category>/`     | 버튼·입력·카드·모달 등 공용 프리미티브      |
-| `src/components/layout/`            | 앱 셸·내비게이션·페이지 프레임              |
-| `src/styles/app.css`                | 전역 토큰·공용 외형·반응형 규칙             |
-| `src/locales/`                      | 사용자 노출 문구                            |
+| 위치                                | 책임                                          |
+| ----------------------------------- | --------------------------------------------- |
+| `src/api/generated/schema.ts`       | OpenAPI 생성 타입 한 파일, 직접 수정하지 않음 |
+| `src/api/http.ts`                   | 타입이 적용된 공통 요청·인증·CSRF 정책        |
+| `src/api/<domain>/`                 | 도메인 API 요청과 오류 매핑                   |
+| `src/hooks/api/<domain>/`           | 도메인 요청 수명주기·상태·액션                |
+| `src/hooks/`                        | UI·인증 문맥·테마 등 비 API 훅                |
+| `src/pages/<group>/`                | 페이지별 도메인 훅 호출·상태 연결·기능 조합   |
+| `src/components/features/<domain>/` | props로 상태·액션을 받는 도메인 UI            |
+| `src/components/ui/<category>/`     | 버튼·입력·카드·모달 등 공용 프리미티브        |
+| `src/components/layout/`            | 앱 셸·내비게이션·페이지 프레임                |
+| `src/styles/app.css`                | 전역 토큰·공용 외형·반응형 규칙               |
+| `src/locales/`                      | 사용자 노출 문구                              |
 
-API 흐름은 생성 SDK·타입 → `<domain>Api.ts`·`<domain>Error.ts` → `use<Domain>Api.ts` → 페이지입니다.
-도메인 API는 `src/api/sdk.ts`에서 생성 함수를 가져옵니다. URL·메서드·응답 형태 검증을 수기로
-복제하지 않고 업무 추가 규칙과 오류 해석만 둡니다. 생성 SDK 원본을 직접 호출하지 않습니다.
-추가 규칙이 없는 API는 생성 함수에 입력·취소 신호를 전달하는 얇은 함수로 유지합니다.
+API 흐름은 생성 타입·공통 요청 → `<domain>Api.ts`·`<domain>Error.ts` → `use<Domain>Api.ts` → 페이지입니다.
+도메인 API는 `http.ts`의 `request()`가 제공하는 `openapi-fetch` 클라이언트로 GET·POST 등을 호출합니다.
+경로·메서드·본문은 생성된 `paths`로 타입 검사하며 별도 호출 함수를 자동 생성하지 않습니다.
+보호 API는 `auth: "required"`, 로그인·갱신·로그아웃은 해당 `cookieAction`을 선언합니다.
+TypeScript 타입은 실제 응답을 검증하지 않습니다. 토큰·회원 정보 등 핵심 응답은 도메인에서
+필수 필드·nullable·enum·안전 정수와 사용 규칙을 확인하며 DTO 타입은 생성 결과를 재사용합니다.
 API마다 별도 클라이언트·CSRF 처리·토큰 헤더·갱신 로직을 작성하지 않습니다.
 페이지·컴포넌트는 API 모듈을 직접 가져오지 않습니다. 도메인 훅은 페이지가 호출하고,
 기능 컴포넌트는 상태·액션을 props로 받습니다. 공용 UI는 API·도메인 훅·페이지를 참조하지 않습니다.
@@ -48,15 +49,16 @@ OpenAPI 명세와 생성 타입을 함께 관리하고 일반 빌드는 실행 �
 알려진 오류 코드는 명시적으로 매핑하며, 알 수 없는 응답은 안전한 대체 메시지로 정규화합니다.
 CSRF·접근 토큰·갱신·로그아웃은 백엔드 계약을 따르고 화면마다 새 규칙을 만들지 않습니다.
 
-자동 생성 영역은 URL·메서드·본문 직렬화·계약 타입·응답 형태 검증을 담당합니다.
-`sdk.ts`는 생성 클라이언트를 `http.ts`의 공통 정책과 `transport.ts`의 실제 전송에 연결합니다.
-공통 정책은 명세의 Bearer 요구와 서버의 CSRF 적용 범위에 따라 필요한 헤더를 설정합니다.
-`http.ts`·`transport.ts`의 직접 호출은 기반 모듈과 해당 회귀 검사에만 허용합니다.
-CSRF 준비 GET은 SDK와 순환하지 않도록 `csrf.ts`에서 전송 계층을 직접 사용합니다.
+생성 영역은 `schema.ts`의 경로·요청·응답·오류 타입만 담당합니다.
+`http.ts`는 요청마다 인증 버전을 고정하고 타입이 적용된 클라이언트를 제공합니다.
+공통 정책은 선언된 인증 요구와 서버의 CSRF 적용 범위에 따라 필요한 헤더를 설정합니다.
+응답 파싱·도메인 검증이 끝난 뒤에도 취소·인증 버전을 확인하며, 쿠키 요청 잠금도 이 범위를 포함합니다.
+`http.ts`의 `request()`만 도메인 API에서 호출하고 `withRequestPolicy`·`transport.ts`는 기반 모듈과
+회귀 검사에서만 사용합니다. CSRF 준비 GET은 순환하지 않도록 `csrf.ts`에서 전송 계층을 직접 사용합니다.
 
 여러 API와 상태 변경을 묶는 동작은 `<domain>Session.ts` 같은 도메인 조합 모듈이 소유합니다.
 인증은 `authSession.ts`의 `signIn`·`restoreSession`·`signOut`을 도메인 훅에서 호출합니다.
-토큰은 메모리에만 저장하고 화면·훅에서 생성된 `login`·`refresh`·`logout`을 직접 조합하지 않습니다.
+토큰은 메모리에만 저장하고 화면·훅에서 `loginApi`·`refreshApi`·`logoutApi`를 직접 조합하지 않습니다.
 로그인·로그아웃·실패로 인증이 무효화되면 도메인 훅이 소유한 회원 정보와 보호된 서버 상태도 정리합니다.
 
 보호 조회의 401만 공유 갱신 후 한 번 재전송합니다. 변경 요청, 403, 네트워크·서버 장애는
@@ -126,7 +128,7 @@ HTML 시작 문서의 제목·설명은 React 실행 전 정적 메타데이터�
 ESLint는 직접 API import·컴포넌트의
 도메인 훅 import·JSX 인라인 외형·JSX 텍스트 리터럴·페이지와 기능의 직접 컨트롤 생성을 검사합니다.
 `pnpm ui:check`는 별도 CSS 파일 추가와 동일 규칙 안의 같은 속성·값 중복을 검사합니다.
-생성 SDK 배럴·클라이언트와 수기 전송 계층의 직접 import, 리터럴 동적 import와 직접 fetch 호출도
+공통 정책을 거치지 않는 클라이언트 생성·전송 계층의 직접 import, 리터럴 동적 import와 직접 fetch 호출도
 검사합니다. 변수·별칭으로 우회한 호출, 다른 규칙 사이의 의미상 중복과 시각적 일치는 보장하지 않습니다.
 
 현재 #60에는 정적 화면·한영 i18n·테마 미리보기·공용 CSS와 브랜드 자산을 포함합니다.
