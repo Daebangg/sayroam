@@ -22,14 +22,15 @@
         "preview": "vite preview",
         "format": "prettier --write .",
         "format:check": "prettier --check .",
-        "check": "pnpm typecheck && pnpm lint && pnpm ui:check && pnpm i18n:check && pnpm test:preferences && pnpm test:routing && pnpm format:check",
+        "check": "pnpm typecheck && pnpm lint && pnpm ui:check && pnpm i18n:check && pnpm test:preferences && pnpm test:routing && pnpm test:csrf && pnpm format:check",
         "api:pull": "node scripts/openapi.mts pull",
         "api:generate": "node scripts/openapi.mts generate",
         "api:check": "node scripts/openapi.mts check",
         "ui:check": "node scripts/ui-check.mts",
         "test:preferences": "node --test scripts/theme.test.mts scripts/locale.test.mts",
         "i18n:check": "node scripts/i18n-check.mts",
-        "test:routing": "node --test scripts/routing.test.mts"
+        "test:routing": "node --test scripts/routing.test.mts",
+        "test:csrf": "node --test scripts/csrf.test.mts"
     },
     "dependencies": {
         "i18next": "26.7.1",

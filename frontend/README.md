@@ -40,6 +40,7 @@ pnpm install --frozen-lockfile
 | `pnpm ui:check`         | 공용 CSS 소유권·동일 규칙의 중복 선언 검사                          |
 | `pnpm i18n:check`       | 한국어·영어 번역 키·치환 변수 일치 검사                             |
 | `pnpm test:routing`     | 기존 미리보기 URL의 화면 경로 전환·우선순위 검사                    |
+| `pnpm test:csrf`        | CSRF 쿠키 준비·공통 헤더 전달·동시 요청·취소·재전송 방지 검사       |
 | `pnpm test:preferences` | 테마 저장·복원·시스템 연동과 지역화 회귀 검사                       |
 | `pnpm format:check`     | 공통 설정·프론트엔드 포맷 검사                                      |
 | `pnpm format`           | 공통 설정·프론트엔드 포맷 적용                                      |
@@ -140,6 +141,23 @@ OAuth 이동·이메일 인증·계정 생성·비밀번호 찾기·계정 기�
 
 화면은 API를 호출하지 않습니다. 후속 연결에서는 `FRONTEND.md`의 생성 타입 → API·오류 → 도메인 훅
 → 페이지 방향을 따릅니다. 요청·응답을 수기로 중복 선언하지 않습니다.
+
+## 공통 요청과 CSRF
+
+도메인 API는 `src/api/http.ts`의 `request()`를 사용합니다. 공통 함수가 백엔드 정책에 맞춰
+`/api/auth`와 하위 경로의 변경 요청에 CSRF를 자동 적용하므로 별도 인증용 요청 함수를 고르지 않습니다.
+GET·HEAD·OPTIONS·TRACE와 그 외 Bearer 전용 API에는 CSRF 준비·헤더를 추가하지 않습니다.
+
+`src/api/csrf.ts`는 현재 `XSRF-TOKEN` 쿠키를 읽고, 없으면 `GET /api/auth/csrf`를 호출합니다.
+같은 페이지의 동시 호출은 준비 요청 하나를 기다리며, 완료 후 쿠키 값을 `X-XSRF-TOKEN` 헤더로
+전달합니다. 쿠키를 읽을 수 없으면 원래 변경 요청을 보내지 않습니다. 쿠키는 브라우저가 전송하고
+Refresh 쿠키는 JavaScript로 읽지 않습니다. 개발 화면의 호스트를 바꾸면 쿠키도 별도로 관리됩니다.
+
+`src/api/transport.ts`는 실제 전송·응답·오류 처리를 담당하며 CSRF 준비 GET도 이 계층을 사용합니다.
+403과 네트워크 실패 후 원래 변경 요청을 자동 반복하지 않습니다. 한 호출의 취소는 공유 준비를
+중단하지 않으며, 준비 완료 후 취소된 변경 요청은 전송되지 않습니다.
+회귀 검사는 `pnpm test:csrf`로 실행합니다. Access Token 관리·갱신 직렬화·로그아웃 상태 정리는
+#55의 후속 단계입니다. 현재 화면 초안에는 아직 API를 연결하지 않았습니다.
 
 ## OpenAPI 계약 갱신
 
