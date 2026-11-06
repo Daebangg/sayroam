@@ -34,8 +34,9 @@ public class OAuth2ClientConfig {
         register(registrations, properties.naver(), ClientRegistration.withRegistrationId("naver")
                 .clientName("Naver").clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_POST)
                 .authorizationUri("https://nid.naver.com/oauth2.0/authorize").tokenUri("https://nid.naver.com/oauth2.0/token")
-                .userInfoUri("https://openapi.naver.com/v1/nid/me").userNameAttributeName("response")
-                .providerConfigurationMetadata(Map.of("token-request-state", true)), "naver", false);
+                .userInfoUri("https://openapi.naver.com/v1/nid/me").userNameAttributeName("id")
+                .providerConfigurationMetadata(Map.of("token-request-state", true,
+                        "user-info-id-container", "response")), "naver", false);
         var clients = Map.copyOf(registrations);
         return clients::get;
     }

@@ -30,6 +30,7 @@ import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 
 import java.net.URI;
+import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
 
@@ -77,10 +78,23 @@ public class SpringOAuth2IdentityProvider implements SocialIdentityProvider {
         this.users.setAttributesConverter(request -> attributes -> {
             String idAttribute = request.getClientRegistration().getProviderDetails()
                     .getUserInfoEndpoint().getUserNameAttributeName();
-            if (attributes.get(idAttribute) == null) {
+            var container = request.getClientRegistration().getProviderDetails().getConfigurationMetadata().get("user-info-id-container");
+            Map<?, ?> idAttributes = attributes;
+            if (container instanceof String key) {
+                if (!(attributes.get(key) instanceof Map<?, ?> nested)) {
+                    throw new AuthException(AuthErrorCode.SOCIAL_AUTH_FAILED);
+                }
+                idAttributes = nested;
+            }
+            Object id = idAttributes.get(idAttribute);
+            if (id == null) {
                 throw new AuthException(AuthErrorCode.SOCIAL_AUTH_FAILED);
             }
-            return attributes;
+            if (idAttributes == attributes) return attributes;
+            // Spring의 사용자 식별자는 최상위에 두고, 공급자 결과 코드와 중첩 응답은 매퍼를 위해 보존한다.
+            var normalized = new HashMap<>(attributes);
+            normalized.put(idAttribute, id);
+            return normalized;
         });
     }
 

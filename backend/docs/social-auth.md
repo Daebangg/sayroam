@@ -1,7 +1,7 @@
 # OAuth2 소셜 로그인 (#31)
 
 관련 이슈: [#31](https://github.com/Daebangg/sayroam/issues/31), 상위 [#24](https://github.com/Daebangg/sayroam/issues/24).
-첫 공급자인 Google에 이어 Kakao도 같은 인증 흐름을 사용합니다. OAuth2 Authorization Code로 공급자 Access Token을 받은 뒤
+첫 공급자인 Google에 이어 Kakao·Naver도 같은 인증 흐름을 사용합니다. OAuth2 Authorization Code로 공급자 Access Token을 받은 뒤
 UserInfo API에서 사용자를 확인합니다. 서비스의 Access JWT·Refresh Token은 기존 공통 흐름으로 발급합니다.
 
 ## 구조
@@ -23,8 +23,10 @@ Application은 공급자 JSON·Servlet·Spring OAuth2 객체를 받지 않고 `S
 `openid` scope·nonce·ID Token·JWK 검증은 이 흐름에 포함하지 않습니다.
 
 Google·Kakao·Naver의 설정과 사용자 정보 매핑을 같은 공통 흐름으로 구성했습니다.
-Google·Kakao의 활성화 방법은 아래 클라이언트 설정을 따릅니다. Naver 활성화는 후속 범위입니다.
+각 공급자의 활성화 방법은 아래 클라이언트 설정을 따릅니다.
 Kakao는 UserInfo 요청에 명세의 form Content-Type을 사용하고 `secure_resource=true`로 HTTPS 프로필 이미지를 요청합니다.
+Naver는 토큰 교환에 인가 요청의 state를 포함하고, UserInfo의 `response.id`를 Spring 사용자 식별자로 정규화합니다.
+정규화 시 원본 `resultcode`와 `response`를 유지하며, 매퍼에서 성공 코드와 실제 회원 식별자를 검사합니다.
 공급자 코드가 구성되어 있어도 각 콘솔의 설정·자격 정보 입력과 실제 로그인 검증은 별도로 필요합니다.
 기존 계정 연결·해제는 다음 단계입니다. 같은 이메일이라는 이유로 자동 병합하지 않습니다.
 
@@ -66,6 +68,32 @@ app.auth.social.kakao.redirect-uri=http://localhost:8080/api/auth/social/kakao/c
 이 구현은 OAuth2 Access Token으로 `/v2/user/me`를 조회하며 OpenID Connect의 ID Token을 사용하지 않습니다.
 Kakao의 동의항목은 콘솔 설정을 사용하고 `openid` scope나 추가 동의 scope를 강제로 요청하지 않습니다.
 
+### Naver
+
+1. [Naver Developers](https://developers.naver.com/apps/#/register)에서 애플리케이션을 등록하고 사용 API에 [네이버 로그인]을 선택합니다.
+2. 필요한 회원 정보 제공 항목으로 이메일·별명·프로필 사진을 설정합니다. 이메일은 기존 이메일 인증으로 보완하고, 닉네임은 가입 요청에서 입력합니다. 프로필 사진은 제공되지 않아도 가입할 수 있습니다.
+3. 로그인 오픈 API 서비스 환경에 [PC 웹]을 추가하고 서비스 URL에 `http://localhost:8080`, Callback URL에 아래 주소를 등록합니다.
+4. 발급받은 Client ID·Client Secret을 개인 설정 파일에 입력하고 활성화합니다. 개발 상태에서 로그인할 계정이 허용되는지도 콘솔에서 확인합니다.
+
+```properties
+app.auth.social.naver.enabled=true
+app.auth.social.naver.client-id=<Naver Client ID>
+app.auth.social.naver.client-secret=<Naver Client Secret>
+app.auth.social.naver.redirect-uri=http://localhost:8080/api/auth/social/naver/callback
+```
+
+서비스 URL은 사용자가 방문할 홈 주소이고, Callback URL은 네이버가 인증 결과를 전달할 백엔드 주소입니다.
+Kakao·Google의 개인 설정을 유지하면서 Naver 항목을 추가하고 `local` 프로필로 재시작합니다. 키가 준비되지 않았다면 `enabled=false`를 유지합니다.
+
+Naver는 `CLIENT_SECRET_POST`로 Client ID·Secret을 토큰 요청 본문에 전달하고, 같은 요청에 원래 인가 요청의 state도 포함합니다.
+사용자 정보는 `GET https://openapi.naver.com/v1/nid/me`에 Bearer 토큰을 넣어 조회합니다.
+응답의 `resultcode="00"`을 확인한 뒤 `response.id`를 계정 식별자로 사용하며, 중첩 응답·식별자가 없으면 인증을 거절합니다.
+Naver 명세에 따라 scope는 생략하고, 이 인가 코드 흐름에서는 PKCE 파라미터도 전송하지 않습니다. state·공급자·브라우저 바인딩·만료와 일회성 소비 검증은 동일하게 적용합니다.
+
+Naver 프로필에는 이메일 인증 완료 여부가 없으므로, 이 서비스는 신규 가입 시 `emailVerificationRequired=true`를 반환합니다.
+제공된 이메일은 입력 참고값이며 기존 #28 이메일 인증으로 `signupProof`를 발급받아 가입합니다. 기존 Naver 회원의 재로그인에는 가입용 이메일 인증을 다시 요구하지 않습니다.
+같은 이메일이라는 이유로 Google·Kakao·이메일 계정과 자동 병합하지 않습니다.
+
 ### 공통 설정
 
 환경변수는 `APP_AUTH_SOCIAL_GOOGLE_ENABLED`, `APP_AUTH_SOCIAL_GOOGLE_CLIENTID`,
@@ -98,6 +126,25 @@ Google은 `userinfo.email`, `userinfo.profile` 범위를 요청합니다. Kakao�
 
 Kakao 로그인 미활성화는 `KOE004`, Redirect URI 불일치는 `KOE006`을 확인합니다. 토큰 교환 실패는 REST API 키·클라이언트 시크릿과 콜백 URI를 확인합니다.
 실제 로그인·동의 취소·이메일 미제공·가입·재로그인 확인을 마쳐야 외부 공급자 연동 검증 완료로 기록합니다.
+
+### Naver 연동 확인 순서
+
+Kakao와 마찬가지로 인증 시작·콜백·결과 교환은 같은 브라우저·호스트에서 진행합니다.
+
+1. CSRF 쿠키·헤더를 준비하고 `POST /api/auth/social/naver/authorizations`에 `{"returnPath":"/"}`를 전달합니다.
+2. 응답의 `authorizationUrl`이 `https://nid.naver.com/oauth2.0/authorize`를 가리키며, Client ID·등록한 콜백 주소·state·`response_type=code`가 포함되는지 확인합니다.
+3. 같은 브라우저에서 인증 주소를 열어 네이버 로그인·정보 제공 동의를 완료합니다. 브라우저는 `/api/auth/social/naver/callback?code=...&state=...`로 돌아옵니다.
+4. 서버가 `/#social_result=...`로 이동시키면 결과 코드를 `POST /api/auth/social/results/exchange`에서 교환합니다.
+5. 신규 계정의 `SIGNUP_REQUIRED` 응답에서 이메일 보완 여부를 확인하고, 이메일 인증 후 닉네임·가입 티켓·email·signupProof로 가입합니다.
+6. 다시 Naver 인증을 시작하여 같은 `response.id`로 기존 회원을 찾아 `AUTHENTICATED`와 Sayroam 토큰을 반환하는지 확인합니다.
+
+검수 전 계정 제한·서비스 URL 또는 Callback URL 불일치는 Naver 콘솔 설정을 확인합니다.
+사용자 취소·state 불일치·만료·이메일 미제공·이메일 충돌도 확인해야 하며, 키가 없는 환경의 컴파일 성공을 실제 Naver 로그인 성공으로 기록하지 않습니다.
+
+2026-11-06 수동 연동에서 실제 Naver 정보 제공 동의 → 콜백 복귀 → 인가 코드 교환 → 사용자 정보 조회 → 결과 교환을 확인했습니다.
+결과 교환은 HTTP 200, `status=SIGNUP_REQUIRED`, 가입 티켓 발급, `emailVerificationRequired=true`를 반환했습니다.
+Sayroam 가입 완료·이메일 인증·가입 후 재로그인과 취소·실패 조합은 아직 검증하지 않았습니다.
+수동 교환도 결과 코드의 기본 유효기간 60초 안에 진행해야 하며, 만료·소비된 결과는 다시 교환하지 않고 새 소셜 인증을 시작합니다.
 
 ## API와 브라우저 흐름
 
@@ -209,9 +256,9 @@ NX 저장·TTL 설정, 바인딩 검사·삭제를 각각 Lua로 원자 처리�
 ## 구현과 검증 범위
 
 인증 시작·콜백·결과 교환·가입·이메일 보완과 OpenAPI를 이번 단계에 포함합니다.
-프론트 화면 구현, 기존 계정 연결·해제, Naver의 콘솔 설정·실제 인증은 후속 범위입니다.
-Kakao 백엔드의 클라이언트 등록·코드 교환·UserInfo 정규화·기존 회원 로그인·신규 가입·이메일 보완을 같은 공통 흐름에 포함합니다.
-콘솔 설정과 실제 자격 정보를 통한 Kakao 인증은 위 확인 순서로 별도 검증합니다.
+프론트 화면 구현, 기존 계정 연결·해제는 후속 범위입니다.
+Kakao·Naver 백엔드의 클라이언트 등록·코드 교환·UserInfo 정규화·기존 회원 로그인·신규 가입·이메일 보완을 같은 공통 흐름에 포함합니다.
+콘솔 설정과 실제 자격 정보를 통한 각 공급자 인증은 위 확인 순서로 별도 검증합니다.
 추가 테스트 작성·실행은 이슈 지침에 따라 전체 인증 기능 구현 후 진행합니다.
 컴파일·앱 시작·OpenAPI 생성 성공을 실제 Google 로그인·이메일 수신·동시성 검증 완료로 표시하지 않습니다.
 

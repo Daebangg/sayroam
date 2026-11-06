@@ -37,7 +37,8 @@ app.auth.social.kakao.enabled=false
 app.auth.social.kakao.client-id=
 app.auth.social.kakao.client-secret=
 app.auth.social.kakao.redirect-uri=http://localhost:8080/api/auth/social/kakao/callback
-# Naver는 콘솔 설정과 연동 확인 전까지 비활성화합니다.
+# Naver: 사용 API에 네이버 로그인을 선택하고 PC 웹 서비스 URL과 Callback URL을 등록합니다.
+# Client ID/Secret 입력 후 활성화합니다. 신규 가입은 별도의 Sayroam 이메일 인증이 필요합니다.
 app.auth.social.naver.enabled=false
 app.auth.social.naver.client-id=
 app.auth.social.naver.client-secret=
