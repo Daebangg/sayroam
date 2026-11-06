@@ -56,6 +56,26 @@ pnpm install --frozen-lockfile
 `frontend/` 안에서는 `pnpm dev`, `pnpm typecheck`, `pnpm lint`, `pnpm build`, `pnpm preview`를
 직접 실행할 수 있습니다. 저장소 루트에는 프론트엔드 명령이나 Node 의존성을 두지 않습니다.
 
+### 자동 CI
+
+`Frontend CI`는 `dev`·`main` 대상 PR과 `dev` push에서 프론트 코드·설정·정적 자원 또는
+`.github/workflows/frontend-ci.yml`이 바뀌면 실행합니다. Markdown(`*.md`)과 `notes/`만 바뀌면
+실행하지 않습니다. 백엔드 코드만 바뀌면 기존 `Backend CI`가 실행됩니다.
+
+Node.js는 `.nvmrc`, pnpm은 `package.json`의 고정 버전을 사용하며 잠금 파일 기준으로 pnpm 저장소를
+캐시합니다. 설치·검사·빌드는 별도 단계로 실행하므로 실패한 단계와 세부 명령은 Actions 로그에서
+확인할 수 있습니다. 로컬에서도 위 버전을 준비하고 `frontend/`에서 같은 순서로 재현합니다.
+
+```bash
+pnpm install --frozen-lockfile
+pnpm check
+pnpm build
+```
+
+검사는 저장된 OpenAPI 계약을 사용하므로 실행 중인 백엔드·DB·개인 환경변수가 필요하지 않습니다.
+
+### 백엔드와 함께 빌드·실행
+
 배포 시에는 저장소 루트에서 `./backend/gradlew -p backend clean build -PincludeFrontend`를 실행하면
 프론트 설치·타입 검사·빌드 후 Spring Boot JAR에 화면을 포함합니다. 결과는
 `backend/build/generated/frontend/`에 생성하며 `frontend/dist/`를 사용하지 않습니다.
