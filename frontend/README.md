@@ -42,7 +42,7 @@ pnpm install --frozen-lockfile
 | `pnpm test:routing`     | 기존 미리보기 URL의 화면 경로 전환·우선순위 검사                    |
 | `pnpm test:csrf`        | CSRF 쿠키 준비·공통 헤더 전달·동시 요청·취소·재전송 방지 검사       |
 | `pnpm test:auth`        | 로그인·메모리 토큰·동시 갱신·복원·로그아웃·인증 변경 경합 검사      |
-| `pnpm test:api`         | 공통 클라이언트·핵심 응답 검증·타입 생성·API 계층 우회 검사         |
+| `pnpm test:api`         | 명세 기반 라우팅·엔드포인트 확장·핵심 응답 검증·생성·호출 경계 검사 |
 | `pnpm test:preferences` | 테마 저장·복원·시스템 연동과 지역화 회귀 검사                       |
 | `pnpm format:check`     | 공통 설정·프론트엔드 포맷 검사                                      |
 | `pnpm format`           | 공통 설정·프론트엔드 포맷 적용                                      |
@@ -161,11 +161,10 @@ OAuth 이동·이메일 인증·계정 생성·비밀번호 찾기·계정 기�
 
 ## 공통 요청과 CSRF
 
-도메인 API는 `src/api/http.ts`의 `request()`에서 타입이 적용된 `openapi-fetch` 클라이언트를
-사용합니다. 경로·메서드·본문·응답 타입은 `generated/schema.ts`의 `paths`로 검사합니다.
-공통 함수가 백엔드 정책에 맞춰
-`/api/auth`와 하위 경로의 변경 요청에 CSRF를 자동 적용하므로 별도 인증용 요청 함수를 고르지 않습니다.
-GET·HEAD·OPTIONS·TRACE와 그 외 Bearer 전용 API에는 CSRF 준비·헤더를 추가하지 않습니다.
+일반 API는 `src/api/api.ts`의 `api.call(operationId, options)`로 호출합니다.
+`schema.ts`의 생성 타입·경로표가 URL·HTTP 메서드·Bearer·CSRF 요구를 제공하므로 호출마다
+정책을 선택하거나 전용 호출 함수를 작성하지 않습니다. 본문·경로·쿼리 입력과 반환 타입도
+명세에서 가져옵니다. 전송·직렬화는 공통 실행기와 `openapi-fetch`가 담당합니다.
 
 `src/api/csrf.ts`는 현재 `XSRF-TOKEN` 쿠키를 읽고, 없으면 `GET /api/auth/csrf`를 호출합니다.
 같은 페이지의 동시 호출은 준비 요청 하나를 기다리며, 완료 후 쿠키 값을 `X-XSRF-TOKEN` 헤더로
@@ -183,20 +182,19 @@ Refresh 쿠키는 JavaScript로 읽지 않습니다. 개발 화면의 호스트�
 `GET /api/users/me` 조회를 조합하고, 확인한 회원 정보를 반환합니다. 입력과 응답은 생성 타입을
 재사용하며 로그인·회원 응답의 실제 필드도 검사합니다. 화면 연결 시 도메인 훅에서 호출합니다.
 
-`authApi.ts`의 `loginApi()`는 타입이 적용된 `POST /api/auth/login`을 호출하고
-`tokenResponse.ts`에서 토큰 필수값·Bearer 형식·양수인 안전 정수 유효기간을 확인합니다.
-`userApi.ts`는 `GET /api/users/me`의 필수 필드·nullable·역할·양수인 안전 정수 ID를 검증합니다.
-생성 타입은 컴파일 시점의 계약이며 실제 응답을 자동 검증하지 않습니다. 모든 API의 검증기를
-생성하지 않고 현재 사용하는 핵심 응답의 검증을 도메인 가까이에 둡니다.
+`authApi.ts`·`userApi.ts`는 로그인·갱신·로그아웃·회원 조회의 기존 호출 이름을 제공하고
+operationId와 입력만 전달합니다. 실제 검증과 부가 처리는 `api.ts`의 엔드포인트 확장에 등록합니다.
+`tokenResponse.ts`는 토큰 필수값·Bearer 형식·양수인 안전 정수 유효기간을 검사하고,
+`userResponse.ts`는 회원 정보의 필수 필드·nullable·역할·양수인 안전 정수 ID를 검사합니다.
+모든 API에 별도 검증기를 생성하지 않으며 핵심 응답의 실제 구조를 명시적으로 검증합니다.
 `tokenStore.ts`는 모듈 메모리만 사용합니다. 토큰을 localStorage·sessionStorage·직접 만든 쿠키에
 저장하지 않습니다. 만료 시각은 참고값이며 최종 인증 유효성은 서버가 검사합니다.
 새로고침하면 메모리 토큰은 사라집니다.
 
-보호 API는 공통 요청에 `auth: "required"`를 선언합니다. OpenAPI의 `security`를 실행 중에
-자동 판별하지 않으며 API 추가 시 명세의 인증 요구를 확인합니다. 도메인 API가 Access 헤더·
-CSRF·갱신을 직접 구현하지는 않습니다. Refresh Token은 브라우저의 HttpOnly 쿠키 전송에 맡깁니다.
-로그인·갱신·로그아웃의 `cookieAction`은 응답 파싱·검증까지 탭 간 잠금으로 묶습니다.
-`transport.ts`는 기반 모듈 전용이며 CSRF 준비 GET도 이 전송 계층을 사용합니다.
+Bearer·CSRF 요구는 OpenAPI의 `security`에서 경로표로 생성됩니다. Refresh Token은 브라우저의
+HttpOnly 쿠키 전송에 맡깁니다. 쿠키 변경처럼 명세만으로 결정하지 않는 규칙은 로그인·갱신·
+로그아웃의 확장 설정인 `cookieAction`으로 지정하며 파싱·검증·후처리까지 탭 간 잠금으로 묶습니다.
+도메인 API가 Access 헤더·CSRF·갱신을 직접 구현하지 않으며 전송 계층도 도메인 API를 역참조하지 않습니다.
 
 새 로그인은 기존 메모리 인증을 정리하고 같은 탭의 중복 로그인은
 `authentication-in-progress`로 거절합니다. 계정 변경·로그아웃은 인증 버전을 변경하고,
@@ -206,21 +204,23 @@ CSRF·갱신을 직접 구현하지는 않습니다. Refresh Token은 브라우�
 
 ### 파일별 책임과 새 API 연결
 
-| 위치                                                      | 소유하는 동작                                               |
-| --------------------------------------------------------- | ----------------------------------------------------------- |
-| `contracts/openapi.json` → `scripts/openapi.mts`          | 저장 계약으로 타입 생성                                     |
-| `src/api/generated/schema.ts`                             | 경로·요청·응답·오류 타입 한 파일                            |
-| `src/api/http.ts`, `transport.ts`, `csrf.ts`              | 타입이 적용된 공통 요청·Bearer·CSRF·조회 재시도·오류 정규화 |
-| `src/api/<domain>/<domain>Api.ts`                         | 타입이 검사되는 API 호출·핵심 응답 검증·업무 규칙           |
-| `src/api/auth/tokenResponse.ts`, `tokenStore.ts`          | 토큰 검증과 메모리 상태                                     |
-| `src/api/auth/refreshSession.ts`, `cookieCoordination.ts` | 공유 갱신·탭 사이 쿠키 요청 직렬화                          |
-| `src/api/auth/authSession.ts`                             | 로그인·복원·로그아웃의 상태 변경 순서                       |
-| `src/hooks/api/<domain>/` → 페이지                        | 요청 수명주기·상태·액션 → 화면 연결, 후속 화면 작업         |
+| 위치                                                                       | 소유하는 동작                                           |
+| -------------------------------------------------------------------------- | ------------------------------------------------------- |
+| `contracts/openapi.json` → `scripts/openapi.mts`                           | 명세에서 타입·경로표 생성                               |
+| `src/api/generated/schema.ts`                                              | 타입과 `apiRoutes` 경로표 한 파일                       |
+| `src/api/api.ts`                                                           | 공개 API 인스턴스·엔드포인트별 확장·공유 갱신 연결      |
+| `src/api/router.ts`                                                        | operationId 조회·직렬화·성공 상태와 본문 계약·확장 실행 |
+| `src/api/http.ts`, `transport.ts`, `csrf.ts`                               | Bearer·CSRF·조회 재시도·취소·실제 전송·오류 정규화      |
+| `src/api/auth/tokenResponse.ts`, `users/userResponse.ts`                   | 핵심 응답 검증                                          |
+| `src/api/auth/tokenStore.ts`, `refreshSession.ts`, `cookieCoordination.ts` | 메모리 토큰·공유 갱신·탭 간 쿠키 요청 직렬화            |
+| `src/api/auth/authSession.ts`                                              | 로그인·복원·로그아웃의 상태 변경 순서                   |
+| 도메인 API·훅 → 페이지                                                     | 업무 조합·오류 해석·요청 수명주기와 화면 연결           |
 
-새 API는 명세 갱신·재생성 후 도메인 모듈에서 `request()`와 타입이 적용된 클라이언트로 호출합니다.
-보호 API는 인증 요구를 선언하며 헤더·갱신 처리는 공통 기반에 맡깁니다. 여러 요청과 상태 변경을
-묶을 때만 세션 조합 모듈을 추가합니다.
-ESLint는 도메인 밖의 공통 요청 호출, 직접 클라이언트 생성·전송 계층·리터럴 동적 import·직접
+새 API는 명세 갱신·재생성 후 `api.call("operationId", options)`로 바로 호출합니다.
+추가 검증은 `parseResponse`, 전후처리는 `wrap(next, context)`로 해당 엔드포인트에만 등록합니다.
+이 확장도 공통 취소·인증 버전·쿠키 잠금 범위에서 실행됩니다. 일반 API에는 별도 래퍼가 필요하지 않습니다.
+여러 요청과 상태 변경을 묶을 때만 세션 조합 모듈을 추가합니다.
+ESLint는 직접 클라이언트 생성·경로표·실행기·전송 계층의 직접 사용과 리터럴 동적 import·직접
 fetch 우회를 검사합니다. 변수·별칭으로 숨긴 모든 호출까지 보장하는 검사는 아닙니다.
 
 ### Refresh와 로그아웃
@@ -273,26 +273,36 @@ HTTPS 또는 localhost의 Web Locks 지원 브라우저가 필요합니다. 잠�
 
 ## OpenAPI 계약 갱신
 
-`contracts/openapi.json`을 `openapi-typescript`로 읽어 `src/api/generated/schema.ts` 한 파일을
-생성합니다. SDK 런타임·선언 파일·응답 검증기를 별도로 생성하거나 컴파일하지 않습니다.
-실제 호출·직렬화는 `openapi-fetch`가 담당하고 도메인 API는 `http.ts`의 공통 정책을 거칩니다.
+`contracts/openapi.json`에서 `src/api/generated/schema.ts` 한 파일을 생성합니다.
+`openapi-typescript`의 타입에 operationId별 경로·메서드·인증 요구·성공 응답 정보를 담은
+`apiRoutes`를 함께 기록합니다. API별 함수나 SDK 런타임·선언 파일을 별도로 생성하지 않습니다.
 
 ```ts
-// src/api/users/userApi.ts의 호출 형태
-return request(
-    async (client) => {
-        const { data, response } = await client.GET("/api/users/me");
-        return validateCurrentUser(data, response.status);
-    },
-    { ...options, auth: "required" },
-);
+import { api } from "@/api/api";
+
+const user = await api.call("me", { signal });
+const room = await api.call("create", { body: { name: "여행" } });
 ```
 
-경로·메서드·입력·응답 타입은 생성된 계약을 따릅니다. 실제 응답 검증은 별개이므로 토큰·회원
-응답에는 명시적인 검증을 유지합니다. API를 추가할 때 인증 요구와 응답 검증 필요성을 확인합니다.
+필요한 엔드포인트만 `src/api/api.ts`에서 확장합니다.
 
-`pnpm api:generate`는 저장 명세로 타입을 재생성하고 `pnpm api:check`는 명세·생성 타입을
-재계산해 저장본과 비교합니다. check는 결과물을 수정하지 않으며 일반 빌드에는 실행 중인
+```ts
+extensions: {
+    login: { cookieAction: "login", parseResponse: validateToken },
+    refresh: { cookieAction: "refresh", parseResponse: validateToken },
+    logout: { cookieAction: "logout" },
+    me: { parseResponse: validateCurrentUser },
+}
+```
+
+`wrap(next, context)`를 등록하면 호출 전후에 부가 처리를 실행할 수 있습니다.
+입력·응답 타입은 명세와 동기화되지만 실제 DTO 구조 검증은 별개이므로 핵심 응답의 검증을 유지합니다.
+경로표는 성공 상태·본문 유무도 제공하며 예상하지 않은 성공 응답은 `invalid-response`로 구분합니다.
+현재 생성기는 JSON 응답과 Bearer·XSRF 헤더·Refresh 쿠키 계약을 지원합니다. 고유한 operationId가
+없거나 서로 다른 인증 대안·지원하지 않는 인증 방식이 있으면 자동 생성 단계에서 실패합니다.
+
+`pnpm api:generate`는 저장 명세로 타입·경로표를 재생성하고 `pnpm api:check`는 저장본과
+재계산한 결과를 비교합니다. check는 결과물을 수정하지 않으며 일반 빌드에는 실행 중인
 백엔드가 필요하지 않습니다.
 
 백엔드의 기존 `exportOpenApi` 명령으로 실행 중인 local 서버에서 JSON을 받아 검증한 뒤,
@@ -317,15 +327,15 @@ pnpm api:pull --file ../backend/build/openapi/openapi.json
 Windows에서는 `JAVA_HOME/bin/java.exe` 또는 PATH의 `java.exe`로 같은 Gradle Wrapper JAR를
 셸 없이 실행합니다. macOS·Linux에서는 기존 `gradlew`를 사용합니다.
 
-| 파일                          | 역할                                                   |
-| ----------------------------- | ------------------------------------------------------ |
-| `contracts/openapi.json`      | Git으로 관리하는 백엔드 명세 스냅샷                    |
-| `src/api/generated/schema.ts` | `openapi-typescript`로 생성한 경로·요청·응답·오류 타입 |
-| `scripts/openapi.mts`         | 명세 수신·검증·생성 및 일치 여부 확인                  |
+| 파일                          | 역할                                          |
+| ----------------------------- | --------------------------------------------- |
+| `contracts/openapi.json`      | Git으로 관리하는 백엔드 명세 스냅샷           |
+| `src/api/generated/schema.ts` | 생성된 경로·요청·응답·오류 타입과 `apiRoutes` |
+| `scripts/openapi.mts`         | 명세 수신·검증·생성 및 일치 여부 확인         |
 
 ```bash
 pnpm api:generate # 저장된 명세로 재생성: 백엔드·네트워크 불필요
-pnpm api:check    # 스냅샷 형식과 생성 타입의 일치 검사, 파일을 수정하지 않음
+pnpm api:check    # 스냅샷 형식과 생성 타입·경로표의 일치 검사, 파일을 수정하지 않음
 pnpm build       # 저장된 계약으로 빌드: 백엔드 불필요
 git diff -- contracts/openapi.json src/api/generated/schema.ts
 ```

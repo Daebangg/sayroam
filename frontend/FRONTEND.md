@@ -18,26 +18,31 @@ React 함수 컴포넌트와 TypeScript strict를 사용합니다. 컴포넌트�
 
 다음은 기능이 추가될 때 사용하는 배치 기준입니다. 아직 필요한 기능이 없는 빈 디렉터리는 만들지 않습니다.
 
-| 위치                                | 책임                                          |
-| ----------------------------------- | --------------------------------------------- |
-| `src/api/generated/schema.ts`       | OpenAPI 생성 타입 한 파일, 직접 수정하지 않음 |
-| `src/api/http.ts`                   | 타입이 적용된 공통 요청·인증·CSRF 정책        |
-| `src/api/<domain>/`                 | 도메인 API 요청과 오류 매핑                   |
-| `src/hooks/api/<domain>/`           | 도메인 요청 수명주기·상태·액션                |
-| `src/hooks/`                        | UI·인증 문맥·테마 등 비 API 훅                |
-| `src/pages/<group>/`                | 페이지별 도메인 훅 호출·상태 연결·기능 조합   |
-| `src/components/features/<domain>/` | props로 상태·액션을 받는 도메인 UI            |
-| `src/components/ui/<category>/`     | 버튼·입력·카드·모달 등 공용 프리미티브        |
-| `src/components/layout/`            | 앱 셸·내비게이션·페이지 프레임                |
-| `src/styles/app.css`                | 전역 토큰·공용 외형·반응형 규칙               |
-| `src/locales/`                      | 사용자 노출 문구                              |
+| 위치                                | 책임                                        |
+| ----------------------------------- | ------------------------------------------- |
+| `src/api/generated/schema.ts`       | OpenAPI 생성 타입·엔드포인트 경로표 한 파일 |
+| `src/api/api.ts`                    | 공개 호출 진입점·엔드포인트별 확장 등록     |
+| `src/api/router.ts`                 | operationId 기반 공통 실행기                |
+| `src/api/http.ts`                   | 공통 전송·인증·CSRF·취소 정책               |
+| `src/api/<domain>/`                 | 도메인 API 요청과 오류 매핑                 |
+| `src/hooks/api/<domain>/`           | 도메인 요청 수명주기·상태·액션              |
+| `src/hooks/`                        | UI·인증 문맥·테마 등 비 API 훅              |
+| `src/pages/<group>/`                | 페이지별 도메인 훅 호출·상태 연결·기능 조합 |
+| `src/components/features/<domain>/` | props로 상태·액션을 받는 도메인 UI          |
+| `src/components/ui/<category>/`     | 버튼·입력·카드·모달 등 공용 프리미티브      |
+| `src/components/layout/`            | 앱 셸·내비게이션·페이지 프레임              |
+| `src/styles/app.css`                | 전역 토큰·공용 외형·반응형 규칙             |
+| `src/locales/`                      | 사용자 노출 문구                            |
 
-API 흐름은 생성 타입·공통 요청 → `<domain>Api.ts`·`<domain>Error.ts` → `use<Domain>Api.ts` → 페이지입니다.
-도메인 API는 `http.ts`의 `request()`가 제공하는 `openapi-fetch` 클라이언트로 GET·POST 등을 호출합니다.
-경로·메서드·본문은 생성된 `paths`로 타입 검사하며 별도 호출 함수를 자동 생성하지 않습니다.
-보호 API는 `auth: "required"`, 로그인·갱신·로그아웃은 해당 `cookieAction`을 선언합니다.
-TypeScript 타입은 실제 응답을 검증하지 않습니다. 토큰·회원 정보 등 핵심 응답은 도메인에서
-필수 필드·nullable·enum·안전 정수와 사용 규칙을 확인하며 DTO 타입은 생성 결과를 재사용합니다.
+API 흐름은 생성 타입·경로표 → `api.call()`·엔드포인트별 확장 → 도메인 조합·오류 → 도메인 훅 → 페이지입니다.
+`api.call(operationId, options)`는 명세의 URL·메서드·Bearer·CSRF 요구를 자동 적용합니다.
+입력·반환 타입도 같은 명세에서 가져오며 일반 API에는 별도 호출 함수를 추가하지 않습니다.
+로그인·회원 조회 등 기존 도메인 함수는 인증 세션 조합을 위한 이름과 입력 편의를 제공하며
+경로·메서드·정책을 다시 작성하지 않습니다. 도메인 훅은 일반 호출에 `api.call()`을 사용할 수 있습니다.
+추가 처리가 필요한 엔드포인트만 `api.ts`의 `extensions`에 등록합니다.
+`parseResponse`는 실제 응답의 필수 필드·nullable·enum·안전 정수 등을 검증하고,
+`wrap(next, context)`는 해당 호출의 전후처리를 감쌉니다. 입력·응답 DTO는 생성 타입을 재사용합니다.
+토큰·회원 응답 검증은 항상 기본 API 인스턴스에 등록합니다. 생성 타입 자체는 실제 응답을 검증하지 않습니다.
 API마다 별도 클라이언트·CSRF 처리·토큰 헤더·갱신 로직을 작성하지 않습니다.
 페이지·컴포넌트는 API 모듈을 직접 가져오지 않습니다. 도메인 훅은 페이지가 호출하고,
 기능 컴포넌트는 상태·액션을 props로 받습니다. 공용 UI는 API·도메인 훅·페이지를 참조하지 않습니다.
@@ -49,12 +54,14 @@ OpenAPI 명세와 생성 타입을 함께 관리하고 일반 빌드는 실행 �
 알려진 오류 코드는 명시적으로 매핑하며, 알 수 없는 응답은 안전한 대체 메시지로 정규화합니다.
 CSRF·접근 토큰·갱신·로그아웃은 백엔드 계약을 따르고 화면마다 새 규칙을 만들지 않습니다.
 
-생성 영역은 `schema.ts`의 경로·요청·응답·오류 타입만 담당합니다.
-`http.ts`는 요청마다 인증 버전을 고정하고 타입이 적용된 클라이언트를 제공합니다.
-공통 정책은 선언된 인증 요구와 서버의 CSRF 적용 범위에 따라 필요한 헤더를 설정합니다.
-응답 파싱·도메인 검증이 끝난 뒤에도 취소·인증 버전을 확인하며, 쿠키 요청 잠금도 이 범위를 포함합니다.
-`http.ts`의 `request()`만 도메인 API에서 호출하고 `withRequestPolicy`·`transport.ts`는 기반 모듈과
-회귀 검사에서만 사용합니다. CSRF 준비 GET은 순환하지 않도록 `csrf.ts`에서 전송 계층을 직접 사용합니다.
+생성 영역은 `schema.ts`의 타입과 `apiRoutes` 경로표만 담당합니다. SDK 런타임이나 API별 함수를 생성하지 않습니다.
+`router.ts`는 경로표를 조회하고 선언된 성공 상태·본문 유무를 검사하며 엔드포인트 확장을 실행합니다.
+`http.ts`는 요청마다 인증 버전을 고정하고 공통 인증·CSRF·갱신·오류 정책을 적용합니다.
+응답 파싱·확장 검증·전후처리가 끝날 때까지 취소·인증 버전 검사와 쿠키 요청 잠금 범위를 유지합니다.
+로그인·갱신·로그아웃의 `cookieAction`은 `api.ts`의 확장 설정에서 지정합니다.
+`api.ts`가 공유 갱신을 연결하므로 전송 계층은 도메인 API를 역으로 참조하지 않습니다.
+`router.ts`·`http.ts`·`transport.ts`는 기반 모듈과 회귀 검사에서만 사용합니다.
+CSRF 준비 GET은 순환하지 않도록 `csrf.ts`에서 전송 계층을 직접 사용합니다.
 
 여러 API와 상태 변경을 묶는 동작은 `<domain>Session.ts` 같은 도메인 조합 모듈이 소유합니다.
 인증은 `authSession.ts`의 `signIn`·`restoreSession`·`signOut`을 도메인 훅에서 호출합니다.

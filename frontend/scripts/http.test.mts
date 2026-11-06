@@ -8,7 +8,10 @@ import {
     logoutApi as logout,
     refreshApi as refresh,
 } from "../src/api/auth/authApi.ts";
-import { request } from "../src/api/http.ts";
+import { api } from "../src/api/api.ts";
+import { apiRoutes } from "../src/api/generated/schema.ts";
+import { createApiRouter } from "../src/api/router.ts";
+import { validateCurrentUser } from "../src/api/users/userResponse.ts";
 import { getCurrentUser as me } from "../src/api/users/userApi.ts";
 import { getCurrentUser } from "../src/api/users/userApi.ts";
 
@@ -58,19 +61,10 @@ test("보호 API는 공통 Bearer 정책을 사용하고 쿠키 준비 GET은 �
             const headers = new Headers(options?.headers);
             assert.equal(headers.get("Authorization"), "Bearer http-token");
             assert.equal(headers.get("X-XSRF-TOKEN"), null);
-            return Response.json({ roomId: 123 });
+            return Response.json({ roomId: 123 }, { status: 201 });
         },
     );
-    assert.deepEqual(
-        await request(
-            async (client) => {
-                const { data } = await client.POST("/api/rooms", { body: { name: "여행" } });
-                return data;
-            },
-            { auth: "required" },
-        ),
-        { roomId: 123 },
-    );
+    assert.deepEqual(await api.call("create", { body: { name: "여행" } }), { roomId: 123 });
     assert.equal(fetchMock.mock.callCount(), 1);
 });
 
@@ -168,15 +162,18 @@ test("응답 검증 중 계정이 바뀌어도 이전 회원 정보를 반환하
         release = resolve;
     });
     t.mock.method(globalThis, "fetch", async () => Response.json(user));
-    const pending = request(
-        async (client) => {
-            const { data } = await client.GET("/api/users/me");
-            started();
-            await gate;
-            return data;
+    const router = createApiRouter(apiRoutes, {
+        extensions: {
+            me: {
+                parseResponse: async (data, status) => {
+                    started();
+                    await gate;
+                    return validateCurrentUser(data, status);
+                },
+            },
         },
-        { auth: "required" },
-    );
+    });
+    const pending = router.call("me");
     await ready;
     clearAccessToken();
     release!();
@@ -235,15 +232,18 @@ test("응답 검증 대기 중 취소하면 완료를 기다리거나 회원 정
     });
     const controller = new AbortController();
     t.mock.method(globalThis, "fetch", async () => Response.json(user));
-    const pending = request(
-        async (client) => {
-            const { data } = await client.GET("/api/users/me");
-            started();
-            await gate;
-            return data;
+    const router = createApiRouter(apiRoutes, {
+        extensions: {
+            me: {
+                parseResponse: async (data, status) => {
+                    started();
+                    await gate;
+                    return validateCurrentUser(data, status);
+                },
+            },
         },
-        { auth: "required", signal: controller.signal },
-    );
+    });
+    const pending = router.call("me", { signal: controller.signal });
     const outcome = pending.then(
         () => "fulfilled",
         (error: unknown) => (error instanceof ApiError ? error.kind : "unexpected"),

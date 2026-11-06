@@ -1,9 +1,7 @@
 import createClient, { type Client } from "openapi-fetch";
 import { ApiError } from "./apiError.ts";
 import { waitForSharedRequest } from "./abort.ts";
-import { refreshApi } from "./auth/authApi.ts";
 import { invalidateOtherTabs, withAuthCookieLock } from "./auth/cookieCoordination.ts";
-import { refreshAccessToken } from "./auth/refreshSession.ts";
 import {
     clearAccessToken,
     getAccessTokenSnapshot,
@@ -14,10 +12,13 @@ import { ensureCsrfToken, requiresCsrf } from "./csrf.ts";
 import type { paths } from "./generated/schema.ts";
 import { sendResponse, type RequestOptions as TransportOptions } from "./transport.ts";
 
-type PolicyOptions = TransportOptions & { auth?: "none" | "required" };
+type PolicyOptions = TransportOptions & { auth?: "none" | "required"; csrf?: boolean };
 export type RequestOptions = Pick<TransportOptions, "signal"> & {
     auth?: "none" | "required";
+    csrf?: boolean;
     cookieAction?: "login" | "refresh" | "logout";
+    responses?: Readonly<Record<string, boolean>>;
+    recover?: (revision: number) => Promise<AccessTokenSnapshot>;
 };
 
 function isApiPath(path: string): path is `/api/${string}` {
@@ -39,7 +40,7 @@ export async function withRequestPolicy<T>(
     execute: (path: `/api/${string}`, options: TransportOptions) => Promise<T>,
     recover?: (revision: number) => Promise<AccessTokenSnapshot>,
 ): Promise<T> {
-    const { auth = "none", ...transportOptions } = options;
+    const { auth = "none", csrf, ...transportOptions } = options;
     let snapshot = auth === "required" ? getAccessTokenSnapshot() : undefined;
     assertCurrentRequest(snapshot, options.signal);
     if (auth === "required" && !snapshot) throw new ApiError("authentication-required");
@@ -48,7 +49,7 @@ export async function withRequestPolicy<T>(
     if (snapshot) headers.set("Authorization", `Bearer ${snapshot.value}`);
     else headers.delete("Authorization");
 
-    if (requiresCsrf(path, options.method)) {
+    if (csrf ?? requiresCsrf(path, options.method)) {
         headers.set("X-XSRF-TOKEN", await waitForSharedRequest(ensureCsrfToken(), options.signal));
     }
 
@@ -126,12 +127,16 @@ export async function request<T>(
             assertCurrent();
             const response = await withRequestPolicy(
                 path,
-                { ...transport, auth: options.auth ?? "none" },
+                {
+                    ...transport,
+                    auth: options.auth ?? "none",
+                    ...(options.csrf === undefined ? {} : { csrf: options.csrf }),
+                },
                 (path, transport) => {
                     assertCurrent();
-                    return sendResponse(path, transport);
+                    return sendResponse(path, transport, options.responses);
                 },
-                (currentRevision) => refreshAccessToken(refreshApi, currentRevision),
+                options.recover,
             );
             status = response.status;
             return response;

@@ -2,11 +2,13 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { ESLint } from "eslint";
 
-test("도메인·훅에서 클라이언트 생성·수기 전송·직접 fetch로 우회하지 못함", async () => {
+test("도메인·훅에서 공통 라우터를 우회해 클라이언트·전송 정책을 직접 조합하지 못함", async () => {
     const eslint = new ESLint();
     const forbidden = [
         'import createClient from "openapi-fetch"; void createClient;',
         'import { withRequestPolicy } from "../http.ts"; void withRequestPolicy;',
+        'import { request } from "../http.ts"; void request;',
+        'import { createApiRouter } from "../router.ts"; void createApiRouter;',
         'import { sendRequest } from "@/api/transport.ts"; void sendRequest;',
         'void import("@/api/http.ts");',
         'void fetch("/api/users/me");',
@@ -22,7 +24,7 @@ test("도메인·훅에서 클라이언트 생성·수기 전송·직접 fetch�
         }
     }
     for (const [filePath, source] of [
-        ["src/api/users/userApi.ts", 'import { request } from "../http.ts"; void request;'],
+        ["src/api/users/userApi.ts", 'import { api } from "../api.ts"; void api;'],
         [
             "src/hooks/api/users/useUserApi.ts",
             'import { getCurrentUser } from "@/api/users/userApi.ts"; void getCurrentUser;',

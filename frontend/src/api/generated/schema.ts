@@ -1227,3 +1227,107 @@ export interface operations {
         };
     };
 }
+
+/** operationId별 공통 실행 정보. 직접 수정하지 않습니다. */
+export const apiRoutes = {
+    change: {
+        method: "patch",
+        path: "/api/auth/password",
+        auth: "required",
+        csrf: true,
+        responses: { "204": false },
+    },
+    confirm: {
+        method: "post",
+        path: "/api/auth/email-verifications/verify",
+        auth: "none",
+        csrf: true,
+        responses: { "200": true },
+    },
+    confirm_1: {
+        method: "post",
+        path: "/api/auth/account-verifications/verify",
+        auth: "required",
+        csrf: true,
+        responses: { "200": true },
+    },
+    create: {
+        method: "post",
+        path: "/api/rooms",
+        auth: "required",
+        csrf: false,
+        responses: { "201": true },
+    },
+    csrf: {
+        method: "get",
+        path: "/api/auth/csrf",
+        auth: "none",
+        csrf: false,
+        responses: { "204": false },
+    },
+    delete: {
+        method: "post",
+        path: "/api/auth/account-deletion",
+        auth: "required",
+        csrf: true,
+        responses: { "204": false },
+    },
+    login: {
+        method: "post",
+        path: "/api/auth/login",
+        auth: "none",
+        csrf: true,
+        responses: { "200": true },
+    },
+    logout: {
+        method: "post",
+        path: "/api/auth/logout",
+        auth: "none",
+        csrf: true,
+        responses: { "204": false },
+    },
+    me: {
+        method: "get",
+        path: "/api/users/me",
+        auth: "required",
+        csrf: false,
+        responses: { "200": true },
+    },
+    refresh: {
+        method: "post",
+        path: "/api/auth/refresh",
+        auth: "none",
+        csrf: true,
+        responses: { "200": true },
+    },
+    request: {
+        method: "post",
+        path: "/api/auth/email-verifications",
+        auth: "none",
+        csrf: true,
+        responses: { "202": true },
+    },
+    request_1: {
+        method: "post",
+        path: "/api/auth/account-verifications",
+        auth: "required",
+        csrf: true,
+        responses: { "202": true },
+    },
+    signup: {
+        method: "post",
+        path: "/api/auth/signup",
+        auth: "none",
+        csrf: true,
+        responses: { "201": true },
+    },
+} as const satisfies Record<
+    keyof operations,
+    {
+        method: string;
+        path: keyof paths;
+        auth: "none" | "required";
+        csrf: boolean;
+        responses: Readonly<Record<string, boolean>>;
+    }
+>;

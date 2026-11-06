@@ -11,17 +11,11 @@ import {
     getAuthRevision,
     setAccessToken,
 } from "../src/api/auth/tokenStore.ts";
-import { request } from "../src/api/http.ts";
+import { api } from "../src/api/api.ts";
 import { getCurrentUser as me } from "../src/api/users/userApi.ts";
 
 function create(): Promise<unknown> {
-    return request(
-        async (client) => {
-            const { data } = await client.POST("/api/rooms", { body: { name: "여행" } });
-            return data;
-        },
-        { auth: "required" },
-    );
+    return api.call("create", { body: { name: "여행" } });
 }
 
 const originalDocument = Object.getOwnPropertyDescriptor(globalThis, "document");

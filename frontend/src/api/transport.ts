@@ -6,6 +6,7 @@ export type RequestOptions = Omit<RequestInit, "credentials">;
 export async function sendResponse(
     path: `/api/${string}`,
     options: RequestOptions = {},
+    responses?: Readonly<Record<string, boolean>>,
 ): Promise<Response> {
     const headers = new Headers(options.headers);
     if (!headers.has("Accept")) {
@@ -34,6 +35,21 @@ export async function sendResponse(
             value = undefined;
         }
         throw new ApiError("http", { problem: toApiProblem(response, value) });
+    }
+
+    if (responses) {
+        const expectedBody = responses[String(response.status)] ?? responses["2XX"];
+        if (expectedBody === undefined || (!expectedBody && body.trim())) {
+            throw new ApiError("invalid-response", { status: response.status });
+        }
+        if (!expectedBody) return response;
+        if (
+            response.status === 204 ||
+            response.status === 205 ||
+            options.method?.toUpperCase() === "HEAD"
+        ) {
+            throw new ApiError("invalid-response", { status: response.status });
+        }
     }
 
     if (
