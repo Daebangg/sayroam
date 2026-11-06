@@ -30,11 +30,14 @@ app.auth.social.google.client-id=
 app.auth.social.google.client-secret=
 # Google 콘솔의 Authorized redirect URIs에 아래 주소를 정확히 등록합니다.
 app.auth.social.google.redirect-uri=http://localhost:8080/api/auth/social/google/callback
-# Kakao/Naver는 콘솔 설정과 연동 확인 전까지 비활성화합니다. 같은 형식으로 설정합니다.
+# Kakao: REST API 키가 client-id입니다. JavaScript 키·어드민 키를 넣지 않습니다.
+# 카카오 로그인 ON, REST API 키의 Redirect URI 등록·클라이언트 시크릿 설정 후 활성화합니다.
+# 닉네임·프로필 사진·이메일은 카카오 로그인 동의항목에서 설정합니다.
 app.auth.social.kakao.enabled=false
 app.auth.social.kakao.client-id=
 app.auth.social.kakao.client-secret=
 app.auth.social.kakao.redirect-uri=http://localhost:8080/api/auth/social/kakao/callback
+# Naver는 콘솔 설정과 연동 확인 전까지 비활성화합니다.
 app.auth.social.naver.enabled=false
 app.auth.social.naver.client-id=
 app.auth.social.naver.client-secret=

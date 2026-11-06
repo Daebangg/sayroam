@@ -5,6 +5,8 @@ import com.daebangg.sayroam.auth.application.error.AuthException;
 import com.daebangg.sayroam.auth.application.model.SocialIdentity;
 import com.daebangg.sayroam.auth.application.port.out.SocialIdentityProvider;
 import com.daebangg.sayroam.user.domain.SocialProvider;
+import org.springframework.http.MediaType;
+import org.springframework.http.RequestEntity;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.security.oauth2.client.endpoint.OAuth2AuthorizationCodeGrantRequest;
 import org.springframework.security.oauth2.client.endpoint.RestClientAuthorizationCodeTokenResponseClient;
@@ -13,6 +15,7 @@ import org.springframework.security.oauth2.client.registration.ClientRegistratio
 import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
 import org.springframework.security.oauth2.client.userinfo.DefaultOAuth2UserService;
 import org.springframework.security.oauth2.client.userinfo.OAuth2UserRequest;
+import org.springframework.security.oauth2.client.userinfo.OAuth2UserRequestEntityConverter;
 import org.springframework.security.oauth2.core.OAuth2AuthorizationException;
 import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
 import org.springframework.security.oauth2.core.endpoint.OAuth2AuthorizationExchange;
@@ -60,6 +63,17 @@ public class SpringOAuth2IdentityProvider implements SocialIdentityProvider {
         userInfoRest.setErrorHandler(new OAuth2ErrorResponseErrorHandler());
         this.users = new DefaultOAuth2UserService();
         this.users.setRestOperations(userInfoRest);
+        var userInfoRequests = new OAuth2UserRequestEntityConverter();
+        this.users.setRequestEntityConverter(request -> {
+            var entity = userInfoRequests.convert(request);
+            var contentType = request.getClientRegistration().getProviderDetails().getConfigurationMetadata().get("user-info-content-type");
+            if (contentType instanceof String value) {
+                // 공급자의 추가 헤더 요구만 적용하고 Spring이 만든 Bearer 인증·요청 본문은 유지한다.
+                return RequestEntity.method(entity.getMethod(), entity.getUrl()).headers(entity.getHeaders())
+                        .contentType(MediaType.parseMediaType(value)).body(entity.getBody());
+            }
+            return entity;
+        });
         this.users.setAttributesConverter(request -> attributes -> {
             String idAttribute = request.getClientRegistration().getProviderDetails()
                     .getUserInfoEndpoint().getUserNameAttributeName();

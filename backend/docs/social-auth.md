@@ -1,7 +1,7 @@
 # OAuth2 소셜 로그인 (#31)
 
 관련 이슈: [#31](https://github.com/Daebangg/sayroam/issues/31), 상위 [#24](https://github.com/Daebangg/sayroam/issues/24).
-첫 활성 공급자는 Google입니다. OAuth2 Authorization Code로 공급자 Access Token을 받은 뒤
+첫 공급자인 Google에 이어 Kakao도 같은 인증 흐름을 사용합니다. OAuth2 Authorization Code로 공급자 Access Token을 받은 뒤
 UserInfo API에서 사용자를 확인합니다. 서비스의 Access JWT·Refresh Token은 기존 공통 흐름으로 발급합니다.
 
 ## 구조
@@ -23,10 +23,14 @@ Application은 공급자 JSON·Servlet·Spring OAuth2 객체를 받지 않고 `S
 `openid` scope·nonce·ID Token·JWK 검증은 이 흐름에 포함하지 않습니다.
 
 Google·Kakao·Naver의 설정과 사용자 정보 매핑을 같은 공통 흐름으로 구성했습니다.
-현재 Google만 활성화했으며 Kakao·Naver의 콘솔 설정·실제 로그인 검증은 아직 진행하지 않았습니다.
+Google·Kakao의 활성화 방법은 아래 클라이언트 설정을 따릅니다. Naver 활성화는 후속 범위입니다.
+Kakao는 UserInfo 요청에 명세의 form Content-Type을 사용하고 `secure_resource=true`로 HTTPS 프로필 이미지를 요청합니다.
+공급자 코드가 구성되어 있어도 각 콘솔의 설정·자격 정보 입력과 실제 로그인 검증은 별도로 필요합니다.
 기존 계정 연결·해제는 다음 단계입니다. 같은 이메일이라는 이유로 자동 병합하지 않습니다.
 
 ## 클라이언트 설정
+
+### Google
 
 Google Auth Platform에서 Web application 클라이언트를 만들고 **Authorized redirect URIs**에 등록합니다.
 
@@ -43,6 +47,27 @@ app.auth.social.google.client-secret=<Client Secret>
 app.auth.social.google.redirect-uri=http://localhost:8080/api/auth/social/google/callback
 ```
 
+### Kakao
+
+1. [Kakao Developers](https://developers.kakao.com/)에서 앱을 선택하고 [카카오 로그인] > [사용 설정]을 ON으로 설정합니다.
+2. [앱] > [플랫폼 키] > [REST API 키]에 아래 Redirect URI를 등록합니다. 콜백은 백엔드 주소이며 `code`·`state` 쿼리는 등록하지 않습니다.
+3. 같은 REST API 키의 클라이언트 시크릿을 확인하고 개인 설정에 입력합니다. `client-id`는 REST API 키이며 JavaScript 키·어드민 키를 사용하지 않습니다.
+4. [카카오 로그인] > [동의항목]에서 필요한 닉네임·프로필 사진·이메일 항목을 설정합니다. 이메일 제공 권한이 없거나 사용자가 동의하지 않아도 기존 이메일 보완 인증으로 가입할 수 있습니다.
+
+```properties
+app.auth.social.kakao.enabled=true
+app.auth.social.kakao.client-id=<Kakao REST API key>
+app.auth.social.kakao.client-secret=<Kakao Login Client Secret>
+app.auth.social.kakao.redirect-uri=http://localhost:8080/api/auth/social/kakao/callback
+```
+
+설정 파일은 Google과 같은 `backend/config/application-local.properties`입니다. `local` 프로필로 재시작해야 적용됩니다.
+실제 키가 준비되지 않았다면 `enabled=false`를 유지합니다. 활성화한 클라이언트의 자격 정보가 비어 있으면 앱 시작 시 설정 검증에서 거절합니다.
+이 구현은 OAuth2 Access Token으로 `/v2/user/me`를 조회하며 OpenID Connect의 ID Token을 사용하지 않습니다.
+Kakao의 동의항목은 콘솔 설정을 사용하고 `openid` scope나 추가 동의 scope를 강제로 요청하지 않습니다.
+
+### 공통 설정
+
 환경변수는 `APP_AUTH_SOCIAL_GOOGLE_ENABLED`, `APP_AUTH_SOCIAL_GOOGLE_CLIENTID`,
 `APP_AUTH_SOCIAL_GOOGLE_CLIENTSECRET`, `APP_AUTH_SOCIAL_GOOGLE_REDIRECTURI`입니다.
 Kakao·Naver는 같은 키 형식에서 `google`만 `kakao`·`naver`로 바꿉니다. 기본값은 모두 비활성화입니다.
@@ -58,6 +83,21 @@ HTTP는 loopback에서만 허용합니다. 콘솔과 앱의 프로토콜·호스
 Google은 `userinfo.email`, `userinfo.profile` 범위를 요청합니다. Kakao·Naver의 제공 정보는 각 콘솔의 동의 항목을 따릅니다.
 공급자 Access Token은 UserInfo 요청에만 사용하고 저장하거나 브라우저에 전달하지 않습니다.
 공급자 Refresh Token은 서비스의 로그인 유지에 사용하지 않습니다.
+
+### Kakao 연동 확인 순서
+
+실제 인증은 같은 브라우저와 같은 호스트에서 진행합니다. `localhost`에서 시작했다면 콜백도 `localhost`를 사용해야 바인딩 쿠키가 전달됩니다.
+별도 curl에서 시작한 인증 주소만 브라우저로 복사하면 브라우저 바인딩 쿠키가 없어 콜백이 거절됩니다.
+
+1. 같은 브라우저의 Swagger 또는 연결한 프론트에서 CSRF 쿠키·헤더를 준비하고 `POST /api/auth/social/kakao/authorizations`에 `{"returnPath":"/"}`를 전달합니다.
+2. 응답의 `authorizationUrl`로 브라우저를 이동합니다. Kakao 클라이언트 ID, 콜백 주소, state와 PKCE S256 challenge가 포함됩니다.
+3. 카카오 로그인·정보 제공 동의 후 `/api/auth/social/kakao/callback?code=...&state=...`로 돌아오면 서버가 토큰 교환과 사용자 정보 조회를 수행합니다.
+4. 서버가 이동시킨 `/#social_result=...`의 코드를 같은 브라우저에서 `POST /api/auth/social/results/exchange`로 교환합니다. 프론트 연동 전에는 코드를 수동으로 읽어 Swagger에서 교환할 수 있습니다.
+5. 신규 계정은 `SIGNUP_REQUIRED`의 티켓으로 닉네임을 제출합니다. `emailVerificationRequired=true`라면 이메일 인증 후 `email`·`signupProof`도 포함합니다.
+6. 가입 완료 후 다시 Kakao 인증을 시작하면 같은 `(KAKAO, providerUserId)`로 회원을 찾아 `AUTHENTICATED`와 Sayroam 토큰을 반환합니다.
+
+Kakao 로그인 미활성화는 `KOE004`, Redirect URI 불일치는 `KOE006`을 확인합니다. 토큰 교환 실패는 REST API 키·클라이언트 시크릿과 콜백 URI를 확인합니다.
+실제 로그인·동의 취소·이메일 미제공·가입·재로그인 확인을 마쳐야 외부 공급자 연동 검증 완료로 기록합니다.
 
 ## API와 브라우저 흐름
 
@@ -169,7 +209,9 @@ NX 저장·TTL 설정, 바인딩 검사·삭제를 각각 Lua로 원자 처리�
 ## 구현과 검증 범위
 
 인증 시작·콜백·결과 교환·가입·이메일 보완과 OpenAPI를 이번 단계에 포함합니다.
-프론트 화면 구현, 기존 계정 연결·해제, 추가 공급자의 콘솔 설정·실제 인증은 후속 범위입니다.
+프론트 화면 구현, 기존 계정 연결·해제, Naver의 콘솔 설정·실제 인증은 후속 범위입니다.
+Kakao 백엔드의 클라이언트 등록·코드 교환·UserInfo 정규화·기존 회원 로그인·신규 가입·이메일 보완을 같은 공통 흐름에 포함합니다.
+콘솔 설정과 실제 자격 정보를 통한 Kakao 인증은 위 확인 순서로 별도 검증합니다.
 추가 테스트 작성·실행은 이슈 지침에 따라 전체 인증 기능 구현 후 진행합니다.
 컴파일·앱 시작·OpenAPI 생성 성공을 실제 Google 로그인·이메일 수신·동시성 검증 완료로 표시하지 않습니다.
 

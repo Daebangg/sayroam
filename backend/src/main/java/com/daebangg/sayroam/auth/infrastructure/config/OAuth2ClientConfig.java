@@ -28,7 +28,9 @@ public class OAuth2ClientConfig {
         register(registrations, properties.kakao(), ClientRegistration.withRegistrationId("kakao")
                 .clientName("Kakao").clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_POST)
                 .authorizationUri("https://kauth.kakao.com/oauth/authorize").tokenUri("https://kauth.kakao.com/oauth/token")
-                .userInfoUri("https://kapi.kakao.com/v2/user/me").userNameAttributeName("id"), "kakao", true);
+                .userInfoUri("https://kapi.kakao.com/v2/user/me?secure_resource=true").userNameAttributeName("id")
+                .providerConfigurationMetadata(Map.of("user-info-content-type", "application/x-www-form-urlencoded;charset=utf-8")),
+                "kakao", true);
         register(registrations, properties.naver(), ClientRegistration.withRegistrationId("naver")
                 .clientName("Naver").clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_POST)
                 .authorizationUri("https://nid.naver.com/oauth2.0/authorize").tokenUri("https://nid.naver.com/oauth2.0/token")
