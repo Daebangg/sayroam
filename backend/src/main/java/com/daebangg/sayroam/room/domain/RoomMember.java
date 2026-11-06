@@ -18,6 +18,7 @@ import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 
 // 나간 멤버도 정산 대상이라 행을 지우지 않고 status로 남긴다
 @Entity
@@ -64,7 +65,7 @@ public class RoomMember extends BaseTimeEntity {
         this.userId = userId;
         this.role = role;
         this.status = RoomMemberStatus.JOINED;
-        this.joinedAt = LocalDateTime.now();
+        this.joinedAt = LocalDateTime.now(ZoneOffset.UTC);
     }
 
     public static RoomMember joinAsOwner(Room room, Long userId) {
@@ -75,6 +76,10 @@ public class RoomMember extends BaseTimeEntity {
         if (status != RoomMemberStatus.JOINED) {
             throw new BusinessException(RoomErrorCode.ROOM_ACCESS_DENIED);
         }
+    }
+
+    public LocalDateTime getJoinedAt() {
+        return joinedAt;
     }
 
     public boolean isOwner() {
