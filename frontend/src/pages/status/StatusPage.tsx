@@ -12,6 +12,9 @@ export function StatusPage({ kind, reloadHome = false }: StatusPageProps) {
         const heading = document.querySelector<HTMLElement>("main h1");
         heading?.setAttribute("tabindex", "-1");
         heading?.focus({ preventScroll: true });
+    }, [kind]);
+    useEffect(() => {
+        if (kind === "loading") return;
         document.title = `${t(`pageState.${kind}.title`)} · ${t("app.name")}`;
     }, [kind, t]);
     return (

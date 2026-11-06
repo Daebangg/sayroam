@@ -14,6 +14,8 @@ export default function App() {
     const location = useLocation();
     const navigate = useNavigate();
     const navigation = useNavigation();
+    const isPageLoading =
+        navigation.state !== "idle" && navigation.location?.pathname !== location.pathname;
     const theme = useTheme();
     const [authOpen, setAuthOpen] = useState(
         () => new URLSearchParams(window.location.search).get("modal") === "auth",
@@ -46,20 +48,18 @@ export default function App() {
             onLanguageChange={changeLanguage}
             onOpenAuth={() => setAuthOpen(true)}
         >
-            {navigation.state !== "idle" ? (
+            {isPageLoading ? (
                 <LoadingPage />
             ) : (
-                <>
-                    <Outlet
-                        context={{
-                            onOpenAuth: () => setAuthOpen(true),
-                            onLanguageChange: () =>
-                                changeLanguage(i18n.resolvedLanguage === "ko" ? "en" : "ko"),
-                        }}
-                    />
-                    <RouteAccessibility />
-                </>
+                <Outlet
+                    context={{
+                        onOpenAuth: () => setAuthOpen(true),
+                        onLanguageChange: () =>
+                            changeLanguage(i18n.resolvedLanguage === "ko" ? "en" : "ko"),
+                    }}
+                />
             )}
+            <RouteAccessibility />
             <ScrollRestoration />
             <AuthPreview open={authOpen} onClose={() => setAuthOpen(false)} />
         </AppShell>
