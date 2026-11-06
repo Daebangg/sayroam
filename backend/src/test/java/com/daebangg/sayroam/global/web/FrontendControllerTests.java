@@ -39,7 +39,8 @@ class FrontendControllerTests {
     ActiveAccountJwtConverter accountConverter;
 
     @ParameterizedTest
-    @ValueSource(strings = {"/trips", "/trips/", "/matching", "/rooms", "/brand", "/brand/"})
+    @ValueSource(strings = {"/trips", "/trips/", "/matching", "/rooms", "/brand", "/brand/",
+            "/TRIPS", "/Trips/", "/MATCHING", "/ROOMS/", "/BRAND", "/Brand/"})
     void 화면_직접_접속은_인증_없이_앱_셸을_제공한다(String path) throws Exception {
         mvc.perform(get(path).accept(MediaType.TEXT_HTML))
                 .andExpect(status().isOk())

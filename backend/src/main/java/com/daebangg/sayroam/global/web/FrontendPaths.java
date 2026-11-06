@@ -3,6 +3,7 @@ package com.daebangg.sayroam.global.web;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpMethod;
 
+import java.util.Locale;
 import java.util.Set;
 
 /** 화면 URL과 서버·정적 자원 URL의 경계를 MVC와 Security에서 공유한다. */
@@ -32,7 +33,9 @@ public final class FrontendPaths {
     }
 
     public static boolean isKnownPage(String path) {
-        String normalized = path.endsWith("/") && path.length() > 1 ? path.substring(0, path.length() - 1) : path;
+        String lowered = path.toLowerCase(Locale.ROOT);
+        String normalized = lowered.endsWith("/") && lowered.length() > 1
+                ? lowered.substring(0, lowered.length() - 1) : lowered;
         return PAGES.contains(normalized);
     }
 }
