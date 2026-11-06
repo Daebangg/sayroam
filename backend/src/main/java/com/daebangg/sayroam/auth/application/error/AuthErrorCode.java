@@ -10,6 +10,14 @@ import lombok.RequiredArgsConstructor;
 @Getter
 @RequiredArgsConstructor
 public enum AuthErrorCode implements ErrorCode {
+    SOCIAL_PROVIDER_DISABLED(ErrorType.INVALID, "This social login provider is not available"),
+    SOCIAL_AUTH_INVALID(ErrorType.INVALID, "Social authentication state or browser binding is invalid or expired; start again"),
+    SOCIAL_AUTH_CANCELLED(ErrorType.INVALID, "Social authentication was cancelled"),
+    SOCIAL_AUTH_FAILED(ErrorType.UNAUTHENTICATED, "Social authentication failed; start again"),
+    SOCIAL_AUTH_UNAVAILABLE(ErrorType.UNAVAILABLE, "Social authentication could not be confirmed; start again without automatically retrying"),
+    SOCIAL_RETURN_PATH_INVALID(ErrorType.INVALID, "The return path is not allowed"),
+    SOCIAL_SIGNUP_INVALID(ErrorType.INVALID, "Social signup requires a valid nickname and verified email; start social authentication again if the ticket was consumed"),
+    SOCIAL_ACCOUNT_CONFLICT(ErrorType.CONFLICT, "This social account is already registered; start social authentication again"),
     EMAIL_DELIVERY_DISABLED(ErrorType.UNAVAILABLE,
             "Email delivery is disabled"),
     EMAIL_RATE_LIMITED(ErrorType.RATE_LIMITED,

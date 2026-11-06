@@ -20,6 +20,7 @@ cp -n backend/config/application-local.properties.example backend/config/applica
 비밀번호 변경·탈퇴 전 본인 확인은 [계정 관리용 이메일 인증·일회성 증명](docs/account-verification.md)을 따릅니다.
 비밀번호 변경과 모든 기기의 기존 로그인 무효화는 [비밀번호 변경 문서](docs/password-change.md)를 따릅니다.
 회원 탈퇴와 개인정보·로그인 수단 정리 및 재가입 기준은 [회원 탈퇴 문서](docs/account-deletion.md)를 따릅니다.
+Google OAuth의 클라이언트 발급·개인 설정과 단계별 구현 범위는 [소셜 인증 문서](docs/social-auth.md)를 참고합니다.
 운영 Refresh 쿠키는 기본 Secure=true이고, HTTP `local` 프로필에서만 false를 사용합니다.
 
 ```properties
