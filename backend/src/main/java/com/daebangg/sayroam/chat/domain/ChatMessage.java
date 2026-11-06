@@ -65,8 +65,8 @@ public class ChatMessage extends BaseTimeEntity {
         return new ChatMessage(roomId, senderId, ChatMessageType.TEXT, clientMessageId, content);
     }
 
-    public String getContent() {
-        return content;
+    public Long getId() {
+        return id;
     }
 
     public Long getRoomId() {
@@ -79,6 +79,10 @@ public class ChatMessage extends BaseTimeEntity {
 
     public ChatMessageType getType() {
         return type;
+    }
+
+    public String getContent() {
+        return content;
     }
 
     public String getClientMessageId() {
