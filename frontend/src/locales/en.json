@@ -9,7 +9,8 @@
         "matching": "Matching",
         "rooms": "Rooms",
         "home": "Go home",
-        "main": "Main navigation"
+        "main": "Main navigation",
+        "skip": "Skip to content"
     },
     "common": {
         "search": "Search",
@@ -163,7 +164,9 @@
         "longLabel": "Send travel notifications and itinerary updates to this browser.",
         "unavailable": "Unavailable option",
         "localeHeading": "Dates and numbers",
-        "localizedExample": "{{date}} · {{number}}"
+        "localizedExample": "{{date}} · {{number}}",
+        "pageStates": "Page states",
+        "open404": "Open the 404 page"
     },
     "profile": {
         "settings": "Settings",
@@ -177,5 +180,24 @@
         "korean": "한국어",
         "english": "English",
         "system": "System"
+    },
+    "pageState": {
+        "notFound": {
+            "label": "404",
+            "title": "This page is off the map",
+            "description": "The address may have changed, or this page is no longer here. Head home to continue your journey."
+        },
+        "error": {
+            "label": "Error",
+            "title": "We couldn’t load this page",
+            "description": "Please try again in a moment. If the problem continues, head back home."
+        },
+        "loading": {
+            "label": "Loading",
+            "title": "Getting your journey ready",
+            "description": "We’re loading the page. This should only take a moment."
+        },
+        "home": "Back to home",
+        "retry": "Try again"
     }
 }

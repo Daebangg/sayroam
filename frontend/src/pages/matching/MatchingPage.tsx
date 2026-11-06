@@ -9,7 +9,7 @@ export function MatchingPage() {
     const [status, setStatus] = useState("looking");
 
     return (
-        <main className="workspace-page workspace-page--list">
+        <main id="main-content" tabIndex={-1} className="workspace-page workspace-page--list">
             <div className="page-heading">
                 <h1>{t("matching.heading")}</h1>
                 <DropdownMenu

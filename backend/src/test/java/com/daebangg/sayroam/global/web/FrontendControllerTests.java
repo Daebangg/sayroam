@@ -39,11 +39,20 @@ class FrontendControllerTests {
     ActiveAccountJwtConverter accountConverter;
 
     @ParameterizedTest
-    @ValueSource(strings = {"/trips", "/trips/123", "/trips/123/", "/matching", "/matching/123",
-            "/rooms", "/rooms/123/chat", "/brand"})
+    @ValueSource(strings = {"/trips", "/trips/", "/matching", "/rooms", "/brand", "/brand/",
+            "/TRIPS", "/Trips/", "/MATCHING", "/ROOMS/", "/BRAND", "/Brand/"})
     void 화면_직접_접속은_인증_없이_앱_셸을_제공한다(String path) throws Exception {
         mvc.perform(get(path).accept(MediaType.TEXT_HTML))
                 .andExpect(status().isOk())
+                .andExpect(forwardedUrl("/index.html"))
+                .andExpect(cookie().doesNotExist("JSESSIONID"));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"/unknown-page", "/unknown-page/nested", "/trips/123", "/matching/123", "/rooms/123/chat"})
+    void 없는_화면은_404_상태와_앱_셸을_제공한다(String path) throws Exception {
+        mvc.perform(get(path).accept(MediaType.TEXT_HTML))
+                .andExpect(status().isNotFound())
                 .andExpect(forwardedUrl("/index.html"))
                 .andExpect(cookie().doesNotExist("JSESSIONID"));
     }
@@ -65,7 +74,7 @@ class FrontendControllerTests {
                 .andExpect(status().isOk())
                 .andExpect(content().contentTypeCompatibleWith(MediaType.TEXT_HTML))
                 .andExpect(content().string(containsString("Sayroam test shell")));
-        mvc.perform(MockMvcRequestBuilders.head("/trips/123").servletPath("/trips/123"))
+        mvc.perform(MockMvcRequestBuilders.head("/trips").servletPath("/trips"))
                 .andExpect(status().isOk())
                 .andExpect(forwardedUrl("/index.html"));
         mvc.perform(MockMvcRequestBuilders.head("/assets/test.css").servletPath("/assets/test.css"))
@@ -90,7 +99,7 @@ class FrontendControllerTests {
 
     @ParameterizedTest
     @ValueSource(strings = {"/assets/missing.js", "/assets/missing", "/brand/missing.svg", "/brand/missing",
-            "/fonts/missing.woff2", "/images/missing.png", "/trips/missing.js", "/rooms/nested/missing.css"})
+            "/fonts/missing.woff2", "/images/missing.png", "/missing.js", "/trips/missing.js", "/rooms/nested/missing.css"})
     void 없는_정적_자원은_HTML_대신_404를_응답한다(String path) throws Exception {
         mvc.perform(get(path).accept(MediaType.TEXT_HTML))
                 .andExpect(status().isNotFound())
@@ -99,7 +108,7 @@ class FrontendControllerTests {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"/api/users/me", "/api/missing", "/api/auth/missing", "/error", "/actuator/health"})
+    @ValueSource(strings = {"/api/users/me", "/api/missing", "/api/auth/missing", "/error", "/actuator/health", "/webjars/missing.js", "/login", "/logout", "/oauth2/authorization/google"})
     void 서버_경로는_화면_공개_정책에_포함하지_않는다(String path) throws Exception {
         mvc.perform(get(path).accept(MediaType.TEXT_HTML))
                 .andExpect(status().isUnauthorized())

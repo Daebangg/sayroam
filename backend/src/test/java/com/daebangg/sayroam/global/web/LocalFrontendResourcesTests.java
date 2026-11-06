@@ -61,7 +61,7 @@ class LocalFrontendResourcesTests {
         mvc.perform(get("/").accept(MediaType.TEXT_HTML))
                 .andExpect(status().isOk())
                 .andExpect(forwardedUrl("index.html"));
-        mvc.perform(get("/rooms/123/chat").accept(MediaType.TEXT_HTML))
+        mvc.perform(get("/rooms").accept(MediaType.TEXT_HTML))
                 .andExpect(status().isOk())
                 .andExpect(forwardedUrl("/index.html"));
     }

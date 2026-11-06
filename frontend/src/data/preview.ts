@@ -1,10 +1,10 @@
-export type PreviewView = "plaza" | "trips" | "matching" | "rooms" | "brand";
+import { pagePaths } from "@/routing/paths";
 
-export const previewNavigation = [
-    { view: "plaza", icon: "home", label: "navigation.plaza" },
-    { view: "trips", icon: "trips", label: "navigation.trips" },
-    { view: "matching", icon: "matching", label: "navigation.matching" },
-    { view: "rooms", icon: "rooms", label: "navigation.rooms" },
+export const appNavigation = [
+    { to: pagePaths.plaza, icon: "home", label: "navigation.plaza" },
+    { to: pagePaths.trips, icon: "trips", label: "navigation.trips" },
+    { to: pagePaths.matching, icon: "matching", label: "navigation.matching" },
+    { to: pagePaths.rooms, icon: "rooms", label: "navigation.rooms" },
 ] as const;
 
 export const tripPreviews = [

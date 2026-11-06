@@ -2,7 +2,9 @@ package com.daebangg.sayroam.global.web;
 
 import io.swagger.v3.oas.annotations.Hidden;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -14,13 +16,16 @@ import org.springframework.web.servlet.resource.NoResourceFoundException;
 public class FrontendController {
 
     // 루트(/)는 Spring Boot의 기본 welcome page가 처리한다.
-    @GetMapping(value = {"/trips", "/trips/{*path}", "/matching", "/matching/{*path}",
-            "/rooms", "/rooms/{*path}", "/brand"}, produces = MediaType.TEXT_HTML_VALUE)
-    public String index(HttpServletRequest request) throws NoResourceFoundException {
+    @GetMapping(value = {"/brand", "/brand/", "/" + FrontendPaths.PAGE_SEGMENT,
+            "/" + FrontendPaths.PAGE_SEGMENT + "/{*path}"}, produces = MediaType.TEXT_HTML_VALUE)
+    public String index(HttpServletRequest request, HttpServletResponse response) throws NoResourceFoundException {
         // 화면 접두사 아래의 없는 파일도 HTML 200으로 바꾸지 않는다.
-        if (request.getServletPath().contains(".")) {
+        if (FrontendPaths.path(request).contains(".")) {
             throw new NoResourceFoundException(HttpMethod.valueOf(request.getMethod()),
                     request.getRequestURI(), request.getServletPath());
+        }
+        if (!FrontendPaths.isKnownPage(FrontendPaths.path(request))) {
+            response.setStatus(HttpStatus.NOT_FOUND.value());
         }
         return "forward:/index.html";
     }

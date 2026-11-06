@@ -3,15 +3,15 @@ import { ProfileMenu } from "@/components/features/profile/ProfileMenu";
 import { AppearancePreview } from "@/components/features/profile/AppearancePreview";
 import { useTranslation } from "react-i18next";
 import { Brand, Button, Icon, Tooltip } from "@/components/ui";
-import { previewNavigation, type PreviewView } from "@/data/preview";
+import { appNavigation } from "@/data/preview";
+import { Link, NavLink, useNavigate } from "react-router";
 import type { ResolvedTheme, ThemePreference } from "@/hooks/useTheme";
 import type { Language } from "@/i18n/locale";
 
 type AppShellProps = {
-    view: PreviewView;
+    isHome: boolean;
     theme: ResolvedTheme;
     themePreference: ThemePreference;
-    onViewChange: (view: PreviewView) => void;
     onThemeChange: (preference: ThemePreference) => void;
     onLanguageChange: (language: Language) => void;
     onOpenAuth: () => void;
@@ -19,15 +19,15 @@ type AppShellProps = {
 };
 
 export function AppShell({
-    view,
+    isHome,
     theme,
     themePreference,
-    onViewChange,
     onThemeChange,
     onLanguageChange,
     onOpenAuth,
     children,
 }: AppShellProps) {
+    const navigate = useNavigate();
     const { t, i18n } = useTranslation();
     const [settingsOpen, setSettingsOpen] = useState(false);
 
@@ -52,30 +52,27 @@ export function AppShell({
         <div
             className={`app-theme app-theme--${theme} ${i18n.resolvedLanguage === "en" ? "is-english" : ""}`}
         >
-            <div className={`app-shell ${view === "plaza" ? "app-shell--home" : ""}`}>
+            <a className="skip-link" href="#main-content">
+                {t("navigation.skip")}
+            </a>
+            <div className={`app-shell ${isHome ? "app-shell--home" : ""}`}>
                 <header className="site-header">
-                    <Button
-                        variant="plain"
-                        className="brand-button"
-                        type="button"
-                        onClick={() => onViewChange("plaza")}
-                        aria-label={t("navigation.home")}
-                    >
+                    <Link className="brand-button" to="/" aria-label={t("navigation.home")}>
                         <Brand />
-                    </Button>
+                    </Link>
                     <nav className="desktop-nav" aria-label={t("navigation.main")}>
-                        {previewNavigation.map((item) => (
-                            <Button
-                                variant="plain"
-                                key={item.view}
-                                type="button"
-                                className={`nav-item ${view === item.view ? "is-active" : ""}`}
-                                aria-current={view === item.view ? "page" : undefined}
-                                onClick={() => onViewChange(item.view)}
+                        {appNavigation.map((item) => (
+                            <NavLink
+                                key={item.to}
+                                to={item.to}
+                                end={item.to === "/"}
+                                className={({ isActive }) =>
+                                    `nav-item ${isActive ? "is-active" : ""}`
+                                }
                             >
                                 <Icon name={item.icon} />
                                 <span>{t(item.label)}</span>
-                            </Button>
+                            </NavLink>
                         ))}
                     </nav>
                     <div className="header-actions">
@@ -127,30 +124,30 @@ export function AppShell({
                         </Tooltip>
                         <ProfileMenu
                             onLogin={onOpenAuth}
-                            onBrand={() => onViewChange("brand")}
+                            onBrand={() => void navigate("/brand")}
                             onSettings={() => setSettingsOpen(true)}
                         />
                     </div>
                 </header>
                 {children}
                 <nav className="mobile-nav" aria-label={t("navigation.main")}>
-                    {previewNavigation.map((item) => (
-                        <Button
-                            variant="plain"
-                            key={item.view}
-                            type="button"
-                            className={`mobile-nav__item ${view === item.view ? "is-active" : ""}`}
+                    {appNavigation.map((item) => (
+                        <NavLink
+                            key={item.to}
+                            to={item.to}
+                            end={item.to === "/"}
+                            className={({ isActive }) =>
+                                `mobile-nav__item ${isActive ? "is-active" : ""}`
+                            }
                             aria-label={t(item.label)}
-                            aria-current={view === item.view ? "page" : undefined}
-                            onClick={() => onViewChange(item.view)}
                         >
                             <Icon name={item.icon} />
-                        </Button>
+                        </NavLink>
                     ))}
                     <ProfileMenu
                         mobile
                         onLogin={onOpenAuth}
-                        onBrand={() => onViewChange("brand")}
+                        onBrand={() => void navigate("/brand")}
                         onSettings={() => setSettingsOpen(true)}
                     />
                 </nav>
