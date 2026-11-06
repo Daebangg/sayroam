@@ -3,7 +3,14 @@ import type { components } from "./generated/schema.ts";
 type ApiProblem = components["schemas"]["ApiProblem"];
 type FieldError = components["schemas"]["FieldError"];
 
-type ApiErrorKind = "http" | "network" | "aborted" | "invalid-response";
+type ApiErrorKind =
+    | "http"
+    | "network"
+    | "aborted"
+    | "invalid-response"
+    | "authentication-required"
+    | "authentication-unavailable"
+    | "authentication-in-progress";
 
 type ApiErrorOptions = {
     status?: number;

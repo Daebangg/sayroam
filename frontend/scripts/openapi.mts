@@ -1,16 +1,124 @@
 import { spawnSync } from "node:child_process";
-import { mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
-import { dirname, resolve } from "node:path";
+import { mkdir, mkdtemp, readFile, readdir, rename, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { dirname, join, resolve } from "node:path";
 import { loadEnvFile } from "node:process";
 import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
 import { createConfig } from "@redocly/openapi-core";
+import { createClient } from "@hey-api/openapi-ts";
 import openapiTS, { astToString } from "openapi-typescript";
+import ts from "typescript";
 import { format, resolveConfig } from "prettier";
 
 const frontendDir = fileURLToPath(new URL("../", import.meta.url));
 const snapshotPath = resolve(frontendDir, "contracts/openapi.json");
 const typesPath = resolve(frontendDir, "src/api/generated/schema.ts");
+const sdkPath = resolve(frontendDir, "src/api/generated/sdk");
+
+async function readTree(directory: string, prefix = ""): Promise<Map<string, string>> {
+    const files = new Map<string, string>();
+    const entries = await readdir(directory, { withFileTypes: true }).catch((error: unknown) => {
+        if (isObject(error) && error.code === "ENOENT") return [];
+        throw error;
+    });
+    for (const entry of entries) {
+        const name = prefix + entry.name;
+        if (entry.isDirectory()) {
+            for (const [path, source] of await readTree(join(directory, entry.name), name + "/")) {
+                files.set(path, source);
+            }
+        } else files.set(name, await readFile(join(directory, entry.name), "utf8"));
+    }
+    return files;
+}
+
+// JSON의 int64는 기존 앱과 같은 number로 받고 안전한 정수 범위를 검증한다.
+function sdkDocument(value: unknown): unknown {
+    if (Array.isArray(value)) return value.map(sdkDocument);
+    if (!isObject(value)) return value;
+    const result = Object.fromEntries(
+        Object.entries(value).map(([key, item]) => [key, sdkDocument(item)]),
+    );
+    if (value.type === "integer" && value.format === "int64") {
+        delete result.format;
+        result.minimum = Math.max(
+            typeof value.minimum === "number" ? value.minimum : -Infinity,
+            Number.MIN_SAFE_INTEGER,
+        );
+        result.maximum = Math.min(
+            typeof value.maximum === "number" ? value.maximum : Infinity,
+            Number.MAX_SAFE_INTEGER,
+        );
+    }
+    return result;
+}
+
+async function renderSdk(document: unknown): Promise<Map<string, string>> {
+    const temporary = await mkdtemp(join(tmpdir(), "sayroam-sdk-"));
+    try {
+        const input = sdkDocument(document);
+        if (!isObject(input)) throw new Error("SDK 생성에는 OpenAPI 객체가 필요합니다.");
+        await createClient({
+            input,
+            output: { path: temporary, postProcess: [], module: { extension: ".js" } },
+            plugins: [
+                "@hey-api/typescript",
+                { name: "@hey-api/client-fetch", throwOnError: true },
+                {
+                    name: "@hey-api/sdk",
+                    responseStyle: "data",
+                    validator: { request: false, response: true },
+                },
+                "valibot",
+            ],
+        });
+        const sources = await readTree(temporary);
+        if (
+            !sources.has("sdk.gen.ts") ||
+            !sources.has("types.gen.ts") ||
+            !sources.has("valibot.gen.ts")
+        ) {
+            throw new Error("SDK·타입·응답 검증 코드가 모두 생성되지 않았습니다.");
+        }
+        const compiled = join(temporary, "compiled");
+        // 외부 SDK 런타임은 자체 경계에서 컴파일한다. 앱의 strict 옵션은 유지한다.
+        const program = ts.createProgram(
+            [...sources.keys()].map((name) => join(temporary, name)),
+            {
+                target: ts.ScriptTarget.ES2023,
+                module: ts.ModuleKind.ESNext,
+                moduleResolution: ts.ModuleResolutionKind.Bundler,
+                strict: true,
+                noUncheckedIndexedAccess: true,
+                skipLibCheck: true,
+                declaration: true,
+                rootDir: temporary,
+                outDir: compiled,
+                paths: { valibot: [resolve(frontendDir, "node_modules/valibot/dist/index.d.mts")] },
+            },
+        );
+        const diagnostics = ts.getPreEmitDiagnostics(program);
+        if (diagnostics.length) {
+            throw new Error(
+                ts.formatDiagnosticsWithColorAndContext(diagnostics, {
+                    getCurrentDirectory: () => frontendDir,
+                    getCanonicalFileName: (name) => name,
+                    getNewLine: () => "\n",
+                }),
+            );
+        }
+        if (program.emit().emitSkipped) throw new Error("SDK 컴파일에 실패했습니다.");
+        const config = await resolveConfig(resolve(frontendDir, ".prettierrc.json"));
+        const files = await readTree(compiled);
+        for (const [name, source] of files) {
+            files.set(name, await format(source, { ...config, parser: "typescript" }));
+        }
+        return files;
+    } finally {
+        await rm(temporary, { recursive: true, force: true });
+    }
+}
 
 function isObject(value: unknown): value is Record<string, unknown> {
     return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -66,7 +174,9 @@ function sortKeys(value: unknown): unknown {
     );
 }
 
-async function render(source: string): Promise<{ snapshot: string; types: string }> {
+export async function renderOpenApi(
+    source: string,
+): Promise<{ snapshot: string; types: string; sdk: Map<string, string> }> {
     let document: unknown;
     try {
         document = JSON.parse(source);
@@ -95,7 +205,7 @@ async function render(source: string): Promise<{ snapshot: string; types: string
             astToString(ast),
         { ...config, parser: "typescript" },
     );
-    return { snapshot, types };
+    return { snapshot, types, sdk: await renderSdk(document) };
 }
 
 async function writeOutput(path: string, contents: string): Promise<void> {
@@ -181,25 +291,36 @@ async function main(): Promise<void> {
         );
     }
     // 검증과 타입 생성을 모두 마친 뒤 기존 계약 파일을 교체합니다.
-    const output = await render(source);
+    const output = await renderOpenApi(source);
     if (command === "check") {
         const savedTypes = await readFile(typesPath, "utf8").catch(() => "");
-        if (source !== output.snapshot || savedTypes !== output.types) {
+        const savedSdk = await readTree(sdkPath);
+        const sdkMatches =
+            savedSdk.size === output.sdk.size &&
+            [...output.sdk].every(([name, source]) => savedSdk.get(name) === source);
+        if (source !== output.snapshot || savedTypes !== output.types || !sdkMatches) {
             throw new Error(
-                "명세 또는 생성 타입이 최신 결과와 다릅니다. pnpm api:generate 후 변경을 확인하세요.",
+                "명세·생성 타입·SDK가 최신 결과와 다릅니다. pnpm api:generate 후 변경을 확인하세요.",
             );
         }
-        console.log("OpenAPI 명세와 생성 타입이 일치합니다.");
+        console.log("OpenAPI 명세·생성 타입·SDK가 일치합니다.");
         return;
     }
     await writeOutput(snapshotPath, output.snapshot);
     await writeOutput(typesPath, output.types);
+    const previousSdk = await readTree(sdkPath);
+    for (const [name, source] of output.sdk) await writeOutput(join(sdkPath, name), source);
+    for (const name of previousSdk.keys()) {
+        if (!output.sdk.has(name)) await rm(join(sdkPath, name));
+    }
     console.log(
-        "OpenAPI 저장 및 타입 생성 완료: contracts/openapi.json → src/api/generated/schema.ts",
+        "OpenAPI 타입·SDK·응답 검증 생성 완료: contracts/openapi.json → src/api/generated/",
     );
 }
 
-main().catch((error: unknown) => {
-    console.error(`[OpenAPI] ${error instanceof Error ? error.message : String(error)}`);
-    process.exitCode = 1;
-});
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+    main().catch((error: unknown) => {
+        console.error(`[OpenAPI] ${error instanceof Error ? error.message : String(error)}`);
+        process.exitCode = 1;
+    });
+}

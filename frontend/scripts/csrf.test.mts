@@ -205,3 +205,37 @@ test("CSRF 거절이나 전송 실패 후 변경 요청을 자동 반복하지 �
     await assert.rejects(request("/api/auth/login", { method: "POST" }));
     assert.equal(fetchMock.mock.callCount(), 2);
 });
+
+test("CSRF 준비가 끝나기 전 취소한 호출은 즉시 종료하고 다른 호출은 계속 진행", async (t) => {
+    const gate = createGate();
+    let mutations = 0;
+    t.mock.method(globalThis, "fetch", async (path: unknown) => {
+        if (path === "/api/auth/csrf") {
+            await gate.promise;
+            browserDocument.cookie = "XSRF-TOKEN=prepared";
+        } else mutations++;
+        return new Response(null, { status: 204 });
+    });
+    const controller = new AbortController();
+    const canceled = request("/api/auth/login", { method: "POST", signal: controller.signal });
+    const other = request("/api/auth/signup", { method: "POST" });
+    const outcome = canceled.then(
+        () => "fulfilled",
+        (error: unknown) => (error instanceof ApiError ? error.kind : "unexpected"),
+    );
+    controller.abort();
+    try {
+        assert.equal(
+            await Promise.race([
+                outcome,
+                new Promise<string>((resolve) => setImmediate(() => resolve("pending"))),
+            ]),
+            "aborted",
+        );
+        assert.equal(mutations, 0);
+    } finally {
+        gate.resolve();
+        await Promise.allSettled([canceled, other]);
+    }
+    assert.equal(mutations, 1);
+});

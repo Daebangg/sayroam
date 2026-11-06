@@ -7,6 +7,24 @@ import { defineConfig, globalIgnores } from "eslint/config";
 
 const sharedJsxRestrictions = [
     {
+        selector: "CallExpression[callee.name='fetch']",
+        message: "API 호출은 도메인 API와 src/api/sdk.ts를 거칩니다.",
+    },
+    {
+        selector:
+            "CallExpression[callee.object.name=/^(window|globalThis|self)$/][callee.property.name='fetch']",
+        message: "API 호출은 도메인 API와 src/api/sdk.ts를 거칩니다.",
+    },
+    {
+        selector: "NewExpression[callee.name='XMLHttpRequest']",
+        message: "API 호출은 도메인 API와 src/api/sdk.ts를 거칩니다.",
+    },
+    {
+        selector:
+            "ImportExpression[source.value=/generated/], ImportExpression[source.value=/transport/], ImportExpression[source.value=/http\\.ts/], ImportExpression[source.value=/csrf\\.ts/]",
+        message: "생성 SDK와 전송 계층을 동적 import로 우회하지 않습니다.",
+    },
+    {
         selector: "JSXAttribute[name.name='style']",
         message: "외형은 src/styles/app.css의 공용 클래스와 토큰으로 관리합니다.",
     },
@@ -17,6 +35,15 @@ const sharedJsxRestrictions = [
     {
         selector: "JSXText[value=/\\S/]",
         message: "사용자 노출 문구는 src/locales의 번역 키로 관리합니다.",
+    },
+];
+
+const apiBoundaryPatterns = [
+    {
+        group: ["**/generated/sdk/**", "**/http.ts", "**/transport.ts", "**/csrf.ts"],
+        allowTypeImports: true,
+        message:
+            "공통 정책을 거치는 src/api/sdk.ts를 사용합니다. 전송 계층은 기반 모듈만 참조합니다.",
     },
 ];
 
@@ -47,6 +74,7 @@ export default defineConfig([
         files: ["src/**/*.{ts,tsx}"],
         rules: {
             "no-restricted-syntax": ["error", ...sharedJsxRestrictions],
+            "no-restricted-imports": ["error", { patterns: apiBoundaryPatterns }],
         },
     },
     {
@@ -74,6 +102,7 @@ export default defineConfig([
                 "error",
                 {
                     patterns: [
+                        ...apiBoundaryPatterns,
                         {
                             group: ["@/api", "@/api/**", "**/api/**"],
                             message:
@@ -85,12 +114,23 @@ export default defineConfig([
         },
     },
     {
+        files: ["src/api/{sdk,http,csrf,transport}.ts"],
+        rules: {
+            "no-restricted-imports": "off",
+        },
+    },
+    {
+        files: ["src/api/transport.ts"],
+        rules: { "no-restricted-syntax": "off" },
+    },
+    {
         files: ["src/components/**/*.{ts,tsx}"],
         rules: {
             "no-restricted-imports": [
                 "error",
                 {
                     patterns: [
+                        ...apiBoundaryPatterns,
                         {
                             group: ["@/api", "@/api/**", "**/api/**"],
                             message: "컴포넌트는 API를 직접 호출하지 않습니다.",
