@@ -1,11 +1,12 @@
 package com.daebangg.sayroam.auth.presentation.dto;
 
 import io.swagger.v3.oas.annotations.media.Schema;
+import org.jspecify.annotations.Nullable;
 
 public record SocialExchangeResponse(
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) Status status,
-        @Schema(description = "AUTHENTICATED일 때만 존재. Refresh는 HttpOnly 쿠키", nullable = true) LoginResponse login,
-        @Schema(description = "SIGNUP_REQUIRED일 때만 존재. 가입 전 일반 서비스 토큰은 발급하지 않음", nullable = true) Signup signup) {
+        @Schema(description = "AUTHENTICATED일 때만 존재. Refresh는 HttpOnly 쿠키") @Nullable LoginResponse login,
+        @Schema(description = "SIGNUP_REQUIRED일 때만 존재. 가입 전 일반 서비스 토큰은 발급하지 않음") @Nullable Signup signup) {
     public enum Status { AUTHENTICATED, SIGNUP_REQUIRED }
 
     public record Signup(

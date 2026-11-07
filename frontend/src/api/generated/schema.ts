@@ -642,9 +642,9 @@ export interface components {
         };
         SocialExchangeResponse: {
             /** @description AUTHENTICATED일 때만 존재. Refresh는 HttpOnly 쿠키 */
-            login?: components["schemas"]["LoginResponse"];
+            login?: components["schemas"]["LoginResponse"] | null;
             /** @description SIGNUP_REQUIRED일 때만 존재. 가입 전 일반 서비스 토큰은 발급하지 않음 */
-            signup?: components["schemas"]["Signup"];
+            signup?: components["schemas"]["Signup"] | null;
             /** @enum {string} */
             status: "AUTHENTICATED" | "SIGNUP_REQUIRED";
         };

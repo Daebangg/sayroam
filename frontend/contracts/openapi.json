@@ -788,14 +788,15 @@
             "SocialExchangeResponse": {
                 "properties": {
                     "login": {
-                        "$ref": "#/components/schemas/LoginResponse",
                         "description": "AUTHENTICATED일 때만 존재. Refresh는 HttpOnly 쿠키",
-                        "type": "null"
+                        "oneOf": [
+                            { "$ref": "#/components/schemas/LoginResponse" },
+                            { "type": "null" }
+                        ]
                     },
                     "signup": {
-                        "$ref": "#/components/schemas/Signup",
                         "description": "SIGNUP_REQUIRED일 때만 존재. 가입 전 일반 서비스 토큰은 발급하지 않음",
-                        "type": "null"
+                        "oneOf": [{ "$ref": "#/components/schemas/Signup" }, { "type": "null" }]
                     },
                     "status": { "enum": ["AUTHENTICATED", "SIGNUP_REQUIRED"], "type": "string" }
                 },
