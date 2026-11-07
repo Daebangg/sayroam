@@ -1,6 +1,7 @@
 package com.daebangg.sayroam.chat.application;
 
 import com.daebangg.sayroam.chat.application.dto.ChatMessageResult;
+import com.daebangg.sayroam.chat.domain.ChatMessage;
 import com.daebangg.sayroam.chat.domain.ChatMessageRepository;
 import com.daebangg.sayroam.chat.domain.event.ChatMessageSent;
 import com.daebangg.sayroam.global.exception.BusinessException;
@@ -18,10 +19,14 @@ import jakarta.persistence.EntityManagerFactory;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.test.context.event.ApplicationEvents;
 import org.springframework.test.context.event.RecordApplicationEvents;
+import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.transaction.support.TransactionTemplate;
 
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.UUID;
 
@@ -160,16 +165,31 @@ class ChatMessageServiceTest extends DatabaseIntegrationTest {
         // given
         Long userId = saveUser();
         Long roomId = roomService.create(userId, "제주 3박 4일");
-        chatMessageService.send(roomId, userId, CLIENT_MESSAGE_ID, "원본");
+        ChatMessageResult first = chatMessageService.send(roomId, userId, CLIENT_MESSAGE_ID, "원본");
+        events.clear();
+
         // when
         ChatMessageResult message = chatMessageService.send(roomId, userId, CLIENT_MESSAGE_ID, "변경");
 
         // then
+        assertThat(message.messageId()).isEqualTo(first.messageId());
         assertThat(message.senderId()).isEqualTo(userId);
         assertThat(message.roomId()).isEqualTo(roomId);
         assertThat(message.clientMessageId()).isEqualTo(CLIENT_MESSAGE_ID);
         assertThat(message.content()).isEqualTo("원본");
+        assertThat(events.stream(ChatMessageSent.class)).isEmpty();
+    }
 
+    @Test
+    void 같은_회원과_클라이언트_ID의_메시지는_DB에_중복_저장할_수_없다() {
+        // given
+        Long userId = saveUser();
+        Long roomId = roomService.create(userId, "제주 3박 4일");
+        chatMessageRepository.save(ChatMessage.text(roomId, userId, CLIENT_MESSAGE_ID, "안녕"));
+
+        // when & then
+        assertThatThrownBy(() -> chatMessageRepository.save(ChatMessage.text(roomId, userId, CLIENT_MESSAGE_ID, "안녕")))
+                .isInstanceOf(DataIntegrityViolationException.class);
     }
 
     @Test
@@ -246,9 +266,53 @@ class ChatMessageServiceTest extends DatabaseIntegrationTest {
 
     }
 
+    @Test
+    void 조회_개수를_넘는_메시지는_반환하지_않는다() {
+        // given
+        Long userId = saveUser();
+        Long roomId = roomService.create(userId, "제주 3박 4일");
+        chatMessageService.send(roomId, userId, UUID.randomUUID().toString(), "1");
+        chatMessageService.send(roomId, userId, UUID.randomUUID().toString(), "2");
+        chatMessageService.send(roomId, userId, UUID.randomUUID().toString(), "3");
+
+        // when
+        List<ChatMessageResult> messages = chatMessageService.findAfter(roomId, userId, 0L, 2);
+
+        // then
+        assertThat(messages)
+                .extracting(ChatMessageResult::content)
+                .containsExactly("1", "2");
+    }
+
+    @Test
+    void 다시_입장하면_재입장_이후_메시지만_조회된다() {
+        // given
+        Long ownerId = saveUser();
+        Long memberId = saveUser();
+        Long roomId = roomService.create(ownerId, "제주 3박 4일");
+        joinRoom(roomId, memberId);
+        chatMessageService.send(roomId, ownerId, UUID.randomUUID().toString(), "재입장 전");
+        markMemberAsRejoined(roomId, memberId);
+        chatMessageService.send(roomId, ownerId, UUID.randomUUID().toString(), "재입장 후");
+
+        // when
+        List<ChatMessageResult> messages = chatMessageService.findAfter(roomId, memberId, 0L, 10);
+
+        // then
+        assertThat(messages)
+                .extracting(ChatMessageResult::content)
+                .containsExactly("재입장 후");
+    }
+
     private void joinRoom(Long roomId, Long userId) {
         Room room = roomRepository.findById(roomId).orElseThrow();
         roomMemberRepository.save(RoomMember.joinAsOwner(room, userId));
+    }
+
+    private void markMemberAsRejoined(Long roomId, Long userId) {
+        RoomMember member = roomMemberRepository.findByRoomIdAndUserId(roomId, userId).orElseThrow();
+        ReflectionTestUtils.setField(member, "joinedAt", LocalDateTime.now(ZoneOffset.UTC));
+        roomMemberRepository.save(member);
     }
 
     private Long saveUser() {
