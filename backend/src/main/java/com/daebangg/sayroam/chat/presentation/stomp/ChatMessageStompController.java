@@ -16,7 +16,7 @@ import org.springframework.stereotype.Controller;
 
 @Controller
 @RequiredArgsConstructor
-public class ChatMessageController {
+public class ChatMessageStompController {
     private final ChatMessageService chatMessageService;
 
     @MessageMapping("/rooms/{roomId}/messages")
