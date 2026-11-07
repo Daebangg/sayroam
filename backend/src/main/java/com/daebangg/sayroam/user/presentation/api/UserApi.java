@@ -1,0 +1,51 @@
+package com.daebangg.sayroam.user.presentation.api;
+
+import com.daebangg.sayroam.auth.domain.AuthenticatedAccount;
+import com.daebangg.sayroam.user.presentation.dto.CurrentUserResponse;
+import com.daebangg.sayroam.user.presentation.dto.UpdateUserProfileRequest;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.RequestBody;
+
+@Tag(name = "Users")
+public interface UserApi {
+
+    @Operation(summary = "내 회원 정보 조회",
+            description = "현재 로그인한 회원의 정보를 조회합니다. 성별·출생연도·프로필 이미지가 미설정이면 null을 반환합니다.")
+    @SecurityRequirement(name = "bearerAuth")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "현재 회원 정보. Cache-Control: no-store"),
+            @ApiResponse(responseCode = "401", ref = "#/components/responses/Unauthorized"),
+            @ApiResponse(responseCode = "503", ref = "#/components/responses/AuthenticationUnavailable"),
+            @ApiResponse(responseCode = "500", ref = "#/components/responses/InternalServerError")
+    })
+    ResponseEntity<CurrentUserResponse> me(
+            @Parameter(hidden = true) @AuthenticationPrincipal AuthenticatedAccount account);
+
+    @Operation(summary = "내 프로필 부분 수정",
+            description = "닉네임·프로필 이미지·성별·출생연도만 변경할 수 있습니다. 생략한 필드는 유지하고, "
+                    + "선택 정보에 null을 전달하면 제거합니다. 닉네임은 null로 변경할 수 없습니다. "
+                    + "회원 ID·이메일·권한 등 허용하지 않은 필드를 포함하면 요청을 거절합니다.")
+    @SecurityRequirement(name = "bearerAuth")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "변경된 회원 정보. Cache-Control: no-store"),
+            @ApiResponse(responseCode = "400", description = "잘못된 JSON 형식·필드 타입·보호 필드 또는 프로필 값",
+                    content = @Content(mediaType = MediaType.APPLICATION_PROBLEM_JSON_VALUE,
+                            schema = @Schema(ref = "#/components/schemas/ApiProblem"))),
+            @ApiResponse(responseCode = "401", ref = "#/components/responses/Unauthorized"),
+            @ApiResponse(responseCode = "503", ref = "#/components/responses/AuthenticationUnavailable"),
+            @ApiResponse(responseCode = "500", ref = "#/components/responses/InternalServerError")
+    })
+    ResponseEntity<CurrentUserResponse> updateProfile(
+            @Parameter(hidden = true) @AuthenticationPrincipal AuthenticatedAccount account,
+            @RequestBody UpdateUserProfileRequest request);
+}
