@@ -9,6 +9,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AccessLevel;
 import lombok.Getter;
+import org.jspecify.annotations.Nullable;
 import tools.jackson.databind.JsonNode;
 
 import java.util.Set;
@@ -31,8 +32,8 @@ public final class UpdateUserProfileRequest {
     private final String profileImageUrl;
 
     @Schema(description = "MALE 또는 FEMALE. null이면 미설정",
-            types = {"string", "null"}, requiredMode = Schema.RequiredMode.NOT_REQUIRED)
-    private final Gender gender;
+            enumAsRef = true, requiredMode = Schema.RequiredMode.NOT_REQUIRED)
+    private final @Nullable Gender gender;
 
     @Schema(description = "양의 정수이며 현재 연도 이하. null이면 미설정",
             types = {"integer", "null"}, format = "int32", minimum = "1",

@@ -25,7 +25,15 @@ import { getCurrentUser } from "../src/api/users/userApi.ts";
 const originalDocument = Object.getOwnPropertyDescriptor(globalThis, "document");
 const input = { email: "user@example.test", password: " password with spaces " };
 const issued = { accessToken: "access-a", tokenType: "Bearer", expiresIn: 900 } as const;
-const user = { userId: 1, email: null, nickname: "여행자", profileImageUrl: null, role: "USER" };
+const user = {
+    userId: 1,
+    email: null,
+    nickname: "여행자",
+    profileImageUrl: null,
+    gender: null,
+    birthYear: null,
+    role: "USER",
+};
 
 function createGate(): { promise: Promise<void>; resolve: () => void } {
     let release: () => void;

@@ -320,6 +320,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/rooms/{roomId}/messages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 놓친 메시지 조회
+         * @description afterId 이후 메시지를 ID 오름차순으로 조회합니다. 입장 이후 메시지만 조회됩니다.
+         *     응답 개수가 size와 같으면 마지막 messageId를 afterId로 다시 요청합니다.
+         */
+        get: operations["findAfter"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/users/me": {
         parameters: {
             query?: never;
@@ -329,7 +350,7 @@ export interface paths {
         };
         /**
          * 내 회원 정보 조회
-         * @description Authorization: Bearer <accessToken> 필요. 토큰 검증 후 DB에서 조회한 현재 회원 정보를 반환합니다. 탈퇴·삭제 회원은 인증되지 않으며 요청에서 다른 회원의 ID를 받지 않습니다.
+         * @description 현재 로그인한 회원의 정보를 조회합니다. 성별·출생연도·프로필 이미지가 미설정이면 null을 반환합니다.
          */
         get: operations["me"];
         put?: never;
@@ -337,7 +358,11 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        patch?: never;
+        /**
+         * 내 프로필 부분 수정
+         * @description 닉네임·프로필 이미지·성별·출생연도만 변경할 수 있습니다. 생략한 필드는 유지하고, 선택 정보에 null을 전달하면 제거합니다. 닉네임은 null로 변경할 수 없습니다. 회원 ID·이메일·권한 등 허용하지 않은 필드를 포함하면 요청을 거절합니다.
+         */
+        patch: operations["updateProfile"];
         trace?: never;
     };
 }
@@ -435,6 +460,7 @@ export interface components {
             | "PASSWORD_POLICY_VIOLATION"
             | "REFRESH_TOKEN_INVALID"
             | "REFRESH_TOKEN_REUSED"
+            | "ROOM_ACCESS_DENIED"
             | "ROOM_NAME_TOO_LONG"
             | "SIGNUP_PROOF_ALREADY_USED"
             | "SIGNUP_PROOF_EXPIRED"
@@ -448,7 +474,13 @@ export interface components {
             | "SOCIAL_PROVIDER_DISABLED"
             | "SOCIAL_RETURN_PATH_INVALID"
             | "SOCIAL_SIGNUP_INVALID"
-            | "UNAUTHENTICATED";
+            | "UNAUTHENTICATED"
+            | "USER_BIRTH_YEAR_INVALID"
+            | "USER_NICKNAME_INVALID"
+            | "USER_NICKNAME_REQUIRED"
+            | "USER_NICKNAME_TOO_LONG"
+            | "USER_PROFILE_IMAGE_URL_INVALID"
+            | "USER_PROFILE_IMAGE_URL_TOO_LONG";
         ApiProblem: {
             /** @example UNAUTHENTICATED */
             code: components["schemas"]["ApiErrorCode"] | string;
@@ -478,6 +510,42 @@ export interface components {
              */
             type?: string;
         };
+        ChatMessageResponse: {
+            /**
+             * @description 클라이언트가 전송할 때 만든 UUID
+             * @example 6f1c2b6e-8a57-4b7a-9d3e-2f4a1c7e9b10
+             */
+            clientMessageId?: string;
+            /**
+             * @description 메시지 본문
+             * @example 안녕
+             */
+            content?: string;
+            /**
+             * Format: date-time
+             * @description 서버 저장 시각(UTC)
+             * @example 2026-11-07T10:00:00Z
+             */
+            createdAt?: string;
+            /**
+             * Format: int64
+             * @description 메시지 ID. 다음 조회의 afterId로 사용
+             * @example 101
+             */
+            messageId?: number;
+            /**
+             * Format: int64
+             * @description 방 ID
+             * @example 7
+             */
+            roomId?: number;
+            /**
+             * Format: int64
+             * @description 보낸 회원 ID. 시스템 메시지는 null
+             * @example 1
+             */
+            senderId?: number;
+        };
         CreateRoomRequest: {
             /**
              * @description 방 이름. 선택값이며 앞뒤 공백 제거 후 20자 이내. 공백뿐이면 이름 없는 방으로 저장
@@ -494,8 +562,15 @@ export interface components {
             roomId: number;
         };
         CurrentUserResponse: {
+            /**
+             * Format: int32
+             * @description 미설정이면 null
+             */
+            birthYear: number | null;
             /** @example user@example.com */
             email: string | null;
+            /** @description 미설정이면 null */
+            gender: components["schemas"]["Gender"] | null;
             /** @example 여행자 */
             nickname: string;
             profileImageUrl: string | null;
@@ -546,6 +621,8 @@ export interface components {
             field: string;
             reason: string;
         };
+        /** @enum {string} */
+        Gender: "MALE" | "FEMALE";
         IssuedRequest: {
             /** Format: int64 */
             expiresInSeconds: number;
@@ -664,6 +741,23 @@ export interface components {
             signupProof?: string | null;
             /** @description 결과 교환에서 받은 가입 티켓 */
             signupTicket: string;
+        };
+        /** @description 생략한 필드는 유지합니다. 선택 정보의 null은 삭제를 의미합니다. */
+        UpdateUserProfileRequest: {
+            /**
+             * Format: int32
+             * @description 양의 정수이며 현재 연도 이하. null이면 미설정
+             */
+            birthYear?: number | null;
+            /** @description MALE 또는 FEMALE. null이면 미설정 */
+            gender?: components["schemas"]["Gender"] | null;
+            /**
+             * @description 앞뒤 공백 제거 후 1~50자. 제어 문자와 null 불가
+             * @example 제주 여행자
+             */
+            nickname?: string;
+            /** @description HTTP(S) 이미지 URL. null이면 제거 */
+            profileImageUrl?: string | null;
         };
     };
     responses: {
@@ -938,6 +1032,15 @@ export interface components {
                 "application/problem+json": components["schemas"]["ApiProblem"];
             };
         };
+        /** @description 403: ROOM_ACCESS_DENIED. 없는 방이거나 현재 참여 중인 멤버가 아님 */
+        RoomAccessDenied: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/problem+json": components["schemas"]["ApiProblem"];
+            };
+        };
         /** @description 400: ROOM_NAME_TOO_LONG 또는 Spring 요청 오류. 이름을 20자 이내로 수정 후 재요청 */
         RoomBadRequest: {
             headers: {
@@ -1021,6 +1124,15 @@ export interface components {
         };
         /** @description 401: UNAUTHENTICATED. 토큰 누락·만료·변조·잘못된 발급자/대상·유형·인증 버전 또는 탈퇴·삭제 회원. WWW-Authenticate: Bearer */
         Unauthorized: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/problem+json": components["schemas"]["ApiProblem"];
+            };
+        };
+        /** @description 400: USER_NICKNAME_REQUIRED, USER_NICKNAME_TOO_LONG, USER_NICKNAME_INVALID, USER_PROFILE_IMAGE_URL_TOO_LONG, USER_PROFILE_IMAGE_URL_INVALID, USER_BIRTH_YEAR_INVALID 또는 Spring 요청 오류. 허용 필드는 nickname·profileImageUrl·gender·birthYear이며 보호 필드와 잘못된 JSON 타입은 거절 */
+        UserProfileBadRequest: {
             headers: {
                 [name: string]: unknown;
             };
@@ -1510,6 +1622,42 @@ export interface operations {
             503: components["responses"]["AuthenticationUnavailable"];
         };
     };
+    findAfter: {
+        parameters: {
+            query?: {
+                /** @description 마지막으로 받은 메시지 ID. 생략하면 처음부터 조회 */
+                afterId?: string;
+                /** @description 한 번에 조회할 최대 개수 */
+                size?: string;
+            };
+            header?: never;
+            path: {
+                /**
+                 * @description 방 ID
+                 * @example 7
+                 */
+                roomId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 조회 성공. 메시지가 없으면 빈 배열 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChatMessageResponse"][];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["RoomAccessDenied"];
+            500: components["responses"]["InternalServerError"];
+            503: components["responses"]["AuthenticationUnavailable"];
+        };
+    };
     me: {
         parameters: {
             query?: never;
@@ -1528,6 +1676,34 @@ export interface operations {
                     "application/json": components["schemas"]["CurrentUserResponse"];
                 };
             };
+            401: components["responses"]["Unauthorized"];
+            500: components["responses"]["InternalServerError"];
+            503: components["responses"]["AuthenticationUnavailable"];
+        };
+    };
+    updateProfile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateUserProfileRequest"];
+            };
+        };
+        responses: {
+            /** @description 변경된 회원 정보. Cache-Control: no-store */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CurrentUserResponse"];
+                };
+            };
+            400: components["responses"]["UserProfileBadRequest"];
             401: components["responses"]["Unauthorized"];
             500: components["responses"]["InternalServerError"];
             503: components["responses"]["AuthenticationUnavailable"];
@@ -1593,6 +1769,13 @@ export const apiRoutes = {
         csrf: true,
         responses: { "200": true },
     },
+    findAfter: {
+        method: "get",
+        path: "/api/rooms/{roomId}/messages",
+        auth: "required",
+        csrf: false,
+        responses: { "200": true },
+    },
     login: {
         method: "post",
         path: "/api/auth/login",
@@ -1647,6 +1830,13 @@ export const apiRoutes = {
         path: "/api/auth/social/{provider}/authorizations",
         auth: "none",
         csrf: true,
+        responses: { "200": true },
+    },
+    updateProfile: {
+        method: "patch",
+        path: "/api/users/me",
+        auth: "required",
+        csrf: false,
         responses: { "200": true },
     },
 } as const satisfies Record<

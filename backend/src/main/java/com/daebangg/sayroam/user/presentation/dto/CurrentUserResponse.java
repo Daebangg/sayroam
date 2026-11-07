@@ -11,7 +11,8 @@ public record CurrentUserResponse(
         @Schema(example = "user@example.com", types = {"string", "null"}, requiredMode = Schema.RequiredMode.REQUIRED) String email,
         @Schema(example = "여행자", requiredMode = Schema.RequiredMode.REQUIRED) String nickname,
         @Schema(types = {"string", "null"}, requiredMode = Schema.RequiredMode.REQUIRED) String profileImageUrl,
-        @Schema(description = "미설정이면 null", requiredMode = Schema.RequiredMode.REQUIRED) @Nullable Gender gender,
+        @Schema(description = "미설정이면 null", enumAsRef = true,
+                requiredMode = Schema.RequiredMode.REQUIRED) @Nullable Gender gender,
         @Schema(description = "미설정이면 null", types = {"integer", "null"},
                 requiredMode = Schema.RequiredMode.REQUIRED) Integer birthYear,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) Role role) {

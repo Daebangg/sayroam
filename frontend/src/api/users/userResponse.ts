@@ -17,6 +17,13 @@ export function validateCurrentUser(value: unknown, status: number): CurrentUser
         typeof value.nickname !== "string" ||
         !("profileImageUrl" in value) ||
         (value.profileImageUrl !== null && typeof value.profileImageUrl !== "string") ||
+        !("gender" in value) ||
+        (value.gender !== null && value.gender !== "MALE" && value.gender !== "FEMALE") ||
+        !("birthYear" in value) ||
+        (value.birthYear !== null &&
+            (typeof value.birthYear !== "number" ||
+                !Number.isSafeInteger(value.birthYear) ||
+                value.birthYear <= 0)) ||
         !("role" in value) ||
         (value.role !== "USER" && value.role !== "ADMIN")
     )
@@ -26,6 +33,8 @@ export function validateCurrentUser(value: unknown, status: number): CurrentUser
         email: value.email,
         nickname: value.nickname,
         profileImageUrl: value.profileImageUrl,
+        gender: value.gender,
+        birthYear: value.birthYear,
         role: value.role,
     };
 }

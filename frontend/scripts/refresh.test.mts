@@ -21,7 +21,15 @@ function create(): Promise<unknown> {
 const originalDocument = Object.getOwnPropertyDescriptor(globalThis, "document");
 const token = { accessToken: "old-token", tokenType: "Bearer", expiresIn: 900 } as const;
 const next = { ...token, accessToken: "new-token" };
-const user = { userId: 1, email: null, nickname: "갱신", profileImageUrl: null, role: "USER" };
+const user = {
+    userId: 1,
+    email: null,
+    nickname: "갱신",
+    profileImageUrl: null,
+    gender: null,
+    birthYear: null,
+    role: "USER",
+};
 
 function gate(): { promise: Promise<void>; resolve: () => void } {
     let resolve!: () => void;

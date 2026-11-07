@@ -6,6 +6,7 @@ import com.daebangg.sayroam.auth.application.port.out.VerificationEmailSender;
 import com.daebangg.sayroam.auth.domain.AccountVerificationPurpose;
 import com.daebangg.sayroam.global.config.SwaggerAuthIndexTransformer;
 import com.daebangg.sayroam.support.DatabaseIntegrationTest;
+import com.daebangg.sayroam.user.domain.error.UserErrorCode;
 import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -31,13 +32,16 @@ import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 
 import java.util.List;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.UUID;
 import java.time.Instant;
+import java.time.Year;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -103,6 +107,203 @@ class AuthIntegrationTests extends DatabaseIntegrationTest {
         assertThat(json(me).path("email").asText()).isEqualTo(email);
         assertThat(json(me).path("nickname").asText()).isEqualTo("여행자");
         assertThat(me.getRequest().getSession(false)).isNull();
+    }
+
+    @Test
+    void profileLifecyclePersistsPartialChangesAndDeletionRevokesAccess() throws Exception {
+        String email = register();
+        Login login = login(email, PASSWORD);
+        Login other = login(register(), PASSWORD);
+        var otherBefore = json(call(HttpMethod.GET, "/api/users/me", null, other.access()));
+        var initial = call(HttpMethod.GET, "/api/users/me", null, login.access());
+        assertStatus(initial, 200);
+        long id = json(initial).path("userId").asLong();
+        for (String field : new String[]{"profileImageUrl", "gender", "birthYear"}) {
+            assertThat(json(initial).has(field)).as(field).isTrue();
+            assertThat(json(initial).path(field).isNull()).as(field).isTrue();
+        }
+        assertThat(json(initial).path("role").asText()).isEqualTo("USER");
+        assertThat(jdbc.queryForObject("SELECT email_verified_at IS NOT NULL FROM users WHERE id = ?",
+                Boolean.class, id)).isTrue();
+
+        var changed = call(HttpMethod.PATCH, "/api/users/me", Map.of(
+                "nickname", "  제주 여행자  ",
+                "profileImageUrl", " https://example.com/profile.png ",
+                "gender", "MALE", "birthYear", 1990), login.access());
+        assertStatus(changed, 200);
+        assertThat(changed.getResponse().getHeader("Cache-Control")).contains("no-store");
+        assertThat(json(changed).path("nickname").asText()).isEqualTo("제주 여행자");
+        assertThat(json(changed).path("profileImageUrl").asText()).isEqualTo("https://example.com/profile.png");
+        assertThat(json(changed).path("gender").asText()).isEqualTo("MALE");
+        assertThat(json(changed).path("birthYear").asInt()).isEqualTo(1990);
+        assertThat(json(call(HttpMethod.GET, "/api/users/me", null, login.access()))).isEqualTo(json(changed));
+        assertThat(jdbc.queryForObject("SELECT birth_year FROM users WHERE id = ?", Integer.class, id))
+                .isEqualTo(1990);
+
+        var nicknameOnly = call(HttpMethod.PATCH, "/api/users/me", Map.of("nickname", "다음 여행자"), login.access());
+        assertStatus(nicknameOnly, 200);
+        assertThat(json(nicknameOnly).path("gender").asText()).isEqualTo("MALE");
+        assertThat(json(nicknameOnly).path("birthYear").asInt()).isEqualTo(1990);
+        assertThat(json(nicknameOnly).path("profileImageUrl").asText()).isEqualTo("https://example.com/profile.png");
+        assertStatus(call(HttpMethod.PATCH, "/api/users/me", Map.of("gender", "FEMALE"), login.access()), 200);
+
+        for (String field : new String[]{"gender", "birthYear", "profileImageUrl"}) {
+            var cleared = call(HttpMethod.PATCH, "/api/users/me", profileField(field, null), login.access());
+            assertStatus(cleared, 200);
+            assertThat(json(cleared).has(field)).as(field).isTrue();
+            assertThat(json(cleared).path(field).isNull()).as(field).isTrue();
+            assertThat(json(cleared).path("nickname").asText()).isEqualTo("다음 여행자");
+        }
+        var emptyPatch = call(HttpMethod.PATCH, "/api/users/me", Map.of(), login.access());
+        assertStatus(emptyPatch, 200);
+        assertThat(json(call(HttpMethod.GET, "/api/users/me", null, login.access()))).isEqualTo(json(emptyPatch));
+        assertThat(json(call(HttpMethod.GET, "/api/users/me", null, other.access()))).isEqualTo(otherBefore);
+        assertThat(jdbc.queryForObject("SELECT auth_version FROM users WHERE id = ?", Long.class, id)).isZero();
+
+        assertStatus(call(HttpMethod.PATCH, "/api/users/me", Map.of("profileImageUrl",
+                "https://example.com/final.png", "gender", "FEMALE", "birthYear", 2000), login.access()), 200);
+        String proof = accountProof(login, email, "ACCOUNT_DELETION");
+        assertStatus(call(HttpMethod.POST, "/api/auth/account-deletion",
+                Map.of("accountProof", proof), login.access()), 204);
+        assertThat(jdbc.queryForObject("""
+                SELECT deleted_at IS NOT NULL AND email IS NULL AND profile_image_url IS NULL
+                    AND gender IS NULL AND birth_year IS NULL FROM users WHERE id = ?
+                """, Boolean.class, id)).isTrue();
+        assertStatus(call(HttpMethod.GET, "/api/users/me", null, login.access()), 401);
+        assertStatus(call(HttpMethod.PATCH, "/api/users/me", Map.of("nickname", "복원 시도"), login.access()), 401);
+        assertStatus(call(HttpMethod.POST, "/api/auth/login",
+                Map.of("email", email, "password", PASSWORD), null), 401);
+        assertStatus(call(HttpMethod.GET, "/api/users/me", null, other.access()), 200);
+    }
+
+    @Test
+    void invalidProfileInputsReturnProblemsAndDoNotPersistPartialChanges() throws Exception {
+        Login login = login(register(), PASSWORD);
+        var before = json(call(HttpMethod.GET, "/api/users/me", null, login.access()));
+        record InvalidInput(Object body, String code) {}
+        var invalidInputs = List.of(
+                new InvalidInput(profileField("nickname", null), "USER_NICKNAME_REQUIRED"),
+                new InvalidInput(profileField("nickname", "  "), "USER_NICKNAME_REQUIRED"),
+                new InvalidInput(profileField("nickname", "가".repeat(51)), "USER_NICKNAME_TOO_LONG"),
+                new InvalidInput(profileField("nickname", "여행\n자"), "USER_NICKNAME_INVALID"),
+                new InvalidInput(profileField("nickname", 123), null),
+                new InvalidInput(profileField("profileImageUrl", "ftp://example.com/image"), "USER_PROFILE_IMAGE_URL_INVALID"),
+                new InvalidInput(profileField("profileImageUrl", "https://example.com/" + "a".repeat(500)),
+                        "USER_PROFILE_IMAGE_URL_TOO_LONG"),
+                new InvalidInput(profileField("profileImageUrl", false), null),
+                new InvalidInput(profileField("gender", "OTHER"), null),
+                new InvalidInput(profileField("gender", 0), null),
+                new InvalidInput(profileField("birthYear", 0), "USER_BIRTH_YEAR_INVALID"),
+                new InvalidInput(profileField("birthYear", -1), "USER_BIRTH_YEAR_INVALID"),
+                new InvalidInput(profileField("birthYear", Year.now().getValue() + 1), "USER_BIRTH_YEAR_INVALID"),
+                new InvalidInput(profileField("birthYear", "2000"), null),
+                new InvalidInput(profileField("birthYear", 2000.5), null),
+                new InvalidInput(profileField("birthYear", 2147483648L), null),
+                new InvalidInput(List.of("not-an-object"), null),
+                new InvalidInput("not-an-object", null),
+                new InvalidInput(mapper.readTree("null"), null),
+                new InvalidInput(Map.of("nickname", "저장되면 안 됨", "birthYear", 0), "USER_BIRTH_YEAR_INVALID")
+        );
+        for (InvalidInput input : invalidInputs) {
+            var failed = call(HttpMethod.PATCH, "/api/users/me", input.body(), login.access());
+            assertStatus(failed, 400);
+            assertThat(failed.getResponse().getContentType()).contains("application/problem+json");
+            assertThat(json(failed).path("code").asText()).isNotBlank();
+            if (input.code() != null) {
+                assertThat(json(failed).path("code").asText()).isEqualTo(input.code());
+            }
+            assertThat(json(call(HttpMethod.GET, "/api/users/me", null, login.access())))
+                    .as("unchanged after %s", input.body()).isEqualTo(before);
+        }
+    }
+
+    @Test
+    void protectedFieldsCannotChangeIdentityOrAnotherMembersProfile() throws Exception {
+        Login login = login(register(), PASSWORD);
+        Login other = login(register(), PASSWORD);
+        var before = json(call(HttpMethod.GET, "/api/users/me", null, login.access()));
+        var otherBefore = json(call(HttpMethod.GET, "/api/users/me", null, other.access()));
+        for (String field : new String[]{"userId", "id", "email", "role", "emailVerifiedAt", "deletedAt", "authVersion"}) {
+            Map<String, Object> body = profileField(field, otherBefore.path("userId").asLong());
+            body.put("nickname", "권한 없는 변경");
+            assertStatus(call(HttpMethod.PATCH, "/api/users/me", body, login.access()), 400);
+        }
+        var withForeignId = mvc.perform(get("/api/users/me").servletPath("/api/users/me")
+                .param("userId", otherBefore.path("userId").asText())
+                .header("Authorization", "Bearer " + login.access())).andReturn();
+        assertStatus(withForeignId, 200);
+        assertThat(json(withForeignId)).isEqualTo(before);
+        assertThat(json(call(HttpMethod.GET, "/api/users/me", null, other.access()))).isEqualTo(otherBefore);
+    }
+
+    @Test
+    void unauthenticatedAndRevokedLoginsCannotReadOrUpdateProfiles() throws Exception {
+        String email = register();
+        Login login = login(email, PASSWORD);
+        for (HttpMethod method : new HttpMethod[]{HttpMethod.GET, HttpMethod.PATCH}) {
+            Object body = method == HttpMethod.PATCH ? Map.of("nickname", "인증 없는 변경") : null;
+            var anonymous = call(method, "/api/users/me", body, null);
+            assertStatus(anonymous, 401);
+            assertThat(anonymous.getResponse().getHeader("WWW-Authenticate")).isEqualTo("Bearer");
+            assertThat(anonymous.getResponse().getHeader("Cache-Control")).contains("no-store");
+        }
+        jdbc.update("UPDATE users SET auth_version = auth_version + 1 WHERE email = ?", email);
+        assertStatus(call(HttpMethod.GET, "/api/users/me", null, login.access()), 401);
+        assertStatus(call(HttpMethod.PATCH, "/api/users/me", Map.of("nickname", "폐기된 변경"), login.access()), 401);
+        assertThat(jdbc.queryForObject("SELECT nickname FROM users WHERE email = ?", String.class, email))
+                .isEqualTo("여행자");
+    }
+
+    @Test
+    void concurrentProfilePatchesPreserveChangesToDifferentFields() throws Exception {
+        Login login = login(register(), PASSWORD);
+        var order = new AtomicInteger();
+        var results = concurrent(() -> call(HttpMethod.PATCH, "/api/users/me",
+                order.getAndIncrement() == 0 ? Map.of("nickname", "동시 여행자")
+                        : Map.of("gender", "FEMALE", "birthYear", 1995), login.access()));
+        assertThat(results).extracting(result -> result.getResponse().getStatus()).containsOnly(200);
+        var profile = json(call(HttpMethod.GET, "/api/users/me", null, login.access()));
+        assertThat(profile.path("nickname").asText()).isEqualTo("동시 여행자");
+        assertThat(profile.path("gender").asText()).isEqualTo("FEMALE");
+        assertThat(profile.path("birthYear").asInt()).isEqualTo(1995);
+    }
+
+    @Test
+    void profileOpenApiIncludesNullableFieldsSecurityAndUserErrors() throws Exception {
+        var spec = json(mvc.perform(get("/v3/api-docs")).andExpect(status().isOk()).andReturn());
+        var operations = spec.path("paths").path("/api/users/me");
+        for (String method : new String[]{"get", "patch"}) {
+            var security = operations.path(method).path("security");
+            assertThat(security.size()).isEqualTo(1);
+            assertThat(security.get(0).has("bearerAuth")).isTrue();
+            assertThat(security.get(0).has("csrfToken")).isFalse();
+            assertThat(operations.path(method).path("responses").path("200")
+                    .path("content").has("application/json")).isTrue();
+        }
+        assertThat(operations.path("patch").path("responses").path("400").path("$ref").asText())
+                .isEqualTo("#/components/responses/UserProfileBadRequest");
+        var schemas = spec.path("components").path("schemas");
+        for (String schema : new String[]{"CurrentUserResponse", "UpdateUserProfileRequest"}) {
+            var gender = schemas.path(schema).path("properties").path("gender");
+            assertThat(gender.path("oneOf").size()).as(schema).isEqualTo(2);
+            assertThat(List.of(gender.path("oneOf").get(0), gender.path("oneOf").get(1)))
+                    .anySatisfy(branch -> assertThat(branch.path("$ref").asText()).isEqualTo("#/components/schemas/Gender"))
+                    .anySatisfy(branch -> assertThat(branch.path("type").asText()).isEqualTo("null"));
+        }
+        var requestSchema = schemas.path("UpdateUserProfileRequest");
+        assertThat(requestSchema.path("additionalProperties").asBoolean()).isFalse();
+        assertThat(requestSchema.path("properties").has("providedFields")).isFalse();
+        for (UserErrorCode code : UserErrorCode.values()) {
+            assertThat(schemas.path("ApiErrorCode").path("enum").toString()).contains(code.getCode());
+        }
+        assertThat(spec.path("paths").path("/api/rooms/{roomId}/messages").path("get")
+                .path("responses").path("200").path("content").has("application/json")).isTrue();
+    }
+
+    private static Map<String, Object> profileField(String field, Object value) {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put(field, value);
+        return body;
     }
 
     @Test
@@ -222,6 +423,7 @@ class AuthIntegrationTests extends DatabaseIntegrationTest {
         assertThat(changed.getResponse().getCookie(REFRESH).getMaxAge()).isZero();
         for (Login old : new Login[]{one, two}) {
             assertStatus(call(HttpMethod.GET, "/api/users/me", null, old.access()), 401);
+            assertStatus(call(HttpMethod.PATCH, "/api/users/me", Map.of("nickname", "폐기된 변경"), old.access()), 401);
             assertStatus(call(HttpMethod.POST, "/api/auth/refresh", null, null, old.refresh()), 401);
         }
         assertStatus(call(HttpMethod.POST, "/api/auth/login", Map.of("email", email, "password", PASSWORD), null), 401);
