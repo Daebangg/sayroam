@@ -1,6 +1,6 @@
 package com.daebangg.sayroam.user.presentation.dto;
 
-import com.daebangg.sayroam.user.domain.Role;
+import com.daebangg.sayroam.user.domain.type.Role;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 public record CurrentUserResponse(

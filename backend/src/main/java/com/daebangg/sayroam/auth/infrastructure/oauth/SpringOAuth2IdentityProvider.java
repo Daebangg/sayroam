@@ -4,7 +4,7 @@ import com.daebangg.sayroam.auth.application.error.AuthErrorCode;
 import com.daebangg.sayroam.auth.application.error.AuthException;
 import com.daebangg.sayroam.auth.application.model.SocialIdentity;
 import com.daebangg.sayroam.auth.application.port.out.SocialIdentityProvider;
-import com.daebangg.sayroam.user.domain.SocialProvider;
+import com.daebangg.sayroam.user.domain.type.SocialProvider;
 import org.springframework.http.MediaType;
 import org.springframework.http.RequestEntity;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;

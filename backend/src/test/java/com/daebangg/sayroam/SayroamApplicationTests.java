@@ -2,8 +2,8 @@ package com.daebangg.sayroam;
 
 import com.daebangg.sayroam.room.domain.Room;
 import com.daebangg.sayroam.trip.domain.Trip;
-import com.daebangg.sayroam.user.domain.Role;
-import com.daebangg.sayroam.user.domain.User;
+import com.daebangg.sayroam.user.domain.type.Role;
+import com.daebangg.sayroam.user.domain.entity.User;
 import com.daebangg.sayroam.support.DatabaseIntegrationTest;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityManagerFactory;
