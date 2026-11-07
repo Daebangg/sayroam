@@ -17,7 +17,15 @@ import { getCurrentUser } from "../src/api/users/userApi.ts";
 
 const originalDocument = Object.getOwnPropertyDescriptor(globalThis, "document");
 const token = { accessToken: "http-token", tokenType: "Bearer", expiresIn: 900 } as const;
-const user = { userId: 1, email: null, nickname: "HTTP", profileImageUrl: null, role: "USER" };
+const user = {
+    userId: 1,
+    email: null,
+    nickname: "HTTP",
+    profileImageUrl: null,
+    gender: null,
+    birthYear: null,
+    role: "USER",
+};
 
 beforeEach(() => {
     clearAccessToken();

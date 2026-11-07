@@ -4,6 +4,7 @@ import com.daebangg.sayroam.auth.application.error.AuthErrorCode;
 import com.daebangg.sayroam.global.exception.CommonErrorCode;
 import com.daebangg.sayroam.global.exception.ErrorCode;
 import com.daebangg.sayroam.room.domain.RoomErrorCode;
+import com.daebangg.sayroam.user.domain.error.UserErrorCode;
 import io.swagger.v3.oas.models.Components;
 import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.PathItem;
@@ -53,7 +54,8 @@ public class OpenApiConfig {
     @Bean
     OpenAPI openAPI(Optional<BuildProperties> buildProperties) {
         var errorCode = new StringSchema();
-        errorCode.setEnum(Stream.of(CommonErrorCode.values(), AuthErrorCode.values(), RoomErrorCode.values())
+        errorCode.setEnum(Stream.of(CommonErrorCode.values(), AuthErrorCode.values(),
+                        RoomErrorCode.values(), UserErrorCode.values())
                 .flatMap(Arrays::stream).map(ErrorCode::getCode).distinct().sorted().toList());
         errorCode.setDescription("백엔드에 정의된 업무·공통 오류 코드. Spring 기본 요청 오류와 향후 추가 코드는 별도 문자열로 받을 수 있습니다.");
         // ProblemDetail의 동적 확장 필드도 프론트엔드 타입 생성기에 명시적으로 노출한다.
@@ -92,6 +94,7 @@ public class OpenApiConfig {
                 .addSchemas("ApiErrorCode", errorCode)
                 .addSchemas("FieldError", fieldError)
                 .addResponses("BadRequest", problemResponse("400: INVALID_INPUT 또는 Spring 요청 오류. 검증 실패 시 errors 포함"))
+                .addResponses("UserProfileBadRequest", problemResponse("400: USER_NICKNAME_REQUIRED, USER_NICKNAME_TOO_LONG, USER_NICKNAME_INVALID, USER_PROFILE_IMAGE_URL_TOO_LONG, USER_PROFILE_IMAGE_URL_INVALID, USER_BIRTH_YEAR_INVALID 또는 Spring 요청 오류. 허용 필드는 nickname·profileImageUrl·gender·birthYear이며 보호 필드와 잘못된 JSON 타입은 거절"))
                 .addResponses("SocialBadRequest", problemResponse("400: SOCIAL_PROVIDER_DISABLED, SOCIAL_AUTH_INVALID, SOCIAL_AUTH_CANCELLED, SOCIAL_RETURN_PATH_INVALID, SOCIAL_SIGNUP_INVALID, SIGNUP_PROOF_INVALID 또는 INVALID_INPUT. 만료·소비된 상태나 잘못된 브라우저이면 소셜 인증부터 다시 시작"))
                 .addResponses("SocialUnauthorized", problemResponse("401: SOCIAL_AUTH_FAILED 또는 AUTHENTICATION_REVOKED. 공급자 인증 실패·기존 로그인 수단/인증 버전 변경. 새 소셜 인증 필요"))
                 .addResponses("SocialConflict", problemResponse("409: EMAIL_ALREADY_REGISTERED, SOCIAL_ACCOUNT_CONFLICT 또는 SIGNUP_PROOF_ALREADY_USED. 이메일 자동 병합 없음. 기존 회원은 기존 계정으로 로그인 후 명시적 연결 필요"))

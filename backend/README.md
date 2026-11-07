@@ -20,6 +20,7 @@ cp -n backend/config/application-local.properties.example backend/config/applica
 비밀번호 변경·탈퇴 전 본인 확인은 [계정 관리용 이메일 인증·일회성 증명](docs/account-verification.md)을 따릅니다.
 비밀번호 변경과 모든 기기의 기존 로그인 무효화는 [비밀번호 변경 문서](docs/password-change.md)를 따릅니다.
 회원 탈퇴와 개인정보·로그인 수단 정리 및 재가입 기준은 [회원 탈퇴 문서](docs/account-deletion.md)를 따릅니다.
+내 정보 조회·닉네임·선택 정보의 부분 수정과 null 처리 기준은 [프로필 문서](docs/user-profile.md)를 따릅니다.
 Google·Kakao·Naver OAuth의 클라이언트 발급·개인 설정과 단계별 구현 범위는 [소셜 인증 문서](docs/social-auth.md)를 참고합니다.
 운영 Refresh 쿠키는 기본 Secure=true이고, HTTP `local` 프로필에서만 false를 사용합니다.
 
@@ -296,7 +297,7 @@ SMTP 계정이 없는 환경의 **실제 메일 발송·수신은 미확인**입
 | `POST /api/auth/login`                                                                           | 이메일·비밀번호 확인 후 Access Token과 Refresh 쿠키 발급, CSRF 검증 적용       |
 | `POST /api/auth/refresh`, `/api/auth/logout`                                                     | Refresh 쿠키 사용, CSRF 검증 적용. Access Token은 사용하지 않음                |
 | 계정 본인 확인·비밀번호 변경·회원 탈퇴                                                           | Bearer 인증과 CSRF 검증 모두 필요                                              |
-| `GET /api/users/me`                                                                              | Bearer 인증 필요                                                               |
+| `GET /api/users/me`, `PATCH /api/users/me`                                                         | Bearer 인증 필요, 본인 정보만 조회·변경                                          |
 | `GET /swagger-ui.html`, `/swagger-ui/**`, `/v3/api-docs`, `/v3/api-docs/**`, `/v3/api-docs.yaml` | 인증 없이 조회 가능, 문서 기능은 기본적으로 local에서만 활성화                 |
 | `/api/admin`, `/api/admin/**`                                                                    | `ROLE_ADMIN` 권한 필요                                                         |
 | 공개 화면·`/index.html`·`/assets/**`·`/brand/**`·`/fonts/**`·`/images/**`                        | GET·HEAD만 인증 없이 조회 가능 ([화면 경로](#프론트엔드를-포함한-배포용-빌드)) |

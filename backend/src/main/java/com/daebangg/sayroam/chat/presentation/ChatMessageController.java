@@ -4,6 +4,7 @@ import com.daebangg.sayroam.auth.domain.AuthenticatedAccount;
 import com.daebangg.sayroam.chat.application.ChatMessageService;
 import com.daebangg.sayroam.chat.presentation.dto.ChatMessageResponse;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -19,7 +20,7 @@ public class ChatMessageController implements ChatMessageApi {
     private final ChatMessageService chatMessageService;
 
     @Override
-    @GetMapping("/api/rooms/{roomId}/messages")
+    @GetMapping(value = "/api/rooms/{roomId}/messages", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<List<ChatMessageResponse>> findAfter(
             @AuthenticationPrincipal AuthenticatedAccount account,
             @PathVariable Long roomId,

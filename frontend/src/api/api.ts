@@ -16,5 +16,6 @@ export const api = createApiRouter(apiRoutes, {
         refresh: { cookieAction: "refresh", parseResponse: validateToken },
         logout: { cookieAction: "logout" },
         me: { parseResponse: validateCurrentUser },
+        updateProfile: { parseResponse: validateCurrentUser },
     },
 });

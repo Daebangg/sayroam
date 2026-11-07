@@ -1,6 +1,6 @@
 package com.daebangg.sayroam.auth.application.port.out;
 
-import com.daebangg.sayroam.user.domain.SocialProvider;
+import com.daebangg.sayroam.user.domain.type.SocialProvider;
 
 import java.time.Duration;
 import java.util.Objects;

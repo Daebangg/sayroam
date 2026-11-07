@@ -10,7 +10,15 @@ import { validateCurrentUser } from "../src/api/users/userResponse.ts";
 
 const originalDocument = Object.getOwnPropertyDescriptor(globalThis, "document");
 const token = { accessToken: "router-token", tokenType: "Bearer", expiresIn: 900 } as const;
-const user = { userId: 1, email: null, nickname: "라우터", profileImageUrl: null, role: "USER" };
+const user = {
+    userId: 1,
+    email: null,
+    nickname: "라우터",
+    profileImageUrl: null,
+    gender: null,
+    birthYear: null,
+    role: "USER",
+};
 const invalidResponse = (error: unknown): boolean =>
     error instanceof ApiError && error.kind === "invalid-response";
 
@@ -52,6 +60,63 @@ test("명세의 Bearer·CSRF 조합과 PATCH 메서드를 호출 옵션 없이 �
         await api.call("change", { body: { accountProof: "proof", newPassword: "password" } }),
         undefined,
     );
+});
+
+test("프로필 PATCH는 Bearer로 한 번 전송하고 생략·null을 그대로 전달", async (t) => {
+    setAccessToken(token);
+    const body = { nickname: "바뀐 닉네임", gender: null, birthYear: 1990 };
+    const updated = { ...user, ...body };
+    const fetchMock = t.mock.method(
+        globalThis,
+        "fetch",
+        async (path: unknown, options?: RequestInit) => {
+            assert.equal(path, "/api/users/me");
+            assert.equal(options?.method, "PATCH");
+            const headers = new Headers(options?.headers);
+            assert.equal(headers.get("Authorization"), "Bearer router-token");
+            assert.equal(headers.has("X-XSRF-TOKEN"), false);
+            assert.deepEqual(JSON.parse(String(options?.body)), body);
+            return Response.json(updated);
+        },
+    );
+    assert.deepEqual(await api.call("updateProfile", { body }), updated);
+    assert.equal(fetchMock.mock.callCount(), 1);
+});
+
+test("프로필 변경의 401은 자동 갱신·재전송하지 않음", async (t) => {
+    setAccessToken(token);
+    const fetchMock = t.mock.method(globalThis, "fetch", async () =>
+        Response.json({ status: 401, code: "UNAUTHENTICATED" }, { status: 401 }),
+    );
+    await assert.rejects(
+        api.call("updateProfile", { body: { nickname: "변경" } }),
+        (error: unknown) => error instanceof ApiError && error.status === 401,
+    );
+    assert.equal(fetchMock.mock.callCount(), 1);
+});
+
+test("프로필 조회·변경 응답의 선택 정보는 null을 허용하고 누락·잘못된 타입은 거절", async (t) => {
+    setAccessToken(token);
+    assert.deepEqual(validateCurrentUser(user, 200), user);
+    const configured = { ...user, gender: "FEMALE", birthYear: 1995 };
+    assert.deepEqual(validateCurrentUser(configured, 200), configured);
+    for (const field of ["gender", "birthYear"]) {
+        const missing: Record<string, unknown> = { ...user };
+        Reflect.deleteProperty(missing, field);
+        assert.throws(() => validateCurrentUser(missing, 200), invalidResponse);
+    }
+    for (const value of [
+        { ...user, gender: "OTHER" },
+        { ...user, gender: 0 },
+        { ...user, birthYear: "1995" },
+        { ...user, birthYear: 1995.5 },
+        { ...user, birthYear: 0 },
+    ]) {
+        assert.throws(() => validateCurrentUser(value, 200), invalidResponse);
+    }
+    t.mock.method(globalThis, "fetch", async () => Response.json({ ...user, gender: "OTHER" }));
+    await assert.rejects(api.call("updateProfile", { body: {} }), invalidResponse);
+    await assert.rejects(api.call("me"), invalidResponse);
 });
 
 test("엔드포인트 확장은 공통 요청 안에서 전처리·응답 검증·후처리를 한 번 실행", async (t) => {

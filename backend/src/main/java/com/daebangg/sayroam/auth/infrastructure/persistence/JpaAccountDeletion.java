@@ -4,7 +4,7 @@ import com.daebangg.sayroam.auth.application.error.AuthErrorCode;
 import com.daebangg.sayroam.auth.application.error.AuthException;
 import com.daebangg.sayroam.auth.application.port.in.AccountDeletionCleanup;
 import com.daebangg.sayroam.auth.application.port.out.AccountDeletion;
-import com.daebangg.sayroam.user.domain.User;
+import com.daebangg.sayroam.user.domain.entity.User;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.LockModeType;
 import lombok.extern.slf4j.Slf4j;
