@@ -134,11 +134,14 @@ test("누락·중복 operationId와 해석할 수 없는 인증 규칙은 생성
     await assert.rejects(renderOpenApi(JSON.stringify(document)), /인증 방식/);
 });
 
-test("생성 결과물은 타입과 경로표를 담은 schema.ts 한 파일", async () => {
+test("생성 결과물은 schema.ts 한 파일이며 브라우저 콜백은 경로표에서 제외", async () => {
     assert.deepEqual(await readdir(new URL("../src/api/generated/", import.meta.url)), [
         "schema.ts",
     ]);
     const routes = await generatedRoutes(source);
-    assert.equal(Object.keys(routes).length, 13);
     assert.equal(routes.me.path, "/api/users/me");
+    assert.equal(routes.startSocialLogin.path, "/api/auth/social/{provider}/authorizations");
+    assert.equal(routes.exchangeSocialLoginResult.path, "/api/auth/social/results/exchange");
+    assert.equal(routes.completeSocialSignup.path, "/api/auth/social/signup");
+    assert.equal(Object.hasOwn(routes, "socialLoginCallback"), false);
 });

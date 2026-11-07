@@ -30,6 +30,7 @@ import org.springframework.test.web.servlet.MvcResult;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.time.Instant;
@@ -133,6 +134,23 @@ class AuthIntegrationTests extends DatabaseIntegrationTest {
                     .andExpect(status().isForbidden());
         }
         assertStatus(call(HttpMethod.POST, "/api/auth/logout", null, null), 204);
+    }
+
+    @Test
+    void socialExchangeOpenApiAllowsNullableReferencedResponses() throws Exception {
+        var spec = json(mvc.perform(get("/v3/api-docs")).andExpect(status().isOk()).andReturn());
+        var properties = spec.path("components").path("schemas").path("SocialExchangeResponse").path("properties");
+        for (var field : Map.of("login", "LoginResponse", "signup", "Signup").entrySet()) {
+            var property = properties.path(field.getKey());
+            assertThat(property.has("$ref")).isFalse();
+            assertThat(property.has("type")).isFalse();
+            assertThat(property.path("oneOf").size()).isEqualTo(2);
+            assertThat(List.of(property.path("oneOf").get(0), property.path("oneOf").get(1)))
+                    .anySatisfy(branch -> assertThat(branch.path("$ref").asText())
+                            .isEqualTo("#/components/schemas/" + field.getValue()))
+                    .anySatisfy(branch -> assertThat(branch.path("type").asText()).isEqualTo("null"));
+            assertThat(property.path("description").asText()).isNotBlank();
+        }
     }
 
     @Test

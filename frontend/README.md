@@ -320,6 +320,8 @@ extensions: {
 경로표는 성공 상태·본문 유무도 제공하며 예상하지 않은 성공 응답은 `invalid-response`로 구분합니다.
 현재 생성기는 JSON 응답과 Bearer·XSRF 헤더·Refresh 쿠키 계약을 지원합니다. 고유한 operationId가
 없거나 서로 다른 인증 대안·지원하지 않는 인증 방식이 있으면 자동 생성 단계에서 실패합니다.
+OAuth 콜백처럼 `x-browser-navigation=true`인 GET 리다이렉트는 OpenAPI 타입에 유지하고,
+JSON 요청용 `apiRoutes`·`api.call()`에서는 제외합니다. 브라우저 이동 엔드포인트는 일반 API 호출로 실행하지 않습니다.
 
 `pnpm api:generate`는 저장 명세로 타입·경로표를 재생성하고 `pnpm api:check`는 저장본과
 재계산한 결과를 비교합니다. check는 결과물을 수정하지 않으며 일반 빌드에는 실행 중인

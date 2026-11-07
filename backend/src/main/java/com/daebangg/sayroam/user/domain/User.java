@@ -67,6 +67,13 @@ public class User extends BaseTimeEntity {
         return id;
     }
 
+    public static User verifiedSocialMember(String email, String nickname, String profileImageUrl,
+                                            LocalDateTime emailVerifiedAt) {
+        User user = verifiedEmailMember(email, nickname, emailVerifiedAt);
+        user.profileImageUrl = profileImageUrl;
+        return user;
+    }
+
     public boolean allowsAccountChange(String verifiedEmail, long expectedAuthVersion) {
         return deletedAt == null && emailVerifiedAt != null && email != null
                 && email.equals(verifiedEmail) && authVersion == expectedAuthVersion;

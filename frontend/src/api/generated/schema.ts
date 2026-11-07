@@ -220,6 +220,86 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/auth/social/{provider}/authorizations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 소셜 로그인 인증 시작
+         * @description 활성화한 OAuth2 공급자만 사용합니다. 첫 공급자는 google. CSRF 쿠키·헤더 필요. HttpOnly 브라우저 바인딩 쿠키를 설정하고 state 및 지원 공급자의 PKCE S256 인증 주소를 반환합니다. 같은 브라우저에서 authorizationUrl로 이동하세요. returnPath는 서버 허용 목록만 사용합니다. Bearer 헤더 없이 호출하세요.
+         */
+        post: operations["startSocialLogin"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/social/{provider}/callback": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 공급자 인증 콜백
+         * @description 공급자가 GET 리다이렉트로 호출합니다. state·공급자·브라우저 바인딩을 검사해 일회성 소비합니다. 검증한 콜백만 허용된 returnPath#social_result=<일회성 코드>로 302 이동합니다. 바인딩 오류는 리다이렉트하지 않고 ProblemDetail을 반환합니다. 기존 Refresh 쿠키·Bearer 헤더·세션에 의존하지 않습니다.
+         */
+        get: operations["socialLoginCallback"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/social/results/exchange": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 소셜 로그인 결과 일회성 교환
+         * @description 인증을 시작한 브라우저의 HttpOnly 바인딩 쿠키와 CSRF 쿠키·헤더 필요. social_result 값을 읽은 뒤 주소에서 제거하세요. AUTHENTICATED이면 login 본문과 Refresh 쿠키, SIGNUP_REQUIRED이면 signup 티켓·이메일 보완 여부를 반환합니다. 실패 결과는 해당 ProblemDetail로 반환합니다. 소비 후 응답 유실·장애 시 자동 재시도하지 말고 소셜 인증을 다시 시작하세요.
+         */
+        post: operations["exchangeSocialLoginResult"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/social/signup": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 소셜 회원가입 완료·로그인
+         * @description 동일 브라우저 바인딩과 CSRF 쿠키·헤더 필요. 가입 티켓·닉네임을 전달합니다. 이메일 보완이 필요하면 #28의 코드 발급·확인 후 email/signupProof도 전달합니다. 비밀번호 자격 정보 없이 User+소셜 계정을 한 DB 트랜잭션에서 생성합니다. 이메일 충돌 시 자동 병합하지 않으며 기존 계정 로그인 후 연결해야 합니다. 티켓·증명 소비 또는 DB 커밋 이후 실패 시 복원·자동 재시도하지 않습니다.
+         */
+        post: operations["completeSocialSignup"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/rooms": {
         parameters: {
             query?: never;
@@ -360,6 +440,14 @@ export interface components {
             | "SIGNUP_PROOF_EXPIRED"
             | "SIGNUP_PROOF_INVALID"
             | "SIGNUP_UNAVAILABLE"
+            | "SOCIAL_ACCOUNT_CONFLICT"
+            | "SOCIAL_AUTH_CANCELLED"
+            | "SOCIAL_AUTH_FAILED"
+            | "SOCIAL_AUTH_INVALID"
+            | "SOCIAL_AUTH_UNAVAILABLE"
+            | "SOCIAL_PROVIDER_DISABLED"
+            | "SOCIAL_RETURN_PATH_INVALID"
+            | "SOCIAL_SIGNUP_INVALID"
             | "UNAUTHENTICATED";
         ApiProblem: {
             /** @example UNAUTHENTICATED */
@@ -496,6 +584,19 @@ export interface components {
             /** @description 가입과 같은 8~128자 정책. 공백 제거·대소문자 변환 없이 해시 처리 */
             newPassword: string;
         };
+        Signup: {
+            /** @description true이면 #28 이메일 인증 후 signupProof 필요 */
+            emailVerificationRequired: boolean;
+            /**
+             * Format: int64
+             * @description 가입 티켓 유효기간(초)
+             */
+            expiresInSeconds: number;
+            /** @description 가입 API에 한 번 전달할 브라우저 바인딩 티켓 */
+            signupTicket: string;
+            /** @description 공급자가 제공한 입력 참고용 이메일. 검증 완료를 의미하지 않음 */
+            suggestedEmail?: string | null;
+        };
         SignupRequest: {
             /**
              * Format: email
@@ -519,6 +620,50 @@ export interface components {
              * @description 생성된 회원 ID. 가입은 자동 로그인을 수행하지 않음
              */
             userId: number;
+        };
+        SocialAuthStartRequest: {
+            /**
+             * @description 서버 허용 목록의 로컬 복귀 경로. 생략하면 /
+             * @default /
+             */
+            returnPath: string;
+        };
+        SocialAuthStartResponse: {
+            /**
+             * Format: uri
+             * @description 응답을 받은 같은 브라우저에서 이동할 공급자 인증 주소
+             */
+            authorizationUrl: string;
+            /**
+             * Format: int64
+             * @description 인증 요청 유효기간(초)
+             */
+            expiresInSeconds: number;
+        };
+        SocialExchangeResponse: {
+            /** @description AUTHENTICATED일 때만 존재. Refresh는 HttpOnly 쿠키 */
+            login?: components["schemas"]["LoginResponse"] | null;
+            /** @description SIGNUP_REQUIRED일 때만 존재. 가입 전 일반 서비스 토큰은 발급하지 않음 */
+            signup?: components["schemas"]["Signup"] | null;
+            /** @enum {string} */
+            status: "AUTHENTICATED" | "SIGNUP_REQUIRED";
+        };
+        SocialResultExchangeRequest: {
+            /** @description 콜백 후 화면 fragment의 social_result 값. 일회성·브라우저 바인딩 */
+            resultCode: string;
+        };
+        SocialSignupRequest: {
+            /**
+             * Format: email
+             * @description 이메일 보완 시 인증한 이메일. 신뢰한 공급자 이메일이 있으면 생략하거나 동일한 값만 전달
+             */
+            email?: string | null;
+            /** @description 앞뒤 공백 제거 후 1~50자 */
+            nickname: string;
+            /** @description 이메일 보완 시 #28에서 받은 가입 증명 */
+            signupProof?: string | null;
+            /** @description 결과 교환에서 받은 가입 티켓 */
+            signupTicket: string;
         };
     };
     responses: {
@@ -831,6 +976,42 @@ export interface components {
         };
         /** @description 503: EMAIL_VERIFICATION_UNAVAILABLE 또는 SIGNUP_UNAVAILABLE. 증명 소비·DB 커밋 결과가 불확실할 수 있음. 자동 재시도 없이 새 인증 필요; 계정은 이미 생성됐을 수도 있음 */
         SignupUnavailable: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/problem+json": components["schemas"]["ApiProblem"];
+            };
+        };
+        /** @description 400: SOCIAL_PROVIDER_DISABLED, SOCIAL_AUTH_INVALID, SOCIAL_AUTH_CANCELLED, SOCIAL_RETURN_PATH_INVALID, SOCIAL_SIGNUP_INVALID, SIGNUP_PROOF_INVALID 또는 INVALID_INPUT. 만료·소비된 상태나 잘못된 브라우저이면 소셜 인증부터 다시 시작 */
+        SocialBadRequest: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/problem+json": components["schemas"]["ApiProblem"];
+            };
+        };
+        /** @description 409: EMAIL_ALREADY_REGISTERED, SOCIAL_ACCOUNT_CONFLICT 또는 SIGNUP_PROOF_ALREADY_USED. 이메일 자동 병합 없음. 기존 회원은 기존 계정으로 로그인 후 명시적 연결 필요 */
+        SocialConflict: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/problem+json": components["schemas"]["ApiProblem"];
+            };
+        };
+        /** @description 401: SOCIAL_AUTH_FAILED 또는 AUTHENTICATION_REVOKED. 공급자 인증 실패·기존 로그인 수단/인증 버전 변경. 새 소셜 인증 필요 */
+        SocialUnauthorized: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/problem+json": components["schemas"]["ApiProblem"];
+            };
+        };
+        /** @description 503: SOCIAL_AUTH_UNAVAILABLE, AUTHENTICATION_UNAVAILABLE 또는 EMAIL_VERIFICATION_UNAVAILABLE. 상태·증명 소비나 가입 커밋 결과가 불확실할 수 있음. 자동 재시도 없이 소셜 인증부터 다시 시작 */
+        SocialUnavailable: {
             headers: {
                 [name: string]: unknown;
             };
@@ -1175,6 +1356,132 @@ export interface operations {
             503: components["responses"]["SignupUnavailable"];
         };
     };
+    startSocialLogin: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                provider: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SocialAuthStartRequest"];
+            };
+        };
+        responses: {
+            /** @description 인증 주소와 유효기간. Cache-Control: no-store */
+            200: {
+                headers: {
+                    /** @description __Host-sayroam_oauth: HttpOnly, Secure, SameSite=Lax, Path=/. HTTP local에서는 sayroam_oauth이며 Secure=false */
+                    "Set-Cookie"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SocialAuthStartResponse"];
+                };
+            };
+            400: components["responses"]["SocialBadRequest"];
+            401: components["responses"]["SocialUnauthorized"];
+            403: components["responses"]["Forbidden"];
+            409: components["responses"]["SocialConflict"];
+            500: components["responses"]["InternalServerError"];
+            503: components["responses"]["SocialUnavailable"];
+        };
+    };
+    socialLoginCallback: {
+        parameters: {
+            query?: {
+                code?: string;
+                error?: string;
+                state?: string;
+            };
+            header?: never;
+            path: {
+                provider: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 허용한 화면으로 이동. URL에 Access/Refresh Token 없음 */
+            302: {
+                headers: {
+                    Location?: string;
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: components["responses"]["SocialBadRequest"];
+            401: components["responses"]["SocialUnauthorized"];
+            403: components["responses"]["Forbidden"];
+            409: components["responses"]["SocialConflict"];
+            500: components["responses"]["InternalServerError"];
+            503: components["responses"]["SocialUnavailable"];
+        };
+    };
+    exchangeSocialLoginResult: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SocialResultExchangeRequest"];
+            };
+        };
+        responses: {
+            /** @description 로그인 또는 가입 대기. Cache-Control: no-store */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SocialExchangeResponse"];
+                };
+            };
+            400: components["responses"]["SocialBadRequest"];
+            401: components["responses"]["SocialUnauthorized"];
+            403: components["responses"]["Forbidden"];
+            409: components["responses"]["SocialConflict"];
+            500: components["responses"]["InternalServerError"];
+            503: components["responses"]["SocialUnavailable"];
+        };
+    };
+    completeSocialSignup: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SocialSignupRequest"];
+            };
+        };
+        responses: {
+            /** @description 가입 커밋 후 Access 본문과 Refresh 쿠키 발급. Cache-Control: no-store */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LoginResponse"];
+                };
+            };
+            400: components["responses"]["SocialBadRequest"];
+            401: components["responses"]["SocialUnauthorized"];
+            403: components["responses"]["Forbidden"];
+            409: components["responses"]["SocialConflict"];
+            410: components["responses"]["SignupProofExpired"];
+            500: components["responses"]["InternalServerError"];
+            503: components["responses"]["SocialUnavailable"];
+        };
+    };
     create: {
         parameters: {
             query?: never;
@@ -1228,7 +1535,7 @@ export interface operations {
     };
 }
 
-/** operationId별 공통 실행 정보. 직접 수정하지 않습니다. */
+/** operationId별 공통 실행 정보. 브라우저 이동용 콜백은 제외합니다. 직접 수정하지 않습니다. */
 export const apiRoutes = {
     change: {
         method: "patch",
@@ -1236,6 +1543,13 @@ export const apiRoutes = {
         auth: "required",
         csrf: true,
         responses: { "204": false },
+    },
+    completeSocialSignup: {
+        method: "post",
+        path: "/api/auth/social/signup",
+        auth: "none",
+        csrf: true,
+        responses: { "200": true },
     },
     confirm: {
         method: "post",
@@ -1271,6 +1585,13 @@ export const apiRoutes = {
         auth: "required",
         csrf: true,
         responses: { "204": false },
+    },
+    exchangeSocialLoginResult: {
+        method: "post",
+        path: "/api/auth/social/results/exchange",
+        auth: "none",
+        csrf: true,
+        responses: { "200": true },
     },
     login: {
         method: "post",
@@ -1321,8 +1642,15 @@ export const apiRoutes = {
         csrf: true,
         responses: { "201": true },
     },
+    startSocialLogin: {
+        method: "post",
+        path: "/api/auth/social/{provider}/authorizations",
+        auth: "none",
+        csrf: true,
+        responses: { "200": true },
+    },
 } as const satisfies Record<
-    keyof operations,
+    Exclude<keyof operations, "socialLoginCallback">,
     {
         method: string;
         path: keyof paths;

@@ -20,6 +20,38 @@ app.auth.refresh-token.max-rotations=10000
 # HTTP local 개발 전용. 운영에서는 true(기본값)와 HTTPS를 사용합니다.
 app.auth.refresh-cookie.secure=false
 
+# --------------------------------------------------------
+# OAuth2 소셜 로그인 (#31). 첫 활성 공급자는 Google입니다.
+# Google Auth Platform에서 Web application 클라이언트를 발급합니다.
+# 실제 Client ID/Secret은 개인 파일 또는 환경변수로만 주입합니다.
+# --------------------------------------------------------
+app.auth.social.google.enabled=false
+app.auth.social.google.client-id=
+app.auth.social.google.client-secret=
+# Google 콘솔의 Authorized redirect URIs에 아래 주소를 정확히 등록합니다.
+app.auth.social.google.redirect-uri=http://localhost:8080/api/auth/social/google/callback
+# Kakao: REST API 키가 client-id입니다. JavaScript 키·어드민 키를 넣지 않습니다.
+# 카카오 로그인 ON, REST API 키의 Redirect URI 등록·클라이언트 시크릿 설정 후 활성화합니다.
+# 닉네임·프로필 사진·이메일은 카카오 로그인 동의항목에서 설정합니다.
+app.auth.social.kakao.enabled=false
+app.auth.social.kakao.client-id=
+app.auth.social.kakao.client-secret=
+app.auth.social.kakao.redirect-uri=http://localhost:8080/api/auth/social/kakao/callback
+# Naver: 사용 API에 네이버 로그인을 선택하고 PC 웹 서비스 URL과 Callback URL을 등록합니다.
+# Client ID/Secret 입력 후 활성화합니다. 신규 가입은 별도의 Sayroam 이메일 인증이 필요합니다.
+app.auth.social.naver.enabled=false
+app.auth.social.naver.client-id=
+app.auth.social.naver.client-secret=
+app.auth.social.naver.redirect-uri=http://localhost:8080/api/auth/social/naver/callback
+# 인증 요청/결과 코드/가입 티켓 TTL(초). 복귀 경로는 쿼리·fragment 없는 정확한 로컬 경로만 사용합니다.
+app.auth.social.transaction-ttl-seconds=300
+app.auth.social.result-ttl-seconds=60
+app.auth.social.signup-ttl-seconds=600
+app.auth.social.allowed-return-paths=/
+# HTTP local 개발 전용. 운영 기본값은 true이며 __Host- 접두사 쿠키를 사용합니다.
+app.auth.social.browser-cookie.secure=false
+app.auth.social.browser-cookie.max-age-seconds=3600
+
 
 # --------------------------------------------------------
 # Redis 연결 설정: 포트를 docker/.env의 REDIS_PORT와 맞춥니다 (기본값 6379).

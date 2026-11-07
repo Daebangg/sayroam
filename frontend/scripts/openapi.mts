@@ -82,8 +82,13 @@ function resolveObject(value: unknown, document: Record<string, unknown>): Recor
 }
 
 // 실행 코드를 복제하지 않고 공통 라우터가 소비할 최소 경로표만 만든다.
-function collectRoutes(document: Record<string, unknown>): Record<string, unknown> {
+function collectRoutes(document: Record<string, unknown>): {
+    routes: Record<string, unknown>;
+    browserOperations: string[];
+} {
     const routes = new Map<string, unknown>();
+    const operationIds = new Set<string>();
+    const browserOperations: string[] = [];
     const methods = new Set(["get", "post", "put", "patch", "delete", "head", "options", "trace"]);
     const components = isObject(document.components) ? document.components : {};
     const schemes = isObject(components.securitySchemes) ? components.securitySchemes : {};
@@ -93,8 +98,28 @@ function collectRoutes(document: Record<string, unknown>): Record<string, unknow
             if (!methods.has(method)) continue;
             const operation = resolveObject(value, document);
             const id = operation.operationId;
-            if (typeof id !== "string" || !id.trim() || id === "__proto__" || routes.has(id)) {
+            if (
+                typeof id !== "string" ||
+                !id.trim() ||
+                id === "__proto__" ||
+                operationIds.has(id)
+            ) {
                 throw new Error(`고유한 operationId가 필요합니다: ${path} ${method}`);
+            }
+            operationIds.add(id);
+            // OAuth 콜백처럼 브라우저가 이동하는 엔드포인트는 명세 타입에만 남긴다.
+            if (operation["x-browser-navigation"] === true) {
+                const responses = resolveObject(operation.responses, document);
+                if (
+                    method !== "get" ||
+                    !Object.keys(responses).some((status) => /^3\d{2}$/.test(status))
+                ) {
+                    throw new Error(
+                        `${id}: 브라우저 이동에는 GET 리다이렉트 응답 계약이 필요합니다.`,
+                    );
+                }
+                browserOperations.push(id);
+                continue;
             }
             const security = operation.security ?? document.security ?? [];
             if (!Array.isArray(security)) throw new Error(`${id}: security 배열이 필요합니다.`);
@@ -154,7 +179,10 @@ function collectRoutes(document: Record<string, unknown>): Record<string, unknow
             routes.set(id, { method, path, ...profiles[0], responses });
         }
     }
-    return Object.fromEntries([...routes].sort(([a], [b]) => a.localeCompare(b, "en")));
+    return {
+        routes: Object.fromEntries([...routes].sort(([a], [b]) => a.localeCompare(b, "en"))),
+        browserOperations: browserOperations.sort(),
+    };
 }
 
 export async function renderOpenApi(source: string): Promise<{ snapshot: string; types: string }> {
@@ -167,7 +195,10 @@ export async function renderOpenApi(source: string): Promise<{ snapshot: string;
         );
     }
     validateDocument(document);
-    const routes = collectRoutes(document);
+    const { routes, browserOperations } = collectRoutes(document);
+    const callableOperations = browserOperations.length
+        ? `Exclude<keyof operations, ${browserOperations.map((id) => JSON.stringify(id)).join(" | ")}>`
+        : "keyof operations";
     const config = await resolveConfig(resolve(frontendDir, ".prettierrc.json"));
     const snapshot = await format(JSON.stringify(sortKeys(document)), {
         ...config,
@@ -185,7 +216,7 @@ export async function renderOpenApi(source: string): Promise<{ snapshot: string;
     const types = await format(
         "/** OpenAPI에서 자동 생성합니다. 직접 수정하지 말고 pnpm api:generate를 실행하세요. */\n" +
             astToString(ast) +
-            `\n/** operationId별 공통 실행 정보. 직접 수정하지 않습니다. */\nexport const apiRoutes = ${JSON.stringify(routes)} as const satisfies Record<keyof operations, { method: string; path: keyof paths; auth: "none" | "required"; csrf: boolean; responses: Readonly<Record<string, boolean>> }>;\n`,
+            `\n/** operationId별 공통 실행 정보. 브라우저 이동용 콜백은 제외합니다. 직접 수정하지 않습니다. */\nexport const apiRoutes = ${JSON.stringify(routes)} as const satisfies Record<${callableOperations}, { method: string; path: keyof paths; auth: "none" | "required"; csrf: boolean; responses: Readonly<Record<string, boolean>> }>;\n`,
         { ...config, parser: "typescript" },
     );
     return { snapshot, types };
