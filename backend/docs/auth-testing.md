@@ -7,12 +7,14 @@ Docker 엔진과 Java 21만 준비하면 됩니다. 개발용 `dockerInit`, 개�
 ./backend/gradlew -p backend build
 # 인증 통합 테스트만 실행
 ./backend/gradlew -p backend test --tests '*AuthIntegrationTests'
+# 글로벌 오류 응답·인증 쿠키/헤더 계약만 검증 (Docker 불필요)
+./backend/gradlew -p backend test --tests '*GlobalExceptionHandlerTests' --tests '*ApiProblemsTest'
 # Swagger 응답 처리 테스트 (Node.js 20 이상, 추가 패키지 없음)
 node --test backend/src/test/js/swagger-auth.test.mjs
 ```
 
 `DatabaseIntegrationTest`는 JVM마다 MySQL 8.4·Redis 7.4 컨테이너를 시작하고 임의의 호스트 포트를 연결합니다.
-기존 개발 Compose 컨테이너·볼륨은 사용하지 않습니다. 빈 DB에 V1/V2를 명시적으로 적용한 뒤 Hibernate가
+기존 개발 Compose 컨테이너·볼륨은 사용하지 않습니다. 빈 DB에 현재 버전까지의 마이그레이션을 명시적으로 적용한 뒤 Hibernate가
 매핑을 검증합니다. 컨테이너는 테스트 클래스 간 공유하고 JVM 종료 시 Testcontainers Ryuk이 정리합니다.
 공유 컨테이너에 클래스별 `@Container` 종료 처리를 섞지 않습니다.
 
@@ -45,10 +47,12 @@ JPA 트랜잭션과 Redis Lua를 통과합니다. Security MVC 슬라이스는 �
 | 탈퇴 DB 실패 | 삭제 어댑터 전체 롤백, 회원 상태·인증 버전 보존, Redis에서 소비한 증명 복원 없음 |
 | 실패·동시 요청 | 코드 오입력 한도, SMTP 포트 실패 변환, 동일 증명의 동시 가입 한 건 성공 |
 | Redis timeout | 로그인·갱신·로그아웃의 503, 실패 시 Refresh 쿠키 유지, DB 기반 Access 인증 유지 |
-| 스키마 | 빈 DB의 V1/V2 적용, 재적용 없음, 엔티티 매핑·감사 시각·UNIQUE/FK 제약 |
+| 글로벌 인증 오류 처리 | 기존 인증 오류 29종의 상태·코드·공개 문구, Refresh 쿠키 만료/유지, Bearer 안내, 재시도 시간 올림, 원인·suppressed 비공개 |
+| 공통 실패 종류 | 입력·인증·권한·충돌·만료·요청 제한·일시 장애·외부 처리 실패·내부 오류의 HTTP 상태 변환 |
+| 스키마 | 빈 DB의 현재 마이그레이션 적용, 재적용 없음, 엔티티 매핑·감사 시각·UNIQUE/FK 제약 |
 
-2026-11-04 기준 전체 65개 테스트와 JAR 빌드가 통과했습니다. 캐시된 Docker 이미지가 있는 환경에서
-`build`는 약 21초였습니다. 이미지 최초 다운로드 시간은 별도입니다.
+2026-11-05 기준 전체 Java 테스트 130개와 JAR 빌드, Swagger JavaScript 테스트 8개가 통과했습니다.
+캐시된 Docker 이미지가 있는 환경에서 `build`는 약 24초였습니다. 이미지 최초 다운로드 시간은 별도입니다.
 
 실제 SMTP 발송·수신, 실제 프론트엔드의 쿠키/CORS 연동, 전체 만료·재발급·발송 제한 조합,
 비밀번호 변경/탈퇴의 동시 경쟁, DB 접속 단절·커밋 응답 유실·Redis 재연결 후 명령 재전송은 추가 검증 대상입니다.

@@ -1,0 +1,203 @@
+{
+    "app": {
+        "name": "Sayroam",
+        "description": "여행을 계획하고, 동행을 찾고, 함께 기록하는 공간."
+    },
+    "navigation": {
+        "plaza": "홈",
+        "trips": "여행",
+        "matching": "동행 찾기",
+        "rooms": "내 방",
+        "home": "홈으로",
+        "main": "주요 메뉴",
+        "skip": "본문으로 건너뛰기"
+    },
+    "common": {
+        "search": "검색",
+        "changeLanguage": "언어 변경",
+        "englishShort": "EN",
+        "koreanShort": "KO",
+        "darkMode": "어두운 화면 보기",
+        "lightMode": "밝은 화면 보기",
+        "notifications": "알림",
+        "account": "내 계정",
+        "close": "닫기",
+        "filter": "필터",
+        "bookmark": "저장",
+        "join": "함께하기",
+        "disabled": "준비 중",
+        "removeTag": "{{name}} 태그 삭제"
+    },
+    "home": {
+        "titleFirst": "함께 떠나는",
+        "titleSecond": "더 자유로운 여행",
+        "descriptionFirst": "여행을 계획하고, 동행을 찾고,",
+        "descriptionSecond": "함께 기록하는 공간.",
+        "start": "지금 시작하기"
+    },
+    "auth": {
+        "welcome": "Sayroam에 오신 걸 환영해요.",
+        "description": "여행을 더 가깝게, 더 함께.",
+        "google": "Google로 계속하기",
+        "haveAccount": "계정이 이미 있으신가요?",
+        "login": "로그인",
+        "kakao": "카카오로 계속하기",
+        "naver": "네이버로 계속하기",
+        "title": "로그인 또는 회원가입",
+        "or": "또는",
+        "remember": "이 브라우저에 계정 기억하기",
+        "emailLabel": "이메일",
+        "startEmail": "이메일로 시작하기",
+        "newHere": "처음이신가요?",
+        "signup": "계정 만들기",
+        "forgot": "비밀번호를 잊으셨나요?",
+        "reset": "비밀번호 찾기"
+    },
+    "trips": {
+        "heading": "내 여행",
+        "create": "새 여행 만들기",
+        "swiss": "스위스 겨울 여행",
+        "italy": "이탈리아 남부 여행"
+    },
+    "matching": {
+        "heading": "동행 찾기",
+        "swiss": "스위스 겨울 여행 함께 가요",
+        "italy": "이탈리아 3박 4일 동행 구해요!",
+        "people": "{{current}} / {{total}}"
+    },
+    "rooms": {
+        "heading": "내 방",
+        "create": "새 방 만들기",
+        "swiss": "스위스 여행방",
+        "swissMessage": "벌써 다음 여행이 기대돼요 · 최근 5분 전",
+        "italy": "이탈리아 준비방",
+        "italyMessage": "좋아요, 그때 만나요! · 2시간 전"
+    },
+    "brand": {
+        "guide": "브랜드 보기",
+        "heading": "Sayroam Brand",
+        "logo": "Brand",
+        "appIcon": "Sayroam 앱 아이콘",
+        "mark": "Sayroam 산 로고",
+        "downloadLogo": "로고 SVG",
+        "downloadIcon": "앱 아이콘 SVG",
+        "wordmarks": "Wordmark Variations",
+        "wordmarkPrimary": "Sayroam",
+        "wordmarkCamel": "SayRoam",
+        "wordmarkLower": "sayroam",
+        "wordmarkDot": "Say·Roam",
+        "palette": "Color Palette",
+        "icons": "Icon Set · Outline, 2px",
+        "components": "UI Components",
+        "colors": {
+            "primary": {
+                "name": "Primary",
+                "hex": "#4F7CFF"
+            },
+            "sky": {
+                "name": "Sky",
+                "hex": "#E8F1FF"
+            },
+            "sand": {
+                "name": "Sand",
+                "hex": "#FFF7E9"
+            },
+            "surface": {
+                "name": "Surface",
+                "hex": "#FFFFFF"
+            },
+            "text": {
+                "name": "Text",
+                "hex": "#1F2937"
+            },
+            "muted": {
+                "name": "Muted",
+                "hex": "#94A3B8"
+            }
+        },
+        "buttons": "버튼",
+        "primaryButton": "기본 버튼",
+        "secondaryButton": "보조 버튼",
+        "delete": "삭제",
+        "save": "저장하기",
+        "dropdowns": "드롭다운",
+        "tripStatus": "여행 상태",
+        "planning": "계획 중",
+        "looking": "동행 찾는 중",
+        "ready": "준비 완료",
+        "tags": "태그",
+        "tagFree": "자유여행",
+        "tagWinter": "겨울 여행",
+        "tagTogether": "함께하는 여행",
+        "tagRemovable": "지울 수 있는 태그",
+        "reset": "다시 보기",
+        "tooltips": "툴팁 · 단축키",
+        "selectTool": "선택",
+        "hoverFocus": "마우스 또는 키보드 포커스",
+        "inputs": "입력 · 체크박스",
+        "emailPlaceholder": "you@example.com",
+        "modals": "모달",
+        "openModal": "기본 모달 보기",
+        "openAuth": "로그인 모달 보기",
+        "modalTitle": "함께 떠날 준비가 되셨나요?",
+        "modalDescription": "여행의 설렘부터 돌아온 뒤의 추억까지, Sayroam에서 함께 준비해요.",
+        "cancel": "나중에",
+        "continue": "계속하기",
+        "downloadLogoPng": "결합 로고 PNG",
+        "downloadLightLogoPng": "밝은 결합 로고 PNG",
+        "downloadWordmarkPng": "워드마크 PNG",
+        "downloadLightWordmarkPng": "밝은 워드마크 PNG",
+        "downloadMarkPng": "심볼 PNG",
+        "downloadLightMarkPng": "밝은 심볼 PNG",
+        "downloadIconPng": "앱 아이콘 PNG",
+        "downloadFaviconPng": "파비콘 PNG",
+        "statesHelp": "호버는 마우스로, 포커스는 Tab 키로 비교하세요. 선택·로딩·비활성·오류 상태는 아래 실제 공용 컴포넌트로 확인할 수 있습니다.",
+        "selected": "선택한 상태",
+        "longAction": "긴 문구에서도 내용을 읽고 실행할 수 있는 공용 버튼",
+        "inputHint": "안내 문구는 입력과 연결되어 보조 기술에서도 읽힙니다.",
+        "inputError": "이메일 주소를 확인해 주세요.",
+        "disabledInput": "비활성 입력",
+        "errorInput": "오류 입력",
+        "cards": "카드",
+        "cardTitle": "공용 표면을 사용하는 여행 카드",
+        "cardDescription": "여행 카드와 동행 카드가 같은 테두리·배경·곡률 토큰을 사용합니다.",
+        "longLabel": "여행 알림과 일정 변경 소식을 이 브라우저에서 받아볼게요.",
+        "unavailable": "선택할 수 없는 상태",
+        "localeHeading": "언어별 날짜·숫자",
+        "localizedExample": "{{date}} · {{number}}",
+        "pageStates": "페이지 상태",
+        "open404": "404 전체 화면 보기"
+    },
+    "profile": {
+        "settings": "설정",
+        "welcome": "함께 떠날 준비가 되셨나요?",
+        "description": "여행을 만들고 동행을 만나보세요.",
+        "login": "로그인",
+        "theme": "화면 테마",
+        "light": "라이트",
+        "dark": "다크",
+        "language": "언어",
+        "korean": "한국어",
+        "english": "English",
+        "system": "시스템 설정"
+    },
+    "pageState": {
+        "notFound": {
+            "label": "404",
+            "title": "페이지를 찾을 수 없어요",
+            "description": "주소가 바뀌었거나 더 이상 없는 페이지예요. 홈에서 다시 여행을 이어가세요."
+        },
+        "error": {
+            "label": "오류",
+            "title": "화면을 불러오지 못했어요",
+            "description": "잠시 후 다시 시도해 주세요. 문제가 계속되면 홈으로 이동해 주세요."
+        },
+        "loading": {
+            "label": "로딩",
+            "title": "여행을 준비하고 있어요",
+            "description": "화면을 불러오는 중이에요. 잠시만 기다려 주세요."
+        },
+        "home": "홈으로 돌아가기",
+        "retry": "다시 시도하기"
+    }
+}

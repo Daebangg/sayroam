@@ -1,0 +1,203 @@
+{
+    "app": {
+        "name": "Sayroam",
+        "description": "A place to plan your trip, find your people, and make memories together."
+    },
+    "navigation": {
+        "plaza": "Plaza",
+        "trips": "Trips",
+        "matching": "Matching",
+        "rooms": "Rooms",
+        "home": "Go home",
+        "main": "Main navigation",
+        "skip": "Skip to content"
+    },
+    "common": {
+        "search": "Search",
+        "changeLanguage": "Change language",
+        "englishShort": "EN",
+        "koreanShort": "KO",
+        "darkMode": "View dark theme",
+        "lightMode": "View light theme",
+        "notifications": "Notifications",
+        "account": "My account",
+        "close": "Close",
+        "filter": "Filter",
+        "bookmark": "Save",
+        "join": "Join the journey",
+        "disabled": "Coming soon",
+        "removeTag": "Remove {{name}} tag"
+    },
+    "home": {
+        "titleFirst": "Travel together.",
+        "titleSecond": "Roam a little freer.",
+        "descriptionFirst": "Plan your trip. Find your people.",
+        "descriptionSecond": "Make memories along the way.",
+        "start": "Start your journey"
+    },
+    "auth": {
+        "welcome": "Welcome to Sayroam.",
+        "description": "A little closer. A little more together.",
+        "google": "Continue with Google",
+        "haveAccount": "Already have an account?",
+        "login": "Log in",
+        "kakao": "Continue with Kakao",
+        "naver": "Continue with NAVER",
+        "title": "Log in or join Sayroam",
+        "or": "or",
+        "remember": "Remember me on this browser",
+        "emailLabel": "Email",
+        "startEmail": "Continue with email",
+        "newHere": "New here?",
+        "signup": "Create an account",
+        "forgot": "Forgot your password?",
+        "reset": "Reset password"
+    },
+    "trips": {
+        "heading": "My trips",
+        "create": "Plan a new trip",
+        "swiss": "A Swiss winter escape",
+        "italy": "A little southern Italy"
+    },
+    "matching": {
+        "heading": "Find your people",
+        "swiss": "Let’s explore a Swiss winter",
+        "italy": "Four days in Italy, anyone?",
+        "people": "{{current}} / {{total}}"
+    },
+    "rooms": {
+        "heading": "My rooms",
+        "create": "Create a room",
+        "swiss": "The Swiss escape",
+        "swissMessage": "Already dreaming of our next trip · 5 min ago",
+        "italy": "Planning for Italy",
+        "italyMessage": "Sounds good, see you there! · 2 hr ago"
+    },
+    "brand": {
+        "guide": "Explore the brand",
+        "heading": "Sayroam Brand",
+        "logo": "Brand",
+        "appIcon": "Sayroam app icon",
+        "mark": "Sayroam mountain mark",
+        "downloadLogo": "Logo SVG",
+        "downloadIcon": "App icon SVG",
+        "wordmarks": "Wordmark Variations",
+        "wordmarkPrimary": "Sayroam",
+        "wordmarkCamel": "SayRoam",
+        "wordmarkLower": "sayroam",
+        "wordmarkDot": "Say·Roam",
+        "palette": "Color Palette",
+        "icons": "Icon Set · Outline, 2px",
+        "components": "UI Components",
+        "colors": {
+            "primary": {
+                "name": "Primary",
+                "hex": "#4F7CFF"
+            },
+            "sky": {
+                "name": "Sky",
+                "hex": "#E8F1FF"
+            },
+            "sand": {
+                "name": "Sand",
+                "hex": "#FFF7E9"
+            },
+            "surface": {
+                "name": "Surface",
+                "hex": "#FFFFFF"
+            },
+            "text": {
+                "name": "Text",
+                "hex": "#1F2937"
+            },
+            "muted": {
+                "name": "Muted",
+                "hex": "#94A3B8"
+            }
+        },
+        "buttons": "Buttons",
+        "primaryButton": "Primary",
+        "secondaryButton": "Secondary",
+        "delete": "Delete",
+        "save": "Save",
+        "dropdowns": "Dropdowns",
+        "tripStatus": "Trip status",
+        "planning": "Planning",
+        "looking": "Finding people",
+        "ready": "Ready to go",
+        "tags": "Tags",
+        "tagFree": "Free to roam",
+        "tagWinter": "Winter escape",
+        "tagTogether": "Better together",
+        "tagRemovable": "Removable tag",
+        "reset": "Show again",
+        "tooltips": "Tooltips · Shortcuts",
+        "selectTool": "Select",
+        "hoverFocus": "Hover or focus",
+        "inputs": "Input · Checkbox",
+        "emailPlaceholder": "you@example.com",
+        "modals": "Modals",
+        "openModal": "Open a modal",
+        "openAuth": "Open login",
+        "modalTitle": "Ready for your next journey?",
+        "modalDescription": "From the first spark of a plan to the stories you bring home, make it together with Sayroam.",
+        "cancel": "Not now",
+        "continue": "Continue",
+        "downloadLogoPng": "Logo PNG",
+        "downloadLightLogoPng": "Light logo PNG",
+        "downloadWordmarkPng": "Wordmark PNG",
+        "downloadLightWordmarkPng": "Light wordmark PNG",
+        "downloadMarkPng": "Mark PNG",
+        "downloadLightMarkPng": "Light mark PNG",
+        "downloadIconPng": "App icon PNG",
+        "downloadFaviconPng": "Favicon PNG",
+        "statesHelp": "Use a pointer for hover and Tab for focus. Compare selected, loading, disabled and error states using the shared components below.",
+        "selected": "Selected",
+        "longAction": "A shared button with a longer label that stays readable and usable",
+        "inputHint": "Help text is associated with the input for assistive technology.",
+        "inputError": "Please check your email address.",
+        "disabledInput": "Disabled input",
+        "errorInput": "Input with an error",
+        "cards": "Cards",
+        "cardTitle": "A travel card with a shared surface",
+        "cardDescription": "Trip and companion cards share border, surface and radius tokens.",
+        "longLabel": "Send travel notifications and itinerary updates to this browser.",
+        "unavailable": "Unavailable option",
+        "localeHeading": "Dates and numbers",
+        "localizedExample": "{{date}} · {{number}}",
+        "pageStates": "Page states",
+        "open404": "Open the 404 page"
+    },
+    "profile": {
+        "settings": "Settings",
+        "welcome": "Ready for your next journey?",
+        "description": "Plan a trip. Find your people.",
+        "login": "Log in",
+        "theme": "Appearance",
+        "light": "Light",
+        "dark": "Dark",
+        "language": "Language",
+        "korean": "한국어",
+        "english": "English",
+        "system": "System"
+    },
+    "pageState": {
+        "notFound": {
+            "label": "404",
+            "title": "This page is off the map",
+            "description": "The address may have changed, or this page is no longer here. Head home to continue your journey."
+        },
+        "error": {
+            "label": "Error",
+            "title": "We couldn’t load this page",
+            "description": "Please try again in a moment. If the problem continues, head back home."
+        },
+        "loading": {
+            "label": "Loading",
+            "title": "Getting your journey ready",
+            "description": "We’re loading the page. This should only take a moment."
+        },
+        "home": "Back to home",
+        "retry": "Try again"
+    }
+}

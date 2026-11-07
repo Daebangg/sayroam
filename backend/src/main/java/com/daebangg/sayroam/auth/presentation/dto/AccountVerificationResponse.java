@@ -4,6 +4,7 @@ import com.daebangg.sayroam.auth.application.service.AccountVerificationService;
 import com.daebangg.sayroam.auth.domain.AccountVerificationPurpose;
 import io.swagger.v3.oas.annotations.media.Schema;
 
+@Schema(requiredProperties = {"verificationId", "purpose", "expiresInSeconds", "resendAfterSeconds"})
 public record AccountVerificationResponse(
         @Schema(description = "확인 요청을 식별하는 UUID") String verificationId,
         AccountVerificationPurpose purpose,

@@ -1,11 +1,11 @@
 package com.daebangg.sayroam.auth.application.error;
 
+import com.daebangg.sayroam.global.exception.BusinessException;
+
 import java.time.Duration;
-import java.util.Objects;
 
 /** 외부 기술과 HTTP에 의존하지 않는 인증 유스케이스의 실패 계약. */
-public class AuthException extends RuntimeException {
-    private final AuthErrorCode errorCode;
+public class AuthException extends BusinessException {
     private final Duration retryAfter;
 
     public AuthException(AuthErrorCode errorCode) {
@@ -21,16 +21,16 @@ public class AuthException extends RuntimeException {
     }
 
     private AuthException(AuthErrorCode errorCode, Duration retryAfter, Throwable cause) {
-        super(Objects.requireNonNull(errorCode).name(), cause);
+        super(errorCode, cause);
         if (retryAfter != null && retryAfter.isNegative()) {
             throw new IllegalArgumentException("retryAfter must not be negative");
         }
-        this.errorCode = errorCode;
         this.retryAfter = retryAfter;
     }
 
+    @Override
     public AuthErrorCode getErrorCode() {
-        return errorCode;
+        return (AuthErrorCode) super.getErrorCode();
     }
 
     public Duration getRetryAfter() {

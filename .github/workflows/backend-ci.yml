@@ -5,12 +5,16 @@ on:
     branches: [dev, main]
     paths:
       - 'backend/**'
+      - '!backend/**/*.md'
+      - '!backend/docs/**'
       - '.github/workflows/backend-ci.yml'
   # 캐시는 기본 브랜치(dev) push에서만 저장된다. PR 실행은 그 캐시를 읽기만 한다
   push:
     branches: [dev]
     paths:
       - 'backend/**'
+      - '!backend/**/*.md'
+      - '!backend/docs/**'
       - '.github/workflows/backend-ci.yml'
 
 concurrency:
