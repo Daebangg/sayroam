@@ -43,6 +43,13 @@ public class SmtpVerificationEmailSender implements VerificationEmailSender {
                 + "\n이 코드는 " + action + " 본인 확인에만 사용할 수 있습니다.");
     }
 
+    @Override
+    public void sendPasswordResetCode(String recipient, String code) {
+        send(recipient, "비밀번호 재설정 본인 확인", "비밀번호 재설정 코드: " + code
+                + "\n기존 이메일·비밀번호 로그인 계정에만 재설정을 진행할 수 있습니다."
+                + "\n소셜 로그인으로만 가입했다면 해당 소셜 로그인을 이용해 주세요.");
+    }
+
     private void send(String recipient, String subject, String body) {
         SimpleMailMessage message = new SimpleMailMessage();
         message.setFrom(from);

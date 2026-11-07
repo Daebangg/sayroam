@@ -7,4 +7,6 @@ public interface VerificationEmailSender {
     void sendVerificationCode(String recipient, String code);
 
     void sendAccountVerificationCode(String recipient, String code, AccountVerificationPurpose purpose);
+
+    void sendPasswordResetCode(String recipient, String code);
 }

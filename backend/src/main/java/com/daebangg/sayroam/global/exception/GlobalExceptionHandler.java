@@ -46,6 +46,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         if (exception.getErrorCode() == AuthErrorCode.REFRESH_TOKEN_INVALID
                 || exception.getErrorCode() == AuthErrorCode.REFRESH_TOKEN_REUSED
                 || exception.getErrorCode() == AuthErrorCode.PASSWORD_CHANGE_UNAVAILABLE
+                || exception.getErrorCode() == AuthErrorCode.PASSWORD_RESET_UNAVAILABLE
                 || exception.getErrorCode() == AuthErrorCode.ACCOUNT_DELETION_UNAVAILABLE) {
             response.header(HttpHeaders.SET_COOKIE, refreshCookie.clear().toString());
         }

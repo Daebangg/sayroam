@@ -64,8 +64,8 @@ test("malformed or incomplete token responses cannot overwrite authorization", (
     assert.deepEqual(ui.calls, []);
 });
 
-test("completed logout, password change and account deletion clear the Swagger bearer token", () => {
-    for (const path of ["logout", "password", "account-deletion"]) {
+test("completed logout, password change/reset and account deletion clear the Swagger bearer token", () => {
+    for (const path of ["logout", "password", "password-reset", "account-deletion"]) {
         const ui = swagger();
         const response = { url: `/api/auth/${path}`, status: 204 };
         assert.equal(ui.intercept(response), response);
@@ -80,7 +80,7 @@ test("an unavailable logout keeps authorization for an explicit retry", () => {
 });
 
 test("uncertain account commits clear local authorization while earlier failures retain it", () => {
-    for (const [path, code] of [["password", "PASSWORD_CHANGE_UNAVAILABLE"], ["account-deletion", "ACCOUNT_DELETION_UNAVAILABLE"]]) {
+    for (const [path, code] of [["password", "PASSWORD_CHANGE_UNAVAILABLE"], ["password-reset", "PASSWORD_RESET_UNAVAILABLE"], ["account-deletion", "ACCOUNT_DELETION_UNAVAILABLE"]]) {
         const ui = swagger();
         ui.intercept({ url: `/api/auth/${path}`, status: 503, obj: { code: "EMAIL_VERIFICATION_UNAVAILABLE" } });
         assert.deepEqual(ui.calls, []);
