@@ -1,7 +1,10 @@
 package com.daebangg.sayroam.room.application;
 
+import com.daebangg.sayroam.global.exception.BusinessException;
+import com.daebangg.sayroam.room.domain.RoomErrorCode;
 import com.daebangg.sayroam.room.domain.RoomMember;
 import com.daebangg.sayroam.room.domain.RoomMemberRepository;
+import com.daebangg.sayroam.room.domain.RoomMemberStatus;
 import com.daebangg.sayroam.room.domain.RoomRepository;
 import com.daebangg.sayroam.support.DatabaseIntegrationTest;
 import com.daebangg.sayroam.user.domain.Role;
@@ -12,9 +15,11 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class RoomServiceTest extends DatabaseIntegrationTest {
@@ -49,7 +54,7 @@ class RoomServiceTest extends DatabaseIntegrationTest {
     @Test
     void 방을_만들면_방과_방장이_함께_저장된다() {
         // given
-        Long userId = 회원을_저장한다();
+        Long userId = saveUser();
 
         // when
         Long roomId = roomService.create(userId, "제주 3박 4일");
@@ -73,11 +78,62 @@ class RoomServiceTest extends DatabaseIntegrationTest {
         assertThat(roomRepository.count()).isZero();
     }
 
-    private Long 회원을_저장한다() {
+    @Test
+    void 방_멤버가_아니면_접근을_거부한다() {
+        // given
+        Long owner_id = saveUser();
+        Long roomId = roomService.create(owner_id, "제주 3박 4일");
+        Long noneMemberId = 999L;
+
+        assertThatThrownBy(() -> roomService.ensureJoined(roomId, noneMemberId))
+                .isInstanceOfSatisfying(BusinessException.class,
+                        e -> assertThat(e.getErrorCode()).isEqualTo(RoomErrorCode.ROOM_ACCESS_DENIED));
+    }
+
+    @Test
+    void 나간_멤버면_접근을_거부한다() {
+        // given
+        Long userId = saveUser();
+        Long roomId = roomService.create(userId, "제주 3박 4일");
+        markMemberAsLeft(roomId, userId);
+
+        assertThatThrownBy(() -> roomService.ensureJoined(roomId, userId))
+                .isInstanceOfSatisfying(BusinessException.class,
+                        e -> assertThat(e.getErrorCode()).isEqualTo(RoomErrorCode.ROOM_ACCESS_DENIED));
+    }
+
+    @Test
+    void 참여_중인_멤버면_접근을_허용한다() {
+        Long userId = saveUser();
+
+        Long roomId = roomService.create(userId, "제주 3박 4일");
+
+        assertThatCode(() -> roomService.ensureJoined(roomId, userId))
+                .doesNotThrowAnyException();
+    }
+
+    @Test
+    void 없는_방이면_접근을_거부한다() {
+        // given
+        Long userId = saveUser();
+        Long nonExistentRoomId = 999L;
+
+        assertThatThrownBy(() -> roomService.ensureJoined(nonExistentRoomId, userId))
+                .isInstanceOfSatisfying(BusinessException.class,
+                        e -> assertThat(e.getErrorCode()).isEqualTo(RoomErrorCode.ROOM_ACCESS_DENIED));
+    }
+
+    private Long saveUser() {
         return transactionTemplate.execute(status -> {
             User user = User.builder().nickname("방장").role(Role.USER).build();
             entityManager.persist(user);
             return (Long) entityManagerFactory.getPersistenceUnitUtil().getIdentifier(user);
         });
+    }
+
+    private void markMemberAsLeft(Long roomId, Long userId) {
+        RoomMember member = roomMemberRepository.findByRoomIdAndUserId(roomId, userId).orElseThrow();
+        ReflectionTestUtils.setField(member, "status", RoomMemberStatus.LEFT);
+        roomMemberRepository.save(member);
     }
 }

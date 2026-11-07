@@ -8,7 +8,7 @@ import java.util.Set;
 
 /** 화면 URL과 서버·정적 자원 URL의 경계를 MVC와 Security에서 공유한다. */
 public final class FrontendPaths {
-    private static final String RESERVED_NAMES = "api|assets|brand|fonts|images|error|actuator|swagger-ui|v3|webjars|login|logout|oauth2";
+    private static final String RESERVED_NAMES = "api|ws|assets|brand|fonts|images|error|actuator|swagger-ui|v3|webjars|login|logout|oauth2";
     public static final String PAGE_SEGMENT = "{page:(?!(?:" + RESERVED_NAMES + ")$)[^.]+}";
     private static final Set<String> RESERVED = Set.of(RESERVED_NAMES.split("\\|"));
     private static final Set<String> PAGES = Set.of("/", "/trips", "/matching", "/rooms", "/brand");

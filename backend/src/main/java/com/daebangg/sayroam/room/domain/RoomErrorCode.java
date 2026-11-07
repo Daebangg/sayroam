@@ -8,7 +8,8 @@ import lombok.RequiredArgsConstructor;
 @Getter
 @RequiredArgsConstructor
 public enum RoomErrorCode implements ErrorCode {
-    ROOM_NAME_TOO_LONG(ErrorType.INVALID, "ROOM_NAME_TOO_LONG", "Room name must be 20 characters or less");
+    ROOM_NAME_TOO_LONG(ErrorType.INVALID, "ROOM_NAME_TOO_LONG", "Room name must be 20 characters or less"),
+    ROOM_ACCESS_DENIED(ErrorType.FORBIDDEN, "ROOM_ACCESS_DENIED", "Room access is denied");
 
     private final ErrorType type;
     private final String code;

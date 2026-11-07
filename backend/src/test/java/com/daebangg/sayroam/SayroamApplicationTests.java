@@ -41,11 +41,11 @@ class SayroamApplicationTests extends DatabaseIntegrationTest {
                 SELECT COUNT(*) FROM information_schema.tables
                 WHERE table_schema = DATABASE() AND table_type = 'BASE TABLE'
                 """, Integer.class)).isEqualTo(18);
-        assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("3");
+        assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("4");
         flyway.validate();
         assertThat(flyway.migrate().migrationsExecuted).isZero();
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM flyway_schema_history WHERE success = 1",
-                Integer.class)).isEqualTo(3);
+                Integer.class)).isEqualTo(4);
     }
 
     @Test
