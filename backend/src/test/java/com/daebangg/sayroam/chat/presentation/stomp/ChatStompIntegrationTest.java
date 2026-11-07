@@ -278,6 +278,7 @@ class ChatStompIntegrationTest extends DatabaseIntegrationTest {
         assertThat(message.get("senderId")).isEqualTo(ownerId.intValue());
         assertThat(message.get("clientMessageId")).isEqualTo(CLIENT_MESSAGE_ID);
         assertThat(message.get("content")).isEqualTo("안녕");
+        assertThat(message.get("createdAt")).asString().endsWith("Z");
         assertThat(chatMessageRepository.count()).isEqualTo(1);
     }
 
@@ -297,6 +298,7 @@ class ChatStompIntegrationTest extends DatabaseIntegrationTest {
         assertThat(result).isNotNull();
         assertThat(result.get("messageId")).isNotNull();
         assertThat(result.get("clientMessageId")).isEqualTo(CLIENT_MESSAGE_ID);
+        assertThat(result.get("createdAt")).asString().endsWith("Z");
     }
 
     @Test
