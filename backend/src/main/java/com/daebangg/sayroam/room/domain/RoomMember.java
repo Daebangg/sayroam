@@ -15,6 +15,7 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import lombok.AccessLevel;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
@@ -55,6 +56,7 @@ public class RoomMember extends BaseTimeEntity {
     private boolean notificationMuted;
 
     // 마지막으로 들어온 시각. 처음 들어온 시각은 createdAt
+    @Getter
     @Column(nullable = false)
     private LocalDateTime joinedAt;
 
@@ -72,14 +74,18 @@ public class RoomMember extends BaseTimeEntity {
         return new RoomMember(room, userId, RoomMemberRole.OWNER);
     }
 
+    public static RoomMember joinAsMember(Room room, Long userId) {
+        return new RoomMember(room, userId, RoomMemberRole.MEMBER);
+    }
+
     public void ensureJoined() {
         if (status != RoomMemberStatus.JOINED) {
             throw new BusinessException(RoomErrorCode.ROOM_ACCESS_DENIED);
         }
     }
 
-    public LocalDateTime getJoinedAt() {
-        return joinedAt;
+    public RoomInvitation createShareInvitation(LocalDateTime issuedAt) {
+        return RoomInvitation.byShare(room, userId, issuedAt);
     }
 
     public boolean isOwner() {
