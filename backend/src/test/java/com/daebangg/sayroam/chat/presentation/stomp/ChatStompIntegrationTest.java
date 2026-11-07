@@ -39,8 +39,9 @@ import org.springframework.web.socket.client.standard.StandardWebSocketClient;
 import org.springframework.web.socket.messaging.WebSocketStompClient;
 
 import java.lang.reflect.Type;
-import java.time.Duration;
 import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Map;
@@ -224,41 +225,6 @@ class ChatStompIntegrationTest extends DatabaseIntegrationTest {
     }
 
     @Test
-    void 토큰이_만료된_연결의_전송은_거부한다() throws Exception {
-        // given
-        Long userId = saveUser();
-        Long roomId = roomService.create(userId, "제주 3박 4일");
-        ConnectionEvents events = new ConnectionEvents();
-        Instant expiresAt = Instant.now().plusSeconds(1);
-        StompSession session = connect(tokenExpiringAt(userId, expiresAt), events).get(5, TimeUnit.SECONDS);
-        waitUntil(expiresAt);
-
-        // when
-        session.send("/app/rooms/" + roomId + "/messages", Map.of("content", "만료 후 전송"));
-
-        // then
-        assertThat(events.closed.get(5, TimeUnit.SECONDS)).isNotNull();
-    }
-
-    @Test
-    void 토큰이_만료된_연결의_구독은_거부한다() throws Exception {
-        // given
-        Long userId = saveUser();
-        Long roomId = roomService.create(userId, "제주 3박 4일");
-        ConnectionEvents events = new ConnectionEvents();
-        Instant expiresAt = Instant.now().plusSeconds(1);
-        StompSession session = connect(tokenExpiringAt(userId, expiresAt), events).get(5, TimeUnit.SECONDS);
-        waitUntil(expiresAt);
-
-        // when
-        session.subscribe("/topic/rooms/" + roomId, new StompSessionHandlerAdapter() {
-        });
-
-        // then
-        assertThat(events.closed.get(5, TimeUnit.SECONDS)).isNotNull();
-    }
-
-    @Test
     void 메시지를_보내면_같은_방_구독자에게_전달된다() throws Exception {
         // given
         Long ownerId = saveUser();
@@ -377,6 +343,102 @@ class ChatStompIntegrationTest extends DatabaseIntegrationTest {
         assertThat(error.getFirst("message")).isEqualTo(RoomErrorCode.ROOM_ACCESS_DENIED.getCode());
     }
 
+    @Test
+    void 비밀번호_변경으로_인증_버전이_바뀌면_전송을_거부한다() throws Exception {
+        // given
+        Long userId = saveUser();
+        Long roomId = roomService.create(userId, "제주 3박 4일");
+        ConnectionEvents events = new ConnectionEvents();
+        StompSession session = connect(tokenOf(userId), events).get(5, TimeUnit.SECONDS);
+        increaseAuthVersion(userId);
+
+        // when
+        send(session, roomId, CLIENT_MESSAGE_ID, "안녕");
+
+        // then
+        assertThat(events.closed.get(5, TimeUnit.SECONDS)).isNotNull();
+        assertThat(chatMessageRepository.count()).isZero();
+    }
+
+    @Test
+    void 비밀번호_변경으로_인증_버전이_바뀌면_구독을_거부한다() throws Exception {
+        // given
+        Long userId = saveUser();
+        Long roomId = roomService.create(userId, "제주 3박 4일");
+        ConnectionEvents events = new ConnectionEvents();
+        StompSession session = connect(tokenOf(userId), events).get(5, TimeUnit.SECONDS);
+        increaseAuthVersion(userId);
+
+        // when
+        session.subscribe("/topic/rooms/" + roomId, new StompSessionHandlerAdapter() {
+        });
+
+        // then
+        assertThat(events.closed.get(5, TimeUnit.SECONDS)).isNotNull();
+    }
+
+    @Test
+    void 탈퇴한_회원의_연결은_전송을_거부한다() throws Exception {
+        // given
+        Long userId = saveUser();
+        Long roomId = roomService.create(userId, "제주 3박 4일");
+        ConnectionEvents events = new ConnectionEvents();
+        StompSession session = connect(tokenOf(userId), events).get(5, TimeUnit.SECONDS);
+        withdrawUser(userId);
+
+        // when
+        send(session, roomId, CLIENT_MESSAGE_ID, "안녕");
+
+        // then
+        assertThat(events.closed.get(5, TimeUnit.SECONDS)).isNotNull();
+        assertThat(chatMessageRepository.count()).isZero();
+    }
+
+    @Test
+    void 토큰이_만료되면_수신만_하는_연결도_종료한다() throws Exception {
+        // given
+        Long userId = saveUser();
+        Long roomId = roomService.create(userId, "제주 3박 4일");
+        ConnectionEvents events = new ConnectionEvents();
+        StompSession session = connect(tokenExpiringAt(userId, Instant.now().plusSeconds(2)), events)
+                .get(5, TimeUnit.SECONDS);
+
+        // when
+        subscribeRoom(session, roomId);
+
+        // then
+        assertThat(events.closed.get(5, TimeUnit.SECONDS)).isNotNull();
+    }
+
+    @Test
+    void 토큰이_만료되면_ERROR_프레임에_인증_오류_코드를_담는다() throws Exception {
+        // given
+        Long userId = saveUser();
+        ConnectionEvents events = new ConnectionEvents();
+
+        // when
+        connect(tokenExpiringAt(userId, Instant.now().plusSeconds(1)), events).get(5, TimeUnit.SECONDS);
+
+        // then
+        StompHeaders error = events.errorFrame.get(5, TimeUnit.SECONDS);
+        assertThat(error.getFirst("message")).isEqualTo(CommonErrorCode.UNAUTHENTICATED.getCode());
+    }
+
+    private void increaseAuthVersion(Long userId) {
+        transactionTemplate.executeWithoutResult(status -> entityManager
+                .createQuery("UPDATE User u SET u.authVersion = u.authVersion + 1 WHERE u.id = :id")
+                .setParameter("id", userId)
+                .executeUpdate());
+    }
+
+    private void withdrawUser(Long userId) {
+        transactionTemplate.executeWithoutResult(status -> entityManager
+                .createQuery("UPDATE User u SET u.deletedAt = :now WHERE u.id = :id")
+                .setParameter("now", LocalDateTime.now(ZoneOffset.UTC))
+                .setParameter("id", userId)
+                .executeUpdate());
+    }
+
     private ReceivedFrames subscribeUserQueue(StompSession session, Long userId, String queue) throws Exception {
         ReceivedFrames frames = new ReceivedFrames();
         session.subscribe("/user" + queue, frames);
@@ -397,10 +459,6 @@ class ChatStompIntegrationTest extends DatabaseIntegrationTest {
         headers.setDestination("/app/rooms/" + roomId + "/messages");
         headers.setContentType(MediaType.APPLICATION_JSON);
         session.send(headers, Map.of("clientMessageId", clientMessageId, "content", content));
-    }
-
-    private void waitUntil(Instant instant) throws InterruptedException {
-        Thread.sleep(Duration.between(Instant.now(), instant).plusMillis(100));
     }
 
     private void awaitSubscribed(ReceivedFrames frames, Runnable publishProbe) throws Exception {

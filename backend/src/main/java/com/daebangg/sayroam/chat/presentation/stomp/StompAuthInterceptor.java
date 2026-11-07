@@ -1,5 +1,6 @@
 package com.daebangg.sayroam.chat.presentation.stomp;
 
+import com.daebangg.sayroam.auth.application.service.AccountAuthenticationService;
 import com.daebangg.sayroam.auth.domain.AuthenticatedAccount;
 import com.daebangg.sayroam.global.security.ActiveAccountJwtConverter;
 import com.daebangg.sayroam.room.application.RoomService;
@@ -10,6 +11,7 @@ import org.springframework.messaging.simp.stomp.StompCommand;
 import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
 import org.springframework.messaging.support.ChannelInterceptor;
 import org.springframework.messaging.support.MessageHeaderAccessor;
+import org.springframework.security.authentication.AuthenticationServiceException;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
@@ -32,6 +34,7 @@ public class StompAuthInterceptor implements ChannelInterceptor {
     private final JwtDecoder accessTokenDecoder;
     private final ActiveAccountJwtConverter accountConverter;
     private final RoomService roomService;
+    private final AccountAuthenticationService accountAuthenticationService;
 
     @Override
     public Message<?> preSend(Message<?> message, MessageChannel channel) {
@@ -57,7 +60,10 @@ public class StompAuthInterceptor implements ChannelInterceptor {
         try {
             Jwt jwt = accessTokenDecoder.decode(header.substring(BEARER_PREFIX.length()));
             AuthenticatedAccount account = (AuthenticatedAccount) accountConverter.convert(jwt).getPrincipal();
-            return new ChatPrincipal(account.userId(), jwt.getExpiresAt());
+            return new ChatPrincipal(account.userId(), account.authVersion(), jwt.getExpiresAt());
+        } catch (AuthenticationServiceException e) {
+            // 저장소 장애는 토큰 문제가 아니므로 인증 실패로 바꾸지 않는다.
+            throw e;
         } catch (JwtException | AuthenticationException e) {
             throw new StompAuthenticationException();
         }
@@ -66,6 +72,7 @@ public class StompAuthInterceptor implements ChannelInterceptor {
     private void authorizeSubscribe(StompHeaderAccessor accessor) {
         ChatPrincipal principal = principalOf(accessor);
         principal.ensureNotExpired(Instant.now());
+        accountAuthenticationService.ensureActive(principal.userId(), principal.authVersion());
 
         Matcher roomTopic = ROOM_TOPIC.matcher(accessor.getDestination());
         if (roomTopic.matches()) {
@@ -78,6 +85,7 @@ public class StompAuthInterceptor implements ChannelInterceptor {
     }
 
     private void authorizeSend(StompHeaderAccessor accessor) {
+        // 계정 재확인은 저장소 장애에도 연결을 유지하도록 컨트롤러에서 한다.
         principalOf(accessor).ensureNotExpired(Instant.now());
         if (!ROOM_MESSAGES.matcher(accessor.getDestination()).matches()) {
             throw new StompAccessDeniedException();
