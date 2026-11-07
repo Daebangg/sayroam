@@ -76,6 +76,8 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/ws").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/auth/email-verifications",
                                 "/api/auth/email-verifications/verify").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/auth/password-reset-verifications",
+                                "/api/auth/password-reset-verifications/verify", "/api/auth/password-reset").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/auth/social/{provider}/authorizations",
                                 "/api/auth/social/results/exchange", "/api/auth/social/signup").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/auth/social/{provider}/callback").permitAll()

@@ -605,6 +605,266 @@ class AuthIntegrationTests extends DatabaseIntegrationTest {
         assertThat(REDIS.execInContainer("redis-cli", "PING").getStdout()).contains("PONG");
     }
 
+    @Test
+    void passwordResetWorksWithoutLoginAndRevokesEveryPreviousLogin() throws Exception {
+        String email = register();
+        Login first = login(email, PASSWORD);
+        Login second = login(email, PASSWORD);
+        String proof = resetProof(email.toUpperCase());
+        String replacement = "  Replacement password!  ";
+        var reset = reset(email, proof, replacement);
+        assertStatus(reset, 204);
+        assertThat(reset.getResponse().getCookie(REFRESH).getMaxAge()).isZero();
+        assertThat(reset.getResponse().getHeader("Cache-Control")).isEqualTo("no-store");
+        assertThat(reset.getResponse().getContentAsString()).isEmpty();
+        assertThat(reset.getRequest().getSession(false)).isNull();
+        for (Login prior : java.util.List.of(first, second)) {
+            assertStatus(call(HttpMethod.GET, "/api/users/me", null, prior.access()), 401);
+            assertStatus(call(HttpMethod.POST, "/api/auth/refresh", null, null, prior.refresh()), 401);
+        }
+        assertStatus(call(HttpMethod.POST, "/api/auth/login", Map.of("email", email, "password", PASSWORD), null), 401);
+        login(email, replacement);
+        assertThat(jdbc.queryForObject("SELECT auth_version FROM users WHERE email = ?", Long.class, email)).isEqualTo(1);
+        assertThat(jdbc.queryForObject("SELECT password_changed_at IS NOT NULL FROM user_credential", Boolean.class)).isTrue();
+        assertStatus(reset(email, proof, "another-password"), 400);
+    }
+
+    @Test
+    void resetIssuanceAndMailFailuresDoNotDisclosePasswordAccountEligibility() throws Exception {
+        String regular = register();
+        String socialOnly = register();
+        jdbc.update("DELETE FROM user_credential WHERE user_id = (SELECT id FROM users WHERE email = ?)", socialOnly);
+        for (String email : java.util.List.of(regular, socialOnly, email())) {
+            var issued = requestReset(email);
+            assertStatus(issued, 202);
+            assertThat(json(issued).properties()).extracting(Map.Entry::getKey)
+                    .containsExactlyInAnyOrder("verificationId", "expiresInSeconds", "resendAfterSeconds");
+            assertThat(json(issued).path("expiresInSeconds").asLong()).isBetween(295L, 300L);
+            assertThat(mail.code(email, "PASSWORD_RESET")).matches("[0-9]{6}");
+            assertStatus(requestReset(email), 429);
+        }
+        mail.fail = true;
+        for (String email : java.util.List.of(regular, socialOnly, email())) {
+            redisReset("DEL", "cooldown", email);
+            var failure = requestReset(email);
+            assertStatus(failure, 502);
+            assertThat(json(failure).path("code").asText()).isEqualTo("EMAIL_DELIVERY_FAILED");
+            assertThat(redisReset("EXISTS", "state", email)).isEqualTo("0");
+            assertStatus(requestReset(email), 429);
+        }
+    }
+
+    @Test
+    void resetNeverCreatesCredentialsForSocialOnlyMissingOrDeletedAccounts() throws Exception {
+        String socialOnly = register();
+        String deleted = register();
+        jdbc.update("DELETE FROM user_credential WHERE user_id = (SELECT id FROM users WHERE email = ?)", socialOnly);
+        jdbc.update("UPDATE users SET deleted_at = NOW() WHERE email = ?", deleted);
+        for (String email : java.util.List.of(socialOnly, deleted, email())) {
+            var rejected = reset(email, resetProof(email), "replacement-password");
+            assertStatus(rejected, 400);
+            assertThat(json(rejected).path("code").asText()).isEqualTo("PASSWORD_RESET_PROOF_INVALID");
+        }
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM user_credential", Integer.class)).isEqualTo(1);
+        assertThat(jdbc.queryForObject("SELECT auth_version FROM users WHERE email = ?", Long.class, socialOnly)).isZero();
+    }
+
+    @Test
+    void resetProofCannotBeReplacedWithSignupAccountOrAnotherEmailsProof() throws Exception {
+        String email = email();
+        String signup = signupProof(email);
+        signup(email, signup);
+        Login login = login(email, PASSWORD);
+        String change = accountProof(login, email, "PASSWORD_CHANGE");
+        String reset = resetProof(email);
+        for (String wrongPurpose : java.util.List.of(signup, change)) {
+            assertStatus(reset(email, wrongPurpose, "replacement-password"), 400);
+        }
+        assertStatus(reset(email(), reset, "replacement-password"), 410);
+        assertStatus(call(HttpMethod.PATCH, "/api/auth/password", Map.of("accountProof", reset, "newPassword", "replacement-password"), login.access()), 400);
+        assertStatus(call(HttpMethod.POST, "/api/auth/account-deletion", Map.of("accountProof", reset), login.access()), 410);
+        assertStatus(call(HttpMethod.POST, "/api/auth/signup", Map.of("email", email, "signupProof", reset,
+                "password", PASSWORD, "nickname", "여행자"), null), 400);
+        assertStatus(reset(email, reset, "replacement-password"), 204);
+    }
+
+    @Test
+    void resetPreservesProofOnInvalidPasswordAndRequiresRealCsrfForEveryStep() throws Exception {
+        String email = register();
+        String proof = resetProof(email);
+        var resetBody = Map.of("email", email, "resetProof", proof, "newPassword", "replacement-password");
+        var bodies = Map.of("/api/auth/password-reset-verifications", Map.of("email", email),
+                "/api/auth/password-reset-verifications/verify", Map.of("email", email, "verificationId", UUID.randomUUID().toString(), "code", "000000"),
+                "/api/auth/password-reset", resetBody);
+        for (var entry : bodies.entrySet()) {
+            for (String wrong : java.util.List.of("", "wrong-token")) {
+                var builder = post(entry.getKey()).servletPath(entry.getKey()).contentType("application/json")
+                        .content(mapper.writeValueAsString(entry.getValue()));
+                if (!wrong.isEmpty()) builder.cookie(csrf).header("X-XSRF-TOKEN", wrong);
+                mvc.perform(builder).andExpect(status().isForbidden());
+            }
+        }
+        assertStatus(reset(email, proof, "short"), 400);
+        assertStatus(reset(email, proof, "        "), 400);
+        assertStatus(reset(email, proof, "replacement-password"), 204);
+    }
+
+    @Test
+    void resetResendReplacesCodeAndProofAndKeepsEmailRateLimit() throws Exception {
+        String email = register();
+        var first = requestReset(email);
+        var oldConfirmation = resetConfirmation(email, first);
+        var previous = call(HttpMethod.POST, "/api/auth/password-reset-verifications/verify", oldConfirmation, null);
+        assertStatus(previous, 200);
+        redisReset("DEL", "cooldown", email);
+        var second = requestReset(email);
+        assertStatus(second, 202);
+        assertStatus(reset(email, json(previous).path("resetProof").asText(), "replacement-password"), 410);
+        var replaced = call(HttpMethod.POST, "/api/auth/password-reset-verifications/verify", oldConfirmation, null);
+        assertStatus(replaced, 409);
+        assertThat(json(replaced).path("code").asText()).isEqualTo("EMAIL_REQUEST_SUPERSEDED");
+        var current = call(HttpMethod.POST, "/api/auth/password-reset-verifications/verify", resetConfirmation(email, second), null);
+        assertStatus(current, 200);
+        assertThat(redisReset("GET", "email-limit", email)).isEqualTo("2");
+        assertStatus(call(HttpMethod.POST, "/api/auth/password-reset-verifications/verify", resetConfirmation(email, second), null), 409);
+        assertStatus(reset(email, json(current).path("resetProof").asText(), "replacement-password"), 204);
+    }
+
+    @Test
+    void resetCodeAndProofExpireAndWrongCodesLockTheRequest() throws Exception {
+        String email = register();
+        var issued = requestReset(email);
+        var confirmation = resetConfirmation(email, issued);
+        String correct = confirmation.get("code");
+        for (int attempt = 1; attempt <= 5; attempt++) {
+            var wrong = call(HttpMethod.POST, "/api/auth/password-reset-verifications/verify",
+                    Map.of("email", email, "verificationId", confirmation.get("verificationId"), "code", correct.equals("000000") ? "111111" : "000000"), null);
+            assertStatus(wrong, attempt == 5 ? 429 : 400);
+        }
+        assertStatus(call(HttpMethod.POST, "/api/auth/password-reset-verifications/verify", confirmation, null), 429);
+        redisReset("PEXPIREAT", "state", email, "1");
+        assertStatus(call(HttpMethod.POST, "/api/auth/password-reset-verifications/verify", confirmation, null), 410);
+        redisReset("DEL", "cooldown", email);
+        String proof = resetProof(email);
+        assertThat(Long.parseLong(redisReset("PTTL", "proof", email))).isBetween(1L, 300_000L);
+        redisReset("PEXPIREAT", "proof", email, "1");
+        var expired = reset(email, proof, "replacement-password");
+        assertStatus(expired, 410);
+        assertThat(json(expired).path("code").asText()).isEqualTo("PASSWORD_RESET_PROOF_EXPIRED");
+    }
+
+    @Test
+    void resetEmailAndIpLimitsApplyWithoutAnExistingAccount() throws Exception {
+        String email = email();
+        assertStatus(requestReset(email), 202);
+        var cooldown = requestReset(email);
+        assertStatus(cooldown, 429);
+        assertThat(cooldown.getResponse().getHeader("Retry-After")).isNotBlank();
+        redisReset("DEL", "cooldown", email);
+        redisReset("SET", "email-limit", email, "5", "PX", "3600000");
+        assertStatus(requestReset(email), 429);
+        String ipKey = "sayroam:auth:{password-reset}:ip-limit:" + VerificationDigests.sha256("127.0.0.1");
+        assertThat(REDIS.execInContainer("redis-cli", "SET", ipKey, "20", "PX", "3600000").getExitCode()).isZero();
+        assertStatus(requestReset(email()), 429);
+    }
+
+    @Test
+    void concurrentResetHasOneWinnerAndCannotRestoreTheOldLogin() throws Exception {
+        String email = register();
+        Login original = login(email, PASSWORD);
+        String proof = resetProof(email);
+        var results = concurrent(() -> reset(email, proof, "replacement-password"));
+        assertThat(results).filteredOn(result -> result.getResponse().getStatus() == 204).hasSize(1);
+        assertThat(results).filteredOn(result -> result.getResponse().getStatus() == 400 || result.getResponse().getStatus() == 409).hasSize(1);
+        assertThat(jdbc.queryForObject("SELECT auth_version FROM users WHERE email = ?", Long.class, email)).isEqualTo(1);
+        assertStatus(call(HttpMethod.GET, "/api/users/me", null, original.access()), 401);
+        login(email, "replacement-password");
+    }
+
+    @Test
+    void resetDatabaseFailureRollsBackPasswordAndVersionWithoutRestoringProof() throws Exception {
+        String email = register();
+        Login original = login(email, PASSWORD);
+        String proof = resetProof(email);
+        jdbc.execute("""
+                CREATE TRIGGER test_fail_user_update BEFORE UPDATE ON users FOR EACH ROW
+                SIGNAL SQLSTATE '40001' SET MYSQL_ERRNO = 1213, MESSAGE_TEXT = 'test transaction failure'
+                """);
+        var failed = reset(email, proof, "replacement-password");
+        assertStatus(failed, 503);
+        assertThat(json(failed).path("code").asText()).isEqualTo("PASSWORD_RESET_UNAVAILABLE");
+        assertThat(failed.getResponse().getCookie(REFRESH).getMaxAge()).isZero();
+        jdbc.execute("DROP TRIGGER test_fail_user_update");
+        assertThat(jdbc.queryForObject("SELECT auth_version FROM users WHERE email = ?", Long.class, email)).isZero();
+        login(email, PASSWORD);
+        assertStatus(call(HttpMethod.GET, "/api/users/me", null, original.access()), 200);
+        assertStatus(reset(email, proof, "replacement-password"), 409);
+    }
+
+    @Test
+    void passwordChangeInvalidatesOutstandingResetProofAndCode() throws Exception {
+        String email = register();
+        Login original = login(email, PASSWORD);
+        String proof = resetProof(email);
+        String change = accountProof(original, email, "PASSWORD_CHANGE");
+        assertStatus(call(HttpMethod.PATCH, "/api/auth/password", Map.of("accountProof", change, "newPassword", "changed-password"), original.access()), 204);
+        assertStatus(reset(email, proof, "unexpected-password"), 400);
+        login(email, "changed-password");
+        redisReset("DEL", "cooldown", email);
+        var issued = requestReset(email);
+        var confirmation = resetConfirmation(email, issued);
+        jdbc.update("UPDATE users SET auth_version = auth_version + 1 WHERE email = ?", email);
+        assertStatus(call(HttpMethod.POST, "/api/auth/password-reset-verifications/verify", confirmation, null), 409);
+    }
+
+    @Test
+    void resetOpenApiDeclaresPublicCsrfOnlyOperationsAndDedicatedProof() throws Exception {
+        var document = mvc.perform(get("/v3/api-docs")).andExpect(status().isOk()).andReturn();
+        var spec = json(document);
+        for (var route : Map.of("/api/auth/password-reset-verifications", "requestPasswordReset",
+                "/api/auth/password-reset-verifications/verify", "confirmPasswordReset",
+                "/api/auth/password-reset", "resetPassword").entrySet()) {
+            var operation = spec.path("paths").path(route.getKey()).path("post");
+            assertThat(operation.path("operationId").asText()).isEqualTo(route.getValue());
+            assertThat(operation.path("security").size()).isEqualTo(1);
+            assertThat(operation.path("security").get(0).has("csrfToken")).isTrue();
+            assertThat(operation.path("security").get(0).size()).isEqualTo(1);
+            assertThat(operation.path("responses").has("403")).isTrue();
+        }
+        var required = spec.path("components").path("schemas").path("PasswordResetRequest").path("required");
+        assertThat(required.toString()).contains("email", "resetProof", "newPassword");
+    }
+
+    private MvcResult requestReset(String email) throws Exception {
+        return call(HttpMethod.POST, "/api/auth/password-reset-verifications", Map.of("email", email), null);
+    }
+
+    private Map<String, String> resetConfirmation(String email, MvcResult issued) {
+        return Map.of("email", email, "verificationId", json(issued).path("verificationId").asText(),
+                "code", mail.code(email.toLowerCase(java.util.Locale.ROOT), "PASSWORD_RESET"));
+    }
+
+    private String resetProof(String email) throws Exception {
+        var issued = requestReset(email);
+        assertStatus(issued, 202);
+        var confirmed = call(HttpMethod.POST, "/api/auth/password-reset-verifications/verify", resetConfirmation(email, issued), null);
+        assertStatus(confirmed, 200);
+        return json(confirmed).path("resetProof").asText();
+    }
+
+    private MvcResult reset(String email, String proof, String password) throws Exception {
+        return call(HttpMethod.POST, "/api/auth/password-reset", Map.of("email", email, "resetProof", proof, "newPassword", password), null);
+    }
+
+    private String redisReset(String command, String type, String email, String... values) throws Exception {
+        var args = new java.util.ArrayList<String>(java.util.List.of("redis-cli", command,
+                "sayroam:auth:{password-reset}:" + type + ":" + VerificationDigests.sha256(email)));
+        args.addAll(java.util.List.of(values));
+        var result = REDIS.execInContainer(args.toArray(String[]::new));
+        assertThat(result.getExitCode()).isZero();
+        return result.getStdout().strip();
+    }
+
     private String register() throws Exception {
         String email = email();
         signup(email, signupProof(email));
@@ -697,5 +957,6 @@ class AuthIntegrationTests extends DatabaseIntegrationTest {
         String code(String recipient, String purpose) { return codes.get(recipient + ":" + purpose); }
         @Override public void sendVerificationCode(String recipient, String code) { capture(recipient, "signup", code); }
         @Override public void sendAccountVerificationCode(String recipient, String code, AccountVerificationPurpose purpose) { capture(recipient, purpose.name(), code); }
+        @Override public void sendPasswordResetCode(String recipient, String code) { capture(recipient, "PASSWORD_RESET", code); }
     }
 }
