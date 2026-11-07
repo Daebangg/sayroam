@@ -3,6 +3,8 @@ package com.daebangg.sayroam.room.application;
 import com.daebangg.sayroam.global.exception.BusinessException;
 import com.daebangg.sayroam.room.domain.Room;
 import com.daebangg.sayroam.room.domain.RoomErrorCode;
+import com.daebangg.sayroam.room.domain.RoomInvitation;
+import com.daebangg.sayroam.room.domain.RoomInvitationRepository;
 import com.daebangg.sayroam.room.domain.RoomMember;
 import com.daebangg.sayroam.room.domain.RoomMemberRepository;
 import com.daebangg.sayroam.room.domain.RoomRepository;
@@ -11,6 +13,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 
 @Service
 @Transactional(readOnly = true)
@@ -18,6 +21,7 @@ import java.time.LocalDateTime;
 public class RoomService {
     private final RoomRepository roomRepository;
     private final RoomMemberRepository roomMemberRepository;
+    private final RoomInvitationRepository roomInvitationRepository;
 
     @Transactional
     public Long create(Long userId, String name) {
@@ -34,11 +38,30 @@ public class RoomService {
         return getJoinedMember(roomId, userId).getJoinedAt();
     }
 
+    @Transactional
+    public String createInvitation(Long roomId, Long userId) {
+        RoomMember member = getJoinedMember(roomId, userId);
+        RoomInvitation invitation = member.createShareInvitation(LocalDateTime.now(ZoneOffset.UTC));
+        return roomInvitationRepository.save(invitation).getCode();
+    }
+
+    @Transactional
+    public Long joinByInvitation(String code, Long userId) {
+        RoomInvitation invitation = roomInvitationRepository.findByCode(code)
+                .orElseThrow(() -> new BusinessException(RoomErrorCode.ROOM_INVITATION_NOT_FOUND));
+        Long roomId = invitation.getRoomId();
+
+        if (roomMemberRepository.findByRoomIdAndUserId(roomId, userId).isEmpty()) {
+            roomMemberRepository.save(invitation.admit(userId, LocalDateTime.now(ZoneOffset.UTC)));
+        }
+
+        return roomId;
+    }
+
     private RoomMember getJoinedMember(Long roomId, Long userId) {
         RoomMember member = roomMemberRepository.findByRoomIdAndUserId(roomId, userId)
                 .orElseThrow(() -> new BusinessException(RoomErrorCode.ROOM_ACCESS_DENIED));
         member.ensureJoined();
         return member;
     }
-
 }
