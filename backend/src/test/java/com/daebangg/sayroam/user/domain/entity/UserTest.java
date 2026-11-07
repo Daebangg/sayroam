@@ -8,6 +8,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.ValueSource;
 
 import java.time.LocalDateTime;
@@ -99,12 +100,17 @@ class UserTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {
-            "", "   ", "/profile.png", "ftp://example.com/profile.png",
-            "https://", "https://example.com/a b.png", "https://example.com/%invalid",
-            "https://user:password@example.com/profile.png", "https://example.com:0/profile.png",
-            "https://example.com:65536/profile.png"
-    })
+    @NullAndEmptySource
+    @ValueSource(strings = {"   ", "\t\n　"})
+    void 소셜_가입에서_빈_이미지는_미설정으로_처리한다(String imageUrl) {
+        User user = User.verifiedSocialMember(EMAIL, "여행자", imageUrl, VERIFIED_AT);
+
+        assertThat(user.getProfileImageUrl()).isNull();
+        assertThat(user.getEmailVerifiedAt()).isEqualTo(VERIFIED_AT);
+    }
+
+    @ParameterizedTest
+    @MethodSource("invalidImageUrls")
     void 잘못된_이미지_URL은_거절하고_기존_이미지는_유지한다(String imageUrl) {
         User user = member();
         user.changeProfileImageUrl("https://example.com/original.png");
@@ -114,15 +120,31 @@ class UserTest {
                         exception -> assertThat(exception.getErrorCode())
                                 .isSameAs(UserErrorCode.USER_PROFILE_IMAGE_URL_INVALID));
         assertThat(user.getProfileImageUrl()).isEqualTo("https://example.com/original.png");
-        assertThatThrownBy(() -> User.verifiedSocialMember(EMAIL, "여행자", imageUrl, VERIFIED_AT))
-                .isInstanceOfSatisfying(BusinessException.class,
-                        exception -> assertThat(exception.getErrorCode())
-                                .isSameAs(UserErrorCode.USER_PROFILE_IMAGE_URL_INVALID));
         assertThatThrownBy(() -> User.builder().nickname("여행자")
                 .profileImageUrl(imageUrl).role(Role.USER).build())
                 .isInstanceOfSatisfying(BusinessException.class,
                         exception -> assertThat(exception.getErrorCode())
                                 .isSameAs(UserErrorCode.USER_PROFILE_IMAGE_URL_INVALID));
+    }
+
+    @ParameterizedTest
+    @MethodSource("malformedImageUrls")
+    void 소셜_가입에서도_잘못된_이미지_URL은_거절한다(String imageUrl) {
+        assertThatThrownBy(() -> User.verifiedSocialMember(EMAIL, "여행자", imageUrl, VERIFIED_AT))
+                .isInstanceOfSatisfying(BusinessException.class,
+                        exception -> assertThat(exception.getErrorCode())
+                                .isSameAs(UserErrorCode.USER_PROFILE_IMAGE_URL_INVALID));
+    }
+
+    static Stream<String> invalidImageUrls() {
+        return Stream.concat(Stream.of("", "   "), malformedImageUrls());
+    }
+
+    static Stream<String> malformedImageUrls() {
+        return Stream.of("/profile.png", "ftp://example.com/profile.png", "https://",
+                "https://example.com/a b.png", "https://example.com/%invalid",
+                "https://user:password@example.com/profile.png", "https://example.com:0/profile.png",
+                "https://example.com:65536/profile.png");
     }
 
     @Test

@@ -71,7 +71,9 @@ public class User extends BaseTimeEntity {
     public static User verifiedSocialMember(String email, String nickname, String profileImageUrl,
                                             LocalDateTime emailVerifiedAt) {
         User user = verifiedEmailMember(email, nickname, emailVerifiedAt);
-        user.changeProfileImageUrl(profileImageUrl);
+        // 공급자의 빈 사진 값은 이미지 미제공을 의미한다.
+        user.changeProfileImageUrl(profileImageUrl == null || profileImageUrl.isBlank()
+                ? null : profileImageUrl);
         return user;
     }
 

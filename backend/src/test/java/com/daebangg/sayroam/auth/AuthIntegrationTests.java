@@ -2,16 +2,23 @@ package com.daebangg.sayroam.auth;
 
 import com.daebangg.sayroam.auth.application.error.AuthErrorCode;
 import com.daebangg.sayroam.auth.application.error.AuthException;
+import com.daebangg.sayroam.auth.application.model.SocialIdentity;
+import com.daebangg.sayroam.auth.application.port.out.SocialAuthTicketStore;
 import com.daebangg.sayroam.auth.application.port.out.VerificationEmailSender;
 import com.daebangg.sayroam.auth.domain.AccountVerificationPurpose;
+import com.daebangg.sayroam.auth.domain.OAuthSecrets;
+import com.daebangg.sayroam.auth.domain.VerificationDigests;
+import com.daebangg.sayroam.auth.presentation.cookie.OAuthBrowserCookie;
 import com.daebangg.sayroam.global.config.SwaggerAuthIndexTransformer;
 import com.daebangg.sayroam.support.DatabaseIntegrationTest;
 import com.daebangg.sayroam.user.domain.error.UserErrorCode;
+import com.daebangg.sayroam.user.domain.type.SocialProvider;
 import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.TestConfiguration;
@@ -35,6 +42,7 @@ import java.util.List;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.UUID;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.Year;
 import java.util.concurrent.ConcurrentHashMap;
@@ -66,6 +74,8 @@ class AuthIntegrationTests extends DatabaseIntegrationTest {
     @Autowired PasswordEncoder passwords;
     @Autowired MailCapture mail;
     @Autowired JwtEncoder encoder;
+    @Autowired SocialAuthTicketStore socialTickets;
+    @Autowired OAuthBrowserCookie oauthBrowserCookie;
     private Cookie csrf;
 
     @BeforeEach
@@ -107,6 +117,51 @@ class AuthIntegrationTests extends DatabaseIntegrationTest {
         assertThat(json(me).path("email").asText()).isEqualTo(email);
         assertThat(json(me).path("nickname").asText()).isEqualTo("여행자");
         assertThat(me.getRequest().getSession(false)).isNull();
+    }
+
+    @ParameterizedTest
+    @NullAndEmptySource
+    @ValueSource(strings = {" \t\n　 ", "https://example.com/profile.png", " https://example.com/profile.png "})
+    void socialSignupPersistsOptionalImagesAndConsumesTicketAndEmailProofOnce(String imageUrl) throws Exception {
+        String email = email();
+        String proof = signupProof(email);
+        String ticket = OAuthSecrets.create();
+        String browserBinding = OAuthSecrets.create();
+        var identity = new SocialIdentity(SocialProvider.NAVER, "profile-user", null,
+                false, "공급자 닉네임", imageUrl);
+        assertThat(socialTickets.saveSignup(VerificationDigests.sha256(ticket),
+                VerificationDigests.sha256(browserBinding), identity, Duration.ofMinutes(5))).isTrue();
+        var browser = new Cookie(oauthBrowserCookie.issue(browserBinding).getName(), browserBinding);
+        var body = Map.of("signupTicket", ticket, "nickname", "여행자", "email", email, "signupProof", proof);
+
+        var signup = call(HttpMethod.POST, "/api/auth/social/signup", body, null, browser);
+        assertStatus(signup, 200);
+        assertThat(signup.getResponse().getCookie(REFRESH)).isNotNull();
+        String access = json(signup).path("accessToken").asText();
+        assertThat(access).isNotBlank();
+        var me = call(HttpMethod.GET, "/api/users/me", null, access);
+        assertStatus(me, 200);
+        assertThat(json(me).path("email").asText()).isEqualTo(email);
+        String expectedImage = imageUrl == null || imageUrl.isBlank() ? null : imageUrl.strip();
+        assertThat(jdbc.queryForObject("SELECT profile_image_url FROM users WHERE email = ?", String.class, email))
+                .isEqualTo(expectedImage);
+        assertThat(json(me).path("profileImageUrl").isNull()).isEqualTo(expectedImage == null);
+        if (expectedImage != null) {
+            assertThat(json(me).path("profileImageUrl").asText()).isEqualTo(expectedImage);
+        }
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM user_social_account WHERE provider = 'NAVER' "
+                + "AND provider_user_id = 'profile-user' AND user_id = ?", Integer.class,
+                json(me).path("userId").asLong())).isEqualTo(1);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM user_credential", Integer.class)).isZero();
+
+        var replay = call(HttpMethod.POST, "/api/auth/social/signup", body, null, browser);
+        assertStatus(replay, 400);
+        assertThat(json(replay).path("code").asText()).isEqualTo("SOCIAL_AUTH_INVALID");
+        var reusedProof = call(HttpMethod.POST, "/api/auth/signup", Map.of("email", email,
+                "password", PASSWORD, "nickname", "여행자", "signupProof", proof), null);
+        assertStatus(reusedProof, 409);
+        assertThat(json(reusedProof).path("code").asText()).isEqualTo("SIGNUP_PROOF_ALREADY_USED");
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM users", Integer.class)).isEqualTo(1);
     }
 
     @Test
