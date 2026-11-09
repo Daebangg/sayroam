@@ -91,7 +91,7 @@ export interface paths {
         put?: never;
         /**
          * 이메일 인증 코드 발급·재발송
-         * @description CSRF 쿠키와 X-XSRF-TOKEN 헤더 필요. 코드는 6자리이며 응답에 포함하지 않습니다. 재발급 승인 시 이전 코드와 가입용 증명은 무효화합니다.
+         * @description CSRF 쿠키와 X-XSRF-TOKEN 헤더 필요. 코드는 6자리이며 응답에 포함하지 않습니다. 발송 전 DB 가입 여부를 확인하며 이미 가입된 이메일은 메일을 보내지 않고 409 EMAIL_ALREADY_REGISTERED를 반환합니다. 재발급 승인 시 이전 코드와 가입용 증명은 무효화합니다.
          */
         post: operations["request"];
         delete?: never;
@@ -131,7 +131,7 @@ export interface paths {
         put?: never;
         /**
          * 이메일·비밀번호 로그인
-         * @description XSRF-TOKEN 쿠키와 X-XSRF-TOKEN 헤더 필요. 활성·이메일 인증 회원의 비밀번호를 확인해 Access Token을 본문에, Refresh Token을 HttpOnly 쿠키에 발급합니다. Redis 저장이 완료된 뒤 응답합니다. 이메일 없음·비밀번호 불일치·탈퇴·비밀번호 미등록은 같은 실패 응답입니다. Authorization 헤더 없이 호출하세요.
+         * @description XSRF-TOKEN 쿠키와 X-XSRF-TOKEN 헤더 필요. 활성·이메일 인증 회원의 비밀번호를 확인해 Access Token을 본문에, Refresh Token을 HttpOnly 쿠키에 발급합니다. Redis 저장이 완료된 뒤 응답합니다. 이메일 없음·비밀번호 불일치·탈퇴·비밀번호 미등록은 같은 실패 응답입니다. 첫 실패부터 300초 동안 정규화한 이메일은 5회, 서버가 확인한 IP는 여러 이메일에 걸쳐 100회 실패하면 각각 300초 차단합니다. 이메일 다섯 번째 실패 또는 IP 백 번째 실패부터 429이며 차단 중 요청으로 연장하지 않습니다. 401의 remainingAttempts는 해당 이메일 기준이며 로그인 성공 시 이메일 실패 횟수만 초기화합니다. rememberMe=false는 세션 쿠키, 생략·true는 영속 쿠키이며 갱신에도 유지합니다. Authorization 헤더 없이 호출하세요.
          */
         post: operations["login"];
         delete?: never;
@@ -251,7 +251,7 @@ export interface paths {
         put?: never;
         /**
          * 토큰 갱신
-         * @description 브라우저의 sayroam_refresh HttpOnly 쿠키와 XSRF-TOKEN 쿠키·X-XSRF-TOKEN 헤더가 필요합니다. Access Token 없이 호출하며 이 경로에서는 Authorization 헤더를 인증에 사용하지 않습니다. 활성 회원을 확인한 뒤 Refresh Token을 일회성 교체합니다. 이전 값 재사용·동시 갱신은 해당 로그인의 갱신 권한을 폐기합니다. 클라이언트는 갱신 요청을 직렬화하고 불확실한 응답을 자동 재시도하지 않아야 합니다. 절대 만료는 연장하지 않습니다.
+         * @description 브라우저의 sayroam_refresh HttpOnly 쿠키와 XSRF-TOKEN 쿠키·X-XSRF-TOKEN 헤더가 필요합니다. Access Token 없이 호출하며 이 경로에서는 Authorization 헤더를 인증에 사용하지 않습니다. 활성 회원을 확인한 뒤 Refresh Token을 일회성 교체합니다. 이전 값 재사용·동시 갱신은 해당 로그인의 갱신 권한을 폐기합니다. 클라이언트는 갱신 요청을 직렬화하고 불확실한 응답을 자동 재시도하지 않아야 합니다. 절대 만료는 연장하지 않으며 로그인 시 rememberMe의 세션/영속 쿠키 선택을 유지합니다.
          */
         post: operations["refresh"];
         delete?: never;
@@ -574,6 +574,8 @@ export interface components {
             | "INVALID_CREDENTIALS"
             | "INVALID_CSRF_TOKEN"
             | "INVALID_INPUT"
+            | "LOGIN_ATTEMPTS_UNAVAILABLE"
+            | "LOGIN_RATE_LIMITED"
             | "PASSWORD_CHANGE_CONFLICT"
             | "PASSWORD_CHANGE_NOT_ALLOWED"
             | "PASSWORD_CHANGE_UNAVAILABLE"
@@ -619,6 +621,12 @@ export interface components {
              * @example /api/users/me
              */
             instance: string;
+            /**
+             * Format: int32
+             * @description INVALID_CREDENTIALS 로그인 실패 후 해당 이메일의 남은 시도 횟수. IP 제한 횟수는 공개하지 않음
+             * @example 4
+             */
+            remainingAttempts?: number;
             /**
              * Format: int64
              * @description 재시도 대기가 있는 429 응답에만 포함하는 대기 초. Retry-After 헤더와 같은 값
@@ -719,7 +727,7 @@ export interface components {
         EmailRequest: {
             /**
              * Format: email
-             * @description 앞뒤 공백 제거 후 ASCII 이메일을 소문자로 정규화. 가입·로그인에도 같은 기준 적용 예정
+             * @description 앞뒤 공백 제거 후 ASCII 이메일을 소문자로 정규화. 로컬 부분 최대 64자·도메인 라벨 최대 63자, 전체 최대 254자
              * @example user@example.com
              */
             email: string;
@@ -779,6 +787,21 @@ export interface components {
              */
             roomId: number;
         };
+        LoginRateLimitedProblem: components["schemas"]["ApiProblem"] & {
+            /** @enum {string} */
+            code: "LOGIN_RATE_LIMITED";
+            /**
+             * Format: int64
+             * @description 재시도 전 대기 초. Retry-After와 같은 양의 정수
+             * @example 300
+             */
+            retryAfterSeconds: number;
+            /**
+             * Format: int32
+             * @enum {integer}
+             */
+            status: 429;
+        };
         LoginRequest: {
             /**
              * Format: email
@@ -786,8 +809,13 @@ export interface components {
              * @example user@example.com
              */
             email: string;
-            /** @description 가입한 비밀번호. 공백·대소문자를 그대로 검증 */
+            /** @description 가입한 비밀번호. 기존 계정의 8~128자 비밀번호도 공백·대소문자를 그대로 검증 */
             password: string;
+            /**
+             * @description true는 영속 쿠키, false는 Max-Age 없는 브라우저 세션 쿠키. 생략·null은 기존 동작인 true. 갱신 시에도 선택을 유지
+             * @default true
+             */
+            rememberMe?: boolean | null;
         };
         LoginResponse: {
             /** @description API 요청의 Authorization 헤더로 전달하는 Access Token */
@@ -804,10 +832,27 @@ export interface components {
              */
             tokenType: "Bearer";
         };
+        LoginUnauthorizedProblem: components["schemas"]["ApiProblem"] &
+            (
+                | {
+                      /** @enum {string} */
+                      code: "INVALID_CREDENTIALS";
+                      /**
+                       * Format: int32
+                       * @description 해당 이메일의 남은 시도 횟수. 기본 정책에서 4, 3, 2, 1
+                       * @example 4
+                       */
+                      remainingAttempts: number;
+                  }
+                | {
+                      /** @enum {string} */
+                      code: "UNAUTHENTICATED";
+                  }
+            );
         PasswordChangeRequest: {
             /** @description PASSWORD_CHANGE 본인 확인에서 발급한 일회성 증명 */
             accountProof: string;
-            /** @description 가입과 같은 8~128자 정책. 공백 제거·대소문자 변환 없이 해시 처리 */
+            /** @description 가입과 같은 8~24자, 대문자·숫자·특수문자 포함, 공백·숨김 문자 불가 정책. 공백 제거·대소문자 변환 없이 해시 처리 */
             newPassword: string;
         };
         PasswordResetConfirmResponse: {
@@ -826,7 +871,7 @@ export interface components {
              * @example user@example.com
              */
             email: string;
-            /** @description 가입과 같은 8~128자 정책. 공백 제거·대소문자 변환 없이 처리 */
+            /** @description 가입과 같은 8~24자, 대문자·숫자·특수문자 포함, 공백·숨김 문자 불가 정책. 공백 제거·대소문자 변환 없이 처리 */
             newPassword: string;
             /** @description 비밀번호 재설정 코드 확인에서 발급한 전용 일회성 증명 */
             resetProof: string;
@@ -852,11 +897,11 @@ export interface components {
              */
             email: string;
             /**
-             * @description 앞뒤 공백 제거 후 1~50자. 제어 문자 불가
+             * @description 앞뒤 공백 제거 후 1~50자. 제어·숨김 문자 불가
              * @example 여행자
              */
             nickname: string;
-            /** @description 8~128자. 공백 제거·대소문자 변환 없이 해시 처리 */
+            /** @description 8~24자, 대문자·숫자·특수문자 포함, 공백·숨김 문자 불가. 공백 제거·대소문자 변환 없이 해시 처리 */
             password: string;
             /** @description 코드 검증 API에서 실제로 받은 43자 가입용 증명 */
             signupProof: string;
@@ -873,7 +918,7 @@ export interface components {
              * @description 서버 허용 목록의 로컬 복귀 경로. 생략하면 /
              * @default /
              */
-            returnPath: string;
+            returnPath?: string;
         };
         SocialAuthStartResponse: {
             /**
@@ -922,7 +967,7 @@ export interface components {
             /** @description MALE 또는 FEMALE. null이면 미설정 */
             gender?: components["schemas"]["Gender"] | null;
             /**
-             * @description 앞뒤 공백 제거 후 1~50자. 제어 문자와 null 불가
+             * @description 앞뒤 공백 제거 후 1~50자. 제어·숨김 문자와 null 불가
              * @example 제주 여행자
              */
             nickname?: string;
@@ -1097,7 +1142,7 @@ export interface components {
                 "application/problem+json": components["schemas"]["ApiProblem"];
             };
         };
-        /** @description 503: EMAIL_DELIVERY_DISABLED 또는 EMAIL_VERIFICATION_UNAVAILABLE. 설정·저장소 복구 후 재요청 */
+        /** @description 503: EMAIL_DELIVERY_DISABLED, EMAIL_VERIFICATION_UNAVAILABLE 또는 AUTHENTICATION_UNAVAILABLE(발송 전 가입 여부 조회). 설정·저장소 복구 후 재요청 */
         EmailVerificationUnavailable: {
             headers: {
                 [name: string]: unknown;
@@ -1124,8 +1169,28 @@ export interface components {
                 "application/problem+json": components["schemas"]["ApiProblem"];
             };
         };
-        /** @description 401: INVALID_CREDENTIALS. 이메일 없음·비밀번호 불일치·탈퇴·이메일 미인증·비밀번호 미등록에 동일한 응답. 불필요한 Authorization 헤더가 있으면 필터에서 UNAUTHENTICATED로 거절될 수 있음 */
+        /** @description 429: LOGIN_RATE_LIMITED. 이메일 또는 IP의 로그인 실패 제한. Retry-After와 retryAfterSeconds 이후 재요청 */
+        LoginRateLimited: {
+            headers: {
+                /** @description 재시도 전 대기할 초 */
+                "Retry-After": number;
+                [name: string]: unknown;
+            };
+            content: {
+                "application/problem+json": components["schemas"]["LoginRateLimitedProblem"];
+            };
+        };
+        /** @description 401: INVALID_CREDENTIALS와 필수 remainingAttempts. 이메일 없음·비밀번호 불일치·탈퇴·이메일 미인증·비밀번호 미등록에 동일한 응답. 불필요한 Authorization 헤더가 있으면 필터에서 UNAUTHENTICATED로 거절되며 횟수를 제공하지 않음 */
         LoginUnauthorized: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/problem+json": components["schemas"]["LoginUnauthorizedProblem"];
+            };
+        };
+        /** @description 503: LOGIN_ATTEMPTS_UNAVAILABLE(제한 저장소) 또는 AUTHENTICATION_UNAVAILABLE(DB·토큰 저장소). 무제한 우회·자동 재시도하지 않음 */
+        LoginUnavailable: {
             headers: {
                 [name: string]: unknown;
             };
@@ -1278,6 +1343,15 @@ export interface components {
         };
         /** @description 409: SIGNUP_PROOF_ALREADY_USED 또는 EMAIL_ALREADY_REGISTERED. 이미 소비한 증명은 복구하지 않음 */
         SignupConflict: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/problem+json": components["schemas"]["ApiProblem"];
+            };
+        };
+        /** @description 409: EMAIL_ALREADY_REGISTERED이면 메일을 보내지 않음. 로그인·비밀번호 재설정 이용. EMAIL_REQUEST_SUPERSEDED이면 최신 발급 요청 사용 */
+        SignupEmailConflict: {
             headers: {
                 [name: string]: unknown;
             };
@@ -1514,7 +1588,7 @@ export interface operations {
             };
             400: components["responses"]["BadRequest"];
             403: components["responses"]["Forbidden"];
-            409: components["responses"]["EmailRequestSuperseded"];
+            409: components["responses"]["SignupEmailConflict"];
             429: components["responses"]["EmailRateLimited"];
             500: components["responses"]["InternalServerError"];
             502: components["responses"]["EmailDeliveryFailed"];
@@ -1579,8 +1653,9 @@ export interface operations {
             400: components["responses"]["BadRequest"];
             401: components["responses"]["LoginUnauthorized"];
             403: components["responses"]["Forbidden"];
+            429: components["responses"]["LoginRateLimited"];
             500: components["responses"]["InternalServerError"];
-            503: components["responses"]["AuthenticationUnavailable"];
+            503: components["responses"]["LoginUnavailable"];
         };
     };
     logout: {
@@ -1751,7 +1826,7 @@ export interface operations {
             /** @description 새 Access Token과 교체된 Refresh 쿠키. Cache-Control: no-store */
             200: {
                 headers: {
-                    /** @description sayroam_refresh 교체. 남은 절대 유효기간만 Max-Age로 지정 */
+                    /** @description sayroam_refresh 교체. 영속 쿠키는 남은 절대 유효기간만 Max-Age로 지정, 세션 쿠키는 Max-Age 생략 */
                     "Set-Cookie"?: string;
                     [name: string]: unknown;
                 };

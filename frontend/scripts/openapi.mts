@@ -212,7 +212,12 @@ export async function renderOpenApi(source: string): Promise<{ snapshot: string;
             "no-unresolved-refs": "error",
         },
     });
-    const ast = await openapiTS(snapshot, { alphabetize: true, redocly });
+    // 서버 기본값은 클라이언트의 필수 입력을 뜻하지 않는다. required 배열을 그대로 따른다.
+    const ast = await openapiTS(snapshot, {
+        alphabetize: true,
+        defaultNonNullable: false,
+        redocly,
+    });
     const types = await format(
         "/** OpenAPI에서 자동 생성합니다. 직접 수정하지 말고 pnpm api:generate를 실행하세요. */\n" +
             astToString(ast) +

@@ -16,6 +16,7 @@ export type EmailFlowMessage =
     | "uncertain"
     | "security";
 export type AuthMessage =
+    | "limited"
     | "credentials"
     | "invalidInput"
     | "expired"
@@ -30,4 +31,6 @@ export type AuthState = Readonly<{
     status: "checking" | "anonymous" | "authenticated" | "signingIn" | "signingOut" | "unavailable";
     user: CurrentUserResponse | null;
     message: AuthMessage | null;
+    retryAt?: number;
+    remainingAttempts?: number;
 }>;

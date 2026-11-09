@@ -18,10 +18,14 @@ public class RefreshTokenCookie {
     }
 
     public ResponseCookie issue(String value, long expiresIn) {
+        return issue(value, expiresIn, true);
+    }
+
+    public ResponseCookie issue(String value, long expiresIn, boolean rememberMe) {
         if (expiresIn < 1) {
             throw new IllegalArgumentException("Refresh cookie requires a positive lifetime");
         }
-        return cookie(value, expiresIn);
+        return cookie(value, rememberMe ? expiresIn : -1);
     }
 
     public ResponseCookie clear() {

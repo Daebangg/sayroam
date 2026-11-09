@@ -101,7 +101,8 @@
             "browserUnavailable": "This browser cannot use the features required for sign-in. Check your browser settings and connection.",
             "loginUncertain": "Could not confirm the sign-in result. Check your connection, then sign in again.",
             "logoutUncertain": "Local sign-in details were cleared, but server sign-out could not be confirmed. Reconnect and try signing out again.",
-            "profileUnavailable": "Sign-in was processed, but member details could not be loaded. Check your member details again."
+            "profileUnavailable": "Sign-in was processed, but member details could not be loaded. Check your member details again.",
+            "limited": "Sign-in is temporarily limited after too many attempts."
         },
         "flowMessages": {
             "invalidEmail": "Enter a valid email address.",
@@ -115,7 +116,7 @@
             "registered": "This email is already registered. Sign in or reset your password.",
             "uncertain": "Could not confirm completion. Do not repeat the same request. Sign in to check the result, or start a new email verification if needed.",
             "security": "Could not verify this request. Refresh the page before trying again.",
-            "invalidNickname": "Use 1–50 characters without control characters for your nickname."
+            "invalidNickname": "Use 1–50 characters without control or invisible characters for your nickname."
         },
         "rememberSession": "Keep me signed in",
         "passwordUppercaseRule": "At least one uppercase letter",
@@ -123,7 +124,10 @@
         "passwordSpecialRule": "At least one special character",
         "loginPasswordRule": "Enter your existing password (8–128 characters).",
         "loginComplete": "You are signed in.",
-        "logoutComplete": "You are signed out."
+        "logoutComplete": "You are signed out.",
+        "loginWait": "Too many login attempts. Try again in {{seconds}} seconds.",
+        "loginRetryReady": "You can try signing in again now.",
+        "loginAttemptsRemaining": "Your email or password is incorrect. Remaining attempts: {{count}}."
     },
     "trips": {
         "heading": "My trips",

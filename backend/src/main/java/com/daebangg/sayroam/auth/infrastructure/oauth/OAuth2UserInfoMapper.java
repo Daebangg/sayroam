@@ -42,7 +42,7 @@ public class OAuth2UserInfoMapper {
 
     private SocialIdentity identity(SocialProvider provider, String id, String email, boolean verified, String name, String picture) {
         if (id == null || id.isBlank() || id.length() > 100) throw new AuthException(AuthErrorCode.SOCIAL_AUTH_FAILED);
-        if (email != null && (email.length() > 254 || !email.matches("[!-~]+@[!-~]+"))) email = null;
+        if (email != null && (!com.daebangg.sayroam.auth.domain.EmailAddress.isValid(email))) email = null;
         return new SocialIdentity(provider, id, email, verified && email != null, bounded(name, 50), bounded(picture, 500));
     }
 

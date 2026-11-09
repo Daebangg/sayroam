@@ -22,7 +22,7 @@ Cookie: XSRF-TOKEN=<동일한 값>
 ```json
 {
   "email": "user@example.com",
-  "password": "replace-with-your-password",
+  "password": "ReplaceWithYours1!",
   "nickname": "여행자",
   "signupProof": "코드 검증 응답에서 받은 실제 43자 증명으로 교체"
 }
@@ -34,8 +34,8 @@ Cookie: XSRF-TOKEN=<동일한 값>
 | 입력 | 규칙 |
 | --- | --- |
 | email | 필수 ASCII 이메일, 최대 254자. 앞뒤 공백 제거 후 전체 소문자로 정규화 |
-| password | 필수 8~128자. 앞뒤 공백 제거·소문자화·다른 정규화를 하지 않음 |
-| nickname | 앞뒤 공백 제거 후 필수 1~50자, 제어 문자 제외 |
+| password | 필수 8~24자·대문자·숫자·특수문자 각 1개 이상·공백/제어/숨김 문자 금지. 정규화하지 않음 |
+| nickname | 앞뒤 공백 제거 후 필수 1~50자, 제어·숨김·줄바꿈 문자 제외 |
 | signupProof | 코드 검증 API가 반환한 Base64URL 43자 난수 원문 |
 
 이메일 비교는 발급·검증·가입에 동일하게 적용합니다. Gmail 점 제거·플러스 주소 병합은 하지 않습니다.
@@ -99,7 +99,7 @@ CSRF 실패는 SecurityProblemHandler가 처리합니다. 내부 SQL·접속 정
 | HTTP | code | 의미 |
 | --- | --- | --- |
 | 400 | INVALID_INPUT / BAD_REQUEST | 필수값·길이·형식 또는 JSON 오류 |
-| 400 | PASSWORD_POLICY_VIOLATION | 서비스 직접 호출에도 적용하는 8~128자·공백만 있는 값 금지 정책. 증명 소비 전 거절 |
+| 400 | PASSWORD_POLICY_VIOLATION | 서비스 직접 호출에도 적용하는 8~24자·대문자·숫자·특수문자·공백/제어/숨김 문자 금지 정책. 증명 소비 전 거절 |
 | 400 | SIGNUP_PROOF_INVALID | 해당 이메일의 증명 다이제스트·목적·상태 불일치 |
 | 403 | INVALID_CSRF_TOKEN | CSRF 쿠키·헤더 누락·변조 |
 | 409 | SIGNUP_PROOF_ALREADY_USED | 같은 증명 재사용 |

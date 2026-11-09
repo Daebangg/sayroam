@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Button, Checkbox, Icon, Modal, TextField, Tooltip } from "@/components/ui";
 import type { AuthMessage, LoginInput } from "@/hooks/auth.types";
 import { isValidEmail, isValidPassword } from "@/hooks/authValidation";
+import { useCountdown } from "@/hooks/useCountdown";
 
 type LoginModalProps = {
     open: boolean;
@@ -10,6 +11,8 @@ type LoginModalProps = {
     onSubmit: (input: LoginInput) => Promise<boolean>;
     busy: boolean;
     message: AuthMessage | null;
+    retryAt?: number;
+    remainingAttempts?: number;
     onRetryProfile: () => void;
     onMode: (mode: "signup" | "reset") => void;
 };
@@ -20,6 +23,8 @@ export function LoginModal({
     onSubmit,
     busy,
     message,
+    retryAt,
+    remainingAttempts,
     onRetryProfile,
     onMode,
 }: LoginModalProps) {
@@ -30,6 +35,8 @@ export function LoginModal({
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [emailReady, setEmailReady] = useState(false);
+    const [rememberMe, setRememberMe] = useState(true);
+    const retryIn = useCountdown(retryAt, open);
     const [localError, setLocalError] = useState<"invalidEmail" | "invalidPassword" | null>(null);
     useEffect(() => {
         if (message || localError) errorRef.current?.focus();
@@ -89,7 +96,7 @@ export function LoginModal({
                 aria-describedby={message || localError ? errorId : undefined}
                 onSubmit={(event) => {
                     event.preventDefault();
-                    if (busy) return;
+                    if (busy || retryIn > 0) return;
                     if (!isValidEmail(email)) {
                         setLocalError("invalidEmail");
                         return;
@@ -106,7 +113,7 @@ export function LoginModal({
                     setLocalError(null);
                     const submittedPassword = password;
                     setPassword("");
-                    void onSubmit({ email, password: submittedPassword });
+                    void onSubmit({ email, password: submittedPassword, rememberMe });
                 }}
             >
                 <TextField
@@ -148,25 +155,41 @@ export function LoginModal({
                         id={errorId}
                         ref={errorRef}
                         tabIndex={-1}
-                        role="alert"
+                        role={message === "limited" ? undefined : "alert"}
+                        aria-live={message === "limited" ? "off" : undefined}
                         className="auth-feedback"
                     >
                         {localError
                             ? localError === "invalidPassword"
                                 ? t("auth.loginPasswordRule")
                                 : t("auth.flowMessages.invalidEmail")
-                            : message
-                              ? t(`auth.messages.${message}`)
-                              : null}
+                            : message === "limited"
+                              ? retryAt === undefined
+                                  ? t("auth.messages.limited")
+                                  : retryIn > 0
+                                    ? t("auth.loginWait", { seconds: retryIn })
+                                    : t("auth.loginRetryReady")
+                              : message === "credentials" && remainingAttempts !== undefined
+                                ? t("auth.loginAttemptsRemaining", { count: remainingAttempts })
+                                : message
+                                  ? t(`auth.messages.${message}`)
+                                  : null}
                     </p>
                 )}
-                {emailReady && <Checkbox label={t("auth.rememberSession")} checked disabled />}
+                {emailReady && (
+                    <Checkbox
+                        label={t("auth.rememberSession")}
+                        checked={rememberMe}
+                        disabled={busy}
+                        onChange={(event) => setRememberMe(event.target.checked)}
+                    />
+                )}
                 {message === "profileUnavailable" ? (
                     <Button variant="brand" onClick={onRetryProfile} loading={busy}>
                         {t("auth.retryProfile")}
                     </Button>
                 ) : (
-                    <Button variant="brand" type="submit" loading={busy}>
+                    <Button variant="brand" type="submit" loading={busy} disabled={retryIn > 0}>
                         {t(busy ? "auth.signingIn" : emailReady ? "auth.login" : "auth.startEmail")}
                     </Button>
                 )}

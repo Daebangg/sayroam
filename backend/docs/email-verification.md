@@ -55,6 +55,10 @@ Spring Security SPA 설정을 사용해 쿠키의 원문 헤더 토큰 검증과
 ### POST /api/auth/email-verifications
 
 인증 없이 호출할 수 있지만 CSRF 검증은 유지합니다. 최초 발급과 재발송은 같은 API입니다.
+정규화한 이메일을 MySQL에서 먼저 조회합니다. 기존 이메일이면 **409 EMAIL_ALREADY_REGISTERED**로
+로그인·비밀번호 재설정을 안내하며 Redis 예약·발송 제한 소비·메일 전송을 하지 않습니다.
+조회 장애는 503 AUTHENTICATION_UNAVAILABLE입니다. 이 검사는 회원가입 코드 발송에만 적용하며,
+비밀번호 재설정의 계정 여부 비공개 정책은 유지합니다. 발송 후 동시 가입은 최종 DB UNIQUE 검증으로 막습니다.
 
 ```http
 POST /api/auth/email-verifications
@@ -139,6 +143,8 @@ DB 저장 전에 증명을 소비하고 저장 실패 시 복구하지 않습니
 | 400 | `BAD_REQUEST` | 잘못된 JSON 또는 UUID 역직렬화 실패. 입력 수정 |
 | 400 | `EMAIL_CODE_INVALID` | 코드 불일치. 한도 안에서 다시 입력 |
 | 403 | `INVALID_CSRF_TOKEN` | 쿠키·헤더 누락 또는 오류. CSRF 쿠키 준비 후 올바른 헤더 전달 |
+| 409 | `EMAIL_ALREADY_REGISTERED` | 가입된 이메일. 메일 미발송. 로그인·비밀번호 재설정 이용 |
+| 503 | `AUTHENTICATION_UNAVAILABLE` | 발송 전 가입 여부 DB 조회 장애. 메일 미발송 |
 | 409 | `EMAIL_REQUEST_SUPERSEDED` | 만료·교체·활성화되지 않은 요청. 최신 발급 요청 사용 |
 | 409 | `EMAIL_CODE_ALREADY_USED` | 이미 검증한 코드. 받은 증명 사용, 증명을 못 받았다면 새 코드 필요 |
 | 410 | `EMAIL_CODE_EXPIRED` | 코드가 없거나 만료됨. 새 코드 필요 |

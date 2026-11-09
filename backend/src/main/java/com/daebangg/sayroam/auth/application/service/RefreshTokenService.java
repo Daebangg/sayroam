@@ -36,10 +36,11 @@ public class RefreshTokenService {
         RefreshToken next = current.next();
         // inspect 이후의 동시 요청·재사용·폐기도 여기서 다시 확인한다.
         var rotated = requireActive(sessions.rotate(current.sessionId(), digest, next.digest()));
-        if (rotated.userId() != inspected.userId() || rotated.authVersion() != inspected.authVersion()) {
+        if (rotated.userId() != inspected.userId() || rotated.authVersion() != inspected.authVersion()
+                || rotated.rememberMe() != inspected.rememberMe()) {
             throw new IllegalStateException("Refresh session account changed");
         }
-        return new TokenPair(access, next.value(), rotated.expiresIn());
+        return new TokenPair(access, next.value(), rotated.expiresIn(), rotated.rememberMe());
     }
 
     private RefreshTokenStore.SessionResult requireActive(RefreshTokenStore.SessionResult result) {

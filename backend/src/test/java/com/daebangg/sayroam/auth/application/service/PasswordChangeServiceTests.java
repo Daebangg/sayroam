@@ -40,7 +40,7 @@ class PasswordChangeServiceTests {
     @Test
     void preservesPasswordAndUsesTheVerifiedAccountBinding() {
         String email = "member@example.test";
-        String password = "  New Pass!  ";
+        String password = "NewPass1!";
         String proof = "p".repeat(43);
         when(accounts.findActiveVerifiedAccount(55)).thenReturn(Optional.of(new AccountLookup.VerifiedAccount(email, 3)));
         when(accounts.findActiveCredentials(email)).thenReturn(Optional.of(new AccountLookup.Credentials(55, "old-hash", 3)));

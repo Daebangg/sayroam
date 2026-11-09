@@ -48,8 +48,12 @@ public enum AuthErrorCode implements ErrorCode {
             "Signup could not be confirmed; the proof is not restored. Verify your email again before retrying; the account may already exist"),
     INVALID_CREDENTIALS(ErrorType.UNAUTHENTICATED,
             "Email or password is incorrect"),
+    LOGIN_RATE_LIMITED(ErrorType.RATE_LIMITED,
+            "Too many failed login attempts; try again after the indicated wait"),
+    LOGIN_ATTEMPTS_UNAVAILABLE(ErrorType.UNAVAILABLE,
+            "Login attempt limits could not be checked; try again later without automatically retrying"),
     PASSWORD_POLICY_VIOLATION(ErrorType.INVALID,
-            "Password must contain %d to %d characters and must not be blank"
+            "Password must contain %d to %d characters, an uppercase letter, a number and a special character, without whitespace or invisible characters"
                     .formatted(PasswordPolicy.MIN_LENGTH, PasswordPolicy.MAX_LENGTH)),
     AUTHENTICATION_UNAVAILABLE(ErrorType.UNAVAILABLE,
             "Authentication is temporarily unavailable"),

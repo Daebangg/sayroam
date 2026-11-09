@@ -29,11 +29,11 @@ public class RefreshTokenController {
         this.refreshCookie = refreshCookie;
     }
 
-    @Operation(summary = "토큰 갱신", description = "브라우저의 sayroam_refresh HttpOnly 쿠키와 XSRF-TOKEN 쿠키·X-XSRF-TOKEN 헤더가 필요합니다. Access Token 없이 호출하며 이 경로에서는 Authorization 헤더를 인증에 사용하지 않습니다. 활성 회원을 확인한 뒤 Refresh Token을 일회성 교체합니다. 이전 값 재사용·동시 갱신은 해당 로그인의 갱신 권한을 폐기합니다. 클라이언트는 갱신 요청을 직렬화하고 불확실한 응답을 자동 재시도하지 않아야 합니다. 절대 만료는 연장하지 않습니다.")
+    @Operation(summary = "토큰 갱신", description = "브라우저의 sayroam_refresh HttpOnly 쿠키와 XSRF-TOKEN 쿠키·X-XSRF-TOKEN 헤더가 필요합니다. Access Token 없이 호출하며 이 경로에서는 Authorization 헤더를 인증에 사용하지 않습니다. 활성 회원을 확인한 뒤 Refresh Token을 일회성 교체합니다. 이전 값 재사용·동시 갱신은 해당 로그인의 갱신 권한을 폐기합니다. 클라이언트는 갱신 요청을 직렬화하고 불확실한 응답을 자동 재시도하지 않아야 합니다. 절대 만료는 연장하지 않으며 로그인 시 rememberMe의 세션/영속 쿠키 선택을 유지합니다.")
     @SecurityRequirement(name = "refreshCookie")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "새 Access Token과 교체된 Refresh 쿠키. Cache-Control: no-store",
-                    headers = @Header(name = "Set-Cookie", schema = @Schema(type = "string"), description = "sayroam_refresh 교체. 남은 절대 유효기간만 Max-Age로 지정")),
+                    headers = @Header(name = "Set-Cookie", schema = @Schema(type = "string"), description = "sayroam_refresh 교체. 영속 쿠키는 남은 절대 유효기간만 Max-Age로 지정, 세션 쿠키는 Max-Age 생략")),
             @ApiResponse(responseCode = "401", ref = "#/components/responses/RefreshUnauthorized"),
             @ApiResponse(responseCode = "403", ref = "#/components/responses/Forbidden"),
             @ApiResponse(responseCode = "503", ref = "#/components/responses/AuthenticationUnavailable"),
@@ -43,7 +43,7 @@ public class RefreshTokenController {
     public ResponseEntity<LoginResponse> refresh(HttpServletRequest request) {
         var pair = service.refresh(refreshCookie.read(request));
         return ResponseEntity.ok().cacheControl(CacheControl.noStore())
-                .header(HttpHeaders.SET_COOKIE, refreshCookie.issue(pair.refreshToken(), pair.refreshExpiresIn()).toString())
+                .header(HttpHeaders.SET_COOKIE, refreshCookie.issue(pair.refreshToken(), pair.refreshExpiresIn(), pair.rememberMe()).toString())
                 .body(new LoginResponse(pair.access().accessToken(), "Bearer", pair.access().expiresIn()));
     }
 }

@@ -36,6 +36,11 @@ export default function App() {
     const auth = useAuthSession();
     const checkSession = auth.check;
     const authBusy = ["checking", "signingIn", "signingOut"].includes(auth.status);
+    const modalOnlyAuthMessage =
+        auth.message === "credentials" ||
+        auth.message === "limited" ||
+        auth.message === "invalidInput" ||
+        auth.message === "loginUncertain";
     useEffect(() => {
         if (isMemberPath(location.pathname)) void checkSession();
     }, [location.pathname, checkSession]);
@@ -135,7 +140,7 @@ export default function App() {
             authBusy={authBusy}
             onLogout={logout}
         >
-            {auth.message && !authOpen && (
+            {auth.message && !authOpen && !modalOnlyAuthMessage && (
                 <AuthNotice
                     message={auth.message}
                     busy={authBusy}
@@ -173,6 +178,10 @@ export default function App() {
                     onSubmit={login}
                     busy={authBusy}
                     message={auth.message}
+                    {...(auth.retryAt === undefined ? {} : { retryAt: auth.retryAt })}
+                    {...(auth.remainingAttempts === undefined
+                        ? {}
+                        : { remainingAttempts: auth.remainingAttempts })}
                     onRetryProfile={retryProfile}
                     onComplete={(mode) =>
                         showToast(mode === "signup" ? "signupComplete" : "resetComplete")

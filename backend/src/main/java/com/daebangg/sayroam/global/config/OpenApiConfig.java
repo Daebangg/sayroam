@@ -78,8 +78,41 @@ public class OpenApiConfig {
                         .example("UNAUTHENTICATED"))
                 .addProperty("retryAfterSeconds", new IntegerSchema().format("int64")
                         .description("재시도 대기가 있는 429 응답에만 포함하는 대기 초. Retry-After 헤더와 같은 값"))
+                .addProperty("remainingAttempts", new IntegerSchema().minimum(java.math.BigDecimal.ZERO)
+                        .description("INVALID_CREDENTIALS 로그인 실패 후 해당 이메일의 남은 시도 횟수. IP 제한 횟수는 공개하지 않음").example(4))
                 .addProperty("errors", new ArraySchema().items(new Schema<>().$ref("#/components/schemas/FieldError")));
         problem.setRequired(List.of("title", "status", "detail", "instance", "code"));
+        var limitedCode = new StringSchema();
+        limitedCode.setEnum(List.of("LOGIN_RATE_LIMITED"));
+        var limitedStatus = new IntegerSchema();
+        limitedStatus.setEnum(List.of(429));
+        Schema<Object> loginLimitFields = new Schema<>();
+        loginLimitFields.setType("object");
+        loginLimitFields.addProperty("code", limitedCode)
+                .addProperty("status", limitedStatus)
+                .addProperty("retryAfterSeconds", new IntegerSchema().format("int64").minimum(java.math.BigDecimal.ONE)
+                        .description("재시도 전 대기 초. Retry-After와 같은 양의 정수").example(300));
+        loginLimitFields.setRequired(List.of("code", "status", "retryAfterSeconds"));
+        Schema<Object> loginLimited = new Schema<>();
+        loginLimited.addAllOfItem(new Schema<>().$ref("#/components/schemas/ApiProblem"));
+        loginLimited.addAllOfItem(loginLimitFields);
+        var credentialsCode = new StringSchema();
+        credentialsCode.setEnum(List.of("INVALID_CREDENTIALS"));
+        Schema<Object> credentialsFields = new Schema<>();
+        credentialsFields.setType("object");
+        credentialsFields.addProperty("code", credentialsCode)
+                .addProperty("remainingAttempts", new IntegerSchema().minimum(java.math.BigDecimal.ONE)
+                        .description("해당 이메일의 남은 시도 횟수. 기본 정책에서 4, 3, 2, 1").example(4));
+        credentialsFields.setRequired(List.of("code", "remainingAttempts"));
+        var filterCode = new StringSchema();
+        filterCode.setEnum(List.of("UNAUTHENTICATED"));
+        Schema<Object> filterFields = new Schema<>();
+        filterFields.setType("object");
+        filterFields.addProperty("code", filterCode);
+        filterFields.setRequired(List.of("code"));
+        Schema<Object> loginUnauthorized = new Schema<>();
+        loginUnauthorized.addAllOfItem(new Schema<>().$ref("#/components/schemas/ApiProblem"));
+        loginUnauthorized.addAllOfItem(new Schema<>().addOneOfItem(credentialsFields).addOneOfItem(filterFields));
         var components = new Components()
                 .addSecuritySchemes("csrfToken", new SecurityScheme()
                         .type(SecurityScheme.Type.APIKEY).in(SecurityScheme.In.HEADER).name("X-XSRF-TOKEN")
@@ -91,9 +124,16 @@ public class OpenApiConfig {
                         .type(SecurityScheme.Type.APIKEY).in(SecurityScheme.In.COOKIE).name("sayroam_refresh")
                         .description("로그인에서 설정하는 HttpOnly Refresh 쿠키. 브라우저가 같은 호스트의 갱신·로그아웃 요청에 자동 전송합니다. Authorize에 값을 수동 입력하는 방식이 아니며, XSRF-TOKEN 쿠키와 X-XSRF-TOKEN 헤더도 필요합니다. 갱신·로그아웃에서는 Authorization 헤더를 사용하지 않습니다. 로그아웃은 Refresh 쿠키가 없어도 브라우저 정리를 허용합니다."))
                 .addSchemas("ApiProblem", problem)
+                .addSchemas("LoginRateLimitedProblem", loginLimited)
+                .addSchemas("LoginUnauthorizedProblem", loginUnauthorized)
                 .addSchemas("ApiErrorCode", errorCode)
                 .addSchemas("FieldError", fieldError)
                 .addResponses("BadRequest", problemResponse("400: INVALID_INPUT 또는 Spring 요청 오류. 검증 실패 시 errors 포함"))
+                .addResponses("LoginRateLimited", problemResponse("429: LOGIN_RATE_LIMITED. 이메일 또는 IP의 로그인 실패 제한. Retry-After와 retryAfterSeconds 이후 재요청", "LoginRateLimitedProblem")
+                        .addHeaderObject("Retry-After", new io.swagger.v3.oas.models.headers.Header().required(true)
+                                .description("재시도 전 대기할 초").schema(new IntegerSchema().format("int64").minimum(java.math.BigDecimal.ONE))))
+                .addResponses("LoginUnavailable", problemResponse("503: LOGIN_ATTEMPTS_UNAVAILABLE(제한 저장소) 또는 AUTHENTICATION_UNAVAILABLE(DB·토큰 저장소). 무제한 우회·자동 재시도하지 않음"))
+                .addResponses("SignupEmailConflict", problemResponse("409: EMAIL_ALREADY_REGISTERED이면 메일을 보내지 않음. 로그인·비밀번호 재설정 이용. EMAIL_REQUEST_SUPERSEDED이면 최신 발급 요청 사용"))
                 .addResponses("UserProfileBadRequest", problemResponse("400: USER_NICKNAME_REQUIRED, USER_NICKNAME_TOO_LONG, USER_NICKNAME_INVALID, USER_PROFILE_IMAGE_URL_TOO_LONG, USER_PROFILE_IMAGE_URL_INVALID, USER_BIRTH_YEAR_INVALID 또는 Spring 요청 오류. 허용 필드는 nickname·profileImageUrl·gender·birthYear이며 보호 필드와 잘못된 JSON 타입은 거절"))
                 .addResponses("SocialBadRequest", problemResponse("400: SOCIAL_PROVIDER_DISABLED, SOCIAL_AUTH_INVALID, SOCIAL_AUTH_CANCELLED, SOCIAL_RETURN_PATH_INVALID, SOCIAL_SIGNUP_INVALID, SIGNUP_PROOF_INVALID 또는 INVALID_INPUT. 만료·소비된 상태나 잘못된 브라우저이면 소셜 인증부터 다시 시작"))
                 .addResponses("SocialUnauthorized", problemResponse("401: SOCIAL_AUTH_FAILED 또는 AUTHENTICATION_REVOKED. 공급자 인증 실패·기존 로그인 수단/인증 버전 변경. 새 소셜 인증 필요"))
@@ -123,7 +163,7 @@ public class OpenApiConfig {
                         .addHeaderObject("Set-Cookie", new io.swagger.v3.oas.models.headers.Header()
                                 .description("PASSWORD_CHANGE_UNAVAILABLE일 때 sayroam_refresh 만료. 나머지 503에서는 설정하지 않음")
                                 .schema(new StringSchema())))
-                .addResponses("LoginUnauthorized", problemResponse("401: INVALID_CREDENTIALS. 이메일 없음·비밀번호 불일치·탈퇴·이메일 미인증·비밀번호 미등록에 동일한 응답. 불필요한 Authorization 헤더가 있으면 필터에서 UNAUTHENTICATED로 거절될 수 있음"))
+                .addResponses("LoginUnauthorized", problemResponse("401: INVALID_CREDENTIALS와 필수 remainingAttempts. 이메일 없음·비밀번호 불일치·탈퇴·이메일 미인증·비밀번호 미등록에 동일한 응답. 불필요한 Authorization 헤더가 있으면 필터에서 UNAUTHENTICATED로 거절되며 횟수를 제공하지 않음", "LoginUnauthorizedProblem"))
                 .addResponses("AuthenticationUnavailable", problemResponse("503: AUTHENTICATION_UNAVAILABLE. 회원 DB 또는 Refresh Redis 저장소 장애. 성공 응답 없이 거절하며 갱신 결과가 불확실할 수 있으므로 자동 재시도하지 않음"))
                 .addResponses("RefreshUnauthorized", problemResponse("401: REFRESH_TOKEN_INVALID 또는 REFRESH_TOKEN_REUSED. 쿠키 누락·중복·형식 오류·만료·폐기·회원 삭제/탈퇴·교체 한도, 또는 사용한 토큰 재사용. Refresh 쿠키를 만료시키며 재로그인 필요. 재사용은 해당 로그인만 갱신 불가로 만듦")
                         .addHeaderObject("Set-Cookie", new io.swagger.v3.oas.models.headers.Header()
@@ -145,7 +185,7 @@ public class OpenApiConfig {
                                 .description("재시도 전 대기할 초")
                                 .schema(new IntegerSchema().format("int64"))))
                 .addResponses("EmailDeliveryFailed", problemResponse("502: EMAIL_DELIVERY_FAILED. 코드 무효화, 발송 제한 유지. 자동 재시도 없음"))
-                .addResponses("EmailVerificationUnavailable", problemResponse("503: EMAIL_DELIVERY_DISABLED 또는 EMAIL_VERIFICATION_UNAVAILABLE. 설정·저장소 복구 후 재요청"))
+                .addResponses("EmailVerificationUnavailable", problemResponse("503: EMAIL_DELIVERY_DISABLED, EMAIL_VERIFICATION_UNAVAILABLE 또는 AUTHENTICATION_UNAVAILABLE(발송 전 가입 여부 조회). 설정·저장소 복구 후 재요청"))
                 .addResponses("EmailCodeInvalid", problemResponse("400: INVALID_INPUT, EMAIL_CODE_INVALID 또는 Spring 요청 오류. 형식 오류는 수정, 코드 불일치는 남은 횟수 안에서 재입력"))
                 .addResponses("EmailVerificationConflict", problemResponse("409: EMAIL_REQUEST_SUPERSEDED 또는 EMAIL_CODE_ALREADY_USED. 최신 요청 또는 이미 받은 증명을 사용"))
                 .addResponses("EmailCodeExpired", problemResponse("410: EMAIL_CODE_EXPIRED. 없거나 만료된 코드. 새 코드 발급 필요"))
@@ -162,8 +202,12 @@ public class OpenApiConfig {
     }
 
     private ApiResponse problemResponse(String description) {
+        return problemResponse(description, "ApiProblem");
+    }
+
+    private ApiResponse problemResponse(String description, String schema) {
         return new ApiResponse().description(description).content(new Content()
                 .addMediaType("application/problem+json", new io.swagger.v3.oas.models.media.MediaType()
-                        .schema(new Schema<>().$ref("#/components/schemas/ApiProblem"))));
+                        .schema(new Schema<>().$ref("#/components/schemas/" + schema))));
     }
 }

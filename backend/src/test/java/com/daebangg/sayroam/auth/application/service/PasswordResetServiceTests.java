@@ -40,11 +40,11 @@ class PasswordResetServiceTests {
     @Test
     void hashesBeforeConsumingProofAndUsesItsCurrentAccountBinding() {
         when(accounts.findActiveCredentials(EMAIL)).thenReturn(Optional.of(new AccountLookup.Credentials(55, "old-hash", 3)));
-        when(passwords.hash("  New Pass!  ")).thenReturn("new-hash");
+        when(passwords.hash("NewPass1!")).thenReturn("new-hash");
         when(store.consumeProof(eq(SUBJECT), anyString())).thenReturn(PasswordResetStore.ProofStatus.CONSUMED);
-        service.reset(" MEMBER@EXAMPLE.TEST ", PROOF, "  New Pass!  ");
+        service.reset(" MEMBER@EXAMPLE.TEST ", PROOF, "NewPass1!");
         var order = inOrder(passwords, store, changes);
-        order.verify(passwords).hash("  New Pass!  ");
+        order.verify(passwords).hash("NewPass1!");
         order.verify(store).consumeProof(eq(SUBJECT), anyString());
         order.verify(changes).change(55, EMAIL, 3, "new-hash");
     }
@@ -53,7 +53,7 @@ class PasswordResetServiceTests {
     void hashFailureDoesNotConsumeTheProofOrMutateTheAccount() {
         when(accounts.findActiveCredentials(EMAIL)).thenReturn(Optional.of(new AccountLookup.Credentials(55, "old-hash", 3)));
         when(passwords.hash(anyString())).thenThrow(new IllegalStateException("test hasher failure"));
-        assertThatThrownBy(() -> service.reset(EMAIL, PROOF, "replacement-password")).isInstanceOf(IllegalStateException.class);
+        assertThatThrownBy(() -> service.reset(EMAIL, PROOF, "Replacement-pass1!")).isInstanceOf(IllegalStateException.class);
         verifyNoInteractions(store, changes);
     }
 
@@ -62,7 +62,7 @@ class PasswordResetServiceTests {
         when(accounts.findActiveCredentials(EMAIL)).thenReturn(Optional.of(new AccountLookup.Credentials(55, "old-hash", 3)));
         when(passwords.hash(anyString())).thenReturn("new-hash");
         when(store.consumeProof(eq(SUBJECT), anyString())).thenThrow(new AuthException(AuthErrorCode.EMAIL_VERIFICATION_UNAVAILABLE));
-        assertThatThrownBy(() -> service.reset(EMAIL, PROOF, "replacement-password"))
+        assertThatThrownBy(() -> service.reset(EMAIL, PROOF, "Replacement-pass1!"))
                 .isInstanceOfSatisfying(AuthException.class,
                         exception -> assertThat(exception.getErrorCode()).isEqualTo(AuthErrorCode.EMAIL_VERIFICATION_UNAVAILABLE));
         verifyNoInteractions(changes);

@@ -21,7 +21,7 @@ export function isValidPassword(value: string): boolean {
     return value.length >= 8 && value.length <= 128 && value.trim().length > 0;
 }
 
-// 신규 비밀번호의 프론트 정책. 기존 계정 로그인 검증과 분리한다 (#85).
+// 신규 비밀번호와 기존 비밀번호 로그인은 서로 다른 정책이다 (#85).
 export function newPasswordRules(value: string): Readonly<{
     length: boolean;
     uppercase: boolean;
@@ -34,7 +34,7 @@ export function newPasswordRules(value: string): Readonly<{
         uppercase: /[A-Z]/.test(value),
         number: /[0-9]/.test(value),
         special: /[\p{P}\p{S}]/u.test(value),
-        noWhitespace: value.length > 0 && !/\s/.test(value),
+        noWhitespace: value.length > 0 && !/[\s\p{Z}\p{C}]/u.test(value),
     };
 }
 
@@ -44,11 +44,5 @@ export function isValidNewPassword(value: string): boolean {
 
 export function isValidNickname(value: string): boolean {
     const nickname = value.trim();
-    return (
-        nickname.length >= 1 &&
-        nickname.length <= 50 &&
-        [...nickname].every(
-            (character) => character.charCodeAt(0) >= 32 && character.charCodeAt(0) !== 127,
-        )
-    );
+    return nickname.length >= 1 && nickname.length <= 50 && !/[\p{C}\p{Zl}\p{Zp}]/u.test(nickname);
 }
