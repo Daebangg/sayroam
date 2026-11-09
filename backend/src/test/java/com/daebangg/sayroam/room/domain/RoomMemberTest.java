@@ -19,7 +19,7 @@ class RoomMemberTest {
         Room room = new Room("제주 3박 4일");
 
         // when
-        RoomMember owner = RoomMember.joinAsOwner(room, 1L);
+        RoomMember owner = RoomMember.joinAsOwner(room, 1L, NOW);
 
         // then
         assertThat(owner.isOwner()).isTrue();
@@ -28,7 +28,7 @@ class RoomMemberTest {
     @Test
     void 참여_중인_멤버면_방_접근을_허용한다() {
         // given
-        RoomMember member = RoomMember.joinAsOwner(new Room("제주 3박 4일"), 1L);
+        RoomMember member = RoomMember.joinAsOwner(new Room("제주 3박 4일"), 1L, NOW);
 
         assertThatCode(member::ensureJoined)
                 .doesNotThrowAnyException();
@@ -59,6 +59,18 @@ class RoomMemberTest {
         // then
         assertThatCode(member::ensureJoined)
                 .doesNotThrowAnyException();
+    }
+
+    @Test
+    void 초대로_참여하면_참여_시각이_기록된다() {
+        // given
+        RoomInvitation invitation = invitationIssuedAt(NOW);
+
+        // when
+        RoomMember member = RoomMember.joinAsMember(invitation, 2L, NOW);
+
+        // then
+        assertThat(member.getJoinedAt()).isEqualTo(NOW);
     }
 
     @Test
@@ -120,13 +132,13 @@ class RoomMemberTest {
     void 참여_중인_멤버가_다시_참여해도_참여_시각은_그대로다() {
         // given
         RoomMember member = joinedMember();
-        LocalDateTime joinedAt = member.getJoinedAt();
         LocalDateTime now = NOW.plusDays(3);
 
         // when
         member.rejoin(invitationIssuedAt(now), now);
 
-        assertThat(member.getJoinedAt()).isEqualTo(joinedAt);
+        // then
+        assertThat(member.getJoinedAt()).isEqualTo(NOW);
     }
 
     @Test
@@ -141,7 +153,7 @@ class RoomMemberTest {
     }
 
     private RoomInvitation invitationIssuedAt(LocalDateTime issuedAt) {
-        return RoomMember.joinAsOwner(room, 1L).createShareInvitation(issuedAt);
+        return RoomMember.joinAsOwner(room, 1L, NOW).createShareInvitation(issuedAt);
     }
 
     private RoomMember joinedMember() {

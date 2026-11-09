@@ -26,7 +26,7 @@ public class RoomService {
     @Transactional
     public Long create(Long userId, String name) {
         Room room = roomRepository.save(new Room(name));
-        roomMemberRepository.save(RoomMember.joinAsOwner(room, userId));
+        roomMemberRepository.save(RoomMember.joinAsOwner(room, userId, LocalDateTime.now(ZoneOffset.UTC)));
         return room.getId();
     }
 

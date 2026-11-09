@@ -48,7 +48,7 @@ class RoomInvitationTest {
     }
 
     private RoomMember createMember() {
-        return RoomMember.joinAsOwner(new Room("제주 여행"), 1L);
+        return RoomMember.joinAsOwner(new Room("제주 여행"), 1L, NOW);
     }
 
     private RoomInvitation createInvitation() {

@@ -508,7 +508,7 @@ class ChatStompIntegrationTest extends DatabaseIntegrationTest {
 
     private void joinRoom(Long roomId, Long userId) {
         Room room = roomRepository.findById(roomId).orElseThrow();
-        roomMemberRepository.save(RoomMember.joinAsOwner(room, userId));
+        roomMemberRepository.save(RoomMember.joinAsOwner(room, userId, LocalDateTime.now(ZoneOffset.UTC)));
     }
 
     private static class ReceivedFrames extends StompSessionHandlerAdapter {
