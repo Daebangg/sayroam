@@ -19,6 +19,7 @@ public final class ApiProblems {
             case INVALID -> HttpStatus.BAD_REQUEST;
             case UNAUTHENTICATED -> HttpStatus.UNAUTHORIZED;
             case FORBIDDEN -> HttpStatus.FORBIDDEN;
+            case NOT_FOUND -> HttpStatus.NOT_FOUND;
             case CONFLICT -> HttpStatus.CONFLICT;
             case EXPIRED -> HttpStatus.GONE;
             case RATE_LIMITED -> HttpStatus.TOO_MANY_REQUESTS;

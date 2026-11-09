@@ -37,6 +37,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @EnableConfigurationProperties(RefreshCookieProperties.class)
 class RoomControllerTest {
     private static final Long USER_ID = 1L;
+    private static final Long ROOM_ID = 7L;
+    private static final String CODE = "k3Xv9qLm2Tz8RwYb7NfA";
 
     @Autowired
     MockMvc mvc;
@@ -99,10 +101,94 @@ class RoomControllerTest {
         then(roomService).shouldHaveNoInteractions();
     }
 
+    @Test
+    void 방_멤버가_초대_링크를_만들면_201과_초대_코드를_응답한다() throws Exception {
+        // given
+        given(roomService.createInvitation(ROOM_ID, USER_ID)).willReturn(CODE);
+
+        // when & then
+        mvc.perform(createInvitationRequest().with(로그인()))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.code").value(CODE));
+    }
+
+    @Test
+    void 방_멤버가_아니면_초대_링크_생성에_403과_에러_코드를_응답한다() throws Exception {
+        // given
+        given(roomService.createInvitation(ROOM_ID, USER_ID))
+                .willThrow(new BusinessException(RoomErrorCode.ROOM_ACCESS_DENIED));
+
+        // when & then
+        mvc.perform(createInvitationRequest().with(로그인()))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("ROOM_ACCESS_DENIED"));
+    }
+
+    @Test
+    void 로그인하지_않으면_초대_링크_생성에_401을_응답한다() throws Exception {
+        // when & then
+        mvc.perform(createInvitationRequest())
+                .andExpect(status().isUnauthorized());
+
+        then(roomService).shouldHaveNoInteractions();
+    }
+
+    @Test
+    void 초대_링크로_참여하면_200과_방_ID를_응답한다() throws Exception {
+        // given
+        given(roomService.joinByInvitation(CODE, USER_ID)).willReturn(ROOM_ID);
+
+        // when & then
+        mvc.perform(joinRequest().with(로그인()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.roomId").value(ROOM_ID));
+    }
+
+    @Test
+    void 없는_코드로_참여하면_404와_에러_코드를_응답한다() throws Exception {
+        // given
+        given(roomService.joinByInvitation(CODE, USER_ID))
+                .willThrow(new BusinessException(RoomErrorCode.ROOM_INVITATION_NOT_FOUND));
+
+        // when & then
+        mvc.perform(joinRequest().with(로그인()))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("ROOM_INVITATION_NOT_FOUND"));
+    }
+
+    @Test
+    void 만료된_코드로_참여하면_410과_에러_코드를_응답한다() throws Exception {
+        // given
+        given(roomService.joinByInvitation(CODE, USER_ID))
+                .willThrow(new BusinessException(RoomErrorCode.ROOM_INVITATION_EXPIRED));
+
+        // when & then
+        mvc.perform(joinRequest().with(로그인()))
+                .andExpect(status().isGone())
+                .andExpect(jsonPath("$.code").value("ROOM_INVITATION_EXPIRED"));
+    }
+
+    @Test
+    void 로그인하지_않으면_초대_링크_참여에_401을_응답한다() throws Exception {
+        // when & then
+        mvc.perform(joinRequest())
+                .andExpect(status().isUnauthorized());
+
+        then(roomService).shouldHaveNoInteractions();
+    }
+
     private MockHttpServletRequestBuilder 방_생성_요청(String body) {
         return post("/api/rooms")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(body);
+    }
+
+    private MockHttpServletRequestBuilder createInvitationRequest() {
+        return post("/api/rooms/{roomId}/invitations", ROOM_ID);
+    }
+
+    private MockHttpServletRequestBuilder joinRequest() {
+        return post("/api/room-invitations/{code}/join", CODE);
     }
 
     private RequestPostProcessor 로그인() {

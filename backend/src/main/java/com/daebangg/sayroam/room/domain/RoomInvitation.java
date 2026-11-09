@@ -1,6 +1,7 @@
 package com.daebangg.sayroam.room.domain;
 
 import com.daebangg.sayroam.global.entity.BaseTimeEntity;
+import com.daebangg.sayroam.global.exception.BusinessException;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -14,6 +15,7 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import lombok.AccessLevel;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
@@ -28,6 +30,7 @@ import java.time.LocalDateTime;
 )
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class RoomInvitation extends BaseTimeEntity {
+    private static final int SHARE_VALID_DAYS = 7;
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -45,6 +48,7 @@ public class RoomInvitation extends BaseTimeEntity {
     private Long inviteeId;
 
     // 공유 초대만 있다. 서비스 안 초대는 NULL
+    @Getter
     @Column(length = 50)
     private String code;
 
@@ -66,12 +70,22 @@ public class RoomInvitation extends BaseTimeEntity {
         this.expiresAt = expiresAt;
     }
 
-    public static RoomInvitation toMember(Room room, Long inviterId, Long inviteeId, LocalDateTime expiresAt) {
+    static RoomInvitation toMember(Room room, Long inviterId, Long inviteeId, LocalDateTime expiresAt) {
         return new RoomInvitation(room, inviterId, inviteeId, null, RoomInvitationStatus.PENDING, expiresAt);
     }
 
-    public static RoomInvitation byShare(Room room, Long inviterId, String code, LocalDateTime expiresAt) {
-        return new RoomInvitation(room, inviterId, null, code, null, expiresAt);
+    static RoomInvitation byShare(Room room, Long inviterId, LocalDateTime issuedAt) {
+        return new RoomInvitation(room, inviterId, null, RoomInvitationCodeGenerator.generate(), null, issuedAt.plusDays(SHARE_VALID_DAYS));
     }
 
+    public RoomMember admit(Long userId, LocalDateTime now) {
+        if (now.isAfter(expiresAt)) {
+            throw new BusinessException(RoomErrorCode.ROOM_INVITATION_EXPIRED);
+        }
+        return RoomMember.joinAsMember(room, userId);
+    }
+
+    public Long getRoomId() {
+        return room.getId();
+    }
 }
