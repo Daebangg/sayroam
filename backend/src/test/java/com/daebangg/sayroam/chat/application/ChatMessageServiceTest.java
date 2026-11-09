@@ -6,9 +6,8 @@ import com.daebangg.sayroam.chat.domain.ChatMessageRepository;
 import com.daebangg.sayroam.chat.domain.event.ChatMessageSent;
 import com.daebangg.sayroam.global.exception.BusinessException;
 import com.daebangg.sayroam.room.application.RoomService;
-import com.daebangg.sayroam.room.domain.Room;
 import com.daebangg.sayroam.room.domain.RoomErrorCode;
-import com.daebangg.sayroam.room.domain.RoomMember;
+import com.daebangg.sayroam.room.domain.RoomInvitationRepository;
 import com.daebangg.sayroam.room.domain.RoomMemberRepository;
 import com.daebangg.sayroam.room.domain.RoomRepository;
 import com.daebangg.sayroam.support.DatabaseIntegrationTest;
@@ -22,11 +21,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.test.context.event.ApplicationEvents;
 import org.springframework.test.context.event.RecordApplicationEvents;
-import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.transaction.support.TransactionTemplate;
 
-import java.time.LocalDateTime;
-import java.time.ZoneOffset;
 import java.util.List;
 import java.util.UUID;
 
@@ -63,11 +59,15 @@ class ChatMessageServiceTest extends DatabaseIntegrationTest {
     private RoomRepository roomRepository;
 
     @Autowired
+    private RoomInvitationRepository roomInvitationRepository;
+
+    @Autowired
     ApplicationEvents events;
 
     @AfterEach
     void cleanUp() {
         chatMessageRepository.deleteAllInBatch();
+        roomInvitationRepository.deleteAllInBatch();
         roomMemberRepository.deleteAllInBatch();
         roomRepository.deleteAllInBatch();
         transactionTemplate.executeWithoutResult(status ->
@@ -130,7 +130,7 @@ class ChatMessageServiceTest extends DatabaseIntegrationTest {
         Long ownerId = saveUser();
         Long senderId = saveUser();
         Long roomId = roomService.create(ownerId, "제주");
-        joinRoom(roomId, senderId);
+        joinRoom(roomId, ownerId, senderId);
         chatMessageService.send(roomId, ownerId, CLIENT_MESSAGE_ID, content);
 
         chatMessageService.send(roomId, senderId, CLIENT_MESSAGE_ID, content);
@@ -252,7 +252,7 @@ class ChatMessageServiceTest extends DatabaseIntegrationTest {
         chatMessageService.send(roomId, ownerId, UUID.randomUUID().toString(), "1");
         chatMessageService.send(roomId, ownerId, UUID.randomUUID().toString(), "2");
         chatMessageService.send(roomId, ownerId, UUID.randomUUID().toString(), "3");
-        joinRoom(roomId, otherId);
+        joinRoom(roomId, ownerId, otherId);
         chatMessageService.send(roomId, ownerId, UUID.randomUUID().toString(), "4");
         chatMessageService.send(roomId, ownerId, UUID.randomUUID().toString(), "5");
         chatMessageService.send(roomId, ownerId, UUID.randomUUID().toString(), "6");
@@ -290,9 +290,10 @@ class ChatMessageServiceTest extends DatabaseIntegrationTest {
         Long ownerId = saveUser();
         Long memberId = saveUser();
         Long roomId = roomService.create(ownerId, "제주 3박 4일");
-        joinRoom(roomId, memberId);
+        joinRoom(roomId, ownerId, memberId);
         chatMessageService.send(roomId, ownerId, UUID.randomUUID().toString(), "재입장 전");
-        markMemberAsRejoined(roomId, memberId);
+        roomService.leave(roomId, memberId);
+        joinRoom(roomId, ownerId, memberId);
         chatMessageService.send(roomId, ownerId, UUID.randomUUID().toString(), "재입장 후");
 
         // when
@@ -304,15 +305,9 @@ class ChatMessageServiceTest extends DatabaseIntegrationTest {
                 .containsExactly("재입장 후");
     }
 
-    private void joinRoom(Long roomId, Long userId) {
-        Room room = roomRepository.findById(roomId).orElseThrow();
-        roomMemberRepository.save(RoomMember.joinAsOwner(room, userId));
-    }
-
-    private void markMemberAsRejoined(Long roomId, Long userId) {
-        RoomMember member = roomMemberRepository.findByRoomIdAndUserId(roomId, userId).orElseThrow();
-        ReflectionTestUtils.setField(member, "joinedAt", LocalDateTime.now(ZoneOffset.UTC));
-        roomMemberRepository.save(member);
+    private void joinRoom(Long roomId, Long ownerId, Long userId) {
+        String code = roomService.createInvitation(roomId, ownerId);
+        roomService.joinByInvitation(code, userId);
     }
 
     private Long saveUser() {
