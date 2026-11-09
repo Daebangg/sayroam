@@ -180,6 +180,66 @@ export interface paths {
         patch: operations["change"];
         trace?: never;
     };
+    "/api/auth/password-reset": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 비밀번호 재설정·모든 기존 로그인 무효화
+         * @description 로그인 없이 CSRF 쿠키·헤더와 email·resetProof·newPassword를 전달합니다. 활성·이메일 인증·기존 비밀번호 로그인 계정에만 적용하며 소셜 전용 계정에 비밀번호를 추가하지 않습니다. 증명을 일회성 소비한 뒤 비밀번호 해시·변경 시각·authVersion을 같은 DB 트랜잭션에서 갱신합니다. 성공 시 자동 로그인하지 않으며 모든 기기의 기존 Access/Refresh를 차단합니다. 현재 브라우저의 로그인 상태·회원 정보·진행 중 갱신을 정리하고 새 비밀번호로 재로그인하세요. 응답 유실·503 시 자동 재전송하지 말고 재로그인으로 결과를 확인한 뒤 필요하면 새 코드를 요청하세요.
+         */
+        post: operations["resetPassword"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/password-reset-verifications": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 비밀번호 찾기 코드 발송·재발송
+         * @description 로그인 없이 CSRF 쿠키·X-XSRF-TOKEN 헤더로 요청합니다. Bearer 헤더 없이 호출하세요. 가입·비밀번호 등록 여부와 무관하게 동일한 안내 메일·6자리 코드와 응답을 제공합니다. 코드 확인은 이메일 소유 확인이며 비밀번호 재설정 가능 여부를 보장하지 않습니다. 이메일/IP 발송 제한과 재발송 대기는 계정 여부와 무관하게 적용합니다. 재발급 승인 시 기존 코드·재설정 증명을 무효화합니다.
+         */
+        post: operations["requestPasswordReset"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/password-reset-verifications/verify": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 비밀번호 찾기 코드 확인·재설정 증명 발급
+         * @description 로그인 없이 CSRF 쿠키·헤더로 이메일·verificationId·6자리 코드를 전달합니다. 성공한 코드는 일회성 소비합니다. resetProof는 재설정 전용이며 가입·로그인 중 변경·탈퇴 증명과 호환되지 않습니다. 발송 이후 계정이나 인증 버전이 바뀌면 새 코드가 필요합니다. 증명은 자동 저장하거나 요청을 자동 반복하지 마세요.
+         */
+        post: operations["confirmPasswordReset"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/auth/refresh": {
         parameters: {
             query?: never;
@@ -498,6 +558,11 @@ export interface components {
             | "PASSWORD_CHANGE_NOT_ALLOWED"
             | "PASSWORD_CHANGE_UNAVAILABLE"
             | "PASSWORD_POLICY_VIOLATION"
+            | "PASSWORD_RESET_CONFLICT"
+            | "PASSWORD_RESET_PROOF_ALREADY_USED"
+            | "PASSWORD_RESET_PROOF_EXPIRED"
+            | "PASSWORD_RESET_PROOF_INVALID"
+            | "PASSWORD_RESET_UNAVAILABLE"
             | "REFRESH_TOKEN_INVALID"
             | "REFRESH_TOKEN_REUSED"
             | "ROOM_ACCESS_DENIED"
@@ -717,6 +782,27 @@ export interface components {
             accountProof: string;
             /** @description 가입과 같은 8~128자 정책. 공백 제거·대소문자 변환 없이 해시 처리 */
             newPassword: string;
+        };
+        PasswordResetConfirmResponse: {
+            /**
+             * Format: int64
+             * @description 재설정 증명의 남은 유효기간(초)
+             */
+            expiresInSeconds: number;
+            /** @description 코드를 확인한 이메일의 비밀번호 재설정에만 한 번 사용할 증명. 로그인 토큰이 아님 */
+            resetProof: string;
+        };
+        PasswordResetRequest: {
+            /**
+             * Format: email
+             * @description 코드를 확인한 이메일
+             * @example user@example.com
+             */
+            email: string;
+            /** @description 가입과 같은 8~128자 정책. 공백 제거·대소문자 변환 없이 처리 */
+            newPassword: string;
+            /** @description 비밀번호 재설정 코드 확인에서 발급한 전용 일회성 증명 */
+            resetProof: string;
         };
         Signup: {
             /** @description true이면 #28 이메일 인증 후 signupProof 필요 */
@@ -1072,6 +1158,53 @@ export interface components {
             headers: {
                 /** @description PASSWORD_CHANGE_UNAVAILABLE일 때 sayroam_refresh 만료. 나머지 503에서는 설정하지 않음 */
                 "Set-Cookie"?: string;
+                [name: string]: unknown;
+            };
+            content: {
+                "application/problem+json": components["schemas"]["ApiProblem"];
+            };
+        };
+        /** @description 400: INVALID_INPUT, PASSWORD_POLICY_VIOLATION, PASSWORD_RESET_PROOF_INVALID 또는 Spring 요청 오류. 입력·비밀번호 정책 오류는 증명을 소비하지 않음. 증명 오류·재설정 불가 계정은 원래 로그인 방식 또는 새 코드 사용 */
+        PasswordResetBadRequest: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/problem+json": components["schemas"]["ApiProblem"];
+            };
+        };
+        /** @description 409: PASSWORD_RESET_PROOF_ALREADY_USED 또는 PASSWORD_RESET_CONFLICT. 증명 재사용·회원 상태 변경. 자동 재전송하지 말고 로그인으로 결과 확인 후 필요한 경우 새 코드 요청 */
+        PasswordResetConflict: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/problem+json": components["schemas"]["ApiProblem"];
+            };
+        };
+        /** @description 410: PASSWORD_RESET_PROOF_EXPIRED. 재설정 증명 없음·만료. 새 코드 요청 */
+        PasswordResetProofExpired: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/problem+json": components["schemas"]["ApiProblem"];
+            };
+        };
+        /** @description 503: AUTHENTICATION_UNAVAILABLE(사전 조회), EMAIL_VERIFICATION_UNAVAILABLE(증명 소비 불확실), PASSWORD_RESET_UNAVAILABLE(DB 변경·커밋 불확실). 증명 복원·자동 재전송 없음. 마지막 코드일 때 Refresh 쿠키를 만료하고 로그인 상태 정리 후 새 비밀번호 로그인으로 결과 확인 */
+        PasswordResetUnavailable: {
+            headers: {
+                /** @description PASSWORD_RESET_UNAVAILABLE일 때만 sayroam_refresh 만료 */
+                "Set-Cookie"?: string;
+                [name: string]: unknown;
+            };
+            content: {
+                "application/problem+json": components["schemas"]["ApiProblem"];
+            };
+        };
+        /** @description 503: AUTHENTICATION_UNAVAILABLE, EMAIL_DELIVERY_DISABLED 또는 EMAIL_VERIFICATION_UNAVAILABLE. DB·메일 비활성화·Redis 장애. 소비 결과가 불확실하면 자동 재시도 없이 새 코드 요청 */
+        PasswordResetVerificationUnavailable: {
+            headers: {
                 [name: string]: unknown;
             };
             content: {
@@ -1467,6 +1600,98 @@ export interface operations {
             410: components["responses"]["AccountProofExpired"];
             500: components["responses"]["InternalServerError"];
             503: components["responses"]["PasswordChangeUnavailable"];
+        };
+    };
+    resetPassword: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PasswordResetRequest"];
+            };
+        };
+        responses: {
+            /** @description 재설정 완료. Cache-Control: no-store. 새 비밀번호로 재로그인 필요 */
+            204: {
+                headers: {
+                    /** @description 현재 브라우저의 sayroam_refresh 쿠키 만료 */
+                    "Set-Cookie"?: string;
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: components["responses"]["PasswordResetBadRequest"];
+            403: components["responses"]["Forbidden"];
+            409: components["responses"]["PasswordResetConflict"];
+            410: components["responses"]["PasswordResetProofExpired"];
+            500: components["responses"]["InternalServerError"];
+            503: components["responses"]["PasswordResetUnavailable"];
+        };
+    };
+    requestPasswordReset: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EmailRequest"];
+            };
+        };
+        responses: {
+            /** @description 안내 메일 발송 요청 완료. 가입 여부·소셜 전용 여부·메일 도착은 보장하지 않음. Cache-Control: no-store */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IssuedRequest"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            403: components["responses"]["Forbidden"];
+            409: components["responses"]["EmailRequestSuperseded"];
+            429: components["responses"]["EmailRateLimited"];
+            500: components["responses"]["InternalServerError"];
+            502: components["responses"]["EmailDeliveryFailed"];
+            503: components["responses"]["PasswordResetVerificationUnavailable"];
+        };
+    };
+    confirmPasswordReset: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EmailVerificationConfirmRequest"];
+            };
+        };
+        responses: {
+            /** @description 재설정 전용 증명 발급. 비밀번호 로그인 계정의 재설정에만 사용 가능. Cache-Control: no-store */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PasswordResetConfirmResponse"];
+                };
+            };
+            400: components["responses"]["EmailCodeInvalid"];
+            403: components["responses"]["Forbidden"];
+            409: components["responses"]["EmailVerificationConflict"];
+            410: components["responses"]["EmailCodeExpired"];
+            429: components["responses"]["EmailCodeAttemptsExceeded"];
+            500: components["responses"]["InternalServerError"];
+            503: components["responses"]["PasswordResetVerificationUnavailable"];
         };
     };
     refresh: {
@@ -1875,6 +2100,13 @@ export const apiRoutes = {
         csrf: true,
         responses: { "200": true },
     },
+    confirmPasswordReset: {
+        method: "post",
+        path: "/api/auth/password-reset-verifications/verify",
+        auth: "none",
+        csrf: true,
+        responses: { "200": true },
+    },
     create: {
         method: "post",
         path: "/api/rooms",
@@ -1965,6 +2197,20 @@ export const apiRoutes = {
         auth: "required",
         csrf: true,
         responses: { "202": true },
+    },
+    requestPasswordReset: {
+        method: "post",
+        path: "/api/auth/password-reset-verifications",
+        auth: "none",
+        csrf: true,
+        responses: { "202": true },
+    },
+    resetPassword: {
+        method: "post",
+        path: "/api/auth/password-reset",
+        auth: "none",
+        csrf: true,
+        responses: { "204": false },
     },
     signup: {
         method: "post",
