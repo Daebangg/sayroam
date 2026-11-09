@@ -8,6 +8,7 @@ import { AuthNotice } from "@/components/features/auth/AuthNotice";
 import { useAuthSession } from "@/hooks/api/auth/useAuthSession";
 import type { LoginInput } from "@/hooks/auth.types";
 import { isMemberPath, pagePaths } from "@/routing/paths";
+import { getMockupScreen } from "@/routing/mockups";
 import { setLanguage } from "@/i18n";
 import type { Language } from "@/i18n/locale";
 import { useTheme, type ThemePreference } from "@/hooks/useTheme";
@@ -26,6 +27,7 @@ export default function App() {
         setToast({ id: ++toastSequence.current, message });
     }
     const location = useLocation();
+    const mockupScreen = getMockupScreen(location.pathname, location.search);
     const navigate = useNavigate();
     const navigation = useNavigation();
     const isPageLoading =
@@ -122,6 +124,7 @@ export default function App() {
 
     return (
         <AppShell
+            mockupScreen={mockupScreen}
             isHome={location.pathname === "/"}
             theme={theme.resolved}
             themePreference={theme.preference}
@@ -159,7 +162,9 @@ export default function App() {
                 />
             )}
             <RouteAccessibility
-                contentKey={isMemberPath(location.pathname) ? auth.status : undefined}
+                contentKey={
+                    mockupScreen ?? (isMemberPath(location.pathname) ? auth.status : undefined)
+                }
             />
             <ScrollRestoration />
             {authOpen && (

@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256"><title>Sayroam — The poet</title><defs><clipPath id="avatar-poet-circle"><circle cx="128" cy="128" r="128"/></clipPath></defs><g clip-path="url(#avatar-poet-circle)">
+<rect width="256" height="256" fill="#f6e6cb"/>
+<circle cx="24" cy="30" r="112" fill="#7ca7e0"/>
+<path d="M0 251 94 177l60 3 80 76H0Z" fill="#244c88"/>
+<path d="m154 180 80 76h-65Z" fill="#416eb4"/>
+<path d="m114 163 34 2 14 35-24 24-27-29Z" fill="#ad7553"/>
+<path d="m111 40 51 3 20 36-3 32 9 12-12 14-5 25-27 27-38-12-20-33-3-58Z" fill="#d2a77e"/>
+<path d="m145 42 17 1 20 36-3 32 9 12-12 14-5 25-27 27-5-60Z" fill="#b57f5a"/>
+<path d="m111 40 34 2-6 87-33 48-20-33-3-58Z" fill="#dfbd94"/>
+<path d="m82 109-14-27 13-37 46-27 42 16 17 35-4 21-17-20-31 0-22-17-13 42Z" fill="#1b3b68"/>
+<path d="m81 45 46-27-15 35-13 42-17 14-14-27Z" fill="#b8cfe4"/>
+<path d="m127 18 42 16 17 35-21 1-31 0-22-17Z" fill="#4169a4"/>
+<path d="m82 115 11-3 7 12-4 17-11-1-6-12Z" fill="#c99770"/>
+<ellipse cx="117" cy="112" rx="21" ry="21" fill="#f9e8c8" fill-opacity=".55" stroke="#193a65" stroke-width="4.5"/>
+<ellipse cx="165" cy="109" rx="12" ry="18" fill="#f9e8c8" fill-opacity=".35" stroke="#193a65" stroke-width="4.5"/>
+<path d="m138 110 15-1m-58 0-12-7m94 7 6-3" fill="none" stroke="#193a65" stroke-width="4.5"/>
+<circle cx="123" cy="112" r="3.8" fill="#193a65"/>
+<circle cx="169" cy="109" r="3.2" fill="#193a65"/>
+<path d="m153 116 14 14-16 4Z" fill="#956544"/>
+<path d="m138 156 26-2-11 10Z" fill="#31517a"/>
+<path d="m107 195 31 29-13 32H88Z" fill="#f0cf99"/>
+</g></svg>

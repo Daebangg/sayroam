@@ -44,7 +44,7 @@ export function LoginModal({
                     onClick={onClose}
                     aria-label={t("common.close")}
                 >
-                    <Icon name="close" />
+                    <Icon name="close" variant="outline" />
                 </Button>
             </Tooltip>
             <h2 id={titleId}>{t("auth.title")}</h2>

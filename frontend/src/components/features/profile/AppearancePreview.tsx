@@ -29,7 +29,7 @@ export function AppearancePreview({
                 onClick={onClose}
                 aria-label={t("common.close")}
             >
-                <Icon name="close" />
+                <Icon name="close" variant="outline" />
             </Button>
             <h2 id={id}>{t("profile.settings")}</h2>
             <div className="appearance-settings">

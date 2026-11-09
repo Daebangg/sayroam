@@ -18,7 +18,7 @@ export function StatusPage({ kind, reloadHome = false }: StatusPageProps) {
         document.title = `${t(`pageState.${kind}.title`)} · ${t("app.name")}`;
     }, [kind, t]);
     return (
-        <main id="main-content" tabIndex={-1} className="status-page">
+        <main id="main-content" tabIndex={-1} className="status-page status-page--illustrated">
             <PageState
                 kind={kind}
                 title={t(`pageState.${kind}.title`)}

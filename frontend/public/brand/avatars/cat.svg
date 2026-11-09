@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256"><title>Sayroam — Little cat</title><defs><clipPath id="avatar-cat-circle"><circle cx="128" cy="128" r="128"/></clipPath></defs><g clip-path="url(#avatar-cat-circle)">
+<rect width="256" height="256" fill="#f1d29c"/>
+<circle cx="19" cy="27" r="105" fill="#fae8c7"/>
+<path d="M0 231 256 68v188H0Z" fill="#e8bd80"/>
+<path d="M45 256q8-57 56-74h55q47 17 55 74Z" fill="#3466ac"/>
+<path d="M138 182h18q47 17 55 74h-63Z" fill="#224c88"/>
+<path d="m64 112 7-64 51 38 16-2 39-43 14 65Z" fill="#3e72b8"/>
+<path d="m80 84 1-22 26 24Zm71 1 23-28 5 29Z" fill="#edcf9c"/>
+<path d="M121 76q49-8 65 39 4 11-1 22l11 14-15 11q-10 33-44 42-40 8-63-25-19-26-8-61 14-36 55-42Z" fill="#6291d0"/>
+<path d="M144 77q30 8 42 38 4 11-1 22l11 14-15 11q-10 33-44 42l-8-52Z" fill="#94b7df"/>
+<path d="M121 76 91 124l32 36 24-15-3-68Z" fill="#aecbea"/>
+<path d="M103 131q15-17 33-1-16 17-33 1Zm52-6q11-14 22 0-10 14-22 0Z" fill="#fff0d3"/>
+<ellipse cx="124" cy="131" rx="4.5" ry="8" fill="#1c3a65"/>
+<ellipse cx="170" cy="125" rx="3.3" ry="7" fill="#1c3a65"/>
+<path d="M152 147q12-8 28-1l9 9q-7 24-27 24-17 0-20-13-1-11 10-19Z" fill="#e7edf0"/>
+<path d="m177 144 10 4-7 10-8-7Z" fill="#23436f"/>
+<path d="M178 158q-7 12-19 8" fill="none" stroke="#36567f" stroke-width="3" stroke-linecap="round"/>
+<path d="m173 164 35-4m-37 13 36 8m-68-15-24-5m24 15-23 4" fill="none" stroke="#31547f" stroke-width="2.7" stroke-linecap="round"/>
+<path d="m114 216 28 17 25-17-9 40h-30Z" fill="#f4d7a8"/>
+</g></svg>

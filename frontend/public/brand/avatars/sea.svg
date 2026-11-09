@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256"><title>Sayroam — Sea fragments</title><defs><clipPath id="avatar-sea-circle"><circle cx="128" cy="128" r="128"/></clipPath></defs><g clip-path="url(#avatar-sea-circle)">
+<rect width="256" height="256" fill="#c2dcf5"/>
+<circle cx="219" cy="30" r="85" fill="#f5d69f"/>
+<path d="M0 74Q110 8 185 122l71 134H0Z" fill="#6494d9"/>
+<path d="M0 150Q102 56 190 160l66 96H0Z" fill="#3266b8"/>
+<path d="M83 256Q132 122 256 116v140Z" fill="#183d7c"/>
+<path d="m0 222 142-77-40 111H0Z" fill="#f8e7c9"/>
+<path d="m142 145 50 55-90 56Z" fill="#a9ccef"/>
+<path d="M0 74q37-22 81-14L0 121Z" fill="#89b2e5"/>
+</g></svg>

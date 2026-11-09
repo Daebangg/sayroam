@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256"><title>Sayroam — The explorer</title><defs><clipPath id="avatar-explorer-circle"><circle cx="128" cy="128" r="128"/></clipPath></defs><g clip-path="url(#avatar-explorer-circle)">
+<rect width="256" height="256" fill="#8eb9e8"/>
+<path d="M0 207 256 19v237H0Z" fill="#bed7ee"/>
+<circle cx="218" cy="33" r="69" fill="#f3d299"/>
+<path d="M7 256 70 191l89-13 97 78Z" fill="#173d77"/>
+<path d="m159 178 97 78H136Z" fill="#3765aa"/>
+<path d="m124 158 33-3 4 36-31 24-21-26Z" fill="#b77c54"/>
+<path d="m141 44-32 14-11 26-2 25-12 13 11 8-3 14 12 7 9 21 24 10 27-23 7-48-6-38Z" fill="#d9a374"/>
+<path d="m141 44 24 29 6 38-7 48-27 23-11-50Z" fill="#bc825a"/>
+<path d="m109 58 32-14-15 88-22 19-12-7 3-14-11-8 12-13 2-25Z" fill="#f0c591"/>
+<path d="m101 93-17-9 7-39 38-24 40 14 19 37-8 49-18 13-3-40-25-13-14-25-11 21Z" fill="#193b68"/>
+<path d="m91 45 38-24 5 60-14-25-11 21-8 16-17-9Z" fill="#3264a8"/>
+<path d="m129 21 40 14 19 37-29 22-25-13Z" fill="#6291d4"/>
+<path d="m151 114 12-5 10 13-5 16-14 3-8-15Z" fill="#dfb080"/>
+<path d="m157 121 6 1-2 9-5-2" fill="none" stroke="#ad7853" stroke-width="3" stroke-linecap="round"/>
+<path d="M101 108q11-8 22-2-9 11-22 2Z" fill="#fff0d6"/>
+<circle cx="109" cy="107" r="3.5" fill="#18385f"/>
+<path d="m103 97 17-2" fill="none" stroke="#294771" stroke-width="3" stroke-linecap="round"/>
+<path d="m104 112-10 11 15 5Z" fill="#ad7952"/>
+<path d="m96 142 18 2-9 6Z" fill="#31517a"/>
+<path d="m70 191 43-19 17 43-29 20Z" fill="#f4d7a4"/>
+<path d="m130 215 31-24 24 65h-50Z" fill="#8db7e8"/>
+</g></svg>

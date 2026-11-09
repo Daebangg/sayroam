@@ -5,6 +5,9 @@ import { formatDateRange, formatNumber } from "@/i18n/locale";
 import { useTranslation } from "react-i18next";
 import {
     Brand,
+    Avatar,
+    avatarPresets,
+    type AvatarPreset,
     Button,
     ButtonLink,
     PageState,
@@ -12,6 +15,8 @@ import {
     Card,
     Checkbox,
     DropdownMenu,
+    DatePicker,
+    NumberStepper,
     Icon,
     KeyboardShortcut,
     Modal,
@@ -21,19 +26,54 @@ import {
     type IconName,
     Toast,
     type ToastTone,
+    Badge,
+    NotificationBadge,
+    FilterChips,
+    TravelArtwork,
 } from "@/components/ui";
+import { mockupUrl } from "@/routing/mockups";
 
 const colors = ["primary", "sky", "sand", "surface", "text", "muted"] as const;
-const icons: IconName[] = ["home", "trips", "matching", "rooms", "bookmark", "profile"];
+const icons = [
+    "home",
+    "trips",
+    "matching",
+    "rooms",
+    "search",
+    "bell",
+    "profile",
+    "plan",
+    "pin",
+    "guide",
+    "bookmark",
+    "calendar",
+    "settings",
+    "grid",
+    "plus",
+    "minus",
+    "arrow",
+    "chevron",
+    "close",
+    "sun",
+    "moon",
+    "mail",
+    "filter",
+    "check",
+    "flame",
+] as const satisfies readonly IconName[];
 
 export function BrandPage() {
     const { onOpenAuth, onLanguageChange } = useOutletContext<PageContext>();
+    const [avatar, setAvatar] = useState<AvatarPreset>("coast");
     const [pageState, setPageState] = useState<PageStateKind>("notFound");
     const { t, i18n } = useTranslation();
     const [selection, setSelection] = useState("planning");
     const [dialogOpen, setDialogOpen] = useState(false);
     const [pressed, setPressed] = useState(false);
     const [tagVisible, setTagVisible] = useState(true);
+    const [filter, setFilter] = useState("all");
+    const [departure, setDeparture] = useState("");
+    const [travelers, setTravelers] = useState(2);
     const [toast, setToast] = useState<{ id: number; tone: ToastTone } | null>(null);
     const options = [
         { value: "planning", label: t("brand.planning") },
@@ -50,6 +90,17 @@ export function BrandPage() {
                     {t("common.changeLanguage")}
                 </Button>
             </div>
+            <section className="brand-design-intro">
+                <div>
+                    <h2>{t("mockup.artwork")}</h2>
+                    <p>{t("mockup.designDescription")}</p>
+                    <ButtonLink to={mockupUrl("home")}>
+                        {t("mockup.openPreviews")}
+                        <Icon name="arrow" variant="outline" />
+                    </ButtonLink>
+                </div>
+                <TravelArtwork scene="coast" />
+            </section>
             <section className="brand-section" aria-labelledby="brand-page-states-heading">
                 <h2 id="brand-page-states-heading" className="section-label">
                     {t("brand.pageStates")}
@@ -115,11 +166,11 @@ export function BrandPage() {
                 <div className="brand-downloads">
                     <a href="/brand/sayroam-logo.svg" download>
                         {t("brand.downloadLogo")}
-                        <Icon name="arrow" />
+                        <Icon name="arrow" variant="outline" />
                     </a>
                     <a href="/brand/sayroam-app-icon.svg" download>
                         {t("brand.downloadIcon")}
-                        <Icon name="arrow" />
+                        <Icon name="arrow" variant="outline" />
                     </a>
                     <a href="/brand/sayroam-logo.png" download>
                         {t("brand.downloadLogoPng")}
@@ -185,8 +236,38 @@ export function BrandPage() {
                             key={icon}
                         >
                             <Icon name={icon} />
+                            <small>{t(`mockup.iconLabels.${icon}`)}</small>
                         </span>
                     ))}
+                </div>
+            </section>
+            <section className="brand-section" aria-labelledby="brand-avatars-heading">
+                <h2 id="brand-avatars-heading" className="section-label">
+                    {t("mockup.avatars.title")}
+                </h2>
+                <div className="avatar-showcase">
+                    <div className="avatar-showcase__selected">
+                        <Avatar preset={avatar} size="large" alt={t(`mockup.avatars.${avatar}`)} />
+                        <span>{t("mockup.avatars.preview")}</span>
+                    </div>
+                    <div
+                        className="avatar-showcase__options"
+                        role="group"
+                        aria-label={t("mockup.avatars.title")}
+                    >
+                        {avatarPresets.map((preset) => (
+                            <Button
+                                key={preset}
+                                variant="plain"
+                                className="avatar-showcase__option"
+                                aria-pressed={avatar === preset}
+                                onClick={() => setAvatar(preset)}
+                            >
+                                <Avatar preset={preset} size="large" />
+                                <span>{t(`mockup.avatars.${preset}`)}</span>
+                            </Button>
+                        ))}
+                    </div>
                 </div>
             </section>
             <section className="brand-section" aria-labelledby="brand-components-heading">
@@ -197,7 +278,7 @@ export function BrandPage() {
                 <div className="button-showcase">
                     <Button onClick={onOpenAuth}>
                         {t("home.start")}
-                        <Icon name="arrow" />
+                        <Icon name="arrow" variant="outline" />
                     </Button>
                     <Button variant="outline" aria-label={t("common.bookmark")}>
                         <Icon name="bookmark" />
@@ -212,6 +293,38 @@ export function BrandPage() {
                 </div>
 
                 <div className="component-catalogue">
+                    <Card className="component-example">
+                        <h3>{t("mockup.tabs")}</h3>
+                        <FilterChips
+                            label={t("mockup.tripFilters")}
+                            value={filter}
+                            onChange={setFilter}
+                            options={[
+                                { value: "all", label: t("mockup.filters.all") },
+                                { value: "domestic", label: t("mockup.filters.domestic") },
+                                { value: "overseas", label: t("mockup.filters.overseas") },
+                                { value: "workation", label: t("mockup.filters.workation") },
+                                { value: "disabled", label: t("mockup.disabled"), disabled: true },
+                            ]}
+                        />
+                    </Card>
+                    <Card className="component-example">
+                        <h3>{t("mockup.badges")}</h3>
+                        <div className="component-example__row">
+                            <Badge tone="warm" icon="flame" label={t("mockup.popular")} />
+                            <Badge label={t("brand.looking")} />
+                            <Badge tone="success" icon="check" label={t("mockup.complete")} />
+                            <NotificationBadge count={2} label={t("mockup.unread", { count: 2 })} />
+                        </div>
+                    </Card>
+                    <Card className="component-example">
+                        <h3>{t("mockup.artwork")}</h3>
+                        <div className="artwork-showcase">
+                            {(["coast", "city", "mountain", "island"] as const).map((scene) => (
+                                <TravelArtwork key={scene} scene={scene} />
+                            ))}
+                        </div>
+                    </Card>
                     <Card className="component-example">
                         <h3>{t("brand.buttons")}</h3>
                         <div className="component-example__row">
@@ -323,6 +436,33 @@ export function BrandPage() {
                         </div>
                     </Card>
                     <Card className="component-example">
+                        <h3>{t("mockup.customControls")}</h3>
+                        <DatePicker
+                            label={t("mockup.departure")}
+                            value={departure}
+                            onChange={setDeparture}
+                        />
+                        <NumberStepper
+                            label={t("mockup.travelers")}
+                            value={travelers}
+                            onChange={setTravelers}
+                            min={1}
+                            max={20}
+                        />
+                        <DatePicker
+                            label={t("brand.disabledInput")}
+                            value=""
+                            onChange={setDeparture}
+                            disabled
+                        />
+                        <NumberStepper
+                            label={t("common.disabled")}
+                            value={2}
+                            onChange={setTravelers}
+                            disabled
+                        />
+                    </Card>
+                    <Card className="component-example">
                         <h3>{t("brand.cards")}</h3>
                         <Card className="ui-card--example">
                             <h3>{t("brand.cardTitle")}</h3>
@@ -386,7 +526,7 @@ export function BrandPage() {
                     onClick={() => setDialogOpen(false)}
                     aria-label={t("common.close")}
                 >
-                    <Icon name="close" />
+                    <Icon name="close" variant="outline" />
                 </Button>
                 <h2 id="brand-modal-heading">{t("brand.modalTitle")}</h2>
                 <p className="ui-modal__description">{t("brand.modalDescription")}</p>

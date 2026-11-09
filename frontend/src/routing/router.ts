@@ -47,7 +47,7 @@ export const router = createBrowserRouter([
                     {
                         path: pagePaths.brand,
                         lazy: async () => ({
-                            Component: (await import("@/pages/brand/BrandPage")).BrandPage,
+                            Component: (await import("@/pages/brand/BrandRoute")).BrandRoute,
                         }),
                     },
                     { path: "*", Component: NotFoundPage },

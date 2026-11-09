@@ -18,7 +18,7 @@ export function Tag({ label, tone = "neutral", onRemove }: TagProps) {
                     onClick={onRemove}
                     aria-label={t("common.removeTag", { name: label })}
                 >
-                    <Icon name="close" />
+                    <Icon name="close" variant="outline" />
                 </button>
             )}
         </span>

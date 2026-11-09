@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256"><title>Sayroam — The traveler</title><defs><clipPath id="avatar-traveler-circle"><circle cx="128" cy="128" r="128"/></clipPath></defs><g clip-path="url(#avatar-traveler-circle)">
+<rect width="256" height="256" fill="#a8ccef"/>
+<circle cx="221" cy="43" r="80" fill="#f6e1bd"/>
+<path d="M0 238 83 176l77 5 96 75H0Z" fill="#204b8a"/>
+<path d="m75 183 54 37-26 36H25Z" fill="#6d9ddc"/>
+<path d="m118 163 32-4 17 41-38 20-20-25Z" fill="#d6ab75"/>
+<path d="m116 42 49 13 14 48-10 47-30 34-33-12-15-24 1-16-14-11 14-14-1-29Z" fill="#f6dfba"/>
+<path d="m132 46 33 9 14 48-10 47-30 34-13-46Z" fill="#d6ab75"/>
+<path d="m116 42 16 4-6 92-34-6-14-11 14-14-1-29Z" fill="#ffeacc"/>
+<path d="m90 93-14-13 3-30 39-23 44 12 21 30-5 41-15 12-1-37-28-12-14-22-18 32Z" fill="#173761"/>
+<path d="m79 50 39-23 16 46-30-11-14 31-14-13Z" fill="#3867ad"/>
+<path d="m118 27 44 12 21 30-21 16-28-12Z" fill="#28538e"/>
+<path d="m164 111 12-2 7 14-11 21-10-8Z" fill="#efcf9f"/>
+<path d="m168 121 6-2 1 9-7 4" fill="none" stroke="#ba8d65" stroke-width="3" stroke-linecap="round"/>
+<path d="M111 111q11-10 24-3-9 12-24 3Z" fill="#fff8e9"/>
+<circle cx="121" cy="109" r="3.7" fill="#163663"/>
+<path d="m92 105 11-3-5 9-6-2Z" fill="#fff3dd"/>
+<circle cx="97" cy="106" r="2.7" fill="#163663"/>
+<path d="m114 101 17-3m-39-1 10-2" fill="none" stroke="#28456e" stroke-width="3" stroke-linecap="round"/>
+<path d="m103 111-9 17 14-2Z" fill="#ad7e58"/>
+<path d="m98 147 26-2-12 10Z" fill="#31517d"/>
+<path d="m107 173 32 11 22-14 11 30-43 20Z" fill="#f2ce98"/>
+</g></svg>
