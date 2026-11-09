@@ -27,7 +27,9 @@ import java.util.List;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
+import static org.mockito.BDDMockito.willThrow;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -177,6 +179,46 @@ class RoomControllerTest {
         then(roomService).shouldHaveNoInteractions();
     }
 
+    @Test
+    void 초대_코드_없이_참여하면_400과_에러_코드를_응답한다() throws Exception {
+        // when & then
+        mvc.perform(joinRequest("{}").with(로그인()))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("INVALID_INPUT"));
+
+        then(roomService).shouldHaveNoInteractions();
+    }
+
+    @Test
+    void 나가기에_성공하면_204를_응답한다() throws Exception {
+        // when & then
+        mvc.perform(leaveRequest().with(로그인()))
+                .andExpect(status().isNoContent());
+
+        then(roomService).should().leave(ROOM_ID, USER_ID);
+    }
+
+    @Test
+    void 참여_중이_아닌_방을_나가면_403과_에러_코드를_응답한다() throws Exception {
+        // given
+        willThrow(new BusinessException(RoomErrorCode.ROOM_ACCESS_DENIED))
+                .given(roomService).leave(ROOM_ID, USER_ID);
+
+        // when & then
+        mvc.perform(leaveRequest().with(로그인()))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("ROOM_ACCESS_DENIED"));
+    }
+
+    @Test
+    void 로그인하지_않으면_나가기에_401을_응답한다() throws Exception {
+        // when & then
+        mvc.perform(leaveRequest())
+                .andExpect(status().isUnauthorized());
+
+        then(roomService).shouldHaveNoInteractions();
+    }
+
     private MockHttpServletRequestBuilder 방_생성_요청(String body) {
         return post("/api/rooms")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -188,7 +230,19 @@ class RoomControllerTest {
     }
 
     private MockHttpServletRequestBuilder joinRequest() {
-        return post("/api/room-invitations/{code}/join", CODE);
+        return joinRequest("""
+                {"invitationCode": "%s"}
+                """.formatted(CODE));
+    }
+
+    private MockHttpServletRequestBuilder joinRequest(String body) {
+        return post("/api/room-members")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(body);
+    }
+
+    private MockHttpServletRequestBuilder leaveRequest() {
+        return delete("/api/rooms/{roomId}/members/me", ROOM_ID);
     }
 
     private RequestPostProcessor 로그인() {
