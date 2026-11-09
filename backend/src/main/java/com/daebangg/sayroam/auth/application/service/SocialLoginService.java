@@ -11,7 +11,7 @@ import com.daebangg.sayroam.auth.application.port.out.SocialIdentityProvider;
 import com.daebangg.sayroam.auth.domain.EmailAddress;
 import com.daebangg.sayroam.auth.domain.OAuthSecrets;
 import com.daebangg.sayroam.auth.domain.VerificationDigests;
-import com.daebangg.sayroam.user.domain.SocialProvider;
+import com.daebangg.sayroam.user.domain.type.SocialProvider;
 import org.springframework.stereotype.Service;
 
 import java.net.URI;

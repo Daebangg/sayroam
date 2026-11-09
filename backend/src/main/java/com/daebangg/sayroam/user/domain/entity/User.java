@@ -1,6 +1,9 @@
-package com.daebangg.sayroam.user.domain;
+package com.daebangg.sayroam.user.domain.entity;
 
 import com.daebangg.sayroam.global.entity.BaseTimeEntity;
+import com.daebangg.sayroam.user.domain.policy.UserProfilePolicy;
+import com.daebangg.sayroam.user.domain.type.Gender;
+import com.daebangg.sayroam.user.domain.type.Role;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -12,12 +15,14 @@ import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import lombok.AccessLevel;
 import lombok.Builder;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
 import java.util.Objects;
 
 // 테이블명 user는 예약어라 users를 쓴다
+@Getter
 @Entity
 @Table(
         name = "users",
@@ -35,10 +40,10 @@ public class User extends BaseTimeEntity {
 
     private LocalDateTime emailVerifiedAt;
 
-    @Column(nullable = false, length = 50)
+    @Column(nullable = false, length = UserProfilePolicy.MAX_NICKNAME_LENGTH)
     private String nickname;
 
-    @Column(length = 500)
+    @Column(length = UserProfilePolicy.MAX_PROFILE_IMAGE_URL_LENGTH)
     private String profileImageUrl;
 
     @Enumerated(EnumType.STRING)
@@ -57,20 +62,18 @@ public class User extends BaseTimeEntity {
     private long authVersion;
 
     public static User verifiedEmailMember(String email, String nickname, LocalDateTime emailVerifiedAt) {
-        User user = new User(Objects.requireNonNull(email), Objects.requireNonNull(nickname),
+        User user = new User(Objects.requireNonNull(email), nickname,
                 null, null, null, Role.USER);
         user.emailVerifiedAt = Objects.requireNonNull(emailVerifiedAt);
         return user;
     }
 
-    public Long getId() {
-        return id;
-    }
-
     public static User verifiedSocialMember(String email, String nickname, String profileImageUrl,
                                             LocalDateTime emailVerifiedAt) {
         User user = verifiedEmailMember(email, nickname, emailVerifiedAt);
-        user.profileImageUrl = profileImageUrl;
+        // 공급자의 빈 사진 값은 이미지 미제공을 의미한다.
+        user.changeProfileImageUrl(profileImageUrl == null || profileImageUrl.isBlank()
+                ? null : profileImageUrl);
         return user;
     }
 
@@ -79,12 +82,16 @@ public class User extends BaseTimeEntity {
                 && email.equals(verifiedEmail) && authVersion == expectedAuthVersion;
     }
 
-    /** 자격 정보 변경과 같은 트랜잭션에서 호출한다. */
+    /**
+     * 자격 정보 변경과 같은 트랜잭션에서 호출한다.
+     */
     public void invalidateLogins() {
         authVersion = Math.incrementExact(authVersion);
     }
 
-    /** 회원 ID는 공유 기록의 참조용으로 남기고 계정 프로필과 권한을 정리한다. */
+    /**
+     * 회원 ID는 공유 기록의 참조용으로 남기고 계정 프로필과 권한을 정리한다.
+     */
     public void withdraw(LocalDateTime withdrawnAt) {
         Objects.requireNonNull(withdrawnAt, "withdrawnAt");
         if (deletedAt != null) {
@@ -101,13 +108,29 @@ public class User extends BaseTimeEntity {
         role = Role.USER;
     }
 
+    public void changeNickname(String nickname) {
+        this.nickname = UserProfilePolicy.normalizeNickname(nickname);
+    }
+
+    public void changeProfileImageUrl(String profileImageUrl) {
+        this.profileImageUrl = UserProfilePolicy.normalizeProfileImageUrl(profileImageUrl);
+    }
+
+    public void changeGender(Gender gender) {
+        this.gender = gender;
+    }
+
+    public void changeBirthYear(Integer birthYear) {
+        this.birthYear = UserProfilePolicy.validateBirthYear(birthYear);
+    }
+
     @Builder
     private User(String email, String nickname, String profileImageUrl, Gender gender, Integer birthYear, Role role) {
         this.email = email;
-        this.nickname = nickname;
-        this.profileImageUrl = profileImageUrl;
+        this.nickname = UserProfilePolicy.normalizeNickname(nickname);
+        this.profileImageUrl = UserProfilePolicy.normalizeProfileImageUrl(profileImageUrl);
         this.gender = gender;
-        this.birthYear = birthYear;
+        this.birthYear = UserProfilePolicy.validateBirthYear(birthYear);
         this.role = role;
     }
 

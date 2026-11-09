@@ -1,6 +1,6 @@
 package com.daebangg.sayroam.auth.domain;
 
-import com.daebangg.sayroam.user.domain.Role;
+import com.daebangg.sayroam.user.domain.type.Role;
 
 import java.security.Principal;
 

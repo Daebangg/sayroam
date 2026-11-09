@@ -8,7 +8,7 @@ import com.daebangg.sayroam.global.security.ActiveAccountJwtConverter;
 import com.daebangg.sayroam.global.security.SecurityConfig;
 import com.daebangg.sayroam.room.application.RoomService;
 import com.daebangg.sayroam.room.domain.RoomErrorCode;
-import com.daebangg.sayroam.user.domain.Role;
+import com.daebangg.sayroam.user.domain.type.Role;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;

@@ -21,6 +21,8 @@ SocialLoginController
 공급자 차이는 `OAuth2ClientConfig`의 클라이언트 설정과 `OAuth2UserInfoMapper`의 응답 필드 매핑으로 처리합니다.
 Application은 공급자 JSON·Servlet·Spring OAuth2 객체를 받지 않고 `SocialIdentity`만 받습니다.
 `openid` scope·nonce·ID Token·JWK 검증은 이 흐름에 포함하지 않습니다.
+소셜 가입에서 공급자의 프로필 이미지가 null·빈 문자열·공백뿐이면 이미지 미설정으로 저장합니다.
+이미지 URL이 있으면 기존 HTTP(S) URL 검증을 적용하며, 프로필 수정 API에서는 빈 문자열을 거절합니다.
 
 Google·Kakao·Naver의 설정과 사용자 정보 매핑을 같은 공통 흐름으로 구성했습니다.
 각 공급자의 활성화 방법은 아래 클라이언트 설정을 따릅니다.

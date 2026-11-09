@@ -97,9 +97,13 @@ Authorization: Bearer <accessToken>
   "email": "user@example.com",
   "nickname": "여행자",
   "profileImageUrl": null,
+  "gender": null,
+  "birthYear": null,
   "role": "USER"
 }
 ```
+
+선택 정보의 null과 `PATCH /api/users/me` 부분 수정 계약은 [프로필 문서](user-profile.md)를 따릅니다.
 
 요청에서 다른 회원의 ID를 받지 않습니다. Spring 표준 Bearer 필터와 Nimbus 구현으로 HS256 서명을 검증하고,
 `typ=at+jwt`, `token_use=access`, `iss`, `aud`, 필수 `exp`·`iat`·`jti`·양수 회원 ID `sub`를 확인합니다.

@@ -32,7 +32,11 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     @ExceptionHandler(BusinessException.class)
     public ResponseEntity<ProblemDetail> handleBusiness(BusinessException e) {
         ProblemDetail body = ApiProblems.of(e.getErrorCode());
-        return ResponseEntity.status(body.getStatus()).body(body);
+        var response = ResponseEntity.status(body.getStatus()).cacheControl(CacheControl.noStore());
+        if (e.getErrorCode().getType() == ErrorType.UNAUTHENTICATED) {
+            response.header(HttpHeaders.WWW_AUTHENTICATE, "Bearer");
+        }
+        return response.body(body);
     }
 
     @ExceptionHandler(AuthException.class)
