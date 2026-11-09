@@ -2,7 +2,6 @@ package com.daebangg.sayroam.room.domain;
 
 import com.daebangg.sayroam.global.exception.BusinessException;
 import org.junit.jupiter.api.Test;
-import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.LocalDateTime;
 
@@ -27,25 +26,26 @@ class RoomMemberTest {
     }
 
     @Test
-    void 나간_멤버면_방_접근을_거부한다() {
-        // given
-        RoomMember member = RoomMember.joinAsOwner(new Room("제주 3박 4일"), 1L);
-
-        ReflectionTestUtils.setField(member, "status", RoomMemberStatus.LEFT);
-
-        assertThatThrownBy(member::ensureJoined)
-                .isInstanceOfSatisfying(BusinessException.class,
-                        e -> assertThat(e.getErrorCode()).isEqualTo(RoomErrorCode.ROOM_ACCESS_DENIED));
-
-    }
-
-    @Test
     void 참여_중인_멤버면_방_접근을_허용한다() {
         // given
         RoomMember member = RoomMember.joinAsOwner(new Room("제주 3박 4일"), 1L);
 
         assertThatCode(member::ensureJoined)
                 .doesNotThrowAnyException();
+    }
+
+    @Test
+    void 참여_중인_멤버가_나가면_방_접근이_거부된다() {
+        // given
+        RoomMember member = joinedMember();
+
+        // when
+        member.leave(NOW);
+
+        // then
+        assertThatThrownBy(member::ensureJoined)
+                .isInstanceOfSatisfying(BusinessException.class,
+                        e -> assertThat(e.getErrorCode()).isEqualTo(RoomErrorCode.ROOM_ACCESS_DENIED));
     }
 
     @Test
@@ -90,5 +90,9 @@ class RoomMemberTest {
 
     private RoomInvitation invitationIssuedAt(LocalDateTime issuedAt) {
         return RoomMember.joinAsOwner(room, 1L).createShareInvitation(issuedAt);
+    }
+
+    private RoomMember joinedMember() {
+        return RoomMember.joinAsMember(invitationIssuedAt(NOW), 2L, NOW);
     }
 }

@@ -79,6 +79,11 @@ public class RoomMember extends BaseTimeEntity {
         return new RoomMember(invitation.getRoom(), userId, RoomMemberRole.MEMBER);
     }
 
+    public void leave(LocalDateTime leftAt) {
+        this.status = RoomMemberStatus.LEFT;
+        this.leftAt = leftAt;
+    }
+
     public void ensureJoined() {
         if (status != RoomMemberStatus.JOINED) {
             throw new BusinessException(RoomErrorCode.ROOM_ACCESS_DENIED);
