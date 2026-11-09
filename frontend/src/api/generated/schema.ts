@@ -300,6 +300,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/room-invitations/{code}/join": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 초대 링크로 방 참여
+         * @description 유효한 초대 코드로 방에 참여합니다. 이미 참여 중인 회원은 오류 없이 방 ID를 응답합니다.
+         */
+        post: operations["joinByInvitation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/rooms": {
         parameters: {
             query?: never;
@@ -314,6 +334,26 @@ export interface paths {
          * @description 로그인한 회원을 방장으로 하여 방을 생성합니다.
          */
         post: operations["create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/rooms/{roomId}/invitations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 초대 링크 생성
+         * @description 방 멤버가 7일 동안 유효한 초대 코드를 발급받습니다. 하나의 코드로 여러 명이 참여할 수 있습니다.
+         */
+        post: operations["createInvitation"];
         delete?: never;
         options?: never;
         head?: never;
@@ -461,6 +501,8 @@ export interface components {
             | "REFRESH_TOKEN_INVALID"
             | "REFRESH_TOKEN_REUSED"
             | "ROOM_ACCESS_DENIED"
+            | "ROOM_INVITATION_EXPIRED"
+            | "ROOM_INVITATION_NOT_FOUND"
             | "ROOM_NAME_TOO_LONG"
             | "SIGNUP_PROOF_ALREADY_USED"
             | "SIGNUP_PROOF_EXPIRED"
@@ -546,6 +588,13 @@ export interface components {
              */
             senderId?: number;
         };
+        CreateRoomInvitationResponse: {
+            /**
+             * @description 초대 코드
+             * @example k3Xv9qLm2Tz8RwYb7NfA
+             */
+            code: string;
+        };
         CreateRoomRequest: {
             /**
              * @description 방 이름. 선택값이며 앞뒤 공백 제거 후 20자 이내. 공백뿐이면 이름 없는 방으로 저장
@@ -629,6 +678,14 @@ export interface components {
             /** Format: int64 */
             resendAfterSeconds: number;
             verificationId: string;
+        };
+        JoinRoomResponse: {
+            /**
+             * Format: int64
+             * @description 참여한 방 ID
+             * @example 7
+             */
+            roomId: number;
         };
         LoginRequest: {
             /**
@@ -1594,6 +1651,53 @@ export interface operations {
             503: components["responses"]["SocialUnavailable"];
         };
     };
+    joinByInvitation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /**
+                 * @description 초대 코드
+                 * @example k3Xv9qLm2Tz8RwYb7NfA
+                 */
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 참여 완료 또는 이미 참여 중 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JoinRoomResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            /** @description ROOM_INVITATION_NOT_FOUND. 없는 초대 코드 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ApiProblem"];
+                };
+            };
+            /** @description ROOM_INVITATION_EXPIRED. 만료된 초대 코드 */
+            410: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ApiProblem"];
+                };
+            };
+            500: components["responses"]["InternalServerError"];
+            503: components["responses"]["AuthenticationUnavailable"];
+        };
+    };
     create: {
         parameters: {
             query?: never;
@@ -1618,6 +1722,36 @@ export interface operations {
             };
             400: components["responses"]["RoomBadRequest"];
             401: components["responses"]["Unauthorized"];
+            500: components["responses"]["InternalServerError"];
+            503: components["responses"]["AuthenticationUnavailable"];
+        };
+    };
+    createInvitation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /**
+                 * @description 방 ID
+                 * @example 7
+                 */
+                roomId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 초대 코드 발급 완료 */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CreateRoomInvitationResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["RoomAccessDenied"];
             500: components["responses"]["InternalServerError"];
             503: components["responses"]["AuthenticationUnavailable"];
         };
@@ -1748,6 +1882,13 @@ export const apiRoutes = {
         csrf: false,
         responses: { "201": true },
     },
+    createInvitation: {
+        method: "post",
+        path: "/api/rooms/{roomId}/invitations",
+        auth: "required",
+        csrf: false,
+        responses: { "201": true },
+    },
     csrf: {
         method: "get",
         path: "/api/auth/csrf",
@@ -1772,6 +1913,13 @@ export const apiRoutes = {
     findAfter: {
         method: "get",
         path: "/api/rooms/{roomId}/messages",
+        auth: "required",
+        csrf: false,
+        responses: { "200": true },
+    },
+    joinByInvitation: {
+        method: "post",
+        path: "/api/room-invitations/{code}/join",
         auth: "required",
         csrf: false,
         responses: { "200": true },
