@@ -3,7 +3,7 @@
 React와 TypeScript를 사용하는 Vite 앱입니다. 백엔드와 같은 저장소의 일반 디렉터리이며,
 패키지·잠금 파일·개발 도구 설정은 모두 `frontend/` 안에서 독립적으로 관리합니다.
 
-작업 전 [개발 컨벤션](FRONTEND.md), [화면 정합성 규칙](notes/page-families.md),
+작업 전 [개발 컨벤션](FRONTEND.md), [스타일 가이드북](STYLE_GUIDE.md), [화면 정합성 규칙](notes/page-families.md),
 [에이전트 작업 규칙](AGENTS.md)을 확인합니다.
 
 ## 설치
@@ -32,23 +32,24 @@ pnpm install --frozen-lockfile
 
 아래 명령은 모두 `frontend/`에서 실행합니다.
 
-| 명령                    | 용도                                                                |
-| ----------------------- | ------------------------------------------------------------------- |
-| `pnpm dev`              | 개발 서버 실행: `http://localhost:5173`                             |
-| `pnpm typecheck`        | 앱과 Vite 설정의 TypeScript 검사                                    |
-| `pnpm lint`             | ESLint 검사, 경고도 실패로 처리                                     |
-| `pnpm ui:check`         | 공용 CSS 소유권·동일 규칙의 중복 선언 검사                          |
-| `pnpm i18n:check`       | 한국어·영어 번역 키·치환 변수 일치 검사                             |
-| `pnpm test:routing`     | 기존 미리보기 URL의 화면 경로 전환·우선순위 검사                    |
-| `pnpm test:csrf`        | CSRF 쿠키 준비·공통 헤더 전달·동시 요청·취소·재전송 방지 검사       |
-| `pnpm test:auth`        | 로그인·메모리 토큰·동시 갱신·복원·로그아웃·인증 변경 경합 검사      |
-| `pnpm test:api`         | 명세 기반 라우팅·엔드포인트 확장·핵심 응답 검증·생성·호출 경계 검사 |
-| `pnpm test:preferences` | 테마 저장·복원·시스템 연동과 지역화 회귀 검사                       |
-| `pnpm format:check`     | 공통 설정·프론트엔드 포맷 검사                                      |
-| `pnpm format`           | 공통 설정·프론트엔드 포맷 적용                                      |
-| `pnpm check`            | 타입·ESLint·UI 스타일·번역·설정·라우팅 회귀·포맷 검사 순서대로 실행 |
-| `pnpm build`            | 타입 검사 후 배포용 파일을 `frontend/dist/`에 생성                  |
-| `pnpm preview`          | 빌드 결과 미리보기: `http://localhost:4173`                         |
+| 명령                    | 용도                                                                     |
+| ----------------------- | ------------------------------------------------------------------------ |
+| `pnpm dev`              | 개발 서버 실행: `http://localhost:5173`                                  |
+| `pnpm typecheck`        | 앱과 Vite 설정의 TypeScript 검사                                         |
+| `pnpm lint`             | ESLint 검사, 경고도 실패로 처리                                          |
+| `pnpm ui:check`         | 공용 CSS 소유권·동일 규칙의 중복 선언 검사                               |
+| `pnpm i18n:check`       | 한국어·영어 번역 키·치환 변수 일치 검사                                  |
+| `pnpm test:routing`     | 기존 미리보기 URL의 화면 경로 전환·우선순위 검사                         |
+| `pnpm test:calendar`    | 날짜 파싱·윤년·월말·연도 경계의 달력 회귀 검사 6개                       |
+| `pnpm test:csrf`        | CSRF 쿠키 준비·공통 헤더 전달·동시 요청·취소·재전송 방지 검사            |
+| `pnpm test:auth`        | 로그인·메모리 토큰·동시 갱신·복원·로그아웃·인증 변경 경합 검사           |
+| `pnpm test:api`         | 명세 기반 라우팅·엔드포인트 확장·핵심 응답 검증·생성·호출 경계 검사      |
+| `pnpm test:preferences` | 테마 저장·복원·시스템 연동과 지역화 회귀 검사                            |
+| `pnpm format:check`     | 공통 설정·프론트엔드 포맷 검사                                           |
+| `pnpm format`           | 공통 설정·프론트엔드 포맷 적용                                           |
+| `pnpm check`            | 타입·ESLint·UI 스타일·번역·설정·라우팅·달력 회귀·포맷 검사 순서대로 실행 |
+| `pnpm build`            | 타입 검사 후 배포용 파일을 `frontend/dist/`에 생성                       |
+| `pnpm preview`          | 빌드 결과 미리보기: `http://localhost:4173`                              |
 
 개발 서버와 미리보기는 지정 포트를 사용합니다. 포트가 사용 중이면 다른 포트로 자동 이동하지 않고
 실패하므로 기존 프로세스를 확인하거나 `pnpm dev --port 5174`처럼 포트를 지정합니다.
@@ -92,12 +93,13 @@ pnpm build
 - `src/routing/`: React Router 주소 구성·기존 URL 전환·이동 후 포커스와 안내
 - `src/pages/status/`: 404·실행 오류·로딩 페이지 및 라우트 오류 경계
 - `src/pages/`: 홈·여행·동행·내 방·브랜드 보기의 정적 초안
-- `src/components/ui/`: 공용 버튼·입력·드롭다운·태그·모달·툴팁·단축키 표시
-- `src/components/ui/feedback/Toast.tsx`: 5초 후 사라지는 공용 성공·오류·안내 토스트, 수동 닫기·모달 위 표시
+- `src/components/ui/`: 공용 버튼·입력·날짜 선택·인원 증감·드롭다운·태그·모달·툴팁·단축키 표시
+- `src/components/ui/feedback/Toast.tsx`: 기본 3초 후 자연스럽게 사라지는 공용 성공·오류·안내 토스트, 수동 닫기·모달 위 표시
 - `src/components/features/`: 로그인 모달·프로필 메뉴·설정 미리보기
 - `src/components/layout/`: 데스크톱 상단·모바일 하단 메뉴와 앱 셸
 - `src/data/preview.ts`: 업무 API와 연결하지 않는 예시 데이터
-- `public/brand/`: SVG·PNG 로고·심볼·워드마크·앱 아이콘과 공식 로그인 제공자 자산
+- `public/brand/`: SVG·PNG 로고·심볼·워드마크·앱 아이콘·아이콘 보드와 공식 로그인 제공자 자산
+- `public/images/`: 큐비즘 해안·황혼·설산·수평선 일러스트
 - `public/assets/theme.js`: 첫 화면 전 테마 적용, 저장·복원·시스템 변경 구독
 - `src/hooks/useTheme.ts`: 브라우저와 React가 공유하는 테마 상태
 - `src/styles/app.css`: 공통 스타일·색상·간격·크기 토큰
@@ -146,6 +148,21 @@ React는 같은 상태를 구독하므로 첫 화면과 앱 실행 후 테마를
 기존 루트의 `?view=trips|matching|rooms|brand`는 해당 주소로 전환하고 나머지 설정·해시를 유지합니다.
 현재 경로가 있으면 `view`보다 경로를 우선합니다. `?theme=dark`, `?lang=en`, `?modal=auth`는
 계속 미리보기에 사용할 수 있습니다.
+
+### #86 디자인과 목업 탐색
+
+[스타일 가이드북](STYLE_GUIDE.md)은 실제 일러스트·아이콘 보드, 팔레트, 공용 UI와 다른 에이전트가
+재사용할 작업 지시문을 제공합니다. 파랑·하늘색·모래색·네이비의 면 분할 여행 일러스트와
+동일한 브랜드 아이콘을 사용하며, 앱 전체를 감싸는 둥근 카드 없이 뷰포트 폭을 채웁니다.
+데스크톱과 모바일은 같은 콘텐츠를 각각 카드와 간결한 목록으로 배치합니다.
+
+`/brand?preview=welcome|onboarding|home|trips|matching|rooms`에서 각 값을 하나씩 지정해
+시작·온보딩·홈·여행·동행·내 방 목업을 탐색합니다. 목업의 검색·필터·저장·모달은 예시 상태이며
+여행 저장·검색·채팅 API의 완료를 뜻하지 않습니다. 기존 실제 로그인 흐름과 보호 경로는 유지합니다.
+브랜드 페이지에는 같은 공용 날짜 선택기·인원 증감·드롭다운·토스트·모달·키캡을 사용합니다.
+
+화면 캡처는 PR 첨부 자료로만 관리합니다. 저장소에는 화면 캡처를 추가하지 않고 실제로 사용하는
+브랜드·일러스트 자산만 보관합니다.
 
 브랜드 페이지 상단의 **페이지 상태**에서 실제 화면과 같은 공용 `PageState`의 404·오류·로딩을
 비교합니다. **404 전체 화면 보기**는 실제 없는 URL로 이동합니다. 일반적인 잘못된 화면 URL은
@@ -208,13 +225,13 @@ Refresh 쿠키는 JavaScript로 읽지 않습니다. 개발 화면의 호스트�
 `src/api/transport.ts`는 실제 전송·응답·오류 처리를 담당하며 CSRF 준비 GET도 이 계층을 사용합니다.
 403과 네트워크 실패 후 원래 변경 요청을 자동 반복하지 않습니다. 한 호출의 취소는 공유 준비를
 중단하지 않으며, 준비 완료 후 취소된 변경 요청은 전송되지 않습니다.
-회귀 검사는 `pnpm test:csrf`로 실행합니다. 현재 화면 초안에는 아직 API를 연결하지 않았습니다.
+회귀 검사는 `pnpm test:csrf`로 실행합니다. 실제 인증 화면도 이 공통 요청 정책을 사용합니다.
 
 ## 로그인과 Access Token 기반
 
 `src/api/auth/authSession.ts`의 `signIn(input, { signal })`이 로그인 → 메모리 토큰 저장 →
 `GET /api/users/me` 조회를 조합하고, 확인한 회원 정보를 반환합니다. 입력과 응답은 생성 타입을
-재사용하며 로그인·회원 응답의 실제 필드도 검사합니다. 화면 연결 시 도메인 훅에서 호출합니다.
+재사용하며 로그인·회원 응답의 실제 필드도 검사합니다. 인증 화면은 도메인 훅에서 호출합니다.
 
 `authApi.ts`·`userApi.ts`는 로그인·갱신·로그아웃·회원 조회의 기존 호출 이름을 제공하고
 operationId와 입력만 전달합니다. 실제 검증과 부가 처리는 `api.ts`의 엔드포인트 확장에 등록합니다.
