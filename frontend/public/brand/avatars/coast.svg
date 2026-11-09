@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256"><title>SayRoam — Blue coast</title><defs><clipPath id="avatar-coast-circle"><circle cx="128" cy="128" r="128"/></clipPath></defs><g clip-path="url(#avatar-coast-circle)">
+<rect width="256" height="256" fill="#a8c9ed"/>
+<circle cx="184" cy="49" r="99" fill="#f8e5c9"/>
+<path d="M0 0h145L46 150 0 181Z" fill="#77a4df"/>
+<path d="M0 172Q95 87 171 154t85 34v68H0Z" fill="#497ccd"/>
+<path d="M256 133v123H48Q144 188 256 133Z" fill="#183d7c"/>
+<path d="m0 211 116-73 23 48-91 70H0Z" fill="#f0d19e"/>
+<path d="M139 186 116 138l68 30Z" fill="#d5e5f6"/>
+</g></svg>

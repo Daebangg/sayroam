@@ -1,6 +1,6 @@
 {
     "app": {
-        "name": "Sayroam",
+        "name": "SayRoam",
         "description": "A place to plan your trip, find your people, and make memories together."
     },
     "navigation": {
@@ -31,20 +31,20 @@
     },
     "home": {
         "titleFirst": "Travel together.",
-        "titleSecond": "Roam a little freer.",
-        "descriptionFirst": "Plan your trip. Find your people.",
-        "descriptionSecond": "Make memories along the way.",
+        "titleSecond": "Extraordinary journeys",
+        "descriptionFirst": "From travel plans to people and places,",
+        "descriptionSecond": "get ready for it all in one place.",
         "start": "Start your journey"
     },
     "auth": {
-        "welcome": "Welcome to Sayroam.",
+        "welcome": "Welcome to SayRoam.",
         "description": "A little closer. A little more together.",
         "google": "Continue with Google",
         "haveAccount": "Already have an account?",
         "login": "Log in",
         "kakao": "Continue with Kakao",
         "naver": "Continue with NAVER",
-        "title": "Log in or join Sayroam",
+        "title": "Log in or join SayRoam",
         "or": "or",
         "remember": "Remember me on this browser",
         "emailLabel": "Email",
@@ -128,8 +128,12 @@
     "trips": {
         "heading": "My trips",
         "create": "Plan a new trip",
-        "swiss": "A Swiss winter escape",
-        "italy": "A little southern Italy"
+        "swiss": "Hiking in Switzerland?",
+        "italy": "A little southern Italy",
+        "santorini": "Five days in Santorini",
+        "paris": "Five days in Paris, together!",
+        "bali": "A Bali workation together",
+        "jeju": "A slow weekend in Jeju"
     },
     "matching": {
         "heading": "Find your people",
@@ -140,21 +144,28 @@
     "rooms": {
         "heading": "My rooms",
         "create": "Create a room",
-        "swiss": "The Swiss escape",
-        "swissMessage": "Already dreaming of our next trip · 5 min ago",
+        "swiss": "Mount Fuji hiking team",
+        "swissMessage": "I added three places to stay.",
         "italy": "Planning for Italy",
-        "italyMessage": "Sounds good, see you there! · 2 hr ago"
+        "italyMessage": "Sounds good, see you there! · 2 hr ago",
+        "okinawa": "Okinawa travel room",
+        "okinawaMessage": "I shared our first itinerary!",
+        "paris": "Paris planning room",
+        "parisMessage": "Let me check those flights again!",
+        "justNow": "10:24",
+        "yesterday": "Yesterday",
+        "twoDaysAgo": "2 days ago"
     },
     "brand": {
         "guide": "Explore the brand",
-        "heading": "Sayroam Brand",
+        "heading": "SayRoam Brand",
         "logo": "Brand",
-        "appIcon": "Sayroam app icon",
-        "mark": "Sayroam mountain mark",
+        "appIcon": "SayRoam app icon",
+        "mark": "SayRoam mountain mark",
         "downloadLogo": "Logo SVG",
         "downloadIcon": "App icon SVG",
         "wordmarks": "Wordmark Variations",
-        "wordmarkPrimary": "Sayroam",
+        "wordmarkPrimary": "SayRoam",
         "wordmarkCamel": "SayRoam",
         "wordmarkLower": "sayroam",
         "wordmarkDot": "Say·Roam",
@@ -164,23 +175,23 @@
         "colors": {
             "primary": {
                 "name": "Primary",
-                "hex": "#4F7CFF"
+                "hex": "#2563EB"
             },
             "sky": {
                 "name": "Sky",
-                "hex": "#E8F1FF"
+                "hex": "#60A5FA"
             },
             "sand": {
                 "name": "Sand",
-                "hex": "#FFF7E9"
+                "hex": "#FEE3C3"
             },
             "surface": {
                 "name": "Surface",
-                "hex": "#FFFFFF"
+                "hex": "#F8FAFF"
             },
             "text": {
                 "name": "Text",
-                "hex": "#1F2937"
+                "hex": "#0F172A"
             },
             "muted": {
                 "name": "Muted",
@@ -212,7 +223,7 @@
         "openModal": "Open a modal",
         "openAuth": "Open login",
         "modalTitle": "Ready for your next journey?",
-        "modalDescription": "From the first spark of a plan to the stories you bring home, make it together with Sayroam.",
+        "modalDescription": "From the first spark of a plan to the stories you bring home, make it together with SayRoam.",
         "cancel": "Not now",
         "continue": "Continue",
         "downloadLogoPng": "Logo PNG",
@@ -240,11 +251,32 @@
         "pageStates": "Page states",
         "open404": "Open the 404 page",
         "toasts": "Toast notifications",
-        "toastExample": "This notification disappears after 5 seconds.",
+        "toastExample": "This notification disappears after 3 seconds.",
         "toast": {
             "success": "Success notification",
             "error": "Error notification",
             "info": "Information notification"
+        },
+        "assets": {
+            "layouts": {
+                "logo": "Banner · symbol + wordmark",
+                "mark": "Symbol only",
+                "wordmark": "Wordmark only"
+            },
+            "backgrounds": {
+                "light": "Light background",
+                "dark": "Dark background"
+            },
+            "transparent": {
+                "light": "Transparent · for light",
+                "dark": "Transparent · for dark"
+            },
+            "formats": {
+                "svg": "SVG",
+                "png": "PNG"
+            },
+            "preview": "{{layout}} on {{background}}",
+            "download": "Download {{layout}}, {{variant}}, {{format}}"
         }
     },
     "profile": {
@@ -279,5 +311,146 @@
         },
         "home": "Back to home",
         "retry": "Try again"
+    },
+    "mockup": {
+        "toolbar": "Design preview",
+        "screen": "Choose a screen",
+        "screens": {
+            "welcome": "Welcome",
+            "onboarding": "Onboarding",
+            "home": "Home",
+            "trips": "Trips",
+            "matching": "Find companions",
+            "rooms": "My rooms"
+        },
+        "destination": "Destination",
+        "destinationPlaceholder": "Where shall we go?",
+        "departure": "Departure",
+        "travelers": "Travelers",
+        "shortcuts": "Travel shortcuts",
+        "shortcutsContent": {
+            "plan": {
+                "title": "Plan a trip",
+                "description": "Dates, places and budget together"
+            },
+            "company": {
+                "title": "Find companions",
+                "description": "Meet your next travel mates"
+            },
+            "destinations": {
+                "title": "Popular places",
+                "description": "Find your next destination"
+            },
+            "guide": {
+                "title": "Travel guide",
+                "description": "Everything you need before you go"
+            }
+        },
+        "popularTrips": "Popular trips right now",
+        "recruiting": "Find your next travel mates",
+        "myRooms": "My travel rooms",
+        "popular": "Popular",
+        "viewTrips": "View all trips",
+        "viewMatching": "View travel companions",
+        "viewRooms": "View all rooms",
+        "showTrip": "Show {{title}}",
+        "unsave": "Remove {{title}} bookmark",
+        "unread": "{{count}} unread messages",
+        "sampleData": "Trips, companions and messages are sample content for this design preview.",
+        "guideTitle": "A journey made together",
+        "guideDescription": "Choose a destination, plan your days and meet people who share your journey. This design preview does not provide live search, booking, saving or chat.",
+        "tripPreviewDescription": "Explore the dates and group size, and imagine your next journey together. Trip details and participation are design previews.",
+        "confirm": "Got it",
+        "explore": "Find your next adventure",
+        "tripFilters": "Trip categories",
+        "filters": {
+            "all": "All",
+            "domestic": "Domestic",
+            "overseas": "Abroad",
+            "workation": "Workation"
+        },
+        "searchResults": "{{count}} sample trips for “{{query}}”",
+        "noResults": "No sample trips match your search",
+        "createTripDescription": "Choose where and when to go, then invite your travel mates. The trip planning flow is currently a design preview.",
+        "together": "Better stories, together",
+        "myCompanions": "My companions",
+        "matchingEmptyTitle": "Find someone to share your next journey",
+        "matchingEmptyDescription": "Meet people who dream of the same places and make new memories together.",
+        "stayConnected": "Keep the travel stories going",
+        "roomPreviewDescription": "A place to share plans and stories with your travel mates. These messages are sample content; live chat is not connected.",
+        "createRoomDescription": "Preview the new room flow for your travel group. Live room creation will be connected separately.",
+        "notificationsEmpty": "No new notifications yet. Your next travel updates will appear here.",
+        "continue": "Get started",
+        "onboardingDescription": "From planning to companions and itineraries. Get ready for your next journey with SayRoam.",
+        "openPreviews": "Explore screen previews",
+        "designDescription": "Blue and sand, layered into new journeys. Explore SayRoam screens and shared components in one place.",
+        "tabs": "Navigation · filters",
+        "badges": "Status · notifications",
+        "artwork": "Travel illustration",
+        "complete": "Complete",
+        "selected": "Selected",
+        "disabled": "Disabled",
+        "iconLabels": {
+            "home": "Home",
+            "trips": "Trips",
+            "matching": "Find companions",
+            "rooms": "My rooms",
+            "search": "Search",
+            "bell": "Notifications",
+            "profile": "Profile",
+            "plan": "Travel plan",
+            "pin": "Destinations",
+            "guide": "Guide",
+            "bookmark": "Bookmark",
+            "calendar": "Calendar",
+            "settings": "Settings",
+            "grid": "All items",
+            "plus": "Add",
+            "minus": "Subtract",
+            "arrow": "Go",
+            "chevron": "Expand",
+            "close": "Close",
+            "sun": "Light theme",
+            "moon": "Dark theme",
+            "mail": "Email",
+            "filter": "Filter",
+            "check": "Confirm",
+            "flame": "Popular"
+        },
+        "saveTrip": "Bookmark {{title}}",
+        "customControls": "Travel controls",
+        "avatars": {
+            "title": "Default profile art",
+            "preview": "Selected preview",
+            "coast": "Blue coast",
+            "sand": "Sand dunes",
+            "dusk": "Dusk",
+            "sea": "Tides",
+            "traveler": "Traveler",
+            "sunrise": "Sunlight",
+            "poet": "Reflection",
+            "explorer": "Explorer",
+            "alien": "Alien",
+            "dog": "Dog",
+            "rabbit": "Rabbit",
+            "cat": "Cat",
+            "sunset": "Sunset",
+            "twilight": "Twilight",
+            "night": "Moonlit night",
+            "flight": "Taking flight"
+        }
+    },
+    "controls": {
+        "datePicker": {
+            "placeholder": "Select a date",
+            "previousMonth": "Previous month",
+            "nextMonth": "Next month",
+            "today": "Today",
+            "clear": "Clear"
+        },
+        "numberStepper": {
+            "decrease": "Decrease {{label}}",
+            "increase": "Increase {{label}}"
+        }
     }
 }

@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256"><title>SayRoam — Across the sky</title><defs><clipPath id="avatar-flight-circle"><circle cx="128" cy="128" r="128"/></clipPath></defs><g clip-path="url(#avatar-flight-circle)">
+<rect width="256" height="256" fill="#78a3dd"/>
+<path d="M0 0h256L91 119 0 101Z" fill="#4d7fc5"/>
+<circle cx="57" cy="56" r="34" fill="#f5d39c"/>
+<path d="M57 22a34 34 0 0 1 0 68Z" fill="#fae6c2"/>
+<path d="M0 180q51-66 104-32t76 9l76-31v130H0Z" fill="#b7d3ef"/>
+<path d="m0 246 130-93 126 78v25H0Z" fill="#dce8f1"/>
+<path d="m256 160-56 96h56Z" fill="#315d9d"/>
+<path d="m130 153 36 103H0Z" fill="#e9cca0"/>
+<path d="M-18 219q54-74 124-98" fill="none" stroke="#fff0d7" stroke-width="9" stroke-linecap="round"/>
+<g transform="translate(158 105) rotate(-24)">
+<path d="M54-4q20 4 0 8L13 10-11 45h-13l11-34-29 3-10 14h-11l7-25-7-24h11l10 13 29-2-11-34h13L13-10Z" fill="#fff2dc"/>
+<path d="m-13 11 26-1-24 35h-13Z" fill="#efd4ab"/>
+<path d="m-42 14-10 14h-11l7-25Z" fill="#d9e3ed"/>
+</g>
+</g></svg>

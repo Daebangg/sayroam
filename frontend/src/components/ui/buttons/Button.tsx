@@ -24,7 +24,7 @@ export function Button({
             type={type}
             className={
                 variant === "plain"
-                    ? className
+                    ? `ui-button-plain ${className}`
                     : `ui-button ui-button--${variant} ${loading ? "ui-button--loading" : ""} ${className}`
             }
             disabled={disabled || loading}

@@ -1,6 +1,6 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Button, Icon, KeyboardShortcut, Tooltip } from "@/components/ui";
+import { Avatar, Button, Icon, KeyboardShortcut, Tooltip } from "@/components/ui";
 
 type ProfileMenuProps = {
     onLogin: () => void;
@@ -8,6 +8,7 @@ type ProfileMenuProps = {
     onSettings: () => void;
     mobile?: boolean;
     member: { nickname: string; email: string | null } | null;
+    profileImageUrl?: string | null;
     busy: boolean;
     onLogout: () => void;
 };
@@ -18,6 +19,7 @@ export function ProfileMenu({
     onSettings,
     mobile = false,
     member,
+    profileImageUrl,
     busy,
     onLogout,
 }: ProfileMenuProps) {
@@ -77,14 +79,20 @@ export function ProfileMenu({
                 <Button
                     ref={trigger}
                     variant="ghost"
-                    className={mobile ? "mobile-nav__item" : "icon-button"}
+                    className={`profile-menu__trigger ${mobile ? "mobile-nav__item" : "icon-button"}`}
                     aria-label={t("common.account")}
                     aria-haspopup="menu"
                     aria-expanded={open}
                     aria-controls={open ? id : undefined}
                     onClick={() => setOpen(!open)}
                 >
-                    <Icon name="profile" />
+                    {member ? (
+                        <Avatar src={profileImageUrl ?? null} />
+                    ) : (
+                        <span className="profile-menu__anonymous" aria-hidden="true">
+                            <img src="/brand/anonymous-profile.svg" alt="" />
+                        </span>
+                    )}
                 </Button>
             </Tooltip>
             {open && (

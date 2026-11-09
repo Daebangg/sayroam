@@ -1,6 +1,6 @@
 {
     "app": {
-        "name": "Sayroam",
+        "name": "SayRoam",
         "description": "여행을 계획하고, 동행을 찾고, 함께 기록하는 공간."
     },
     "navigation": {
@@ -31,13 +31,13 @@
     },
     "home": {
         "titleFirst": "함께 떠나는",
-        "titleSecond": "더 자유로운 여행",
-        "descriptionFirst": "여행을 계획하고, 동행을 찾고,",
-        "descriptionSecond": "함께 기록하는 공간.",
-        "start": "지금 시작하기"
+        "titleSecond": "더 특별한 여행",
+        "descriptionFirst": "여행 계획부터 동행, 일정까지",
+        "descriptionSecond": "한곳에서 준비하세요.",
+        "start": "여행 시작하기"
     },
     "auth": {
-        "welcome": "Sayroam에 오신 걸 환영해요.",
+        "welcome": "SayRoam에 오신 걸 환영해요.",
         "description": "여행을 더 가깝게, 더 함께.",
         "google": "Google로 계속하기",
         "haveAccount": "계정이 이미 있으신가요?",
@@ -128,8 +128,12 @@
     "trips": {
         "heading": "내 여행",
         "create": "새 여행 만들기",
-        "swiss": "스위스 겨울 여행",
-        "italy": "이탈리아 남부 여행"
+        "swiss": "스위스 하이킹, 같이?",
+        "italy": "이탈리아 남부 여행",
+        "santorini": "그리스 산토리니 4박 5일",
+        "paris": "파리 5일, 함께 가요!",
+        "bali": "발리 워케이션 동행 구해요",
+        "jeju": "제주에서 보내는 느린 주말"
     },
     "matching": {
         "heading": "동행 찾기",
@@ -140,21 +144,28 @@
     "rooms": {
         "heading": "내 방",
         "create": "새 방 만들기",
-        "swiss": "스위스 여행방",
-        "swissMessage": "벌써 다음 여행이 기대돼요 · 최근 5분 전",
+        "swiss": "후지산 하이킹 팀",
+        "swissMessage": "숙소 후보 3개 올렸어요.",
         "italy": "이탈리아 준비방",
-        "italyMessage": "좋아요, 그때 만나요! · 2시간 전"
+        "italyMessage": "좋아요, 그때 만나요! · 2시간 전",
+        "okinawa": "오키나와 여행방",
+        "okinawaMessage": "일정 초안 공유했어요!",
+        "paris": "파리 여행 준비방",
+        "parisMessage": "항공권 다시 확인해볼게요!",
+        "justNow": "10:24",
+        "yesterday": "어제",
+        "twoDaysAgo": "2일 전"
     },
     "brand": {
         "guide": "브랜드 보기",
-        "heading": "Sayroam Brand",
+        "heading": "SayRoam Brand",
         "logo": "Brand",
-        "appIcon": "Sayroam 앱 아이콘",
-        "mark": "Sayroam 산 로고",
+        "appIcon": "SayRoam 앱 아이콘",
+        "mark": "SayRoam 산 로고",
         "downloadLogo": "로고 SVG",
         "downloadIcon": "앱 아이콘 SVG",
         "wordmarks": "Wordmark Variations",
-        "wordmarkPrimary": "Sayroam",
+        "wordmarkPrimary": "SayRoam",
         "wordmarkCamel": "SayRoam",
         "wordmarkLower": "sayroam",
         "wordmarkDot": "Say·Roam",
@@ -164,23 +175,23 @@
         "colors": {
             "primary": {
                 "name": "Primary",
-                "hex": "#4F7CFF"
+                "hex": "#2563EB"
             },
             "sky": {
                 "name": "Sky",
-                "hex": "#E8F1FF"
+                "hex": "#60A5FA"
             },
             "sand": {
                 "name": "Sand",
-                "hex": "#FFF7E9"
+                "hex": "#FEE3C3"
             },
             "surface": {
                 "name": "Surface",
-                "hex": "#FFFFFF"
+                "hex": "#F8FAFF"
             },
             "text": {
                 "name": "Text",
-                "hex": "#1F2937"
+                "hex": "#0F172A"
             },
             "muted": {
                 "name": "Muted",
@@ -212,7 +223,7 @@
         "openModal": "기본 모달 보기",
         "openAuth": "로그인 모달 보기",
         "modalTitle": "함께 떠날 준비가 되셨나요?",
-        "modalDescription": "여행의 설렘부터 돌아온 뒤의 추억까지, Sayroam에서 함께 준비해요.",
+        "modalDescription": "여행의 설렘부터 돌아온 뒤의 추억까지, SayRoam에서 함께 준비해요.",
         "cancel": "나중에",
         "continue": "계속하기",
         "downloadLogoPng": "결합 로고 PNG",
@@ -240,11 +251,32 @@
         "pageStates": "페이지 상태",
         "open404": "404 전체 화면 보기",
         "toasts": "토스트 알림",
-        "toastExample": "알림은 5초 뒤 자동으로 사라져요.",
+        "toastExample": "알림은 3초 뒤 자동으로 사라져요.",
         "toast": {
             "success": "성공 알림",
             "error": "오류 알림",
             "info": "안내 알림"
+        },
+        "assets": {
+            "layouts": {
+                "logo": "배너 · 심볼 + 워드마크",
+                "mark": "아이콘 단독",
+                "wordmark": "텍스트 단독"
+            },
+            "backgrounds": {
+                "light": "라이트 배경",
+                "dark": "다크 배경"
+            },
+            "transparent": {
+                "light": "투명 · 밝은 배경용",
+                "dark": "투명 · 어두운 배경용"
+            },
+            "formats": {
+                "svg": "SVG",
+                "png": "PNG"
+            },
+            "preview": "{{background}}의 {{layout}}",
+            "download": "{{variant}} {{layout}} {{format}} 다운로드"
         }
     },
     "profile": {
@@ -279,5 +311,146 @@
         },
         "home": "홈으로 돌아가기",
         "retry": "다시 시도하기"
+    },
+    "mockup": {
+        "toolbar": "디자인 목업",
+        "screen": "화면 선택",
+        "screens": {
+            "welcome": "시작 화면",
+            "onboarding": "온보딩",
+            "home": "홈",
+            "trips": "여행",
+            "matching": "동행 찾기",
+            "rooms": "내 방"
+        },
+        "destination": "목적지",
+        "destinationPlaceholder": "어디로 떠날까요?",
+        "departure": "출발 일정",
+        "travelers": "여행 인원",
+        "shortcuts": "여행 바로가기",
+        "shortcutsContent": {
+            "plan": {
+                "title": "여행 계획 만들기",
+                "description": "일정, 장소, 예산을 한 번에"
+            },
+            "company": {
+                "title": "동행 찾기",
+                "description": "함께 떠날 여행 메이트를 찾아요"
+            },
+            "destinations": {
+                "title": "인기 여행지",
+                "description": "지금 떠나기 좋은 여행지"
+            },
+            "guide": {
+                "title": "여행 가이드",
+                "description": "여행 준비에 필요한 정보 모음"
+            }
+        },
+        "popularTrips": "지금 인기 있는 여행",
+        "recruiting": "지금 모집 중인 동행",
+        "myRooms": "내 여행",
+        "popular": "인기",
+        "viewTrips": "여행 전체 보기",
+        "viewMatching": "모집 중인 동행 보기",
+        "viewRooms": "내 방 전체 보기",
+        "showTrip": "{{title}} 보기",
+        "unsave": "{{title}} 북마크 해제",
+        "unread": "읽지 않은 메시지 {{count}}개",
+        "sampleData": "여행·동행·메시지는 디자인 확인을 위한 예시입니다.",
+        "guideTitle": "함께 준비하는 여행",
+        "guideDescription": "가고 싶은 곳을 고르고, 일정을 계획하고, 마음이 맞는 동행을 만나보세요. 이 화면은 디자인 목업이며 검색·예약·저장·채팅은 제공하지 않아요.",
+        "tripPreviewDescription": "일정과 참여 인원을 함께 확인하고, 여행 메이트와 새로운 이야기를 만들어보세요. 여행 상세·참여는 화면 미리보기입니다.",
+        "confirm": "확인",
+        "explore": "다음 여행을 발견해 보세요",
+        "tripFilters": "여행 유형",
+        "filters": {
+            "all": "전체",
+            "domestic": "국내",
+            "overseas": "해외",
+            "workation": "워케이션"
+        },
+        "searchResults": "“{{query}}” 예시 여행 {{count}}개",
+        "noResults": "조건에 맞는 예시 여행이 없어요",
+        "createTripDescription": "목적지와 날짜를 고르고 함께할 사람들을 초대하는 여행 계획 화면이 준비될 예정이에요. 지금은 디자인을 확인하는 목업입니다.",
+        "together": "함께라서 더 특별한 순간",
+        "myCompanions": "내 동행",
+        "matchingEmptyTitle": "지금, 함께 떠날 동행을 찾아보세요",
+        "matchingEmptyDescription": "같은 여행을 꿈꾸는 사람들과 더 특별한 추억을 만들어봐요.",
+        "stayConnected": "여행 이야기를 이어가세요",
+        "roomPreviewDescription": "함께할 여행의 일정과 이야기를 나누는 공간이에요. 현재 메시지는 디자인 확인을 위한 예시이며 실제 채팅은 연결하지 않았어요.",
+        "createRoomDescription": "여행 메이트와 함께할 새 방을 만드는 화면의 목업입니다. 실제 방 생성은 이후에 연결해요.",
+        "notificationsEmpty": "아직 새로운 알림이 없어요. 함께할 여행 소식이 도착하면 이곳에서 확인할 수 있어요.",
+        "continue": "시작하기",
+        "onboardingDescription": "여행 계획부터 동행, 일정까지. SayRoam에서 한 번에 준비하세요.",
+        "openPreviews": "화면 목업 둘러보기",
+        "designDescription": "파랑과 모래색, 면을 겹친 여행 풍경. SayRoam의 화면과 공용 UI를 한곳에서 확인하세요.",
+        "tabs": "내비게이션 · 필터",
+        "badges": "상태 배지 · 알림",
+        "artwork": "여행 일러스트",
+        "complete": "완료",
+        "selected": "선택됨",
+        "disabled": "비활성",
+        "iconLabels": {
+            "home": "홈",
+            "trips": "여행",
+            "matching": "동행 찾기",
+            "rooms": "내 방",
+            "search": "검색",
+            "bell": "알림",
+            "profile": "프로필",
+            "plan": "여행 계획",
+            "pin": "여행지",
+            "guide": "가이드",
+            "bookmark": "북마크",
+            "calendar": "캘린더",
+            "settings": "설정",
+            "grid": "전체 보기",
+            "plus": "추가",
+            "minus": "빼기",
+            "arrow": "이동",
+            "chevron": "펼치기",
+            "close": "닫기",
+            "sun": "밝은 테마",
+            "moon": "어두운 테마",
+            "mail": "이메일",
+            "filter": "필터",
+            "check": "확인",
+            "flame": "인기"
+        },
+        "saveTrip": "{{title}} 북마크",
+        "customControls": "여행 입력",
+        "avatars": {
+            "title": "기본 프로필 아트",
+            "preview": "선택한 미리보기",
+            "coast": "푸른 해안",
+            "sand": "모래 언덕",
+            "dusk": "저녁 바다",
+            "sea": "물결",
+            "traveler": "여행자",
+            "sunrise": "햇살",
+            "poet": "사색",
+            "explorer": "탐험가",
+            "alien": "에일리언",
+            "dog": "강아지",
+            "rabbit": "토끼",
+            "cat": "고양이",
+            "sunset": "붉은 노을",
+            "twilight": "보랏빛 황혼",
+            "night": "달빛 밤",
+            "flight": "하늘 여행"
+        }
+    },
+    "controls": {
+        "datePicker": {
+            "placeholder": "날짜 선택",
+            "previousMonth": "이전 달",
+            "nextMonth": "다음 달",
+            "today": "오늘",
+            "clear": "초기화"
+        },
+        "numberStepper": {
+            "decrease": "{{label}} 줄이기",
+            "increase": "{{label}} 늘리기"
+        }
     }
 }

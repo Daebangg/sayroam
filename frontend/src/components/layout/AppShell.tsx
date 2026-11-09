@@ -1,27 +1,31 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useId, useState, type ReactNode } from "react";
 import { ProfileMenu } from "@/components/features/profile/ProfileMenu";
 import { AppearancePreview } from "@/components/features/profile/AppearancePreview";
 import { useTranslation } from "react-i18next";
-import { Brand, Button, Icon, Tooltip } from "@/components/ui";
+import { Brand, Button, Icon, Tooltip, Modal, TextField } from "@/components/ui";
+import { PreviewDialog } from "@/components/features/travel/PreviewDialog";
+import { mockupUrl, type MockupScreen } from "@/routing/mockups";
 import { appNavigation } from "@/data/preview";
 import { Link, NavLink, useNavigate } from "react-router";
 import type { ResolvedTheme, ThemePreference } from "@/hooks/useTheme";
 import type { Language } from "@/i18n/locale";
 
 type AppShellProps = {
+    mockupScreen: MockupScreen | null;
     isHome: boolean;
     theme: ResolvedTheme;
     themePreference: ThemePreference;
     onThemeChange: (preference: ThemePreference) => void;
     onLanguageChange: (language: Language) => void;
     onOpenAuth: () => void;
-    member: { nickname: string; email: string | null } | null;
+    member: { nickname: string; email: string | null; profileImageUrl?: string | null } | null;
     authBusy: boolean;
     onLogout: () => void;
     children: ReactNode;
 };
 
 export function AppShell({
+    mockupScreen,
     isHome,
     theme,
     themePreference,
@@ -36,6 +40,9 @@ export function AppShell({
     const navigate = useNavigate();
     const { t, i18n } = useTranslation();
     const [settingsOpen, setSettingsOpen] = useState(false);
+    const [utility, setUtility] = useState<"search" | "notifications" | null>(null);
+    const [query, setQuery] = useState("");
+    const searchId = useId();
 
     useEffect(() => {
         const shortcut = (event: KeyboardEvent) => {
@@ -61,19 +68,32 @@ export function AppShell({
             <a className="skip-link" href="#main-content">
                 {t("navigation.skip")}
             </a>
-            <div className={`app-shell ${isHome ? "app-shell--home" : ""}`}>
+            <div
+                className={`app-shell ${isHome ? "app-shell--home" : ""} ${mockupScreen === "welcome" || mockupScreen === "onboarding" ? "app-shell--intro" : ""}`}
+            >
                 <header className="site-header">
-                    <Link className="brand-button" to="/" aria-label={t("navigation.home")}>
+                    <Link
+                        className="brand-button"
+                        to={mockupScreen ? mockupUrl("home") : "/"}
+                        aria-label={t("navigation.home")}
+                    >
                         <Brand />
                     </Link>
                     <nav className="desktop-nav" aria-label={t("navigation.main")}>
                         {appNavigation.map((item) => (
                             <NavLink
                                 key={item.to}
-                                to={item.to}
+                                to={mockupScreen ? mockupUrl(item.icon) : item.to}
                                 end={item.to === "/"}
+                                aria-current={
+                                    mockupScreen
+                                        ? mockupScreen === item.icon
+                                            ? "page"
+                                            : false
+                                        : undefined
+                                }
                                 className={({ isActive }) =>
-                                    `nav-item ${isActive ? "is-active" : ""}`
+                                    `nav-item ${(mockupScreen ? mockupScreen === item.icon : isActive) ? "is-active" : ""}`
                                 }
                             >
                                 <Icon name={item.icon} />
@@ -87,6 +107,7 @@ export function AppShell({
                                 variant="ghost"
                                 className="icon-button desktop-only"
                                 aria-label={t("common.search")}
+                                onClick={() => setUtility("search")}
                             >
                                 <Icon name="search" />
                             </Button>
@@ -122,14 +143,16 @@ export function AppShell({
                         <Tooltip content={t("common.notifications")}>
                             <Button
                                 variant="ghost"
-                                className="icon-button mobile-only"
+                                className="icon-button notification-trigger"
                                 aria-label={t("common.notifications")}
+                                onClick={() => setUtility("notifications")}
                             >
                                 <Icon name="bell" />
                             </Button>
                         </Tooltip>
                         <ProfileMenu
                             member={member}
+                            profileImageUrl={member?.profileImageUrl ?? null}
                             busy={authBusy}
                             onLogout={onLogout}
                             onLogin={onOpenAuth}
@@ -143,10 +166,17 @@ export function AppShell({
                     {appNavigation.map((item) => (
                         <NavLink
                             key={item.to}
-                            to={item.to}
+                            to={mockupScreen ? mockupUrl(item.icon) : item.to}
                             end={item.to === "/"}
+                            aria-current={
+                                mockupScreen
+                                    ? mockupScreen === item.icon
+                                        ? "page"
+                                        : false
+                                    : undefined
+                            }
                             className={({ isActive }) =>
-                                `mobile-nav__item ${isActive ? "is-active" : ""}`
+                                `mobile-nav__item ${(mockupScreen ? mockupScreen === item.icon : isActive) ? "is-active" : ""}`
                             }
                             aria-label={t(item.label)}
                         >
@@ -155,6 +185,7 @@ export function AppShell({
                     ))}
                     <ProfileMenu
                         member={member}
+                        profileImageUrl={member?.profileImageUrl ?? null}
                         busy={authBusy}
                         onLogout={onLogout}
                         mobile
@@ -170,6 +201,53 @@ export function AppShell({
                     onThemeChange={onThemeChange}
                     onLanguageChange={onLanguageChange}
                 />
+                <PreviewDialog
+                    open={utility === "notifications"}
+                    title={t("common.notifications")}
+                    description={t("mockup.notificationsEmpty")}
+                    scene="island"
+                    onClose={() => setUtility(null)}
+                />
+                <Modal
+                    open={utility === "search"}
+                    onClose={() => setUtility(null)}
+                    labelledBy={searchId}
+                    className="ui-modal--showcase"
+                >
+                    <Button
+                        variant="ghost"
+                        className="icon-button ui-modal__close"
+                        onClick={() => setUtility(null)}
+                        aria-label={t("common.close")}
+                    >
+                        <Icon name="close" variant="outline" />
+                    </Button>
+                    <h2 id={searchId}>{t("common.search")}</h2>
+                    <form
+                        className="utility-search"
+                        onSubmit={(event) => {
+                            event.preventDefault();
+                            setUtility(null);
+                            void navigate(
+                                (mockupScreen ? mockupUrl("trips") + "&" : "/trips?") +
+                                    "q=" +
+                                    encodeURIComponent(query.trim()),
+                            );
+                        }}
+                    >
+                        <TextField
+                            label={t("mockup.destination")}
+                            value={query}
+                            onChange={(event) => setQuery(event.target.value)}
+                            maxLength={50}
+                            placeholder={t("mockup.destinationPlaceholder")}
+                        />
+                        <Button type="submit">
+                            <Icon name="search" variant="outline" />
+                            {t("common.search")}
+                        </Button>
+                    </form>
+                </Modal>
             </div>
         </div>
     );

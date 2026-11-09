@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256"><title>SayRoam — Sand curves</title><defs><clipPath id="avatar-sand-circle"><circle cx="128" cy="128" r="128"/></clipPath></defs><g clip-path="url(#avatar-sand-circle)">
+<rect width="256" height="256" fill="#f1d39f"/>
+<circle cx="46" cy="31" r="138" fill="#739fdd"/>
+<path d="M0 143Q81 50 176 76L45 256H0Z" fill="#a7c9ef"/>
+<path d="M0 256V188Q70 107 256 125v131Z" fill="#fff1dc"/>
+<path d="M79 256Q150 180 256 159v97Z" fill="#e7bd83"/>
+<path d="M160 256q30-67 96-97v97Z" fill="#285696"/>
+<path d="M0 188q54-63 116-63L42 205Z" fill="#c5dcf3"/>
+</g></svg>

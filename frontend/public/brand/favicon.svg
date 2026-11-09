@@ -1,1 +1,13 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96"><title>Sayroam</title><rect width="96" height="96" rx="25" fill="#4f7cff"/><g transform="translate(17 28)"><path d="M3 25 13 14q2-2 4 0l4 3L31 4q2-3 4 0l10 16 4-3 9 10M16 25l9-7 5 4 5-6 7 11" fill="none" stroke="#ffffff" stroke-width="3.8" stroke-linecap="round" stroke-linejoin="round"/></g></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><title>SayRoam</title>
+<g transform="translate(3 15) scale(.9)">
+<path d="M1 35 22 12 40 35Z" fill="#6796e0" />
+
+<path d="M18 35 41 2 64 35Z" fill="#315da9" />
+
+<path d="m31 17 10-15 11 16Z" fill="#5485d7" />
+
+<path d="m18 35 13-18 13 18Z" fill="#adcdf1" />
+
+<path d="m36 26 8-9 20 18H44Z" fill="#f1d9ae" />
+</g>
+</svg>

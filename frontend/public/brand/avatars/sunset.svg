@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256"><title>SayRoam — Golden sunset</title><defs><clipPath id="avatar-sunset-circle"><circle cx="128" cy="128" r="128"/></clipPath></defs><g clip-path="url(#avatar-sunset-circle)">
+<rect width="256" height="256" fill="#efbd91"/>
+<path d="M0 0h256v70L79 115 0 87Z" fill="#f6d49f"/>
+<path d="M0 88q45-50 93-26t72 14L76 115H0Z" fill="#fae8ca"/>
+<circle cx="174" cy="137" r="49" fill="#f5cb70"/>
+<path d="M174 88a49 49 0 0 1 0 98Z" fill="#ffe5a5"/>
+<path d="M0 163h256v93H0Z" fill="#527bb4"/>
+<path d="m154 163 41 0 51 93H88Z" fill="#f3c994"/>
+<path d="m174 163 21 0 51 93h-72Z" fill="#ffe3b5"/>
+<path d="M0 172 79 147l72 109H0Z" fill="#1b3c70"/>
+<path d="m0 215 79-68-32 109H0Z" fill="#315b94"/>
+<path d="m256 187-54 23-28 46h82Z" fill="#244d83"/>
+</g></svg>

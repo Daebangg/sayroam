@@ -27,7 +27,7 @@ function subscribeToastHost(notify: () => void): () => void {
     return () => observer.disconnect();
 }
 
-export function Toast({ message, onDismiss, tone = "success", durationMs = 5000 }: ToastProps) {
+export function Toast({ message, onDismiss, tone = "success", durationMs = 3000 }: ToastProps) {
     const { t } = useTranslation();
     const ref = useRef<HTMLDivElement>(null);
     const [closing, setClosing] = useState(false);
@@ -74,7 +74,7 @@ export function Toast({ message, onDismiss, tone = "success", durationMs = 5000 
                 disabled={closing}
                 aria-label={t("common.dismissNotification")}
             >
-                <Icon name="close" />
+                <Icon name="close" variant="outline" />
             </Button>
         </div>,
         host,

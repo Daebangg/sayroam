@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256"><title>SayRoam — Quiet alien</title><defs><clipPath id="avatar-alien-circle"><circle cx="128" cy="128" r="128"/></clipPath></defs><g clip-path="url(#avatar-alien-circle)">
+<rect width="256" height="256" fill="#193e74"/>
+<path d="M0 0h184L0 176Z" fill="#2c5b9c"/>
+<circle cx="220" cy="40" r="39" fill="#edcc96"/>
+<path d="m188 16 64 51" stroke="#c1d8f1" stroke-opacity=".5" stroke-width="5"/>
+<circle cx="39" cy="67" r="4" fill="#c1d8f1"/>
+<circle cx="210" cy="121" r="3" fill="#f3d6a2"/>
+<path d="M28 256q13-61 64-73h72q51 12 64 73Z" fill="#dbe8f4"/>
+<path d="M128 183h36q51 12 64 73h-74Z" fill="#9bbce2"/>
+<path d="M91 172h74l-14 38h-46Z" fill="#f2d7a9"/>
+<path d="M128 29q63 0 67 58 5 58-38 92-29 26-58 0Q56 145 61 87q4-58 67-58Z" fill="#a8c9e9"/>
+<path d="M128 29q63 0 67 58 5 58-38 92-14 13-29 14Z" fill="#78a4d5"/>
+<path d="M61 87q4-58 67-58L97 103 63 122Z" fill="#c9dded"/>
+<path d="M76 91q29 0 39 34-31 8-40-17-3-8 1-17Z" fill="#17365f"/>
+<path d="M180 91q-29 0-39 34 31 8 40-17 3-8-1-17Z" fill="#17365f"/>
+<ellipse cx="89" cy="102" rx="5" ry="8" fill="#ecdfc5" transform="rotate(-32 89 102)"/>
+<ellipse cx="167" cy="102" rx="5" ry="8" fill="#ecdfc5" transform="rotate(32 167 102)"/>
+<path d="m128 121-7 20h14Z" fill="#567ca9"/>
+<path d="M113 153q15 10 30 0" fill="none" stroke="#31517d" stroke-width="4" stroke-linecap="round"/>
+<path d="M84 219h88v37H84Z" fill="#28518b"/>
+<circle cx="128" cy="237" r="10" fill="#edcf9e"/>
+<path d="m124 237 4-6 4 6-4 6Z" fill="#f7e9cf"/>
+</g></svg>

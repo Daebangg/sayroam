@@ -1,69 +1,79 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Button, Card, DropdownMenu, Icon, Tag, Tooltip } from "@/components/ui";
-import { formatDateRange, formatNumber } from "@/i18n/locale";
-import { matchingPreviews } from "@/data/preview";
+import { Button, FilterChips, Icon, TravelArtwork } from "@/components/ui";
+import { TravelRow } from "@/components/features/travel/TravelPreview";
+import { PreviewDialog } from "@/components/features/travel/PreviewDialog";
+import { matchingPreviews, type PreviewTrip } from "@/data/preview";
 
 export function MatchingPage() {
-    const { t, i18n } = useTranslation();
-    const [status, setStatus] = useState("looking");
-
+    const { t } = useTranslation();
+    const [view, setView] = useState("mine");
+    const [saved, setSaved] = useState<string[]>([]);
+    const [selected, setSelected] = useState<PreviewTrip | null>(null);
+    const trips =
+        view === "saved"
+            ? matchingPreviews.filter((trip) => saved.includes(trip.id))
+            : matchingPreviews;
+    const empty = view === "mine" || trips.length === 0;
     return (
-        <main id="main-content" tabIndex={-1} className="workspace-page workspace-page--list">
+        <main
+            id="main-content"
+            tabIndex={-1}
+            className="workspace-page workspace-page--list travel-workspace"
+        >
             <div className="page-heading">
-                <h1>{t("matching.heading")}</h1>
-                <DropdownMenu
-                    label={t("common.filter")}
-                    value={status}
-                    options={[
-                        { value: "looking", label: t("brand.looking") },
-                        { value: "ready", label: t("brand.ready") },
-                    ]}
-                    onChange={setStatus}
-                />
+                <div>
+                    <p className="page-eyebrow">{t("mockup.together")}</p>
+                    <h1>{t("matching.heading")}</h1>
+                </div>
             </div>
-            <div className="matching-list">
-                {matchingPreviews.map((item) => (
-                    <Card className="matching-card" key={item.id}>
-                        <img src={item.image} alt="" />
-                        <div className="matching-card__content">
-                            <h2>{t(item.title)}</h2>
-                            <p>
-                                {formatDateRange(
-                                    i18n.resolvedLanguage ?? "ko",
-                                    item.startDate,
-                                    item.endDate,
-                                )}
-                            </p>
-                            <div className="matching-card__tags">
-                                <Tag label={t("brand.tagTogether")} tone="primary" />
-                            </div>
-                            <span className="matching-card__people">
-                                <Icon name="matching" />
-                                {t("matching.people", {
-                                    current: formatNumber(
-                                        i18n.resolvedLanguage ?? "ko",
-                                        item.participants,
-                                    ),
-                                    total: formatNumber(
-                                        i18n.resolvedLanguage ?? "ko",
-                                        item.capacity,
-                                    ),
-                                })}
-                            </span>
-                        </div>
-                        <Tooltip content={t("common.bookmark")} className="matching-card__bookmark">
-                            <Button
-                                variant="ghost"
-                                className="icon-button"
-                                aria-label={t("common.bookmark")}
-                            >
-                                <Icon name="bookmark" />
-                            </Button>
-                        </Tooltip>
-                    </Card>
-                ))}
-            </div>
+            <FilterChips
+                label={t("matching.heading")}
+                value={view}
+                onChange={setView}
+                options={[
+                    { value: "mine", label: t("mockup.myCompanions") },
+                    { value: "browse", label: t("brand.looking") },
+                    { value: "saved", label: t("common.bookmark") },
+                ]}
+            />
+            {empty ? (
+                <div className="travel-empty">
+                    <TravelArtwork />
+                    <h2>{t("mockup.matchingEmptyTitle")}</h2>
+                    <p>{t("mockup.matchingEmptyDescription")}</p>
+                    <Button onClick={() => setView("browse")}>
+                        <Icon name="search" variant="outline" />
+                        {t("matching.heading")}
+                    </Button>
+                </div>
+            ) : (
+                <div className="travel-list-panel">
+                    {trips.map((trip) => (
+                        <TravelRow
+                            key={trip.id}
+                            trip={trip}
+                            onOpen={() => setSelected(trip)}
+                            saved={saved.includes(trip.id)}
+                            onSave={() =>
+                                setSaved((values) =>
+                                    values.includes(trip.id)
+                                        ? values.filter((value) => value !== trip.id)
+                                        : [...values, trip.id],
+                                )
+                            }
+                        />
+                    ))}
+                </div>
+            )}
+            <p className="dashboard-footnote">{t("mockup.sampleData")}</p>
+            <PreviewDialog
+                open={selected !== null}
+                title={selected ? t(selected.title) : ""}
+                description={t("mockup.tripPreviewDescription")}
+                scene={selected?.scene ?? "mountain"}
+                onClose={() => setSelected(null)}
+            />
         </main>
     );
 }

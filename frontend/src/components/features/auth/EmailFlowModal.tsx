@@ -91,7 +91,7 @@ export function EmailFlowModal({
                     onClick={onClose}
                     aria-label={t("common.close")}
                 >
-                    <Icon name="close" />
+                    <Icon name="close" variant="outline" />
                 </Button>
             </Tooltip>
             <div className="auth-flow-header">

@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256"><title>SayRoam — Midnight horizon</title><defs><clipPath id="avatar-night-circle"><circle cx="128" cy="128" r="128"/></clipPath></defs><g clip-path="url(#avatar-night-circle)">
+<rect width="256" height="256" fill="#142b53"/>
+<path d="M0 0h256L77 129 0 93Z" fill="#234574"/>
+<circle cx="187" cy="67" r="33" fill="#f8e0b0"/>
+<circle cx="175" cy="55" r="30" fill="#234574"/>
+<path d="m57 41 3 9 9 3-9 3-3 9-3-9-9-3 9-3Z" fill="#f4d7a5"/>
+<path d="m112 83 2 6 6 2-6 2-2 6-2-6-6-2 6-2Z" fill="#c6dcf1"/>
+<circle cx="100" cy="32" r="3.5" fill="#f4d7a5"/>
+<circle cx="42" cy="109" r="3" fill="#c6dcf1"/>
+<path d="M0 152q61-47 121-9t135-5v118H0Z" fill="#385d92"/>
+<path d="M0 185 256 148v108H0Z" fill="#244878"/>
+<path d="m172 158 29-4 25 102h-76Z" fill="#9fb9d5"/>
+<path d="m172 158 13-2-3 100h-32Z" fill="#6e93bd"/>
+<path d="M0 214q77-41 142 3l61 39H0Z" fill="#122b52"/>
+<path d="m256 196-53 60h53Z" fill="#193961"/>
+</g></svg>

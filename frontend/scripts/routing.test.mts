@@ -27,3 +27,29 @@ test("실제 경로를 우선하고 지원하지 않는 미리보기 값은 주�
         assert.equal(legacyPageUrl(new URL(path, "https://sayroam.test")), null);
     }
 });
+
+test("목업 화면은 /brand의 지정된 preview 값에서만 열림", async () => {
+    const { getMockupScreen, mockupScreens, mockupUrl } = await import("../src/routing/mockups.ts");
+    for (const screen of mockupScreens) {
+        const url = new URL(mockupUrl(screen), "https://sayroam.test");
+        assert.equal(getMockupScreen(url.pathname, url.search), screen);
+        assert.equal(getMockupScreen("/BRAND///", url.search), screen);
+    }
+    for (const search of [
+        "",
+        "?preview=unknown",
+        "?preview=https://example.com",
+        "?preview=__proto__",
+    ])
+        assert.equal(getMockupScreen("/brand", search), null);
+    for (const path of ["/", "/trips", "/rooms", "/brand/unknown", "//brand"])
+        assert.equal(getMockupScreen(path, "?preview=home"), null);
+});
+
+test("목업 쿼리로 실제 회원 전용 경로를 공개 화면으로 바꾸지 않음", async () => {
+    const { getMockupScreen } = await import("../src/routing/mockups.ts");
+    for (const path of ["/trips", "/rooms", "/TRIPS/", "/Rooms///"]) {
+        assert.equal(isMemberPath(path), true);
+        assert.equal(getMockupScreen(path, "?preview=home"), null);
+    }
+});

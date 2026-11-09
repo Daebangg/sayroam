@@ -14,6 +14,7 @@ type DropdownMenuProps = {
 
 export function DropdownMenu({ label, value, options, onChange, disabled }: DropdownMenuProps) {
     const [open, setOpen] = useState(false);
+    const [closing, setClosing] = useState(false);
     const [portal, setPortal] = useState<HTMLElement>(() => document.body);
     const root = useRef<HTMLDivElement>(null);
     const trigger = useRef<HTMLButtonElement>(null);
@@ -21,17 +22,18 @@ export function DropdownMenu({ label, value, options, onChange, disabled }: Drop
     const id = useId();
 
     useLayoutEffect(() => {
-        if (!open) return;
+        if (!open || closing) return;
         const update = () => {
             const rect = trigger.current?.getBoundingClientRect();
             const element = menu.current;
             if (!rect || !element) return;
             const viewport = document.documentElement;
             const previousScroll = element.scrollTop;
-            element.style.width = `${Math.min(Math.max(rect.width, 180), viewport.clientWidth - 16)}px`;
+            element.style.width = `${Math.min(Math.max(rect.width, 150), viewport.clientWidth - 16)}px`;
             const below = viewport.clientHeight - rect.bottom - 14;
             const above = rect.top - 14;
             const up = element.scrollHeight > below && above > below;
+            element.dataset.placement = up ? "top" : "bottom";
             element.style.maxHeight = `${Math.max(40, Math.min(260, up ? above : below))}px`;
             element.style.left = `${Math.max(8, Math.min(rect.left, viewport.clientWidth - element.offsetWidth - 8))}px`;
             element.style.top = `${Math.max(8, up ? rect.top - element.offsetHeight - 6 : rect.bottom + 6)}px`;
@@ -39,7 +41,9 @@ export function DropdownMenu({ label, value, options, onChange, disabled }: Drop
             element.scrollTop = previousScroll;
         };
         update();
-        const selected = menu.current?.querySelector<HTMLButtonElement>('[aria-selected="true"]');
+        const selected = menu.current?.querySelector<HTMLButtonElement>(
+            '[aria-selected="true"]:not(:disabled)',
+        );
         (
             selected ?? menu.current?.querySelector<HTMLButtonElement>("button:not(:disabled)")
         )?.focus();
@@ -49,7 +53,20 @@ export function DropdownMenu({ label, value, options, onChange, disabled }: Drop
             window.removeEventListener("resize", update);
             window.removeEventListener("scroll", update, true);
         };
-    }, [open]);
+    }, [open, closing]);
+
+    useEffect(() => {
+        if (!closing) return;
+        const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+        const timer = window.setTimeout(
+            () => {
+                setOpen(false);
+                setClosing(false);
+            },
+            reducedMotion ? 0 : 180,
+        );
+        return () => window.clearTimeout(timer);
+    }, [closing]);
 
     useEffect(() => {
         if (!open) return;
@@ -59,14 +76,16 @@ export function DropdownMenu({ label, value, options, onChange, disabled }: Drop
                 !root.current?.contains(event.target) &&
                 !menu.current?.contains(event.target)
             )
-                setOpen(false);
+                setClosing(true);
         };
         document.addEventListener("pointerdown", outside);
         return () => document.removeEventListener("pointerdown", outside);
     }, [open]);
 
     function showOverlay(): void {
+        if (disabled) return;
         setPortal(root.current?.closest("dialog") ?? document.body);
+        setClosing(false);
         setOpen(true);
     }
     return (
@@ -74,16 +93,20 @@ export function DropdownMenu({ label, value, options, onChange, disabled }: Drop
             ref={root}
             className="ui-dropdown"
             onKeyDown={(event) => {
-                if (event.key === "Escape") {
+                if (event.key === "Escape" && open) {
                     event.preventDefault();
                     event.stopPropagation();
-                    setOpen(false);
+                    setClosing(true);
                     trigger.current?.focus();
                 }
-                if (event.key === "Tab") setOpen(false);
+                if (event.key === "Tab" && open && !closing) {
+                    trigger.current?.focus();
+                    setClosing(true);
+                }
+                if (disabled) return;
                 if (!["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key)) return;
                 event.preventDefault();
-                if (!open) {
+                if (!open || closing) {
                     showOverlay();
                     return;
                 }
@@ -108,13 +131,13 @@ export function DropdownMenu({ label, value, options, onChange, disabled }: Drop
                 ref={trigger}
                 aria-label={label}
                 aria-haspopup="listbox"
-                aria-expanded={open}
+                aria-expanded={open && !closing}
                 aria-controls={open ? id : undefined}
                 disabled={disabled}
-                onClick={() => (open ? setOpen(false) : showOverlay())}
+                onClick={() => (open && !closing ? setClosing(true) : showOverlay())}
             >
                 {options.find((option) => option.value === value)?.label ?? label}
-                <Icon name="chevron" className="ui-dropdown__chevron" />
+                <Icon name="chevron" variant="outline" className="ui-dropdown__chevron" />
             </Button>
             {open &&
                 createPortal(
@@ -123,7 +146,9 @@ export function DropdownMenu({ label, value, options, onChange, disabled }: Drop
                         id={id}
                         role="listbox"
                         aria-label={label}
-                        className="ui-dropdown__menu ui-menu-surface"
+                        aria-hidden={closing || undefined}
+                        inert={closing}
+                        className={`ui-dropdown__menu ui-menu-surface${closing ? " ui-dropdown__menu--closing" : ""}`}
                     >
                         {options.map((option) => (
                             <button
@@ -134,14 +159,19 @@ export function DropdownMenu({ label, value, options, onChange, disabled }: Drop
                                 tabIndex={-1}
                                 disabled={option.disabled}
                                 onClick={() => {
+                                    if (option.disabled || closing) return;
                                     onChange(option.value);
-                                    setOpen(false);
+                                    setClosing(true);
                                     trigger.current?.focus();
                                 }}
                             >
                                 <span>{option.label}</span>
                                 {value === option.value && (
-                                    <span className="ui-dropdown__selected" aria-hidden="true" />
+                                    <Icon
+                                        name="check"
+                                        variant="outline"
+                                        className="ui-dropdown__selected"
+                                    />
                                 )}
                             </button>
                         ))}

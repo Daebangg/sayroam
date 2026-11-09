@@ -10,23 +10,32 @@ export type IconName =
     | "search"
     | "bookmark"
     | "plus"
+    | "minus"
     | "arrow"
     | "chevron"
     | "close"
     | "sun"
     | "moon"
     | "mail"
-    | "filter";
+    | "filter"
+    | "pin"
+    | "guide"
+    | "check"
+    | "flame"
+    | "plan"
+    | "calendar";
 
 type IconProps = {
     name: IconName;
     className?: string;
+    variant?: "brand" | "outline";
 };
 
-export function Icon({ name, className = "" }: IconProps) {
+export function Icon({ name, className = "", variant = "brand" }: IconProps) {
+    const symbol = variant === "outline" ? `${name}-outline` : name;
     return (
         <svg className={`icon ${className}`} viewBox="0 0 24 24" aria-hidden="true">
-            <use href={`/brand/icons.svg#${name}`} />
+            <use href={`/brand/icons.svg#${symbol}`} />
         </svg>
     );
 }

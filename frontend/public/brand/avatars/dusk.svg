@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256"><title>SayRoam — Dusk hills</title><defs><clipPath id="avatar-dusk-circle"><circle cx="128" cy="128" r="128"/></clipPath></defs><g clip-path="url(#avatar-dusk-circle)">
+<rect width="256" height="256" fill="#8a9fce"/>
+<path d="M0 0h204L65 141 0 121Z" fill="#b6c8e6"/>
+<circle cx="191" cy="75" r="52" fill="#f1cc96"/>
+<path d="M191 23a52 52 0 0 1 0 104Z" fill="#f7dfb5"/>
+<path d="M0 174Q61 77 135 122t121 4v130H0Z" fill="#48669e"/>
+<path d="M256 112Q150 142 126 256h130Z" fill="#18345f"/>
+<path d="m0 232 118-60 50 25-42 59H0Z" fill="#dcae91"/>
+<path d="m118 172 8 84H34Z" fill="#edcda9"/>
+</g></svg>

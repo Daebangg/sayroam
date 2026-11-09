@@ -1,58 +1,129 @@
+import { useState } from "react";
+import { useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
-import { Button, Card, Icon, Tag } from "@/components/ui";
-import { formatDateRange } from "@/i18n/locale";
-import { tripPreviews } from "@/data/preview";
+import { Badge, Button, Card, FilterChips, Icon, TravelArtwork } from "@/components/ui";
+import { TravelMeta, TravelRow } from "@/components/features/travel/TravelPreview";
+import { PreviewDialog } from "@/components/features/travel/PreviewDialog";
+import { tripPreviews, type PreviewTrip } from "@/data/preview";
 
 export function TripsPage() {
-    const { t, i18n } = useTranslation();
-
+    const { t } = useTranslation();
+    const [params, setParams] = useSearchParams();
+    const [filter, setFilter] = useState("all");
+    const [saved, setSaved] = useState<string[]>([]);
+    const [selected, setSelected] = useState<PreviewTrip | null>(null);
+    const [creating, setCreating] = useState(false);
+    const query = params.get("q")?.trim() ?? "";
+    const trips = tripPreviews.filter(
+        (trip) =>
+            (filter === "all" ||
+                (filter === "workation" ? trip.workation : trip.region === filter)) &&
+            (!query || t(trip.title).toLowerCase().includes(query.toLowerCase())),
+    );
     return (
-        <main id="main-content" tabIndex={-1} className="workspace-page">
+        <main id="main-content" tabIndex={-1} className="workspace-page travel-workspace">
             <div className="page-heading">
-                <h1>{t("trips.heading")}</h1>
-                <Button
-                    variant="ghost"
-                    className="icon-button page-heading__mobile-action"
-                    aria-label={t("trips.create")}
-                >
-                    <Icon name="plus" />
+                <div>
+                    <p className="page-eyebrow">{t("mockup.explore")}</p>
+                    <h1>{t("navigation.trips")}</h1>
+                </div>
+                <Button variant="outline" onClick={() => setCreating(true)}>
+                    <Icon name="plus" variant="outline" />
+                    {t("trips.create")}
                 </Button>
             </div>
-            <div className="trip-grid">
-                {tripPreviews.map((trip) => (
-                    <Card className="trip-card" key={trip.id}>
-                        <img src={trip.image} alt={t(trip.title)} />
-                        <div className="trip-card__body">
-                            <h2>{t(trip.title)}</h2>
-                            <div className="trip-card__tags">
-                                <Tag
-                                    label={t(
-                                        trip.id === "swiss" ? "brand.tagWinter" : "brand.tagFree",
-                                    )}
-                                    tone="primary"
-                                />
-                                <Tag label={t("brand.planning")} />
-                            </div>
-                            <div className="trip-card__meta">
-                                <p>
-                                    {formatDateRange(
-                                        i18n.resolvedLanguage ?? "ko",
-                                        trip.startDate,
-                                        trip.endDate,
-                                    )}
-                                </p>
-                                <Icon name="matching" />
-                            </div>
+            <FilterChips
+                label={t("mockup.tripFilters")}
+                value={filter}
+                onChange={setFilter}
+                options={["all", "domestic", "overseas", "workation"].map((value) => ({
+                    value,
+                    label: t(
+                        `mockup.filters.${value as "all" | "domestic" | "overseas" | "workation"}`,
+                    ),
+                }))}
+            />
+            {query && (
+                <p className="travel-results" role="status">
+                    {t("mockup.searchResults", { query, count: trips.length })}
+                </p>
+            )}
+            <div className="trip-grid trip-grid--desktop">
+                {trips.map((trip) => (
+                    <Card key={trip.id} className="destination-card">
+                        <Button
+                            variant="plain"
+                            className="destination-card__cover"
+                            aria-label={t(trip.title)}
+                            onClick={() => setSelected(trip)}
+                        >
+                            <TravelArtwork scene={trip.scene} />
+                            <Badge
+                                label={t(
+                                    trip.workation ? "mockup.filters.workation" : "brand.looking",
+                                )}
+                            />
+                        </Button>
+                        <div className="destination-card__body">
+                            <h2>
+                                <Button variant="plain" onClick={() => setSelected(trip)}>
+                                    {t(trip.title)}
+                                </Button>
+                            </h2>
+                            <TravelMeta trip={trip} />
                         </div>
                     </Card>
                 ))}
-                <Button variant="plain" type="button" className="new-trip-card">
-                    <span className="new-trip-card__icon">
-                        <Icon name="plus" />
-                    </span>
-                    <span>{t("trips.create")}</span>
-                </Button>
             </div>
+            <div className="trip-mobile-list">
+                {trips.map((trip) => (
+                    <TravelRow
+                        key={trip.id}
+                        trip={trip}
+                        onOpen={() => setSelected(trip)}
+                        saved={saved.includes(trip.id)}
+                        onSave={() =>
+                            setSaved((values) =>
+                                values.includes(trip.id)
+                                    ? values.filter((value) => value !== trip.id)
+                                    : [...values, trip.id],
+                            )
+                        }
+                    />
+                ))}
+            </div>
+            {trips.length === 0 && (
+                <div className="travel-empty">
+                    <TravelArtwork />
+                    <h2>{t("mockup.noResults")}</h2>
+                    <Button
+                        variant="outline"
+                        onClick={() => {
+                            setFilter("all");
+                            const next = new URLSearchParams(params);
+                            next.delete("q");
+                            setParams(next);
+                        }}
+                    >
+                        {t("mockup.filters.all")}
+                    </Button>
+                </div>
+            )}
+            <p className="dashboard-footnote">{t("mockup.sampleData")}</p>
+            <PreviewDialog
+                open={selected !== null}
+                title={selected ? t(selected.title) : ""}
+                description={t("mockup.tripPreviewDescription")}
+                scene={selected?.scene ?? "mountain"}
+                onClose={() => setSelected(null)}
+            />
+            <PreviewDialog
+                open={creating}
+                title={t("trips.create")}
+                description={t("mockup.createTripDescription")}
+                scene="coast"
+                onClose={() => setCreating(false)}
+            />
         </main>
     );
 }
