@@ -22,6 +22,7 @@ export function Modal({ open, onClose, labelledBy, children, className = "" }: M
             ref={ref}
             className={`ui-modal ${className}`}
             aria-labelledby={labelledBy}
+            data-modal-active={open || undefined}
             onCancel={onClose}
             onClick={(event) => {
                 const rect = event.currentTarget.getBoundingClientRect();

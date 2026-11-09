@@ -75,7 +75,7 @@ export async function withRequestPolicy<T>(
                 attempt > 0 ||
                 !["GET", "HEAD", "OPTIONS"].includes((options.method ?? "GET").toUpperCase())
             ) {
-                if (getAccessTokenSnapshot() === snapshot) clearAccessToken();
+                if (getAccessTokenSnapshot() === snapshot) clearAccessToken(error);
                 throw error;
             }
             // 다른 요청이 이미 갱신했다면 그 토큰을 사용한다. 늦은 401로 재갱신하지 않는다.

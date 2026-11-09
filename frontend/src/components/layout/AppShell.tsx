@@ -15,6 +15,9 @@ type AppShellProps = {
     onThemeChange: (preference: ThemePreference) => void;
     onLanguageChange: (language: Language) => void;
     onOpenAuth: () => void;
+    member: { nickname: string; email: string | null } | null;
+    authBusy: boolean;
+    onLogout: () => void;
     children: ReactNode;
 };
 
@@ -25,6 +28,9 @@ export function AppShell({
     onThemeChange,
     onLanguageChange,
     onOpenAuth,
+    member,
+    authBusy,
+    onLogout,
     children,
 }: AppShellProps) {
     const navigate = useNavigate();
@@ -123,6 +129,9 @@ export function AppShell({
                             </Button>
                         </Tooltip>
                         <ProfileMenu
+                            member={member}
+                            busy={authBusy}
+                            onLogout={onLogout}
                             onLogin={onOpenAuth}
                             onBrand={() => void navigate("/brand")}
                             onSettings={() => setSettingsOpen(true)}
@@ -145,6 +154,9 @@ export function AppShell({
                         </NavLink>
                     ))}
                     <ProfileMenu
+                        member={member}
+                        busy={authBusy}
+                        onLogout={onLogout}
                         mobile
                         onLogin={onOpenAuth}
                         onBrand={() => void navigate("/brand")}

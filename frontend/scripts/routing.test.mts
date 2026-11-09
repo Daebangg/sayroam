@@ -1,6 +1,13 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { legacyPageUrl } from "../src/routing/paths.ts";
+import { isMemberPath, legacyPageUrl } from "../src/routing/paths.ts";
+
+test("여행·내 방만 보호하고 라우터와 동일하게 대소문자·끝 슬래시를 처리", () => {
+    for (const path of ["/trips", "/rooms", "/TRIPS/", "/Rooms///"])
+        assert.equal(isMemberPath(path), true);
+    for (const path of ["/", "/matching", "/brand", "/rooms/unknown", "//external.test/trips"])
+        assert.equal(isMemberPath(path), false);
+});
 
 test("기존 화면 미리보기 URL을 동일한 화면 경로로 바꾸고 설정·해시 유지", () => {
     for (const page of ["trips", "matching", "rooms", "brand"]) {

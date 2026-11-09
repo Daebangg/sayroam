@@ -29,7 +29,7 @@ export function refreshAccessToken(
         } catch (error) {
             // 새 로그인이나 로그아웃 이후의 늦은 갱신은 현재 상태에 손대지 않는다.
             if (revision === getAuthRevision()) {
-                clearAccessToken();
+                clearAccessToken(error);
                 invalidateOtherTabs();
             }
             throw error;

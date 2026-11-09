@@ -9,6 +9,14 @@ export type AccessTokenSnapshot = Readonly<{
 
 let revision = 0;
 let snapshot: AccessTokenSnapshot | undefined;
+const invalidationListeners = new Set<(cause?: unknown) => void>();
+
+export function subscribeAuthInvalidation(listener: (cause?: unknown) => void): () => void {
+    invalidationListeners.add(listener);
+    return () => {
+        invalidationListeners.delete(listener);
+    };
+}
 
 export function getAuthRevision(): number {
     return revision;
@@ -37,7 +45,8 @@ export function replaceAccessToken(response: LoginResponse): void {
 }
 
 // 메모리 정리만 수행한다. 서버 Refresh 쿠키를 폐기하는 로그아웃은 별도 작업이다.
-export function clearAccessToken(): void {
+export function clearAccessToken(cause?: unknown): void {
     revision++;
     snapshot = undefined;
+    invalidationListeners.forEach((listener) => listener(cause));
 }

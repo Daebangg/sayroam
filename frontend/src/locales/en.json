@@ -26,7 +26,8 @@
         "bookmark": "Save",
         "join": "Join the journey",
         "disabled": "Coming soon",
-        "removeTag": "Remove {{name}} tag"
+        "removeTag": "Remove {{name}} tag",
+        "dismissNotification": "Dismiss notification"
     },
     "home": {
         "titleFirst": "Travel together.",
@@ -51,7 +52,78 @@
         "newHere": "New here?",
         "signup": "Create an account",
         "forgot": "Forgot your password?",
-        "reset": "Reset password"
+        "reset": "Reset password",
+        "passwordLabel": "Password",
+        "newPasswordLabel": "New password",
+        "confirmPasswordLabel": "Confirm password",
+        "nicknameLabel": "Nickname",
+        "signingIn": "Checking sign-in…",
+        "logout": "Sign out",
+        "retryProfile": "Check member details again",
+        "retryLogout": "Try signing out again",
+        "checking": "Checking your session",
+        "checkingDescription": "Please wait while we check your sign-in status.",
+        "requiredTitle": "Sign in to continue",
+        "requiredDescription": "This page is for members. After signing in, you will return to this page.",
+        "unavailableTitle": "Could not check your session",
+        "unavailableDescription": "Check your connection, then sign in again.",
+        "statusLabel": "Sign-in status",
+        "signupTitle": "Create an account",
+        "signupDescription": "Create your account and get ready for your next journey.",
+        "resetDescription": "Use the code sent to your email to reset your password.",
+        "emailValidation": "Email check",
+        "emailRule": "Use a valid email address.",
+        "passwordValidation": "Password requirements",
+        "passwordLengthRule": "Between 8 and 24 characters",
+        "passwordWhitespaceRule": "No whitespace",
+        "passwordMatchRule": "Both passwords must match.",
+        "verifyEmail": "Verify your email",
+        "codeLabel": "Email verification code",
+        "verifyCode": "Verify code",
+        "sendCode": "Send verification code",
+        "resendCode": "Send a new code",
+        "resendAfter": "Resend in {{seconds}} seconds",
+        "codeSent": "Enter the 6-digit code from your email. {{seconds}} seconds remaining.",
+        "resetCodeSent": "Enter the 6-digit code from your email. Only existing email-and-password accounts can reset a password. Social accounts should use their social provider. {{seconds}} seconds remaining.",
+        "verified": "Email verified. Complete within {{seconds}} seconds.",
+        "createAccount": "Create account",
+        "setPassword": "Reset password",
+        "rememberPassword": "Remember your password?",
+        "backToLogin": "Back to sign in",
+        "signupComplete": "Account created. Sign in with your email.",
+        "resetComplete": "Password changed. Sign in with your new password.",
+        "messages": {
+            "credentials": "Your email or password is incorrect.",
+            "invalidInput": "Check your email and password.",
+            "expired": "Your session expired or changed in another tab. Please sign in again.",
+            "unavailable": "Could not check your session. Please try signing in again later.",
+            "security": "Could not verify this request. Refresh the page before trying again.",
+            "browserUnavailable": "This browser cannot use the features required for sign-in. Check your browser settings and connection.",
+            "loginUncertain": "Could not confirm the sign-in result. Check your connection, then sign in again.",
+            "logoutUncertain": "Local sign-in details were cleared, but server sign-out could not be confirmed. Reconnect and try signing out again.",
+            "profileUnavailable": "Sign-in was processed, but member details could not be loaded. Check your member details again."
+        },
+        "flowMessages": {
+            "invalidEmail": "Enter a valid email address.",
+            "invalidPassword": "Meet all password requirements.",
+            "codeInvalid": "Check the 6-digit code sent to your email.",
+            "expired": "Verification expired. Request a new code.",
+            "limited": "Too many requests. Wait for the indicated time, then request a new code.",
+            "delivery": "Could not send the verification email. Please try again later.",
+            "unavailable": "Could not process this request. Check your connection and try again.",
+            "conflict": "Verification expired or was already used. Sign in to check the result, or request a new code.",
+            "registered": "This email is already registered. Sign in or reset your password.",
+            "uncertain": "Could not confirm completion. Do not repeat the same request. Sign in to check the result, or start a new email verification if needed.",
+            "security": "Could not verify this request. Refresh the page before trying again.",
+            "invalidNickname": "Use 1–50 characters without control characters for your nickname."
+        },
+        "rememberSession": "Keep me signed in",
+        "passwordUppercaseRule": "At least one uppercase letter",
+        "passwordNumberRule": "At least one number",
+        "passwordSpecialRule": "At least one special character",
+        "loginPasswordRule": "Enter your existing password (8–128 characters).",
+        "loginComplete": "You are signed in.",
+        "logoutComplete": "You are signed out."
     },
     "trips": {
         "heading": "My trips",
@@ -166,7 +238,14 @@
         "localeHeading": "Dates and numbers",
         "localizedExample": "{{date}} · {{number}}",
         "pageStates": "Page states",
-        "open404": "Open the 404 page"
+        "open404": "Open the 404 page",
+        "toasts": "Toast notifications",
+        "toastExample": "This notification disappears after 5 seconds.",
+        "toast": {
+            "success": "Success notification",
+            "error": "Error notification",
+            "info": "Information notification"
+        }
     },
     "profile": {
         "settings": "Settings",
@@ -179,7 +258,8 @@
         "language": "Language",
         "korean": "한국어",
         "english": "English",
-        "system": "System"
+        "system": "System",
+        "signedIn": "{{nickname}}"
     },
     "pageState": {
         "notFound": {
