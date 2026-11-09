@@ -52,7 +52,7 @@ public class RoomService {
         Long roomId = invitation.getRoomId();
 
         if (roomMemberRepository.findByRoomIdAndUserId(roomId, userId).isEmpty()) {
-            roomMemberRepository.save(invitation.admit(userId, LocalDateTime.now(ZoneOffset.UTC)));
+            roomMemberRepository.save(RoomMember.joinAsMember(invitation, userId, LocalDateTime.now(ZoneOffset.UTC)));
         }
 
         return roomId;

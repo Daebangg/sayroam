@@ -74,8 +74,9 @@ public class RoomMember extends BaseTimeEntity {
         return new RoomMember(room, userId, RoomMemberRole.OWNER);
     }
 
-    public static RoomMember joinAsMember(Room room, Long userId) {
-        return new RoomMember(room, userId, RoomMemberRole.MEMBER);
+    public static RoomMember joinAsMember(RoomInvitation invitation, Long userId, LocalDateTime now) {
+        invitation.ensureValid(now);
+        return new RoomMember(invitation.getRoom(), userId, RoomMemberRole.MEMBER);
     }
 
     public void ensureJoined() {

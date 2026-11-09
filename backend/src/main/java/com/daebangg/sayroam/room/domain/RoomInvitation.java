@@ -78,11 +78,14 @@ public class RoomInvitation extends BaseTimeEntity {
         return new RoomInvitation(room, inviterId, null, RoomInvitationCodeGenerator.generate(), null, issuedAt.plusDays(SHARE_VALID_DAYS));
     }
 
-    public RoomMember admit(Long userId, LocalDateTime now) {
+    void ensureValid(LocalDateTime now) {
         if (now.isAfter(expiresAt)) {
             throw new BusinessException(RoomErrorCode.ROOM_INVITATION_EXPIRED);
         }
-        return RoomMember.joinAsMember(room, userId);
+    }
+
+    Room getRoom() {
+        return room;
     }
 
     public Long getRoomId() {
