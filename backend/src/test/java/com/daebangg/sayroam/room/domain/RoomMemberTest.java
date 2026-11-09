@@ -88,11 +88,69 @@ class RoomMemberTest {
         }).doesNotThrowAnyException();
     }
 
+    @Test
+    void 나간_멤버가_유효한_초대로_참여하면_방에_다시_참여할_수_있다() {
+        // given
+        RoomMember member = leftMember();
+        LocalDateTime rejoinedAt = NOW.plusDays(3);
+        RoomInvitation invitation = invitationIssuedAt(rejoinedAt);
+
+        // when
+        member.rejoin(invitation, rejoinedAt);
+
+        // then
+        assertThatCode(member::ensureJoined)
+                .doesNotThrowAnyException();
+        assertThat(member.getJoinedAt()).isEqualTo(rejoinedAt);
+    }
+
+    @Test
+    void 나간_멤버가_만료된_초대로_참여하면_거부한다() {
+        // given
+        RoomMember member = leftMember();
+        RoomInvitation expired = invitationIssuedAt(NOW.minusYears(1));
+
+        // when & then
+        assertThatThrownBy(() -> member.rejoin(expired, NOW))
+                .isInstanceOfSatisfying(BusinessException.class,
+                        e -> assertThat(e.getErrorCode()).isEqualTo(RoomErrorCode.ROOM_INVITATION_EXPIRED));
+    }
+
+    @Test
+    void 참여_중인_멤버가_다시_참여해도_참여_시각은_그대로다() {
+        // given
+        RoomMember member = joinedMember();
+        LocalDateTime joinedAt = member.getJoinedAt();
+        LocalDateTime now = NOW.plusDays(3);
+
+        // when
+        member.rejoin(invitationIssuedAt(now), now);
+
+        assertThat(member.getJoinedAt()).isEqualTo(joinedAt);
+    }
+
+    @Test
+    void 나간_멤버는_다시_나갈_수_없다() {
+        // given
+        RoomMember member = leftMember();
+
+        // when & then
+        assertThatThrownBy(() -> member.leave(NOW.plusMinutes(1)))
+                .isInstanceOfSatisfying(BusinessException.class,
+                        e -> assertThat(e.getErrorCode()).isEqualTo(RoomErrorCode.ROOM_ACCESS_DENIED));
+    }
+
     private RoomInvitation invitationIssuedAt(LocalDateTime issuedAt) {
         return RoomMember.joinAsOwner(room, 1L).createShareInvitation(issuedAt);
     }
 
     private RoomMember joinedMember() {
         return RoomMember.joinAsMember(invitationIssuedAt(NOW), 2L, NOW);
+    }
+
+    private RoomMember leftMember() {
+        RoomMember member = joinedMember();
+        member.leave(NOW);
+        return member;
     }
 }
