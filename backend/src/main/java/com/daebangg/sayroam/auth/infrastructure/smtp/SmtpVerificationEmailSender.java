@@ -1,5 +1,6 @@
 package com.daebangg.sayroam.auth.infrastructure.smtp;
 
+import com.daebangg.sayroam.global.mail.EmailLanguage;
 import com.daebangg.sayroam.auth.application.error.AuthErrorCode;
 import com.daebangg.sayroam.auth.application.error.AuthException;
 import com.daebangg.sayroam.auth.application.port.out.VerificationEmailSender;
@@ -37,18 +38,18 @@ public class SmtpVerificationEmailSender implements VerificationEmailSender {
     }
 
     @Override
-    public void sendVerificationCode(String recipient, String code) {
-        send(recipient, templates.signup(code));
+    public void sendVerificationCode(String recipient, String code, EmailLanguage language) {
+        send(recipient, templates.signup(code, language));
     }
 
     @Override
-    public void sendAccountVerificationCode(String recipient, String code, AccountVerificationPurpose purpose) {
-        send(recipient, templates.account(code, purpose));
+    public void sendAccountVerificationCode(String recipient, String code, AccountVerificationPurpose purpose, EmailLanguage language) {
+        send(recipient, templates.account(code, purpose, language));
     }
 
     @Override
-    public void sendPasswordResetCode(String recipient, String code) {
-        send(recipient, templates.passwordReset(code));
+    public void sendPasswordResetCode(String recipient, String code, EmailLanguage language) {
+        send(recipient, templates.passwordReset(code, language));
     }
 
     private void send(String recipient, BrandedEmailContent content) {
@@ -59,6 +60,7 @@ public class SmtpVerificationEmailSender implements VerificationEmailSender {
             helper.setFrom(from);
             helper.setTo(recipient);
             helper.setSubject(rendered.subject());
+            message.setHeader("Content-Language", content.language().tag());
             helper.setText(rendered.plainText(), rendered.html());
             for (var asset : renderer.inlineAssets()) {
                 helper.addInline(asset.contentId(), asset.resource(), asset.contentType());

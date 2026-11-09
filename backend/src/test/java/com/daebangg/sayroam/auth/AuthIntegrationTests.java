@@ -1,5 +1,6 @@
 package com.daebangg.sayroam.auth;
 
+import com.daebangg.sayroam.global.mail.EmailLanguage;
 import com.daebangg.sayroam.auth.application.error.AuthErrorCode;
 import com.daebangg.sayroam.auth.application.error.AuthException;
 import com.daebangg.sayroam.auth.application.model.SocialIdentity;
@@ -93,6 +94,7 @@ class AuthIntegrationTests extends DatabaseIntegrationTest {
         // CLI를 테스트 컨테이너 안에서만 실행하므로 개발 Redis에 접근할 수 없다.
         assertThat(REDIS.execInContainer("redis-cli", "FLUSHDB").getExitCode()).isZero();
         mail.codes.clear();
+        mail.languages.clear();
         mail.fail = false;
     }
 
@@ -818,6 +820,50 @@ class AuthIntegrationTests extends DatabaseIntegrationTest {
     }
 
     @Test
+    void selectsSignupAndResetEmailLanguageForEachBrowserRequest() throws Exception {
+        for (String path : List.of("/api/auth/email-verifications", "/api/auth/password-reset-verifications")) {
+            String purpose = path.contains("password-reset") ? "PASSWORD_RESET" : "signup";
+            for (String header : List.of("en-US,en;q=0.9,ko;q=0.8", "ko-KR,ko;q=0.9,en;q=0.8", "ja-JP")) {
+                String email = email();
+                mvc.perform(post(path).servletPath(path).cookie(csrf).header("X-XSRF-TOKEN", csrf.getValue())
+                                .header("Accept-Language", header).contentType("application/json")
+                                .content(mapper.writeValueAsString(Map.of("email", email))))
+                        .andExpect(status().isAccepted());
+                assertThat(mail.languages.get(email + ":" + purpose)).isEqualTo(header.startsWith("en") ? EmailLanguage.EN : EmailLanguage.KO);
+            }
+        }
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"en-GB,en;q=0.9", "ko-KR,ko;q=0.9"})
+    void passesBrowserLanguageToBothAccountVerificationPurposes(String header) throws Exception {
+        for (var purpose : AccountVerificationPurpose.values()) {
+            String email = register();
+            var login = login(email, PASSWORD);
+            String path = "/api/auth/account-verifications";
+            mvc.perform(post(path).servletPath(path).cookie(csrf).header("X-XSRF-TOKEN", csrf.getValue())
+                            .header("Authorization", "Bearer " + login.access()).header("Accept-Language", header)
+                            .contentType("application/json").content(mapper.writeValueAsString(Map.of("purpose", purpose.name()))))
+                    .andExpect(status().isAccepted());
+            assertThat(mail.languages.get(email + ":" + purpose.name())).isEqualTo(header.startsWith("en") ? EmailLanguage.EN : EmailLanguage.KO);
+        }
+    }
+
+    @Test
+    void declaresOptionalBrowserLanguageOnAllEmailIssuanceOperations() throws Exception {
+        var result = mvc.perform(get("/v3/api-docs")).andExpect(status().isOk()).andReturn();
+        var spec = json(result);
+        for (String path : List.of("/api/auth/email-verifications", "/api/auth/password-reset-verifications", "/api/auth/account-verifications")) {
+            var parameters = spec.path("paths").path(path).path("post").path("parameters");
+            assertThat(parameters.isArray()).isTrue();
+            var language = java.util.stream.StreamSupport.stream(parameters.spliterator(), false)
+                    .filter(parameter -> "Accept-Language".equals(parameter.path("name").asText())).findFirst().orElseThrow();
+            assertThat(language.path("in").asText()).isEqualTo("header");
+            assertThat(language.path("required").asBoolean()).isFalse();
+        }
+    }
+
+    @Test
     void resetOpenApiDeclaresPublicCsrfOnlyOperationsAndDedicatedProof() throws Exception {
         var document = mvc.perform(get("/v3/api-docs")).andExpect(status().isOk()).andReturn();
         var spec = json(document);
@@ -948,15 +994,17 @@ class AuthIntegrationTests extends DatabaseIntegrationTest {
 
     static class MailCapture implements VerificationEmailSender {
         final Map<String, String> codes = new ConcurrentHashMap<>();
+        final Map<String, EmailLanguage> languages = new ConcurrentHashMap<>();
         volatile boolean fail;
-        private void capture(String recipient, String purpose, String code) {
+        private void capture(String recipient, String purpose, String code, EmailLanguage language) {
             assertThat(recipient).endsWith("@example.test");
             if (fail) throw new AuthException(AuthErrorCode.EMAIL_DELIVERY_FAILED);
             codes.put(recipient + ":" + purpose, code);
+            languages.put(recipient + ":" + purpose, language);
         }
         String code(String recipient, String purpose) { return codes.get(recipient + ":" + purpose); }
-        @Override public void sendVerificationCode(String recipient, String code) { capture(recipient, "signup", code); }
-        @Override public void sendAccountVerificationCode(String recipient, String code, AccountVerificationPurpose purpose) { capture(recipient, purpose.name(), code); }
-        @Override public void sendPasswordResetCode(String recipient, String code) { capture(recipient, "PASSWORD_RESET", code); }
+        @Override public void sendVerificationCode(String recipient, String code, EmailLanguage language) { capture(recipient, "signup", code, language); }
+        @Override public void sendAccountVerificationCode(String recipient, String code, AccountVerificationPurpose purpose, EmailLanguage language) { capture(recipient, purpose.name(), code, language); }
+        @Override public void sendPasswordResetCode(String recipient, String code, EmailLanguage language) { capture(recipient, "PASSWORD_RESET", code, language); }
     }
 }

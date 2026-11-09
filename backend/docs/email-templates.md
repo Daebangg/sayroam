@@ -12,7 +12,7 @@
 ```
 
 `backend/build/mail-preview/index.html`을 브라우저에서 엽니다. 인증 목적 4종과 코드 없이 버튼을 사용하는
-여행 안내 예시, 각각의 일반 텍스트 본문을 제공합니다. 코드 `012345`와 `https://example.test/trips`는
+여행 안내 예시를 한국어·영어로 각각 제공하며 일반 텍스트 본문도 확인할 수 있습니다. 코드 `012345`와 `https://example.test/trips`는
 검토용 예시입니다. 생성 파일은 `build/`에만 두며 화면 캡처는 PR에 첨부합니다.
 
 ## 내부 요소 바꾸기
@@ -22,6 +22,7 @@
 
 | 필드 | 용도 |
 | --- | --- |
+| `language` | `EmailLanguage.KO` 또는 `EN`. HTML 언어·버튼 보조 문구·푸터에도 적용 |
 | `subject` | 메일 제목. 렌더러가 `[SayRoam]`을 붙임 |
 | `preheader` | 수신함에서 제목 옆에 보이는 짧은 요약 |
 | `category` | 본문 제목 위의 작은 분류 문구 |
@@ -33,7 +34,7 @@
 
 ```java
 var content = new BrandedEmailContent(
-        "여행 준비 안내", "다음 여행을 함께 준비해요.", "함께 준비하는 여행",
+        EmailLanguage.KO, "여행 준비 안내", "다음 여행을 함께 준비해요.", "함께 준비하는 여행",
         "우리의 다음 여행이 기다려요", "준비한 일정을 확인해 주세요.",
         List.of("동행과 함께 가고 싶은 장소를 모아 보세요."),
         null,
@@ -45,6 +46,25 @@ RenderedEmail rendered = renderer.render(content);
 모든 내용은 일반 텍스트로 받습니다. HTML 태그를 전달해 스타일을 바꾸지 않습니다. 렌더러가 텍스트와
 링크 속성을 이스케이프하고 한 번만 치환합니다. 버튼 주소는 사용자 정보가 없는 절대 HTTPS 주소만 받습니다.
 `RenderedEmail`은 제목·일반 텍스트·HTML을 함께 제공하므로 새로운 발송 목적도 같은 레이아웃을 재사용할 수 있습니다.
+
+## 브라우저 언어 선택
+
+가입·재설정·계정 관리의 코드 발급/재발송 요청은 브라우저가 보내는 선택적 `Accept-Language` 헤더를 읽습니다.
+서버 전역 로케일이나 이전 요청의 언어를 사용하지 않고 현재 요청의 언어를 발급 서비스와 발송 포트에 명시적으로 전달합니다.
+
+| 헤더 예시 | 발송 언어 |
+| --- | --- |
+| `ko-KR,ko;q=0.9,en;q=0.8` | 한국어 |
+| `en-US,en;q=0.9,ko;q=0.8` | 영어 |
+| `fr-FR,en;q=0.8` | 지원 언어 중 다음 선호인 영어 |
+| 헤더 없음·지원 언어 없음·잘못된 값 | 한국어 |
+
+지역 태그는 기본 언어로 연결하고 `q=0`은 선택하지 않습니다. 제목·수신함 요약·본문·코드/시간 안내·주의사항·푸터·일반 텍스트·
+HTML `lang`·MIME `Content-Language`에 같은 언어를 적용합니다. 문구는 `mail/messages_ko.properties`와
+`mail/messages_en.properties`에 모아 두었습니다. 공통 양식의 구조를 복제하지 않고 번역을 수정할 수 있습니다.
+
+현재 프론트 전송 계층은 이 헤더를 덮어쓰지 않으므로 브라우저 언어가 그대로 사용됩니다. 사이트 안의 언어 선택을
+브라우저 설정과 다르게 사용한다면 메일은 브라우저 설정을 따릅니다. 이 선택은 API 입력 오류의 고정 영어 메시지 정책을 바꾸지 않습니다.
 
 ## 실제 인증 메일
 
@@ -79,9 +99,10 @@ MIME 본문은 `multipart/related` 안에 `multipart/alternative`(일반 텍스�
 [프론트 스타일 가이드북](../../frontend/STYLE_GUIDE.md)을 참고합니다.
 
 ```bash
-./backend/gradlew -p backend test --tests '*BrandedEmailRendererTests' --tests '*SmtpVerificationEmailSenderTests'
+./backend/gradlew -p backend test --tests '*EmailLanguageTests' --tests '*BrandedEmailRendererTests' --tests '*SmtpVerificationEmailSenderTests'
 ```
 
 텍스트 이스케이프·링크 검증·선행 0·한글·목적별 시간과 문구·MIME 직렬화·CID 이미지·SMTP 실패 매핑을 확인합니다.
+실제 HTTP 필터·컨트롤러·발급 서비스가 선택한 언어를 전달하는 흐름은 `AuthIntegrationTests`에서 검증합니다.
 미리보기는 실제 렌더러와 목적별 문구를 사용하지만 브라우저 검토이며 메일 앱별 수신 결과를 보장하지 않습니다.
 실제 외부 수신자에게 발송하지 않습니다.

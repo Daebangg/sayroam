@@ -1,5 +1,6 @@
 package com.daebangg.sayroam.auth.application.service;
 
+import com.daebangg.sayroam.global.mail.EmailLanguage;
 import com.daebangg.sayroam.auth.application.error.AuthErrorCode;
 import com.daebangg.sayroam.auth.application.error.AuthException;
 import com.daebangg.sayroam.auth.application.port.out.*;
@@ -70,7 +71,7 @@ class PasswordResetServiceTests {
     @Test
     void disabledMailDoesNotQueryAccountsOrConsumeRateLimits() {
         var disabled = new PasswordResetService(accounts, store, Optional.empty(), passwords, changes);
-        assertThatThrownBy(() -> disabled.request(EMAIL, "127.0.0.1"))
+        assertThatThrownBy(() -> disabled.request(EMAIL, "127.0.0.1", EmailLanguage.KO))
                 .isInstanceOfSatisfying(AuthException.class,
                         exception -> assertThat(exception.getErrorCode()).isEqualTo(AuthErrorCode.EMAIL_DELIVERY_DISABLED));
         verifyNoInteractions(accounts, store, mail);
@@ -82,9 +83,9 @@ class PasswordResetServiceTests {
         when(store.reserve(any(), anyString(), anyString(), anyString())).thenReturn(Duration.ZERO);
         var delivery = new AuthException(AuthErrorCode.EMAIL_DELIVERY_FAILED);
         var cleanup = new AuthException(AuthErrorCode.EMAIL_VERIFICATION_UNAVAILABLE);
-        doThrow(delivery).when(mail).sendPasswordResetCode(eq(EMAIL), anyString());
+        doThrow(delivery).when(mail).sendPasswordResetCode(eq(EMAIL), anyString(), eq(EmailLanguage.KO));
         doThrow(cleanup).when(store).discard(any(), anyString());
-        assertThatThrownBy(() -> service.request(EMAIL, "127.0.0.1")).isSameAs(cleanup);
+        assertThatThrownBy(() -> service.request(EMAIL, "127.0.0.1", EmailLanguage.KO)).isSameAs(cleanup);
         assertThat(cleanup.getSuppressed()).containsExactly(delivery);
         verify(store, never()).activate(any(), anyString());
     }

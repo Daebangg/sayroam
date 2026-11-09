@@ -1144,6 +1144,16 @@
             "post": {
                 "description": "Bearer 인증과 CSRF 쿠키·X-XSRF-TOKEN 헤더가 모두 필요합니다. DB의 현재 인증된 대표 이메일로만 발송합니다. PASSWORD_CHANGE/ACCOUNT_DELETION의 코드·증명은 분리하고 발송 제한은 합산합니다. 승인된 재발급은 같은 목적의 이전 코드·증명을 무효화합니다. 이 API는 비밀번호 변경·탈퇴를 실행하지 않습니다.",
                 "operationId": "request_1",
+                "parameters": [
+                    {
+                        "description": "인증 메일 언어. ko/en을 지역 태그와 q 우선순위로 선택하며 누락·미지원·잘못된 값은 한국어로 처리합니다.",
+                        "example": "en-US,en;q=0.9,ko;q=0.8",
+                        "in": "header",
+                        "name": "Accept-Language",
+                        "required": false,
+                        "schema": { "type": "string" }
+                    }
+                ],
                 "requestBody": {
                     "content": {
                         "application/json": {
@@ -1231,6 +1241,16 @@
             "post": {
                 "description": "CSRF 쿠키와 X-XSRF-TOKEN 헤더 필요. 코드는 6자리이며 응답에 포함하지 않습니다. 재발급 승인 시 이전 코드와 가입용 증명은 무효화합니다.",
                 "operationId": "request",
+                "parameters": [
+                    {
+                        "description": "인증 메일 언어. ko/en을 지역 태그와 q 우선순위로 선택하며 누락·미지원·잘못된 값은 한국어로 처리합니다.",
+                        "example": "en-US,en;q=0.9,ko;q=0.8",
+                        "in": "header",
+                        "name": "Accept-Language",
+                        "required": false,
+                        "schema": { "type": "string" }
+                    }
+                ],
                 "requestBody": {
                     "content": {
                         "application/json": {
@@ -1446,6 +1466,16 @@
             "post": {
                 "description": "로그인 없이 CSRF 쿠키·X-XSRF-TOKEN 헤더로 요청합니다. Bearer 헤더 없이 호출하세요. 가입·비밀번호 등록 여부와 무관하게 동일한 안내 메일·6자리 코드와 응답을 제공합니다. 코드 확인은 이메일 소유 확인이며 비밀번호 재설정 가능 여부를 보장하지 않습니다. 이메일/IP 발송 제한과 재발송 대기는 계정 여부와 무관하게 적용합니다. 재발급 승인 시 기존 코드·재설정 증명을 무효화합니다.",
                 "operationId": "requestPasswordReset",
+                "parameters": [
+                    {
+                        "description": "인증 메일 언어. ko/en을 지역 태그와 q 우선순위로 선택하며 누락·미지원·잘못된 값은 한국어로 처리합니다.",
+                        "example": "en-US,en;q=0.9,ko;q=0.8",
+                        "in": "header",
+                        "name": "Accept-Language",
+                        "required": false,
+                        "schema": { "type": "string" }
+                    }
+                ],
                 "requestBody": {
                     "content": {
                         "application/json": {

@@ -31,15 +31,18 @@ public class BrandedEmailRenderer {
     }
 
     public RenderedEmail render(BrandedEmailContent content) {
-        Map<String, String> values = Map.of(
-                "preheader", escape(content.preheader()),
-                "category", escape(content.category()),
-                "title", escape(content.title()),
-                "introduction", escape(content.introduction()),
-                "details", content.details().stream().map(this::paragraph).collect(Collectors.joining()),
-                "highlight", highlight(content.highlight()),
-                "action", action(content.action()),
-                "notice", escape(content.notice()));
+        Map<String, String> values = Map.ofEntries(
+                Map.entry("language", content.language().tag()),
+                Map.entry("preheader", escape(content.preheader())),
+                Map.entry("category", escape(content.category())),
+                Map.entry("title", escape(content.title())),
+                Map.entry("introduction", escape(content.introduction())),
+                Map.entry("details", content.details().stream().map(this::paragraph).collect(Collectors.joining())),
+                Map.entry("highlight", highlight(content.highlight())),
+                Map.entry("action", action(content.action(), content.language())),
+                Map.entry("notice", escape(content.notice())),
+                Map.entry("tagline", escape(content.language().text("footer.tagline"))),
+                Map.entry("automatic", escape(content.language().text("footer.automatic"))));
         // 한 번만 치환해 사용자 문구의 {{title}} 같은 문자열을 다시 평가하지 않는다.
         String html = PLACEHOLDER.matcher(template).replaceAll(match -> {
             String value = values.get(match.group(1));
@@ -73,7 +76,7 @@ public class BrandedEmailRenderer {
                 """.formatted(escape(highlight.label()), escape(highlight.value()), escape(highlight.hint()));
     }
 
-    private String action(BrandedEmailContent.Action action) {
+    private String action(BrandedEmailContent.Action action, EmailLanguage language) {
         if (action == null) return "";
         String url = escape(action.url().toASCIIString());
         return """
@@ -82,8 +85,8 @@ public class BrandedEmailRenderer {
                     <a href="%s" style="display:inline-block;padding:13px 24px;color:#ffffff;font-size:14px;font-weight:700;text-decoration:none;line-height:1.5;">%s</a>
                   </td></tr>
                 </table>
-                <p style="margin:0 0 24px;color:#526584;font-size:12px;line-height:1.7;overflow-wrap:anywhere;word-break:break-all;">버튼이 열리지 않으면 아래 주소를 복사해 주세요.<br><a href="%s" style="color:#365de8;">%s</a></p>
-                """.formatted(url, escape(action.label()), url, url);
+                <p style="margin:0 0 24px;color:#526584;font-size:12px;line-height:1.7;overflow-wrap:anywhere;word-break:break-all;">%s<br><a href="%s" style="color:#365de8;">%s</a></p>
+                """.formatted(url, escape(action.label()), escape(language.text("action.fallback")), url, url);
     }
 
     private String plainText(BrandedEmailContent content) {
@@ -100,7 +103,8 @@ public class BrandedEmailRenderer {
             text.append(content.action().label()).append("\n").append(content.action().url()).append("\n\n");
         }
         return text.append(content.notice()).append("\n\n")
-                .append("함께 떠나는 더 특별한 여행, SayRoam\n이 메일은 SayRoam에서 자동으로 보냈습니다.\n")
+                .append(content.language().text("footer.tagline")).append("\n")
+                .append(content.language().text("footer.automatic")).append("\n")
                 .toString();
     }
 

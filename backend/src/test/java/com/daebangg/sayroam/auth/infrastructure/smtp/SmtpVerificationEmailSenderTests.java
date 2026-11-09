@@ -1,5 +1,6 @@
 package com.daebangg.sayroam.auth.infrastructure.smtp;
 
+import com.daebangg.sayroam.global.mail.EmailLanguage;
 import com.daebangg.sayroam.auth.application.error.AuthErrorCode;
 import com.daebangg.sayroam.auth.application.error.AuthException;
 import com.daebangg.sayroam.auth.domain.AccountVerificationPurpose;
@@ -43,7 +44,7 @@ class SmtpVerificationEmailSenderTests {
         MimeMessage message = new MimeMessage(Session.getInstance(new Properties()));
         when(mail.createMimeMessage()).thenReturn(message);
 
-        sender.sendVerificationCode("member@example.test", "012345");
+        sender.sendVerificationCode("member@example.test", "012345", EmailLanguage.KO);
 
         verify(mail).send(message);
         // 실제 전송 직전의 바이트를 다시 읽어 MIME 구조와 한글·선행 0 보존을 확인한다.
@@ -70,12 +71,36 @@ class SmtpVerificationEmailSenderTests {
 
     @Test
     void keepsEachVerificationPurposeAndItsConfiguredLifetimeDistinct() {
-        assertContent(templates.signup("012345"), "이메일 인증", "최대 5분", "회원가입 이메일 인증에만");
-        assertContent(templates.account("012345", AccountVerificationPurpose.PASSWORD_CHANGE), "비밀번호 변경", "최대 7분", "비밀번호 변경 본인 확인에만");
-        assertContent(templates.account("012345", AccountVerificationPurpose.ACCOUNT_DELETION), "회원 탈퇴", "최대 7분", "코드 확인만으로 탈퇴가 완료되지는");
-        var reset = renderer.render(templates.passwordReset("012345"));
+        assertContent(templates.signup("012345", EmailLanguage.KO), "이메일 인증", "최대 5분", "회원가입 이메일 인증에만");
+        assertContent(templates.account("012345", AccountVerificationPurpose.PASSWORD_CHANGE, EmailLanguage.KO), "비밀번호 변경", "최대 7분", "비밀번호 변경 본인 확인에만");
+        assertContent(templates.account("012345", AccountVerificationPurpose.ACCOUNT_DELETION, EmailLanguage.KO), "회원 탈퇴", "최대 7분", "코드 확인만으로 탈퇴가 완료되지는");
+        var reset = renderer.render(templates.passwordReset("012345", EmailLanguage.KO));
         assertThat(reset.plainText()).contains("최대 181초", "기존 이메일·비밀번호 로그인 계정에만", "소셜 로그인으로만 가입했다면");
         assertThat(reset.html()).contains("기존 이메일·비밀번호 로그인 계정에만", "소셜 로그인으로만 가입했다면");
+    }
+
+    @Test
+    void sendsEnglishSubjectBodyFooterAndContentLanguageTogether() throws Exception {
+        var message = new MimeMessage(Session.getInstance(new Properties()));
+        when(mail.createMimeMessage()).thenReturn(message);
+
+        sender.sendPasswordResetCode("member@example.test", "012345", EmailLanguage.EN);
+
+        verify(mail).send(message);
+        assertThat(message.getSubject()).isEqualTo("[SayRoam] Password reset verification code");
+        assertThat(message.getHeader("Content-Language", null)).isEqualTo("en");
+        var related = (Multipart) message.getContent();
+        var alternatives = (Multipart) related.getBodyPart(0).getContent();
+        String plain = alternatives.getBodyPart(0).getContent().toString();
+        String html = alternatives.getBodyPart(1).getContent().toString();
+        assertThat(plain).contains("012345", "181 seconds", "social account", "sent automatically");
+        assertThat(html).contains("<html lang=\"en\">", "Reset your password", "181 seconds", "sent automatically");
+        assertThat(html).doesNotContainPattern("[가-힣]");
+        for (var content : java.util.List.of(templates.signup("012345", EmailLanguage.EN),
+                templates.account("012345", AccountVerificationPurpose.PASSWORD_CHANGE, EmailLanguage.EN),
+                templates.account("012345", AccountVerificationPurpose.ACCOUNT_DELETION, EmailLanguage.EN))) {
+            assertThat(renderer.render(content).html()).contains("012345", "<html lang=\"en\">").doesNotContainPattern("[가-힣]");
+        }
     }
 
     @Test
@@ -84,7 +109,7 @@ class SmtpVerificationEmailSenderTests {
         var failure = new MailSendException("private SMTP diagnostic");
         doThrow(failure).when(mail).send(any(MimeMessage.class));
 
-        assertThatThrownBy(() -> sender.sendPasswordResetCode("member@example.test", "012345"))
+        assertThatThrownBy(() -> sender.sendPasswordResetCode("member@example.test", "012345", EmailLanguage.KO))
                 .isInstanceOfSatisfying(AuthException.class, exception -> {
                     assertThat(exception.getErrorCode()).isEqualTo(AuthErrorCode.EMAIL_DELIVERY_FAILED);
                     assertThat(exception.getCause()).isSameAs(failure);

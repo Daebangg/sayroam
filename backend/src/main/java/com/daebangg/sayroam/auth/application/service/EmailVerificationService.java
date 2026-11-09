@@ -1,5 +1,6 @@
 package com.daebangg.sayroam.auth.application.service;
 
+import com.daebangg.sayroam.global.mail.EmailLanguage;
 import com.daebangg.sayroam.auth.application.error.AuthErrorCode;
 import com.daebangg.sayroam.auth.application.error.AuthException;
 import com.daebangg.sayroam.auth.application.port.out.EmailVerificationStore;
@@ -25,7 +26,7 @@ public class EmailVerificationService {
         this.mailSender = mailSender;
     }
 
-    public IssuedRequest request(String rawEmail, String remoteAddress) {
+    public IssuedRequest request(String rawEmail, String remoteAddress, EmailLanguage language) {
         // 기능이 꺼져 있으면 Redis 예약·제한 소비 전에 실패한다.
         VerificationEmailSender sender = mailSender.orElseThrow(
                 () -> new AuthException(AuthErrorCode.EMAIL_DELIVERY_DISABLED));
@@ -38,7 +39,7 @@ public class EmailVerificationService {
             throw new AuthException(AuthErrorCode.EMAIL_RATE_LIMITED, retryAfter);
         }
         try {
-            sender.sendVerificationCode(email, code);
+            sender.sendVerificationCode(email, code, language);
         } catch (AuthException deliveryFailure) {
             try {
                 store.discard(email, requestId);

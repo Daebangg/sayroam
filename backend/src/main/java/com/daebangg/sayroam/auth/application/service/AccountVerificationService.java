@@ -1,5 +1,6 @@
 package com.daebangg.sayroam.auth.application.service;
 
+import com.daebangg.sayroam.global.mail.EmailLanguage;
 import com.daebangg.sayroam.auth.application.error.AuthErrorCode;
 import com.daebangg.sayroam.auth.application.error.AuthException;
 import com.daebangg.sayroam.auth.application.port.out.AccountLookup;
@@ -33,7 +34,7 @@ public class AccountVerificationService {
     }
 
     public IssuedRequest request(long userId, long expectedAuthVersion, AccountVerificationPurpose purpose,
-                                 String remoteAddress) {
+                                 String remoteAddress, EmailLanguage language) {
         var subject = subject(userId, expectedAuthVersion, purpose);
         VerificationEmailSender sender = mailSender.orElseThrow(
                 () -> new AuthException(AuthErrorCode.EMAIL_DELIVERY_DISABLED));
@@ -44,7 +45,7 @@ public class AccountVerificationService {
             throw new AuthException(AuthErrorCode.EMAIL_RATE_LIMITED, retryAfter);
         }
         try {
-            sender.sendAccountVerificationCode(subject.email(), code, purpose);
+            sender.sendAccountVerificationCode(subject.email(), code, purpose, language);
         } catch (AuthException deliveryFailure) {
             try {
                 store.discard(subject, requestId);

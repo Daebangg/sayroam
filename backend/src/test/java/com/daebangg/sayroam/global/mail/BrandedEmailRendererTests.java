@@ -16,7 +16,7 @@ class BrandedEmailRendererTests {
     @Test
     void escapesEveryDynamicFieldWithoutEvaluatingInsertedPlaceholders() {
         String text = "<script>alert(1)</script> & \"quoted\" {{title}} $1 \\";
-        var content = new BrandedEmailContent("안내", text, text, text, text, List.of(text),
+        var content = new BrandedEmailContent(EmailLanguage.KO, "안내", text, text, text, text, List.of(text),
                 new BrandedEmailContent.Highlight(text, "012345", text),
                 new BrandedEmailContent.Action(text, URI.create("https://example.test/trips?a=1&b=2")), text);
 
@@ -34,7 +34,7 @@ class BrandedEmailRendererTests {
 
     @Test
     void supportsTextOnlyContentWithoutAnEmptyCodeOrActionBlock() {
-        var content = new BrandedEmailContent("여행 안내", "여행 안내를 확인해 주세요.", "여행 소식",
+        var content = new BrandedEmailContent(EmailLanguage.KO, "여행 안내", "여행 안내를 확인해 주세요.", "여행 소식",
                 "다음 여행을 준비해요", "변경된 일정을 확인해 주세요.", List.of(), null, null, "동행과 함께 확인해 주세요.");
 
         var result = renderer.render(content);
@@ -53,7 +53,7 @@ class BrandedEmailRendererTests {
 
     @Test
     void rejectsMultilineSubjects() {
-        assertThatThrownBy(() -> new BrandedEmailContent("안내\r\nBcc: other@example.test", "안내", "안내", "안내", "안내",
+        assertThatThrownBy(() -> new BrandedEmailContent(EmailLanguage.KO, "안내\r\nBcc: other@example.test", "안내", "안내", "안내", "안내",
                 List.of(), null, null, "안내")).isInstanceOf(IllegalArgumentException.class);
     }
 }

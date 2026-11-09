@@ -7,6 +7,7 @@ import java.util.List;
 
 /** 공통 양식에 넣는 일반 텍스트. HTML은 렌더러에서만 구성한다. */
 public record BrandedEmailContent(
+        EmailLanguage language,
         String subject,
         String preheader,
         String category,
@@ -18,6 +19,7 @@ public record BrandedEmailContent(
         String notice) {
 
     public BrandedEmailContent {
+        Assert.notNull(language, "Email language is required");
         Assert.hasText(subject, "Email subject is required");
         Assert.isTrue(!subject.contains("\r") && !subject.contains("\n"), "Email subject must be a single line");
         Assert.hasText(preheader, "Email preheader is required");

@@ -6,12 +6,16 @@ import com.daebangg.sayroam.auth.presentation.dto.EmailVerificationConfirmReques
 import com.daebangg.sayroam.auth.presentation.dto.EmailVerificationConfirmResponse;
 import com.daebangg.sayroam.auth.presentation.dto.EmailVerificationResponse;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
+import com.daebangg.sayroam.global.mail.EmailLanguage;
+import org.springframework.web.bind.annotation.RequestHeader;
 import jakarta.validation.Valid;
 import org.springframework.http.CacheControl;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -42,9 +46,11 @@ public class EmailVerificationController {
     })
     @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<EmailVerificationResponse> request(
-            @Valid @RequestBody EmailRequest body, HttpServletRequest request) {
+            @Valid @RequestBody EmailRequest body, HttpServletRequest request,
+            @Parameter(description = "인증 메일 언어. ko/en을 지역 태그와 q 우선순위로 선택하며 누락·미지원·잘못된 값은 한국어로 처리합니다.", example = "en-US,en;q=0.9,ko;q=0.8")
+            @RequestHeader(value = HttpHeaders.ACCEPT_LANGUAGE, required = false) String acceptLanguage) {
         // Forwarded/X-Forwarded-For는 신뢰하지 않는다. 프록시 구성은 별도 신뢰 경계 설정이 필요하다.
-        var issued = service.request(body.email(), request.getRemoteAddr());
+        var issued = service.request(body.email(), request.getRemoteAddr(), EmailLanguage.fromAcceptLanguage(acceptLanguage));
         return ResponseEntity.accepted().cacheControl(CacheControl.noStore()).body(EmailVerificationResponse.from(issued));
     }
 

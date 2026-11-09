@@ -25,15 +25,24 @@ public class EmailTemplatePreview {
                 new AccountVerificationProperties(300, 60, 3600, 5, 20, 5, 600),
                 new PasswordResetProperties(300, 60, 3600, 5, 20, 5, 300));
         var samples = new LinkedHashMap<String, BrandedEmailContent>();
-        samples.put("signup", templates.signup("012345"));
-        samples.put("password-reset", templates.passwordReset("012345"));
-        samples.put("password-change", templates.account("012345", AccountVerificationPurpose.PASSWORD_CHANGE));
-        samples.put("account-deletion", templates.account("012345", AccountVerificationPurpose.ACCOUNT_DELETION));
-        samples.put("travel-notice", new BrandedEmailContent("여행 준비 안내", "다음 여행을 함께 준비해요.", "함께 준비하는 여행",
+        samples.put("signup", templates.signup("012345", EmailLanguage.KO));
+        samples.put("password-reset", templates.passwordReset("012345", EmailLanguage.KO));
+        samples.put("password-change", templates.account("012345", AccountVerificationPurpose.PASSWORD_CHANGE, EmailLanguage.KO));
+        samples.put("account-deletion", templates.account("012345", AccountVerificationPurpose.ACCOUNT_DELETION, EmailLanguage.KO));
+        samples.put("travel-notice", new BrandedEmailContent(EmailLanguage.KO, "여행 준비 안내", "다음 여행을 함께 준비해요.", "함께 준비하는 여행",
                 "우리의 다음 여행이 기다려요", "일정과 가고 싶은 장소를 모아 하나의 여행 계획으로 만들어 보세요.",
                 List.of("같은 취향의 동행과 여행을 준비하면 더 특별한 순간을 만날 수 있어요."), null,
                 new BrandedEmailContent.Action("여행 계획 확인하기", URI.create("https://example.test/trips")),
                 "이 화면은 디자인 검토용 예시이며 실제 여행이나 발송 요청을 만들지 않아요."));
+        samples.put("signup-en", templates.signup("012345", EmailLanguage.EN));
+        samples.put("password-reset-en", templates.passwordReset("012345", EmailLanguage.EN));
+        samples.put("password-change-en", templates.account("012345", AccountVerificationPurpose.PASSWORD_CHANGE, EmailLanguage.EN));
+        samples.put("account-deletion-en", templates.account("012345", AccountVerificationPurpose.ACCOUNT_DELETION, EmailLanguage.EN));
+        samples.put("travel-notice-en", new BrandedEmailContent(EmailLanguage.EN, "Your next journey", "Get ready for your next journey.",
+                "PREPARE TOGETHER", "Your next journey is waiting", "Bring your itinerary and favorite places together in one travel plan.",
+                List.of("Find travel companions who share your interests and prepare for a memorable journey together."), null,
+                new BrandedEmailContent.Action("View travel plan", URI.create("https://example.test/trips")),
+                "This is a design preview. It does not create a real trip or send an email."));
         for (var asset : renderer.inlineAssets()) {
             try (var stream = asset.resource().getInputStream()) {
                 Files.copy(stream, output.resolve("assets/" + asset.resource().getFilename()), StandardCopyOption.REPLACE_EXISTING);
