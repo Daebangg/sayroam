@@ -86,7 +86,13 @@ export function ProfileMenu({
                     aria-controls={open ? id : undefined}
                     onClick={() => setOpen(!open)}
                 >
-                    <Avatar src={profileImageUrl ?? null} />
+                    {member ? (
+                        <Avatar src={profileImageUrl ?? null} />
+                    ) : (
+                        <span className="profile-menu__anonymous" aria-hidden="true">
+                            <img src="/brand/anonymous-profile.svg" alt="" />
+                        </span>
+                    )}
                 </Button>
             </Tooltip>
             {open && (

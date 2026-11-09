@@ -1,6 +1,6 @@
 {
     "app": {
-        "name": "Sayroam",
+        "name": "SayRoam",
         "description": "A place to plan your trip, find your people, and make memories together."
     },
     "navigation": {
@@ -37,14 +37,14 @@
         "start": "Start your journey"
     },
     "auth": {
-        "welcome": "Welcome to Sayroam.",
+        "welcome": "Welcome to SayRoam.",
         "description": "A little closer. A little more together.",
         "google": "Continue with Google",
         "haveAccount": "Already have an account?",
         "login": "Log in",
         "kakao": "Continue with Kakao",
         "naver": "Continue with NAVER",
-        "title": "Log in or join Sayroam",
+        "title": "Log in or join SayRoam",
         "or": "or",
         "remember": "Remember me on this browser",
         "emailLabel": "Email",
@@ -158,14 +158,14 @@
     },
     "brand": {
         "guide": "Explore the brand",
-        "heading": "Sayroam Brand",
+        "heading": "SayRoam Brand",
         "logo": "Brand",
-        "appIcon": "Sayroam app icon",
-        "mark": "Sayroam mountain mark",
+        "appIcon": "SayRoam app icon",
+        "mark": "SayRoam mountain mark",
         "downloadLogo": "Logo SVG",
         "downloadIcon": "App icon SVG",
         "wordmarks": "Wordmark Variations",
-        "wordmarkPrimary": "Sayroam",
+        "wordmarkPrimary": "SayRoam",
         "wordmarkCamel": "SayRoam",
         "wordmarkLower": "sayroam",
         "wordmarkDot": "Say·Roam",
@@ -223,7 +223,7 @@
         "openModal": "Open a modal",
         "openAuth": "Open login",
         "modalTitle": "Ready for your next journey?",
-        "modalDescription": "From the first spark of a plan to the stories you bring home, make it together with Sayroam.",
+        "modalDescription": "From the first spark of a plan to the stories you bring home, make it together with SayRoam.",
         "cancel": "Not now",
         "continue": "Continue",
         "downloadLogoPng": "Logo PNG",
@@ -256,6 +256,27 @@
             "success": "Success notification",
             "error": "Error notification",
             "info": "Information notification"
+        },
+        "assets": {
+            "layouts": {
+                "logo": "Banner · symbol + wordmark",
+                "mark": "Symbol only",
+                "wordmark": "Wordmark only"
+            },
+            "backgrounds": {
+                "light": "Light background",
+                "dark": "Dark background"
+            },
+            "transparent": {
+                "light": "Transparent · for light",
+                "dark": "Transparent · for dark"
+            },
+            "formats": {
+                "svg": "SVG",
+                "png": "PNG"
+            },
+            "preview": "{{layout}} on {{background}}",
+            "download": "Download {{layout}}, {{variant}}, {{format}}"
         }
     },
     "profile": {
@@ -360,9 +381,9 @@
         "createRoomDescription": "Preview the new room flow for your travel group. Live room creation will be connected separately.",
         "notificationsEmpty": "No new notifications yet. Your next travel updates will appear here.",
         "continue": "Get started",
-        "onboardingDescription": "From planning to companions and itineraries. Get ready for your next journey with Sayroam.",
+        "onboardingDescription": "From planning to companions and itineraries. Get ready for your next journey with SayRoam.",
         "openPreviews": "Explore screen previews",
-        "designDescription": "Blue and sand, layered into new journeys. Explore Sayroam screens and shared components in one place.",
+        "designDescription": "Blue and sand, layered into new journeys. Explore SayRoam screens and shared components in one place.",
         "tabs": "Navigation · filters",
         "badges": "Status · notifications",
         "artwork": "Travel illustration",
@@ -412,7 +433,11 @@
             "alien": "Alien",
             "dog": "Dog",
             "rabbit": "Rabbit",
-            "cat": "Cat"
+            "cat": "Cat",
+            "sunset": "Sunset",
+            "twilight": "Twilight",
+            "night": "Moonlit night",
+            "flight": "Taking flight"
         }
     },
     "controls": {

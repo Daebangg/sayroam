@@ -1,20 +1,22 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256"><title>Sayroam — Moon rabbit</title><defs><clipPath id="avatar-rabbit-circle"><circle cx="128" cy="128" r="128"/></clipPath></defs><g clip-path="url(#avatar-rabbit-circle)">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256"><title>SayRoam — Moon rabbit</title><defs><clipPath id="avatar-rabbit-circle"><circle cx="128" cy="128" r="128"/></clipPath></defs><g clip-path="url(#avatar-rabbit-circle)">
 <rect width="256" height="256" fill="#527fbd"/>
 <circle cx="228" cy="37" r="82" fill="#8bb1df"/>
 <path d="M0 196 256 118v138H0Z" fill="#315d9c"/>
-<path d="m157 111 27-69q10-25 24-16t-1 34l-25 56Z" fill="#cbdceb"/>
-<path d="m170 106 24-58q5-12 9-9t-4 17l-22 54Z" fill="#dfc89f"/>
-<path d="m121 103 14-75q5-24 23-19t11 32l-21 67Z" fill="#f7ead3"/>
-<path d="m134 99 12-64q2-13 8-11t1 19l-15 59Z" fill="#e6c996"/>
-<path d="M53 256q15-62 65-74l37 10q44 16 54 64Z" fill="#f5e8d3"/>
-<path d="m155 192q44 16 54 64h-64Z" fill="#cad9e8"/>
-<path d="M135 91q47 3 54 51 8 40-26 59-34 19-59-4-15-10-19-25-28-3-27-20 2-15 27-15 8-46 50-46Z" fill="#f9efdc"/>
-<path d="M135 91q47 3 54 51 8 40-26 59-17 10-31 8Z" fill="#d9e4ed"/>
-<path d="M85 137q8-46 50-46l-20 63-30 18q-28-3-27-20 2-15 27-15Z" fill="#fff6e6"/>
-<ellipse cx="109" cy="137" rx="7" ry="10" fill="#203e68"/>
-<circle cx="107" cy="134" r="2.3" fill="#fff8e9"/>
-<path d="m63 148 10-1-4 11-8-2Z" fill="#c39a72"/>
-<path d="M70 159q8 12 18 9" fill="none" stroke="#476189" stroke-width="3" stroke-linecap="round"/>
-<path d="m82 154-34-5m34 15-32 6" fill="none" stroke="#839ab7" stroke-width="2.4" stroke-linecap="round"/>
-<path d="m101 222 31 19 34-13-16 28h-37Z" fill="#9ebee2"/>
+<path d="M78 110 65 37q-4-26 14-28t28 25l18 68Z" fill="#e6eaf0"/>
+<path d="m87 95-9-57q-2-14 4-15t11 17l14 60Z" fill="#e5c795"/>
+<path d="m139 103 13-73q5-26 23-22t15 30l-9 74Z" fill="#f7ead3"/>
+<path d="m155 99 10-62q2-14 8-12t3 18l-8 59Z" fill="#eacfa0"/>
+<path d="M49 256q10-60 51-72h56q41 12 51 72Z" fill="#f5e8d3"/>
+<path d="M128 184h28q41 12 51 72h-64Z" fill="#cad9e8"/>
+<path d="M128 88q61 0 66 57 6 40-28 57-38 24-76 0-34-17-28-57 5-57 66-57Z" fill="#f9efdc"/>
+<path d="M128 88q61 0 66 57 6 40-28 57-19 12-38 12Z" fill="#d9e4ed"/>
+<path d="M65 130q12-42 63-42l-28 69Z" fill="#fff6e6"/>
+<ellipse cx="103" cy="143" rx="7" ry="10" fill="#203e68"/>
+<ellipse cx="153" cy="143" rx="7" ry="10" fill="#203e68"/>
+<circle cx="101" cy="140" r="2" fill="#fff8e9"/>
+<circle cx="151" cy="140" r="2" fill="#fff8e9"/>
+<path d="m118 164 10-5 10 5-10 11Z" fill="#c39a72"/>
+<path d="M128 175q-8 9-16 1m16-1q8 9 16 1" fill="none" stroke="#476189" stroke-width="3" stroke-linecap="round"/>
+<path d="m94 170-24-3m25 12-24 4m90-13 24-3m-25 12 24 4" fill="none" stroke="#839ab7" stroke-width="2.4" stroke-linecap="round"/>
+<path d="m94 223 34 18 34-18-16 33h-36Z" fill="#9ebee2"/>
 </g></svg>

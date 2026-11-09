@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256"><title>Sayroam — Sand curves</title><defs><clipPath id="avatar-sand-circle"><circle cx="128" cy="128" r="128"/></clipPath></defs><g clip-path="url(#avatar-sand-circle)">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256"><title>SayRoam — Sand curves</title><defs><clipPath id="avatar-sand-circle"><circle cx="128" cy="128" r="128"/></clipPath></defs><g clip-path="url(#avatar-sand-circle)">
 <rect width="256" height="256" fill="#f1d39f"/>
 <circle cx="46" cy="31" r="138" fill="#739fdd"/>
 <path d="M0 143Q81 50 176 76L45 256H0Z" fill="#a7c9ef"/>

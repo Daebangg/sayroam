@@ -29,7 +29,7 @@ export function DropdownMenu({ label, value, options, onChange, disabled }: Drop
             if (!rect || !element) return;
             const viewport = document.documentElement;
             const previousScroll = element.scrollTop;
-            element.style.width = `${Math.min(Math.max(rect.width, 180), viewport.clientWidth - 16)}px`;
+            element.style.width = `${Math.min(Math.max(rect.width, 150), viewport.clientWidth - 16)}px`;
             const below = viewport.clientHeight - rect.bottom - 14;
             const above = rect.top - 14;
             const up = element.scrollHeight > below && above > below;

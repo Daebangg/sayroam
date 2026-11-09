@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256"><title>Sayroam — Sea fragments</title><defs><clipPath id="avatar-sea-circle"><circle cx="128" cy="128" r="128"/></clipPath></defs><g clip-path="url(#avatar-sea-circle)">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256"><title>SayRoam — Sea fragments</title><defs><clipPath id="avatar-sea-circle"><circle cx="128" cy="128" r="128"/></clipPath></defs><g clip-path="url(#avatar-sea-circle)">
 <rect width="256" height="256" fill="#c2dcf5"/>
 <circle cx="219" cy="30" r="85" fill="#f5d69f"/>
 <path d="M0 74Q110 8 185 122l71 134H0Z" fill="#6494d9"/>

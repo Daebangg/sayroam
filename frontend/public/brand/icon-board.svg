@@ -190,7 +190,7 @@
 <symbol id="flame-outline" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2q3 5 1 8 3-1 3-4 5 5 3 10a8 8 0 0 1-15 0Q3 11 8 7q-1 5 2 5 4-4 3-10Z"/></symbol>
 <rect width="1200" height="1210" rx="24" fill="#f2f6ff"/>
 <path d="M950 0h226a24 24 0 0 1 24 24v125Z" fill="#ffefd5"/>
-<text x="48" y="68" fill="#10264a" font-family="Arial,Helvetica,sans-serif" font-size="31" font-weight="700">Sayroam / Icon library</text>
+<text x="48" y="68" fill="#10264a" font-family="Arial,Helvetica,sans-serif" font-size="31" font-weight="700">SayRoam / Icon library</text>
 <text x="48" y="104" fill="#4b6387" font-family="Apple SD Gothic Neo,Noto Sans KR,sans-serif" font-size="16">기하학적인 면 · 코발트 블루 · 하늘색 · 따뜻한 모래색</text>
 <text x="48" y="134" fill="#6c7f9c" font-family="Arial,Helvetica,sans-serif" font-size="13">25 symbols / brand + outline / 24 × 24 grid</text>
 <g transform="translate(36 164)">

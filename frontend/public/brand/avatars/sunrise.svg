@@ -1,22 +1,24 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256"><title>Sayroam — Sunrise face</title><defs><clipPath id="avatar-sunrise-circle"><circle cx="128" cy="128" r="128"/></clipPath></defs><g clip-path="url(#avatar-sunrise-circle)">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256"><title>SayRoam — Sunrise face</title><defs><clipPath id="avatar-sunrise-circle"><circle cx="128" cy="128" r="128"/></clipPath></defs><g clip-path="url(#avatar-sunrise-circle)">
 <rect width="256" height="256" fill="#efd1a0"/>
 <path d="M0 0h128L0 168Z" fill="#f9e9cc"/>
 <circle cx="231" cy="183" r="111" fill="#98bee9"/>
-<path d="M51 217 60 77q8-55 63-56 54 2 64 56l-11 132Z" fill="#183e79"/>
-<path d="M123 21q54 2 64 56l-11 132-43-27Z" fill="#2c5d9f"/>
+<path d="M51 219 59 78q7-57 68-58 55 4 65 61l-13 132-39-26Z" fill="#183e79"/>
+<path d="M127 20q55 4 65 61l-13 132-39-26 8-84Z" fill="#2c5d9f"/>
 <path d="M33 256q12-55 66-77l46 8 66 69Z" fill="#3d6bb9"/>
-<path d="m120 156 25 8 9 38-33 22-13-32Z" fill="#c8976b"/>
-<path d="m120 47 31 12 13 25-1 19 11 13-9 10 2 13-11 12-7 24-21 12-16-26-2-52Z" fill="#f4d5a4"/>
-<path d="m140 54 11 5 13 25-1 19 11 13-9 10 2 13-11 12-7 24-21 12 5-53Z" fill="#d8a772"/>
-<path d="m120 47 20 7-7 80-21 27-2-52Z" fill="#ffe9c5"/>
-<path d="m105 116-21-19 1-43 25-24 27-7 31 22-28 9-20-7-5 40Z" fill="#173b6f"/>
-<path d="m85 54 25-24 27-7 3 31-20-7-5 40-14 10Z" fill="#315f9f"/>
-<path d="m110 115 11-4 8 11-3 16-15 3-7-13Z" fill="#efc997"/>
-<circle cx="116" cy="146" r="10" fill="none" stroke="#f5d69c" stroke-width="5"/>
-<path d="M138 104q9-7 20 0-8 9-20 0Z" fill="#fff3da"/>
-<circle cx="151" cy="104" r="3.3" fill="#193e70"/>
-<path d="m140 95 15 2" fill="none" stroke="#2d4d79" stroke-width="3" stroke-linecap="round"/>
-<path d="m155 106 12 10-11 8Z" fill="#b78459"/>
-<path d="m150 138 15-1-8 7Z" fill="#4b5c83"/>
-<path d="m121 224 33-22 11 54h-39Z" fill="#a7caed"/>
+<path d="m119 155 30 8 6 39-34 22-13-32Z" fill="#c8976b"/>
+<path d="M128 43q33-1 45 36l-1 27 8 13-8 9-3 20q-9 25-31 32l-22-8q-20-17-23-42l-7-32q2-44 42-55Z" fill="#f4d5a4"/>
+<path d="M139 45q24 5 34 34l-1 27 8 13-8 9-3 20q-9 25-31 32l-5-47Z" fill="#dbaf7c"/>
+<path d="m128 43 11 2-6 88-17 39q-20-17-23-42l-7-32q2-44 42-55Z" fill="#ffe7c2"/>
+<path d="m86 113-10-30 12-36 38-25 38 16 18 38-25-13-22-13-23 18-13 35Z" fill="#173b6f"/>
+<path d="m88 47 38-25 9 28-23 18-13 35-13 10-10-30Z" fill="#315f9f"/>
+<path d="m91 116 10-4 8 11-3 15-12 3-8-13Z" fill="#efc997"/>
+<circle cx="96" cy="145" r="9" fill="none" stroke="#f5d69c" stroke-width="5"/>
+<path d="M109 110q12-9 24-1-10 10-24 1Z" fill="#fff6e5"/>
+<circle cx="123" cy="109" r="3.2" fill="#193e70"/>
+<path d="M147 110q8-7 16 0-7 8-16 0Z" fill="#fff2d9"/>
+<circle cx="157" cy="110" r="2.8" fill="#193e70"/>
+<path d="m111 100 19-1m20 2 12 2" fill="none" stroke="#3b557b" stroke-width="2.7" stroke-linecap="round"/>
+<path d="m142 112-5 20 14-3Z" fill="#bc9064"/>
+<path d="M123 150q14 5 28-2-12 13-28 2Z" fill="#66708b"/>
+<path d="m121 224 34-22 10 54h-39Z" fill="#a7caed"/>
 </g></svg>

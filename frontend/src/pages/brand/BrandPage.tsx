@@ -4,7 +4,6 @@ import { useState } from "react";
 import { formatDateRange, formatNumber } from "@/i18n/locale";
 import { useTranslation } from "react-i18next";
 import {
-    Brand,
     Avatar,
     avatarPresets,
     type AvatarPreset,
@@ -31,6 +30,7 @@ import {
     FilterChips,
     TravelArtwork,
 } from "@/components/ui";
+import { BrandAssets } from "@/components/features/brand/BrandAssets";
 import { mockupUrl } from "@/routing/mockups";
 
 const colors = ["primary", "sky", "sand", "surface", "text", "muted"] as const;
@@ -152,43 +152,10 @@ export function BrandPage() {
                 <h2 id="brand-logo-heading" className="section-label">
                     {t("brand.logo")}
                 </h2>
-                <div className="brand-preview">
-                    <Brand />
-                    <img
-                        className="brand-preview__tile"
-                        src="/brand/sayroam-app-icon.svg"
-                        alt={t("brand.appIcon")}
-                    />
-                    <span className="brand-preview__tile brand-preview__tile--white">
-                        <img src="/brand/sayroam-mark.svg" alt={t("brand.mark")} />
-                    </span>
-                </div>
+                <BrandAssets />
                 <div className="brand-downloads">
-                    <a href="/brand/sayroam-logo.svg" download>
-                        {t("brand.downloadLogo")}
-                        <Icon name="arrow" variant="outline" />
-                    </a>
                     <a href="/brand/sayroam-app-icon.svg" download>
                         {t("brand.downloadIcon")}
-                        <Icon name="arrow" variant="outline" />
-                    </a>
-                    <a href="/brand/sayroam-logo.png" download>
-                        {t("brand.downloadLogoPng")}
-                    </a>
-                    <a href="/brand/sayroam-logo-light.png" download>
-                        {t("brand.downloadLightLogoPng")}
-                    </a>
-                    <a href="/brand/sayroam-wordmark.png" download>
-                        {t("brand.downloadWordmarkPng")}
-                    </a>
-                    <a href="/brand/sayroam-wordmark-light.png" download>
-                        {t("brand.downloadLightWordmarkPng")}
-                    </a>
-                    <a href="/brand/sayroam-mark.png" download>
-                        {t("brand.downloadMarkPng")}
-                    </a>
-                    <a href="/brand/sayroam-mark-light.png" download>
-                        {t("brand.downloadLightMarkPng")}
                     </a>
                     <a href="/brand/sayroam-app-icon.png" download>
                         {t("brand.downloadIconPng")}
@@ -196,19 +163,6 @@ export function BrandPage() {
                     <a href="/brand/favicon.png" download>
                         {t("brand.downloadFaviconPng")}
                     </a>
-                </div>
-            </section>
-            <section className="brand-section" aria-labelledby="brand-wordmark-heading">
-                <h2 id="brand-wordmark-heading" className="section-label">
-                    {t("brand.wordmarks")}
-                </h2>
-                <div className="wordmark-variations">
-                    <span className="wordmark-variations__primary">
-                        {t("brand.wordmarkPrimary")}
-                    </span>
-                    <span>{t("brand.wordmarkCamel")}</span>
-                    <span>{t("brand.wordmarkLower")}</span>
-                    <span>{t("brand.wordmarkDot")}</span>
                 </div>
             </section>
             <section className="brand-section" aria-labelledby="brand-palette-heading">

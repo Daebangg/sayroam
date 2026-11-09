@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256"><title>SayRoam — Violet twilight</title><defs><clipPath id="avatar-twilight-circle"><circle cx="128" cy="128" r="128"/></clipPath></defs><g clip-path="url(#avatar-twilight-circle)">
+<rect width="256" height="256" fill="#858ab9"/>
+<path d="M0 0h173L70 127 0 92Z" fill="#b3badb"/>
+<path d="M256 0v146L119 91Z" fill="#696fa6"/>
+<path d="M0 100q27-33 60-24 20-35 61-24 31 8 41 40l38 21H0Z" fill="#e8d6d4"/>
+<path d="M121 52q31 8 41 40l38 21h-79Z" fill="#d4c6d4"/>
+<path d="M0 146 256 126v43H0Z" fill="#d2abb0"/>
+<path d="M0 159h256v97H0Z" fill="#446297"/>
+<path d="m0 178 127-19 129 49v48H0Z" fill="#315083"/>
+<path d="m0 222 94-53 73 87H0Z" fill="#192f5b"/>
+<path d="m256 177-89 79h89Z" fill="#12294f"/>
+<path d="m94 169 23 41 31 14-30-35Z" fill="#b1bbd6"/>
+</g></svg>

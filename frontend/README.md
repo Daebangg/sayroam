@@ -98,7 +98,7 @@ pnpm build
 - `src/components/features/`: 로그인 모달·프로필 메뉴·설정 미리보기
 - `src/components/layout/`: 데스크톱 상단·모바일 하단 메뉴와 앱 셸
 - `src/data/preview.ts`: 업무 API와 연결하지 않는 예시 데이터
-- `public/brand/`: SVG·PNG 로고·심볼·워드마크·앱 아이콘·아이콘 보드와 공식 로그인 제공자 자산
+- `public/brand/`: SayRoam 배너·아이콘·워드마크의 테마별 SVG/PNG, 16종 아바타·익명 프로필·아이콘 보드와 공식 로그인 제공자 자산
 - `public/images/`: 큐비즘 해안·황혼·설산·수평선 일러스트
 - `public/assets/theme.js`: 첫 화면 전 테마 적용, 저장·복원·시스템 변경 구독
 - `src/hooks/useTheme.ts`: 브라우저와 React가 공유하는 테마 상태
@@ -155,6 +155,9 @@ React는 같은 상태를 구독하므로 첫 화면과 앱 실행 후 테마를
 재사용할 작업 지시문을 제공합니다. 파랑·하늘색·모래색·네이비의 면 분할 여행 일러스트와
 동일한 브랜드 아이콘을 사용하며, 앱 전체를 감싸는 둥근 카드 없이 뷰포트 폭을 채웁니다.
 데스크톱과 모바일은 같은 콘텐츠를 각각 카드와 간결한 목록으로 배치합니다.
+사용자에게 보이는 브랜드 이름은 **SayRoam**입니다. `/brand`의 배너·아이콘·워드마크 비교와
+[브랜드 자산 목록](public/brand/README.md)에서 세 형태의 테마별 투명·배경 포함 SVG/PNG 24개를 제공합니다.
+로그아웃은 익명 실루엣을, 로그인 계정의 사진 없음·불러오기 실패는 `coast` 아바타를 사용합니다.
 
 `/brand?preview=welcome|onboarding|home|trips|matching|rooms`에서 각 값을 하나씩 지정해
 시작·온보딩·홈·여행·동행·내 방 목업을 탐색합니다. 목업의 검색·필터·저장·모달은 예시 상태이며
