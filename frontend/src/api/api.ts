@@ -4,6 +4,12 @@ import type { AccessTokenSnapshot } from "./auth/tokenStore.ts";
 import { apiRoutes } from "./generated/schema.ts";
 import { createApiRouter } from "./router.ts";
 import { validateCurrentUser } from "./users/userResponse.ts";
+import {
+    validateIssued,
+    validateResetProof,
+    validateSignup,
+    validateSignupProof,
+} from "./auth/emailResponse.ts";
 
 function recoverSession(revision: number): Promise<AccessTokenSnapshot> {
     return refreshAccessToken(() => api.call("refresh"), revision);
@@ -17,5 +23,11 @@ export const api = createApiRouter(apiRoutes, {
         logout: { cookieAction: "logout" },
         me: { parseResponse: validateCurrentUser },
         updateProfile: { parseResponse: validateCurrentUser },
+        request: { parseResponse: validateIssued },
+        requestPasswordReset: { parseResponse: validateIssued },
+        confirm: { parseResponse: validateSignupProof },
+        confirmPasswordReset: { parseResponse: validateResetProof },
+        signup: { parseResponse: validateSignup },
+        resetPassword: { cookieAction: "logout" },
     },
 });

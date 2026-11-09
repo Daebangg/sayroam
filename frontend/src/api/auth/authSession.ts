@@ -1,4 +1,6 @@
 import { ApiError } from "../apiError.ts";
+import { api } from "../api.ts";
+import type { ApiCallOptions } from "../router.ts";
 import { waitForSharedRequest } from "../abort.ts";
 import { getCurrentUser, type CurrentUserResponse } from "../users/userApi.ts";
 import {
@@ -74,4 +76,13 @@ export async function signOut(): Promise<void> {
     invalidateOtherTabs();
     // 실패를 성공으로 숨기지 않는다. 쿠키 폐기 결과가 불확실하면 호출자가 안내한다.
     await logoutApi();
+}
+
+export async function resetPassword(
+    input: ApiCallOptions<"resetPassword">["body"],
+    options: AuthCallOptions = {},
+): Promise<void> {
+    clearAccessToken();
+    invalidateOtherTabs();
+    await api.call("resetPassword", { ...options, body: input });
 }

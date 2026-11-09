@@ -14,3 +14,4 @@ export { Tag } from "./tags/Tag";
 export { PageState, type PageStateKind } from "./feedback/PageState";
 export { Spinner } from "./feedback/Spinner";
 export { ButtonLink } from "./navigation/ButtonLink";
+export { Toast, type ToastTone } from "./feedback/Toast";

@@ -111,7 +111,7 @@ export default defineConfig([
                     patterns: [
                         ...apiBoundaryPatterns,
                         {
-                            group: ["@/api", "@/api/**", "**/api/**"],
+                            regex: "^(?:@/api(?:/|$)|(?:\\.\\./)+api/)",
                             message:
                                 "페이지와 컴포넌트는 API를 직접 호출하지 않고 도메인 훅을 사용합니다.",
                         },
@@ -139,7 +139,7 @@ export default defineConfig([
                     patterns: [
                         ...apiBoundaryPatterns,
                         {
-                            group: ["@/api", "@/api/**", "**/api/**"],
+                            regex: "^(?:@/api(?:/|$)|(?:\\.\\./)+api/)",
                             message: "컴포넌트는 API를 직접 호출하지 않습니다.",
                         },
                         {

@@ -26,6 +26,10 @@ test("도메인·훅에서 공통 라우터를 우회해 클라이언트·전송
     for (const [filePath, source] of [
         ["src/api/users/userApi.ts", 'import { api } from "../api.ts"; void api;'],
         [
+            "src/pages/auth/AuthDialog.tsx",
+            'import { useEmailFlow } from "@/hooks/api/auth/useEmailFlow"; void useEmailFlow;',
+        ],
+        [
             "src/hooks/api/users/useUserApi.ts",
             'import { getCurrentUser } from "@/api/users/userApi.ts"; void getCurrentUser;',
         ],

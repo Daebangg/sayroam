@@ -7,9 +7,20 @@ type ProfileMenuProps = {
     onBrand: () => void;
     onSettings: () => void;
     mobile?: boolean;
+    member: { nickname: string; email: string | null } | null;
+    busy: boolean;
+    onLogout: () => void;
 };
 
-export function ProfileMenu({ onLogin, onBrand, onSettings, mobile = false }: ProfileMenuProps) {
+export function ProfileMenu({
+    onLogin,
+    onBrand,
+    onSettings,
+    mobile = false,
+    member,
+    busy,
+    onLogout,
+}: ProfileMenuProps) {
     const { t } = useTranslation();
     const [open, setOpen] = useState(false);
     const root = useRef<HTMLDivElement>(null);
@@ -105,10 +116,19 @@ export function ProfileMenu({ onLogin, onBrand, onSettings, mobile = false }: Pr
                         <span>{t("brand.guide")}</span>
                     </Button>
                     <div className="profile-menu__welcome">
-                        <strong>{t("profile.welcome")}</strong>
-                        <p>{t("profile.description")}</p>
-                        <Button variant="brand" role="menuitem" onClick={() => select(onLogin)}>
-                            {t("profile.login")}
+                        <strong>
+                            {member
+                                ? t("profile.signedIn", { nickname: member.nickname })
+                                : t("profile.welcome")}
+                        </strong>
+                        <p>{member ? member.email : t("profile.description")}</p>
+                        <Button
+                            variant="brand"
+                            role="menuitem"
+                            loading={busy}
+                            onClick={() => select(member ? onLogout : onLogin)}
+                        >
+                            {t(member ? "auth.logout" : "profile.login")}
                         </Button>
                     </div>
                 </div>

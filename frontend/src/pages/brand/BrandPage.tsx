@@ -19,6 +19,8 @@ import {
     TextField,
     Tooltip,
     type IconName,
+    Toast,
+    type ToastTone,
 } from "@/components/ui";
 
 const colors = ["primary", "sky", "sand", "surface", "text", "muted"] as const;
@@ -32,6 +34,7 @@ export function BrandPage() {
     const [dialogOpen, setDialogOpen] = useState(false);
     const [pressed, setPressed] = useState(false);
     const [tagVisible, setTagVisible] = useState(true);
+    const [toast, setToast] = useState<{ id: number; tone: ToastTone } | null>(null);
     const options = [
         { value: "planning", label: t("brand.planning") },
         { value: "looking", label: t("brand.looking") },
@@ -350,6 +353,25 @@ export function BrandPage() {
                             </Button>
                         </div>
                     </Card>
+                    <Card className="component-example">
+                        <h3>{t("brand.toasts")}</h3>
+                        <div className="component-example__row">
+                            {(["success", "error", "info"] as const).map((tone) => (
+                                <Button
+                                    key={tone}
+                                    variant="outline"
+                                    onClick={() =>
+                                        setToast((current) => ({
+                                            id: (current?.id ?? 0) + 1,
+                                            tone,
+                                        }))
+                                    }
+                                >
+                                    {t(`brand.toast.${tone}`)}
+                                </Button>
+                            ))}
+                        </div>
+                    </Card>
                 </div>
             </section>
             <Modal
@@ -377,6 +399,14 @@ export function BrandPage() {
                     </Button>
                 </div>
             </Modal>
+            {toast && (
+                <Toast
+                    key={toast.id}
+                    tone={toast.tone}
+                    message={t("brand.toastExample")}
+                    onDismiss={() => setToast(null)}
+                />
+            )}
         </main>
     );
 }
