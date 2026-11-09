@@ -202,8 +202,9 @@ SSL을 끄고 `spring.mail.properties[mail.smtp.starttls.enable]=true`와
 - `app.mail.from`: 모든 인증 메일의 From 주소 (SMTP 활성화 시 필수)
 - 연결·읽기·쓰기 timeout: 공통 설정에서 각각 5,000ms, 인코딩 UTF-8
 
-`SmtpVerificationEmailSender.sendVerificationCode(recipient, code)`는 전달받은 코드를 일반 텍스트 메일로
-발송합니다. 발송 클래스는 코드를 생성·저장·검증하지 않으며 자동 재시도하지 않습니다. 발급 서비스가
+`SmtpVerificationEmailSender`는 로고·여행 그림을 포함한 공통 HTML과 일반 텍스트 대체 본문으로
+인증 메일을 발송합니다. 목적별 문구 변경과 SMTP 없는 로컬 미리보기는 [이메일 템플릿 안내](docs/email-templates.md)를 참고하세요.
+발송 클래스는 코드를 생성·저장·검증하지 않으며 자동 재시도하지 않습니다. 발급 서비스가
 코드 생성·Redis 보관을 담당하고, SMTP 실패는 `EMAIL_DELIVERY_FAILED`로 변환해 API에서 502로 응답합니다.
 `app.mail.enabled`는 앱에서 추가한 선택 옵션이며 기본값은 `false`입니다. 환경변수는 `APP_MAIL_ENABLED`입니다.
 `false`이면 `JavaMailSender`와 발송 컴포넌트를 등록하지 않습니다. SMTP 설정이나

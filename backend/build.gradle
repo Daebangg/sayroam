@@ -60,6 +60,15 @@ tasks.named('test') {
     useJUnitPlatform()
 }
 
+tasks.register('emailPreview', JavaExec) {
+    group = 'documentation'
+    description = 'Render branded email examples locally without SMTP or real recipients.'
+    dependsOn tasks.named('testClasses')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'com.daebangg.sayroam.global.mail.EmailTemplatePreview'
+    args layout.buildDirectory.dir('mail-preview').get().asFile.absolutePath
+}
+
 // 앱/마이그레이션 명령은 개발 DB를 자동 기동하지 않는다. 테스트는 임시 DB를 사용한다.
 def composeFile = layout.projectDirectory.file('../docker/compose.yaml').asFile
 def composeEnvFile = layout.projectDirectory.file('../docker/.env').asFile

@@ -1,5 +1,6 @@
 package com.daebangg.sayroam.auth.application.service;
 
+import com.daebangg.sayroam.global.mail.EmailLanguage;
 import com.daebangg.sayroam.auth.application.error.AuthErrorCode;
 import com.daebangg.sayroam.auth.application.error.AuthException;
 import com.daebangg.sayroam.auth.application.port.out.*;
@@ -33,7 +34,7 @@ public class PasswordResetService {
         this.passwordChange = passwordChange;
     }
 
-    public IssuedRequest request(String rawEmail, String remoteAddress) {
+    public IssuedRequest request(String rawEmail, String remoteAddress, EmailLanguage language) {
         var sender = mailSender.orElseThrow(() -> new AuthException(AuthErrorCode.EMAIL_DELIVERY_DISABLED));
         var subject = subject(rawEmail);
         String requestId = UUID.randomUUID().toString();
@@ -42,7 +43,7 @@ public class PasswordResetService {
         if (!retryAfter.isZero()) throw new AuthException(AuthErrorCode.EMAIL_RATE_LIMITED, retryAfter);
         try {
             // 같은 SMTP·오류 경로를 거쳐 계정 유무·비밀번호 등록 여부의 조기 반환을 없앤다.
-            sender.sendPasswordResetCode(subject.email(), code);
+            sender.sendPasswordResetCode(subject.email(), code, language);
         } catch (AuthException deliveryFailure) {
             try {
                 store.discard(subject, requestId);

@@ -1372,7 +1372,13 @@ export interface operations {
     request_1: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /**
+                 * @description 인증 메일 언어. ko/en을 지역 태그와 q 우선순위로 선택하며 누락·미지원·잘못된 값은 한국어로 처리합니다.
+                 * @example en-US,en;q=0.9,ko;q=0.8
+                 */
+                "Accept-Language"?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -1454,7 +1460,13 @@ export interface operations {
     request: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /**
+                 * @description 인증 메일 언어. ko/en을 지역 태그와 q 우선순위로 선택하며 누락·미지원·잘못된 값은 한국어로 처리합니다.
+                 * @example en-US,en;q=0.9,ko;q=0.8
+                 */
+                "Accept-Language"?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -1635,7 +1647,13 @@ export interface operations {
     requestPasswordReset: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /**
+                 * @description 인증 메일 언어. ko/en을 지역 태그와 q 우선순위로 선택하며 누락·미지원·잘못된 값은 한국어로 처리합니다.
+                 * @example en-US,en;q=0.9,ko;q=0.8
+                 */
+                "Accept-Language"?: string;
+            };
             path?: never;
             cookie?: never;
         };

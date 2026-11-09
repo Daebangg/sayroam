@@ -4,12 +4,15 @@ import com.daebangg.sayroam.auth.application.service.PasswordResetService;
 import com.daebangg.sayroam.auth.presentation.cookie.RefreshTokenCookie;
 import com.daebangg.sayroam.auth.presentation.dto.*;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.headers.Header;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
+import com.daebangg.sayroam.global.mail.EmailLanguage;
+import org.springframework.web.bind.annotation.RequestHeader;
 import jakarta.validation.Valid;
 import org.springframework.http.CacheControl;
 import org.springframework.http.HttpHeaders;
@@ -43,8 +46,10 @@ public class PasswordResetController {
             @ApiResponse(responseCode = "500", ref = "#/components/responses/InternalServerError")
     })
     @PostMapping(value = "/api/auth/password-reset-verifications", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<EmailVerificationResponse> request(@Valid @RequestBody EmailRequest body, HttpServletRequest request) {
-        var issued = service.request(body.email(), request.getRemoteAddr());
+    public ResponseEntity<EmailVerificationResponse> request(@Valid @RequestBody EmailRequest body, HttpServletRequest request,
+            @Parameter(description = "인증 메일 언어. ko/en을 지역 태그와 q 우선순위로 선택하며 누락·미지원·잘못된 값은 한국어로 처리합니다.", example = "en-US,en;q=0.9,ko;q=0.8")
+            @RequestHeader(value = HttpHeaders.ACCEPT_LANGUAGE, required = false) String acceptLanguage) {
+        var issued = service.request(body.email(), request.getRemoteAddr(), EmailLanguage.fromAcceptLanguage(acceptLanguage));
         return ResponseEntity.accepted().cacheControl(CacheControl.noStore())
                 .body(new EmailVerificationResponse(issued.verificationId(), issued.expiresInSeconds(), issued.resendAfterSeconds()));
     }
