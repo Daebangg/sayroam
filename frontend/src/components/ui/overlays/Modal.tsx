@@ -6,9 +6,17 @@ type ModalProps = {
     labelledBy: string;
     children: ReactNode;
     className?: string;
+    dismissible?: boolean;
 };
 
-export function Modal({ open, onClose, labelledBy, children, className = "" }: ModalProps) {
+export function Modal({
+    open,
+    onClose,
+    labelledBy,
+    children,
+    className = "",
+    dismissible = true,
+}: ModalProps) {
     const ref = useRef<HTMLDialogElement>(null);
 
     useEffect(() => {
@@ -23,10 +31,14 @@ export function Modal({ open, onClose, labelledBy, children, className = "" }: M
             className={`ui-modal ${className}`}
             aria-labelledby={labelledBy}
             data-modal-active={open || undefined}
-            onCancel={onClose}
+            onCancel={(event) => {
+                event.preventDefault();
+                if (dismissible) onClose();
+            }}
             onClick={(event) => {
                 const rect = event.currentTarget.getBoundingClientRect();
                 if (
+                    dismissible &&
                     event.target === event.currentTarget &&
                     (event.clientX < rect.left ||
                         event.clientX > rect.right ||

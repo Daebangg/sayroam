@@ -27,7 +27,8 @@
         "join": "Join the journey",
         "disabled": "Coming soon",
         "removeTag": "Remove {{name}} tag",
-        "dismissNotification": "Dismiss notification"
+        "dismissNotification": "Dismiss notification",
+        "cancel": "Cancel"
     },
     "home": {
         "titleFirst": "Travel together.",
@@ -135,7 +136,10 @@
         "loginWait": "Too many login attempts. Try again in {{seconds}} seconds.",
         "loginRetryReady": "You can try signing in again now.",
         "loginAttemptsRemaining": "Your email or password is incorrect. Remaining attempts: {{count}}.",
-        "socialProviderDisabled": "This social login is currently unavailable."
+        "socialProviderDisabled": "This social login is currently unavailable.",
+        "nicknameSaved": "Nickname updated.",
+        "passwordChanged": "Password changed. You have been signed out. Please sign in again.",
+        "accountDeleted": "Account deleted. You have been signed out."
     },
     "trips": {
         "heading": "My trips",
@@ -427,7 +431,8 @@
             "mail": "Email",
             "filter": "Filter",
             "check": "Confirm",
-            "flame": "Popular"
+            "flame": "Popular",
+            "edit": "Edit"
         },
         "saveTrip": "Bookmark {{title}}",
         "customControls": "Travel controls",
@@ -464,5 +469,96 @@
             "decrease": "Decrease {{label}}",
             "increase": "Increase {{label}}"
         }
+    },
+    "settings": {
+        "signature": "Settings",
+        "navigation": "Settings navigation",
+        "backToApp": "Back to the app",
+        "backToAccount": "Back to account",
+        "general": "General",
+        "appearance": "Appearance & language",
+        "account": "Account",
+        "profile": "Profile",
+        "basicInformation": "Personal information",
+        "nickname": "Nickname",
+        "email": "Email",
+        "noEmail": "No email registered",
+        "viewProfile": "View profile",
+        "security": "Sign-in & security",
+        "changePassword": "Change password",
+        "deleteAccount": "Delete account",
+        "comingSoon": "Coming soon",
+        "gender": "Gender",
+        "birthYear": "Year of birth",
+        "birthYearValue": "{{year}}",
+        "unset": "Not set yet",
+        "editProfile": "Edit profile",
+        "genderValues": {
+            "MALE": "Male",
+            "FEMALE": "Female"
+        }
+    },
+    "accountAction": {
+        "connectedOAuth": "Connected OAuth",
+        "noneConnected": "None connected",
+        "methodsFailed": "Could not load sign-in methods",
+        "retry": "Retry",
+        "loading": "Loading",
+        "socialOnly": "Social sign-in only",
+        "providers": {
+            "GOOGLE": "Google",
+            "KAKAO": "Kakao",
+            "NAVER": "Naver"
+        },
+        "editNickname": "Edit nickname",
+        "save": "Save",
+        "newPassword": "New password",
+        "sendCode": "Send verification code",
+        "verifyCode": "Verify code",
+        "resend": "Resend",
+        "codeExpires": "Code expires in {{seconds}}s",
+        "verified": "Identity verified · continue within {{seconds}}s",
+        "passwordMismatch": "The passwords do not match.",
+        "deletePersonalData": "Your profile, personal information and sign-in methods will be deleted.",
+        "keepSharedRecords": "Shared chats, trips and expense records will remain.",
+        "newAccountOnRejoin": "Signing up again creates a new account.",
+        "deleteAgreement": "I understand that account deletion cannot be undone.",
+        "messages": {
+            "codeInvalid": "Check your verification code.",
+            "expired": "Verification expired. Request a new code.",
+            "limited": "The request or attempt limit has been reached. Wait before trying again.",
+            "delivery": "Email delivery failed. Check mail availability before requesting a new code.",
+            "unavailable": "The request could not be completed. Try again later.",
+            "security": "Security verification failed. Reload and try again.",
+            "conflict": "This verification has already been used or replaced. Verify again.",
+            "passwordNotAllowed": "This social-only account has no password.",
+            "verificationNotAllowed": "A verified primary email is required.",
+            "uncertain": "The verification result could not be confirmed. Wait before requesting a new code.",
+            "invalidPassword": "Check the password requirements."
+        },
+        "nicknameMessages": {
+            "invalid": "Enter 1–50 characters without hidden or control characters.",
+            "unavailable": "Could not save your nickname. Sign in again or try later.",
+            "uncertain": "The save result is unknown. Reload to check your current nickname."
+        },
+        "results": {
+            "deleted": {
+                "title": "Account deleted",
+                "message": "Your account information has been cleared and you are signed out."
+            },
+            "passwordChanged": {
+                "title": "Password changed",
+                "message": "Previous sessions on all devices have ended. Sign in with your new password."
+            },
+            "uncertain": {
+                "title": "Confirm the result",
+                "message": "The request may already have completed and will not be retried automatically. Check a password change by signing in with the new password. For deletion, check whether you can sign in. A failed sign-in alone does not confirm deletion."
+            },
+            "reauthenticate": {
+                "title": "Sign in again",
+                "message": "Your account state changed. Sign in again and start a new verification."
+            }
+        },
+        "socialPasswordHint": "This account uses social sign-in only. Change your password with your connected sign-in provider."
     }
 }

@@ -2,10 +2,26 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { isMemberPath, legacyPageUrl } from "../src/routing/paths.ts";
 
-test("여행·내 방만 보호하고 라우터와 동일하게 대소문자·끝 슬래시를 처리", () => {
-    for (const path of ["/trips", "/rooms", "/TRIPS/", "/Rooms///"])
+test("여행·내 방·계정·프로필은 보호하고 대소문자·끝 슬래시를 처리", () => {
+    for (const path of [
+        "/trips",
+        "/rooms",
+        "/TRIPS/",
+        "/Rooms///",
+        "/settings/account",
+        "/Settings/Profile/",
+    ])
         assert.equal(isMemberPath(path), true);
-    for (const path of ["/", "/matching", "/brand", "/rooms/unknown", "//external.test/trips"])
+    for (const path of [
+        "/",
+        "/matching",
+        "/brand",
+        "/rooms/unknown",
+        "//external.test/trips",
+        "/settings",
+        "/settings/appearance",
+        "/settings/account/unknown",
+    ])
         assert.equal(isMemberPath(path), false);
 });
 
@@ -48,7 +64,14 @@ test("목업 화면은 /brand의 지정된 preview 값에서만 열림", async (
 
 test("목업 쿼리로 실제 회원 전용 경로를 공개 화면으로 바꾸지 않음", async () => {
     const { getMockupScreen } = await import("../src/routing/mockups.ts");
-    for (const path of ["/trips", "/rooms", "/TRIPS/", "/Rooms///"]) {
+    for (const path of [
+        "/trips",
+        "/rooms",
+        "/TRIPS/",
+        "/Rooms///",
+        "/settings/account",
+        "/settings/profile",
+    ]) {
         assert.equal(isMemberPath(path), true);
         assert.equal(getMockupScreen(path, "?preview=home"), null);
     }

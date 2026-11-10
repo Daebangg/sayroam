@@ -50,6 +50,42 @@ export const router = createBrowserRouter([
                             Component: (await import("@/pages/brand/BrandRoute")).BrandRoute,
                         }),
                     },
+                    {
+                        path: pagePaths.settings,
+                        lazy: async () => ({
+                            Component: (await import("@/pages/settings/SettingsPage")).SettingsPage,
+                        }),
+                        children: [
+                            {
+                                index: true,
+                                lazy: async () => ({
+                                    Component: (await import("@/pages/settings/SettingsPage"))
+                                        .GeneralSettingsPage,
+                                }),
+                            },
+                            {
+                                path: "appearance",
+                                lazy: async () => ({
+                                    Component: (await import("@/pages/settings/SettingsPage"))
+                                        .AppearanceSettingsPage,
+                                }),
+                            },
+                            {
+                                path: "account",
+                                lazy: async () => ({
+                                    Component: (await import("@/pages/settings/SettingsPage"))
+                                        .AccountSettingsPage,
+                                }),
+                            },
+                            {
+                                path: "profile",
+                                lazy: async () => ({
+                                    Component: (await import("@/pages/settings/SettingsPage"))
+                                        .ProfileSettingsPage,
+                                }),
+                            },
+                        ],
+                    },
                     { path: "*", Component: NotFoundPage },
                 ],
             },
