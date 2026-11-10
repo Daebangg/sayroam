@@ -1,6 +1,7 @@
 package com.daebangg.sayroam.user.presentation.controller;
 
 import com.daebangg.sayroam.auth.domain.AuthenticatedAccount;
+import com.daebangg.sayroam.user.application.result.UserProfileResult;
 import com.daebangg.sayroam.user.application.service.UserService;
 import com.daebangg.sayroam.user.presentation.api.UserApi;
 import com.daebangg.sayroam.user.presentation.dto.CurrentUserResponse;
@@ -24,7 +25,7 @@ public class CurrentUserController implements UserApi {
     @GetMapping(value = "/api/users/me", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<CurrentUserResponse> me(
             @AuthenticationPrincipal AuthenticatedAccount account) {
-        var profile = userService.getCurrentUser(account.userId(), account.authVersion());
+        UserProfileResult profile = userService.getCurrentUser(account.userId(), account.authVersion());
         return ResponseEntity.ok().cacheControl(CacheControl.noStore())
                 .body(CurrentUserResponse.from(profile));
     }
@@ -35,7 +36,7 @@ public class CurrentUserController implements UserApi {
     public ResponseEntity<CurrentUserResponse> updateProfile(
             @AuthenticationPrincipal AuthenticatedAccount account,
             @RequestBody UpdateUserProfileRequest request) {
-        var profile = userService.updateProfile(account.userId(), account.authVersion(), request.toCommand());
+        UserProfileResult profile = userService.updateProfile(account.userId(), account.authVersion(), request.toCommand());
         return ResponseEntity.ok().cacheControl(CacheControl.noStore())
                 .body(CurrentUserResponse.from(profile));
     }

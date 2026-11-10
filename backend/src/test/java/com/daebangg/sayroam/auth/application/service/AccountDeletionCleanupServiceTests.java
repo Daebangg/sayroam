@@ -28,7 +28,7 @@ class AccountDeletionCleanupServiceTests {
 
     @Test
     void propagatesTheFirstFailureWithoutStartingOtherCleanup() {
-        var failure = new IllegalStateException("Test storage failure");
+        IllegalStateException failure = new IllegalStateException("Test storage failure");
         doThrow(failure).when(loginMethods).deleteForUser(55);
 
         assertThatThrownBy(() -> service.deleteOwnedData(55)).isSameAs(failure);
@@ -37,7 +37,7 @@ class AccountDeletionCleanupServiceTests {
 
     @Test
     void propagatesLaterFailureToTheOuterTransactionAndStopsRemainingCleanup() {
-        var failure = new IllegalStateException("Test storage failure");
+        IllegalStateException failure = new IllegalStateException("Test storage failure");
         doThrow(failure).when(travelStyles).deleteForUser(55);
 
         assertThatThrownBy(() -> service.deleteOwnedData(55)).isSameAs(failure);

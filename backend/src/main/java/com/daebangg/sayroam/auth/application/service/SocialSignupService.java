@@ -14,6 +14,7 @@ import com.daebangg.sayroam.auth.domain.VerificationDigests;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
+import java.util.Optional;
 
 @Service
 public class SocialSignupService {
@@ -32,7 +33,7 @@ public class SocialSignupService {
         if (!OAuthSecrets.isValid(ticket) || !OAuthSecrets.isValid(browserBinding)) {
             throw new AuthException(AuthErrorCode.SOCIAL_AUTH_INVALID);
         }
-        var identity = tickets.consumeSignup(VerificationDigests.sha256(ticket), VerificationDigests.sha256(browserBinding))
+        SocialIdentity identity = tickets.consumeSignup(VerificationDigests.sha256(ticket), VerificationDigests.sha256(browserBinding))
                 .orElseThrow(() -> new AuthException(AuthErrorCode.SOCIAL_AUTH_INVALID));
         return complete(identity);
     }
@@ -42,8 +43,8 @@ public class SocialSignupService {
             throw new AuthException(AuthErrorCode.SOCIAL_EMAIL_REQUIRED);
         }
         String email = EmailAddress.normalize(identity.email());
-        var existing = accounts.findActiveByEmail(email);
-        var account = existing.isPresent() ? accounts.linkVerifiedEmail(existing.orElseThrow(), identity)
+        Optional<SocialAccounts.Account> existing = accounts.findActiveByEmail(email);
+        SocialAccounts.Account account = existing.isPresent() ? accounts.linkVerifiedEmail(existing.orElseThrow(), identity)
                 : accounts.register(identity, email, nickname(identity.displayName()), Instant.now());
         // 가입 커밋 후 토큰 발급 실패로 회원 생성을 되돌리지 않는다. 새 소셜 로그인으로 확인한다.
         return tokens.issue(account.userId(), account.authVersion());

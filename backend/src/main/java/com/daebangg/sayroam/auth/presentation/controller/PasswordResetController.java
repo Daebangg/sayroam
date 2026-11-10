@@ -49,7 +49,7 @@ public class PasswordResetController {
     public ResponseEntity<EmailVerificationResponse> request(@Valid @RequestBody EmailRequest body, HttpServletRequest request,
             @Parameter(description = "인증 메일 언어. ko/en을 지역 태그와 q 우선순위로 선택하며 누락·미지원·잘못된 값은 한국어로 처리합니다.", example = "en-US,en;q=0.9,ko;q=0.8")
             @RequestHeader(value = HttpHeaders.ACCEPT_LANGUAGE, required = false) String acceptLanguage) {
-        var issued = service.request(body.email(), request.getRemoteAddr(), EmailLanguage.fromAcceptLanguage(acceptLanguage));
+        PasswordResetService.IssuedRequest issued = service.request(body.email(), request.getRemoteAddr(), EmailLanguage.fromAcceptLanguage(acceptLanguage));
         return ResponseEntity.accepted().cacheControl(CacheControl.noStore())
                 .body(new EmailVerificationResponse(issued.verificationId(), issued.expiresInSeconds(), issued.resendAfterSeconds()));
     }
@@ -68,7 +68,7 @@ public class PasswordResetController {
     })
     @PostMapping(value = "/api/auth/password-reset-verifications/verify", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<PasswordResetConfirmResponse> confirm(@Valid @RequestBody EmailVerificationConfirmRequest body) {
-        var confirmed = service.confirm(body.email(), body.verificationId().toString(), body.code());
+        PasswordResetService.ConfirmedRequest confirmed = service.confirm(body.email(), body.verificationId().toString(), body.code());
         return ResponseEntity.ok().cacheControl(CacheControl.noStore())
                 .body(new PasswordResetConfirmResponse(confirmed.resetProof(), confirmed.expiresInSeconds()));
     }

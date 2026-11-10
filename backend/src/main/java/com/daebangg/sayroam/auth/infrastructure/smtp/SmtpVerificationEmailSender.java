@@ -7,7 +7,9 @@ import com.daebangg.sayroam.auth.application.port.out.VerificationEmailSender;
 import com.daebangg.sayroam.auth.domain.AccountVerificationPurpose;
 import com.daebangg.sayroam.global.mail.BrandedEmailContent;
 import com.daebangg.sayroam.global.mail.BrandedEmailRenderer;
+import com.daebangg.sayroam.global.mail.RenderedEmail;
 import jakarta.mail.MessagingException;
+import jakarta.mail.internet.MimeMessage;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -53,16 +55,16 @@ public class SmtpVerificationEmailSender implements VerificationEmailSender {
     }
 
     private void send(String recipient, BrandedEmailContent content) {
-        var rendered = renderer.render(content);
+        RenderedEmail rendered = renderer.render(content);
         try {
-            var message = mailSender.createMimeMessage();
-            var helper = new MimeMessageHelper(message, MimeMessageHelper.MULTIPART_MODE_RELATED, "UTF-8");
+            MimeMessage message = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, MimeMessageHelper.MULTIPART_MODE_RELATED, "UTF-8");
             helper.setFrom(from);
             helper.setTo(recipient);
             helper.setSubject(rendered.subject());
             message.setHeader("Content-Language", content.language().tag());
             helper.setText(rendered.plainText(), rendered.html());
-            for (var asset : renderer.inlineAssets()) {
+            for (BrandedEmailRenderer.InlineAsset asset : renderer.inlineAssets()) {
                 helper.addInline(asset.contentId(), asset.resource(), asset.contentType());
             }
             mailSender.send(message);

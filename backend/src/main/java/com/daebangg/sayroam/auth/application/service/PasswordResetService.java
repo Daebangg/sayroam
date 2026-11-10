@@ -10,6 +10,7 @@ import com.daebangg.sayroam.auth.domain.VerificationDigests;
 import org.springframework.stereotype.Service;
 
 import java.security.SecureRandom;
+import java.time.Duration;
 import java.util.Base64;
 import java.util.Locale;
 import java.util.Optional;
@@ -35,11 +36,11 @@ public class PasswordResetService {
     }
 
     public IssuedRequest request(String rawEmail, String remoteAddress, EmailLanguage language) {
-        var sender = mailSender.orElseThrow(() -> new AuthException(AuthErrorCode.EMAIL_DELIVERY_DISABLED));
-        var subject = subject(rawEmail);
+        VerificationEmailSender sender = mailSender.orElseThrow(() -> new AuthException(AuthErrorCode.EMAIL_DELIVERY_DISABLED));
+        PasswordResetStore.Subject subject = subject(rawEmail);
         String requestId = UUID.randomUUID().toString();
         String code = String.format(Locale.ROOT, "%06d", random.nextInt(1_000_000));
-        var retryAfter = store.reserve(subject, remoteAddress, requestId, codeDigest(subject, requestId, code));
+        Duration retryAfter = store.reserve(subject, remoteAddress, requestId, codeDigest(subject, requestId, code));
         if (!retryAfter.isZero()) throw new AuthException(AuthErrorCode.EMAIL_RATE_LIMITED, retryAfter);
         try {
             // 같은 SMTP·오류 경로를 거쳐 계정 유무·비밀번호 등록 여부의 조기 반환을 없앤다.
@@ -53,16 +54,16 @@ public class PasswordResetService {
             }
             throw deliveryFailure;
         }
-        var active = store.activate(subject, requestId).orElseThrow(() -> new AuthException(AuthErrorCode.EMAIL_REQUEST_SUPERSEDED));
+        PasswordResetStore.ActiveRequest active = store.activate(subject, requestId).orElseThrow(() -> new AuthException(AuthErrorCode.EMAIL_REQUEST_SUPERSEDED));
         return new IssuedRequest(requestId, active.expiresInSeconds(), active.resendAfterSeconds());
     }
 
     public ConfirmedRequest confirm(String rawEmail, String requestId, String code) {
-        var subject = subject(rawEmail);
+        PasswordResetStore.Subject subject = subject(rawEmail);
         byte[] secret = new byte[32];
         random.nextBytes(secret);
         String proof = Base64.getUrlEncoder().withoutPadding().encodeToString(secret);
-        var result = store.confirm(subject, requestId, codeDigest(subject, requestId, code), VerificationDigests.sha256(proof));
+        PasswordResetStore.ConfirmationResult result = store.confirm(subject, requestId, codeDigest(subject, requestId, code), VerificationDigests.sha256(proof));
         return switch (result.status()) {
             case CONFIRMED -> new ConfirmedRequest(proof, result.proofExpiresInSeconds());
             case EXPIRED -> throw new AuthException(AuthErrorCode.EMAIL_CODE_EXPIRED);
@@ -76,7 +77,7 @@ public class PasswordResetService {
     public void reset(String rawEmail, String resetProof, String newPassword) {
         if (!PasswordPolicy.isValid(newPassword)) throw new AuthException(AuthErrorCode.PASSWORD_POLICY_VIOLATION);
         if (resetProof == null || !resetProof.matches("^[A-Za-z0-9_-]{43}$")) throw new AuthException(AuthErrorCode.PASSWORD_RESET_PROOF_INVALID);
-        var subject = subject(rawEmail);
+        PasswordResetStore.Subject subject = subject(rawEmail);
         // 해시 실패로 증명이 소비되지 않게 하며 비밀번호 미등록 계정도 같은 해싱 경로를 거친다.
         String hash = passwords.hash(newPassword);
         switch (store.consumeProof(subject, VerificationDigests.sha256(resetProof))) {

@@ -12,6 +12,7 @@ import com.daebangg.sayroam.auth.domain.VerificationDigests;
 import org.springframework.stereotype.Service;
 
 import java.security.SecureRandom;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.Base64;
 import java.util.Locale;
@@ -35,12 +36,12 @@ public class AccountVerificationService {
 
     public IssuedRequest request(long userId, long expectedAuthVersion, AccountVerificationPurpose purpose,
                                  String remoteAddress, EmailLanguage language) {
-        var subject = subject(userId, expectedAuthVersion, purpose);
+        AccountVerificationStore.Subject subject = subject(userId, expectedAuthVersion, purpose);
         VerificationEmailSender sender = mailSender.orElseThrow(
                 () -> new AuthException(AuthErrorCode.EMAIL_DELIVERY_DISABLED));
         String requestId = UUID.randomUUID().toString();
         String code = String.format(Locale.ROOT, "%06d", random.nextInt(1_000_000));
-        var retryAfter = store.reserve(subject, remoteAddress, requestId, codeDigest(subject, requestId, code));
+        Duration retryAfter = store.reserve(subject, remoteAddress, requestId, codeDigest(subject, requestId, code));
         if (!retryAfter.isZero()) {
             throw new AuthException(AuthErrorCode.EMAIL_RATE_LIMITED, retryAfter);
         }
@@ -55,18 +56,18 @@ public class AccountVerificationService {
             }
             throw deliveryFailure;
         }
-        var active = store.activate(subject, requestId).orElseThrow(
+        AccountVerificationStore.ActiveRequest active = store.activate(subject, requestId).orElseThrow(
                 () -> new AuthException(AuthErrorCode.EMAIL_REQUEST_SUPERSEDED));
         return new IssuedRequest(requestId, purpose, active.expiresInSeconds(), active.resendAfterSeconds());
     }
 
     public ConfirmedRequest confirm(long userId, long expectedAuthVersion, AccountVerificationPurpose purpose,
                                     String requestId, String code) {
-        var subject = subject(userId, expectedAuthVersion, purpose);
+        AccountVerificationStore.Subject subject = subject(userId, expectedAuthVersion, purpose);
         byte[] secret = new byte[32];
         random.nextBytes(secret);
         String proof = Base64.getUrlEncoder().withoutPadding().encodeToString(secret);
-        var result = store.confirm(subject, requestId, codeDigest(subject, requestId, code),
+        AccountVerificationStore.ConfirmationResult result = store.confirm(subject, requestId, codeDigest(subject, requestId, code),
                 VerificationDigests.sha256(proof));
         return switch (result.status()) {
             case CONFIRMED -> new ConfirmedRequest(proof, purpose, result.proofExpiresInSeconds());
@@ -81,11 +82,11 @@ public class AccountVerificationService {
     /** 후속 민감 작업 서비스용. 목적은 클라이언트 값 대신 해당 작업의 상수로 전달해야 한다. */
     public VerifiedAction consumeProof(long userId, long expectedAuthVersion, AccountVerificationPurpose purpose,
                                        String proof) {
-        var subject = subject(userId, expectedAuthVersion, purpose);
+        AccountVerificationStore.Subject subject = subject(userId, expectedAuthVersion, purpose);
         if (proof == null || !proof.matches("^[A-Za-z0-9_-]{43}$")) {
             throw new AuthException(AuthErrorCode.ACCOUNT_PROOF_INVALID);
         }
-        var result = store.consumeProof(subject, VerificationDigests.sha256(proof));
+        AccountVerificationStore.ProofConsumption result = store.consumeProof(subject, VerificationDigests.sha256(proof));
         return switch (result.status()) {
             case CONSUMED -> new VerifiedAction(subject.email(), subject.authVersion(), result.verifiedAt());
             case EXPIRED -> throw new AuthException(AuthErrorCode.ACCOUNT_PROOF_EXPIRED);
@@ -97,7 +98,7 @@ public class AccountVerificationService {
     private AccountVerificationStore.Subject subject(long userId, long expectedAuthVersion,
                                                       AccountVerificationPurpose purpose) {
         Objects.requireNonNull(purpose, "purpose");
-        var account = accounts.findActiveVerifiedAccount(userId).orElseThrow(
+        AccountLookup.VerifiedAccount account = accounts.findActiveVerifiedAccount(userId).orElseThrow(
                 () -> new AuthException(AuthErrorCode.ACCOUNT_VERIFICATION_NOT_ALLOWED));
         if (account.authVersion() != expectedAuthVersion) {
             throw new AuthException(AuthErrorCode.AUTHENTICATION_REVOKED);

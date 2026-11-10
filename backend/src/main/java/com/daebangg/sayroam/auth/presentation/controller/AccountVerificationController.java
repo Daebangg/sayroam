@@ -56,7 +56,7 @@ public class AccountVerificationController {
             @Parameter(description = "인증 메일 언어. ko/en을 지역 태그와 q 우선순위로 선택하며 누락·미지원·잘못된 값은 한국어로 처리합니다.", example = "en-US,en;q=0.9,ko;q=0.8")
             @RequestHeader(value = HttpHeaders.ACCEPT_LANGUAGE, required = false) String acceptLanguage) {
         // 신뢰할 프록시 구성이 없으므로 Forwarded/X-Forwarded-For를 사용하지 않는다.
-        var issued = service.request(account.userId(), account.authVersion(), body.purpose(), request.getRemoteAddr(), EmailLanguage.fromAcceptLanguage(acceptLanguage));
+        AccountVerificationService.IssuedRequest issued = service.request(account.userId(), account.authVersion(), body.purpose(), request.getRemoteAddr(), EmailLanguage.fromAcceptLanguage(acceptLanguage));
         return ResponseEntity.accepted().cacheControl(CacheControl.noStore())
                 .body(AccountVerificationResponse.from(issued));
     }
@@ -77,7 +77,7 @@ public class AccountVerificationController {
     public ResponseEntity<AccountVerificationConfirmResponse> confirm(
             @Parameter(hidden = true) @AuthenticationPrincipal AuthenticatedAccount account,
             @Valid @RequestBody AccountVerificationConfirmRequest body) {
-        var confirmed = service.confirm(account.userId(), account.authVersion(), body.purpose(),
+        AccountVerificationService.ConfirmedRequest confirmed = service.confirm(account.userId(), account.authVersion(), body.purpose(),
                 body.verificationId().toString(), body.code());
         return ResponseEntity.ok().cacheControl(CacheControl.noStore())
                 .body(AccountVerificationConfirmResponse.from(confirmed));

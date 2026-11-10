@@ -9,6 +9,8 @@ import com.daebangg.sayroam.auth.application.port.out.LoginAttemptStore;
 import com.daebangg.sayroam.auth.domain.EmailAddress;
 import org.springframework.stereotype.Service;
 
+import java.util.Optional;
+
 @Service
 public class LoginService {
     private final AccountLookup accounts;
@@ -26,19 +28,19 @@ public class LoginService {
     public TokenPair login(String email, String password, String remoteAddress, boolean rememberMe) {
         String normalized = EmailAddress.normalize(email);
         requireAllowed(normalized, remoteAddress, LoginAttemptStore.Outcome.CHECK);
-        var account = accounts.findActiveCredentials(normalized);
+        Optional<AccountLookup.Credentials> account = accounts.findActiveCredentials(normalized);
         boolean matches = passwords.matches(password, account.map(AccountLookup.Credentials::passwordHash).orElse(null));
         if (account.isEmpty() || !matches) {
-            var failed = requireAllowed(normalized, remoteAddress, LoginAttemptStore.Outcome.FAILURE);
+            LoginAttemptStore.Evaluation failed = requireAllowed(normalized, remoteAddress, LoginAttemptStore.Outcome.FAILURE);
             throw new AuthException(AuthErrorCode.INVALID_CREDENTIALS, failed.remainingAttempts());
         }
         requireAllowed(normalized, remoteAddress, LoginAttemptStore.Outcome.SUCCESS);
-        var credentials = account.orElseThrow();
+        AccountLookup.Credentials credentials = account.orElseThrow();
         return tokens.issue(credentials.userId(), credentials.authVersion(), rememberMe);
     }
 
     private LoginAttemptStore.Evaluation requireAllowed(String email, String remoteAddress, LoginAttemptStore.Outcome outcome) {
-        var result = attempts.evaluate(email, remoteAddress, outcome);
+        LoginAttemptStore.Evaluation result = attempts.evaluate(email, remoteAddress, outcome);
         if (!result.retryAfter().isZero()) throw new AuthException(AuthErrorCode.LOGIN_RATE_LIMITED, result.retryAfter());
         return result;
     }

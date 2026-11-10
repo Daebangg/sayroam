@@ -1,5 +1,6 @@
 package com.daebangg.sayroam.auth.presentation.controller;
 
+import com.daebangg.sayroam.auth.application.model.TokenPair;
 import com.daebangg.sayroam.auth.application.service.RefreshTokenService;
 import com.daebangg.sayroam.auth.presentation.cookie.RefreshTokenCookie;
 import com.daebangg.sayroam.auth.presentation.dto.LoginResponse;
@@ -41,7 +42,7 @@ public class RefreshTokenController {
     })
     @PostMapping(value = "/api/auth/refresh", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<LoginResponse> refresh(HttpServletRequest request) {
-        var pair = service.refresh(refreshCookie.read(request));
+        TokenPair pair = service.refresh(refreshCookie.read(request));
         return ResponseEntity.ok().cacheControl(CacheControl.noStore())
                 .header(HttpHeaders.SET_COOKIE, refreshCookie.issue(pair.refreshToken(), pair.refreshExpiresIn(), pair.rememberMe()).toString())
                 .body(new LoginResponse(pair.access().accessToken(), "Bearer", pair.access().expiresIn()));

@@ -50,7 +50,7 @@ public class EmailVerificationController {
             @Parameter(description = "인증 메일 언어. ko/en을 지역 태그와 q 우선순위로 선택하며 누락·미지원·잘못된 값은 한국어로 처리합니다.", example = "en-US,en;q=0.9,ko;q=0.8")
             @RequestHeader(value = HttpHeaders.ACCEPT_LANGUAGE, required = false) String acceptLanguage) {
         // Forwarded/X-Forwarded-For는 신뢰하지 않는다. 프록시 구성은 별도 신뢰 경계 설정이 필요하다.
-        var issued = service.request(body.email(), request.getRemoteAddr(), EmailLanguage.fromAcceptLanguage(acceptLanguage));
+        EmailVerificationService.IssuedRequest issued = service.request(body.email(), request.getRemoteAddr(), EmailLanguage.fromAcceptLanguage(acceptLanguage));
         return ResponseEntity.accepted().cacheControl(CacheControl.noStore()).body(EmailVerificationResponse.from(issued));
     }
 
@@ -68,7 +68,7 @@ public class EmailVerificationController {
     @PostMapping(path = "/verify", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<EmailVerificationConfirmResponse> confirm(
             @Valid @RequestBody EmailVerificationConfirmRequest body) {
-        var confirmed = service.confirm(body.email(), body.verificationId().toString(), body.code());
+        EmailVerificationService.ConfirmedRequest confirmed = service.confirm(body.email(), body.verificationId().toString(), body.code());
         return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(EmailVerificationConfirmResponse.from(confirmed));
     }
 }

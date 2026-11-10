@@ -3,6 +3,8 @@ package com.daebangg.sayroam.auth.domain;
 import com.daebangg.sayroam.auth.presentation.dto.*;
 import com.daebangg.sayroam.user.domain.policy.UserProfilePolicy;
 import jakarta.validation.Validation;
+import jakarta.validation.Validator;
+import jakarta.validation.ValidatorFactory;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -27,8 +29,8 @@ class InputPolicyTests {
 
     @Test
     void signupChangeAndResetApplyIdenticalNewPasswordRequirements() {
-        try (var factory = Validation.buildDefaultValidatorFactory()) {
-            var validator = factory.getValidator();
+        try (ValidatorFactory factory = Validation.buildDefaultValidatorFactory()) {
+            Validator validator = factory.getValidator();
             String proof = "a".repeat(43);
             for (String password : List.of("Aa1!aaaa", "Aa1!" + "a".repeat(20), "lowercase1!", "Uppercase!",
                     "Uppercase1", "Aa1! aaab", "Aa1!\u200baaa", "Aa1!" + "a".repeat(21))) {

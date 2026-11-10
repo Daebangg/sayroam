@@ -25,6 +25,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.net.URI;
 import java.util.Locale;
 
 @Tag(name = "Auth")
@@ -68,7 +69,7 @@ public class SocialLoginController {
     public ResponseEntity<SocialAuthStartResponse> start(@PathVariable String provider,
             @Valid @RequestBody SocialAuthStartRequest request, HttpServletRequest http) {
         String browser = browserCookie.prepare(http);
-        var started = login.start(provider(provider), request.returnPath(), browser, Boolean.TRUE.equals(request.requestEmailConsent()));
+        SocialLoginService.Started started = login.start(provider(provider), request.returnPath(), browser, Boolean.TRUE.equals(request.requestEmailConsent()));
         return ResponseEntity.ok().cacheControl(CacheControl.noStore())
                 .header(HttpHeaders.SET_COOKIE, browserCookie.issue(browser).toString())
                 .body(new SocialAuthStartResponse(started.authorizationUrl(), started.expiresInSeconds()));
@@ -83,7 +84,7 @@ public class SocialLoginController {
     public ResponseEntity<Void> callback(@PathVariable String provider,
             @RequestParam(required = false) String state, @RequestParam(required = false) String code,
             @RequestParam(required = false) String error, HttpServletRequest http) {
-        var location = login.callback(provider(provider), state, code, error, browserCookie.require(http));
+        URI location = login.callback(provider(provider), state, code, error, browserCookie.require(http));
         return ResponseEntity.status(302).cacheControl(CacheControl.noStore())
                 .header("Referrer-Policy", "no-referrer").location(location).build();
     }
@@ -94,14 +95,14 @@ public class SocialLoginController {
     @PostMapping(value = "/results/exchange", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<SocialExchangeResponse> exchange(@Valid @RequestBody SocialResultExchangeRequest request,
             HttpServletRequest http) {
-        var exchanged = login.exchange(request.resultCode(), browserCookie.require(http));
-        var response = ResponseEntity.ok().cacheControl(CacheControl.noStore());
+        SocialLoginService.Exchanged exchanged = login.exchange(request.resultCode(), browserCookie.require(http));
+        ResponseEntity.BodyBuilder response = ResponseEntity.ok().cacheControl(CacheControl.noStore());
         if (exchanged.tokens() != null) {
-            var tokens = exchanged.tokens();
+            TokenPair tokens = exchanged.tokens();
             return response.header(HttpHeaders.SET_COOKIE, refreshCookie.issue(tokens.refreshToken(), tokens.refreshExpiresIn()).toString())
                     .body(new SocialExchangeResponse(SocialExchangeResponse.Status.AUTHENTICATED, loginResponse(tokens), null));
         }
-        var pending = exchanged.signup();
+        SocialLoginService.PendingSignup pending = exchanged.signup();
         return response.body(new SocialExchangeResponse(SocialExchangeResponse.Status.SIGNUP_REQUIRED, null,
                 new SocialExchangeResponse.Signup(pending.signupTicket(), pending.expiresInSeconds(),
                         pending.emailVerificationRequired(), pending.suggestedEmail())));
@@ -112,7 +113,7 @@ public class SocialLoginController {
     @ApiResponse(responseCode = "200", description = "가입 커밋 후 Access 본문과 Refresh 쿠키 발급. Cache-Control: no-store")
     @PostMapping(value = "/signup", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<LoginResponse> signup(@Valid @RequestBody SocialSignupRequest request, HttpServletRequest http) {
-        var tokens = signup.signup(request.signupTicket(), browserCookie.require(http));
+        TokenPair tokens = signup.signup(request.signupTicket(), browserCookie.require(http));
         return ResponseEntity.ok().cacheControl(CacheControl.noStore())
                 .header(HttpHeaders.SET_COOKIE, refreshCookie.issue(tokens.refreshToken(), tokens.refreshExpiresIn()).toString())
                 .body(loginResponse(tokens));

@@ -1,5 +1,6 @@
 package com.daebangg.sayroam.auth.presentation.controller;
 
+import com.daebangg.sayroam.auth.application.model.TokenPair;
 import com.daebangg.sayroam.auth.application.service.LoginService;
 import com.daebangg.sayroam.auth.presentation.dto.LoginRequest;
 import com.daebangg.sayroam.auth.presentation.dto.LoginResponse;
@@ -46,7 +47,7 @@ public class LoginController {
             produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<LoginResponse> login(@Valid @RequestBody LoginRequest request, HttpServletRequest servletRequest) {
         // 신뢰한 프록시 구성이 없으므로 클라이언트가 보낸 Forwarded 계열 헤더는 사용하지 않는다.
-        var token = service.login(request.email(), request.password(), servletRequest.getRemoteAddr(), request.rememberMe());
+        TokenPair token = service.login(request.email(), request.password(), servletRequest.getRemoteAddr(), request.rememberMe());
         return ResponseEntity.ok().cacheControl(CacheControl.noStore())
                 .header(HttpHeaders.SET_COOKIE, refreshCookie.issue(token.refreshToken(), token.refreshExpiresIn(), token.rememberMe()).toString())
                 .body(new LoginResponse(token.access().accessToken(), "Bearer", token.access().expiresIn()));

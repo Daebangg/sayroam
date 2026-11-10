@@ -14,7 +14,7 @@ public class PasswordConfig {
     PasswordEncoder passwordEncoder() {
         // 식별자를 함께 저장해 #30 로그인에서도 같은 인코더로 검증할 수 있다.
         String id = "pbkdf2-sha256-v1";
-        var encoder = new Pbkdf2PasswordEncoder("", 16, 600_000,
+        Pbkdf2PasswordEncoder encoder = new Pbkdf2PasswordEncoder("", 16, 600_000,
                 Pbkdf2PasswordEncoder.SecretKeyFactoryAlgorithm.PBKDF2WithHmacSHA256);
         return new DelegatingPasswordEncoder(id, Map.of(id, encoder));
     }

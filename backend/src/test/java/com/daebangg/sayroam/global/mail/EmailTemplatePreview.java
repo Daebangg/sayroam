@@ -6,6 +6,7 @@ import com.daebangg.sayroam.auth.infrastructure.config.EmailVerificationProperti
 import com.daebangg.sayroam.auth.infrastructure.config.PasswordResetProperties;
 import com.daebangg.sayroam.auth.infrastructure.smtp.VerificationEmailTemplates;
 
+import java.io.InputStream;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -13,18 +14,19 @@ import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 /** SMTP·Spring 실행 없이 합성 코드 012345만 사용하는 로컬 검토 도구. */
 public class EmailTemplatePreview {
     public static void main(String[] args) throws Exception {
         Path output = Path.of(args[0]);
         Files.createDirectories(output.resolve("assets"));
-        var renderer = new BrandedEmailRenderer();
-        var templates = new VerificationEmailTemplates(
+        BrandedEmailRenderer renderer = new BrandedEmailRenderer();
+        VerificationEmailTemplates templates = new VerificationEmailTemplates(
                 new EmailVerificationProperties(300, 60, 3600, 5, 20, 5, 600),
                 new AccountVerificationProperties(300, 60, 3600, 5, 20, 5, 600),
                 new PasswordResetProperties(300, 60, 3600, 5, 20, 5, 300));
-        var samples = new LinkedHashMap<String, BrandedEmailContent>();
+        LinkedHashMap<String, BrandedEmailContent> samples = new LinkedHashMap<String, BrandedEmailContent>();
         samples.put("signup", templates.signup("012345", EmailLanguage.KO));
         samples.put("password-reset", templates.passwordReset("012345", EmailLanguage.KO));
         samples.put("password-change", templates.account("012345", AccountVerificationPurpose.PASSWORD_CHANGE, EmailLanguage.KO));
@@ -43,16 +45,16 @@ public class EmailTemplatePreview {
                 List.of("Find travel companions who share your interests and prepare for a memorable journey together."), null,
                 new BrandedEmailContent.Action("View travel plan", URI.create("https://example.test/trips")),
                 "This is a design preview. It does not create a real trip or send an email."));
-        for (var asset : renderer.inlineAssets()) {
-            try (var stream = asset.resource().getInputStream()) {
+        for (BrandedEmailRenderer.InlineAsset asset : renderer.inlineAssets()) {
+            try (InputStream stream = asset.resource().getInputStream()) {
                 Files.copy(stream, output.resolve("assets/" + asset.resource().getFilename()), StandardCopyOption.REPLACE_EXISTING);
             }
         }
-        var links = new StringBuilder();
-        for (var sample : samples.entrySet()) {
-            var rendered = renderer.render(sample.getValue());
+        StringBuilder links = new StringBuilder();
+        for (Map.Entry<String, BrandedEmailContent> sample : samples.entrySet()) {
+            RenderedEmail rendered = renderer.render(sample.getValue());
             String html = rendered.html();
-            for (var asset : renderer.inlineAssets()) {
+            for (BrandedEmailRenderer.InlineAsset asset : renderer.inlineAssets()) {
                 html = html.replace("cid:" + asset.contentId(), "assets/" + asset.resource().getFilename());
             }
             Files.writeString(output.resolve(sample.getKey() + ".html"), html, StandardCharsets.UTF_8);

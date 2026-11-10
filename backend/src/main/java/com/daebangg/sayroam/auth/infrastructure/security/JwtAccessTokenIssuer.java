@@ -29,12 +29,12 @@ public class JwtAccessTokenIssuer implements AccessTokenIssuer {
             throw new IllegalArgumentException("Authentication version must be nonnegative");
         }
         Instant now = Instant.now();
-        var claims = JwtClaimsSet.builder().issuer(properties.issuer())
+        JwtClaimsSet claims = JwtClaimsSet.builder().issuer(properties.issuer())
                 .audience(List.of(properties.audience())).subject(Long.toString(userId))
                 .issuedAt(now).expiresAt(now.plusSeconds(properties.ttlSeconds()))
                 .id(UUID.randomUUID().toString()).claim("token_use", "access")
                 .claim("auth_ver", Long.toString(authVersion)).build();
-        var header = JwsHeader.with(MacAlgorithm.HS256).type("at+jwt").build();
+        JwsHeader header = JwsHeader.with(MacAlgorithm.HS256).type("at+jwt").build();
         String value = encoder.encode(JwtEncoderParameters.from(header, claims)).getTokenValue();
         return new IssuedAccessToken(value, properties.ttlSeconds());
     }

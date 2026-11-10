@@ -16,11 +16,11 @@ class BrandedEmailRendererTests {
     @Test
     void escapesEveryDynamicFieldWithoutEvaluatingInsertedPlaceholders() {
         String text = "<script>alert(1)</script> & \"quoted\" {{title}} $1 \\";
-        var content = new BrandedEmailContent(EmailLanguage.KO, "안내", text, text, text, text, List.of(text),
+        BrandedEmailContent content = new BrandedEmailContent(EmailLanguage.KO, "안내", text, text, text, text, List.of(text),
                 new BrandedEmailContent.Highlight(text, "012345", text),
                 new BrandedEmailContent.Action(text, URI.create("https://example.test/trips?a=1&b=2")), text);
 
-        var result = renderer.render(content);
+        RenderedEmail result = renderer.render(content);
 
         assertThat(result.html()).doesNotContain("<script>", "alert(1)</script>", "href=\"https://example.test/trips?a=1&b=2\"")
                 .contains("&lt;script&gt;", "&amp;", "&quot;quoted&quot;", "{{title}}", "$1", "012345",
@@ -34,10 +34,10 @@ class BrandedEmailRendererTests {
 
     @Test
     void supportsTextOnlyContentWithoutAnEmptyCodeOrActionBlock() {
-        var content = new BrandedEmailContent(EmailLanguage.KO, "여행 안내", "여행 안내를 확인해 주세요.", "여행 소식",
+        BrandedEmailContent content = new BrandedEmailContent(EmailLanguage.KO, "여행 안내", "여행 안내를 확인해 주세요.", "여행 소식",
                 "다음 여행을 준비해요", "변경된 일정을 확인해 주세요.", List.of(), null, null, "동행과 함께 확인해 주세요.");
 
-        var result = renderer.render(content);
+        RenderedEmail result = renderer.render(content);
 
         assertThat(result.html()).doesNotContain("{{", "인증 코드", "href=").contains("다음 여행을 준비해요", "cid:sayroam-logo", "cid:sayroam-travel");
         assertThat(result.plainText()).contains("변경된 일정을 확인해 주세요.", "동행과 함께 확인해 주세요.");

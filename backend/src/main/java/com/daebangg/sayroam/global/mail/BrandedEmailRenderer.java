@@ -95,7 +95,7 @@ public class BrandedEmailRenderer {
                 .append(content.introduction()).append("\n\n");
         content.details().forEach(detail -> text.append(detail).append("\n\n"));
         if (content.highlight() != null) {
-            var highlight = content.highlight();
+            BrandedEmailContent.Highlight highlight = content.highlight();
             text.append(highlight.label()).append(": ").append(highlight.value()).append("\n")
                     .append(highlight.hint()).append("\n\n");
         }

@@ -3,6 +3,7 @@ package com.daebangg.sayroam.auth.application.service;
 import com.daebangg.sayroam.auth.application.error.AuthErrorCode;
 import com.daebangg.sayroam.auth.application.error.AuthException;
 import com.daebangg.sayroam.auth.application.model.SocialAuthPolicy;
+import com.daebangg.sayroam.auth.application.model.SocialIdentity;
 import com.daebangg.sayroam.auth.application.model.TokenPair;
 import com.daebangg.sayroam.auth.application.port.out.OAuthTransactionStore;
 import com.daebangg.sayroam.auth.application.port.out.SocialAccounts;
@@ -15,6 +16,7 @@ import com.daebangg.sayroam.user.domain.type.SocialProvider;
 import org.springframework.stereotype.Service;
 
 import java.net.URI;
+import java.util.Optional;
 
 @Service
 public class SocialLoginService {
@@ -53,9 +55,9 @@ public class SocialLoginService {
         requireSecret(browserBinding);
         String state = OAuthSecrets.create();
         String verifier = OAuthSecrets.create();
-        var transaction = new OAuthTransactionStore.Transaction(provider, OAuthTransactionStore.Purpose.LOGIN,
+        OAuthTransactionStore.Transaction transaction = new OAuthTransactionStore.Transaction(provider, OAuthTransactionStore.Purpose.LOGIN,
                 digest(browserBinding), returnPath, verifier, null);
-        var uri = identities.authorizationUri(provider, new SocialIdentityProvider.AuthorizationRequest(state,
+        URI uri = identities.authorizationUri(provider, new SocialIdentityProvider.AuthorizationRequest(state,
                 OAuthSecrets.challenge(verifier), requestEmailConsent));
         if (!transactions.save(digest(state), transaction, policy.transactionTtl())) {
             throw new AuthException(AuthErrorCode.SOCIAL_AUTH_UNAVAILABLE);
@@ -66,7 +68,7 @@ public class SocialLoginService {
     public URI callback(SocialProvider provider, String state, String code, String error, String browserBinding) {
         requireSecret(state);
         requireSecret(browserBinding);
-        var transaction = transactions.consume(digest(state), provider, digest(browserBinding))
+        OAuthTransactionStore.Transaction transaction = transactions.consume(digest(state), provider, digest(browserBinding))
                 .orElseThrow(() -> new AuthException(AuthErrorCode.SOCIAL_AUTH_INVALID));
         if (transaction.purpose() != OAuthTransactionStore.Purpose.LOGIN) {
             throw new AuthException(AuthErrorCode.SOCIAL_AUTH_INVALID);
@@ -80,19 +82,19 @@ public class SocialLoginService {
             if (code == null || code.isBlank() || code.length() > 4096) {
                 throw new AuthException(AuthErrorCode.SOCIAL_AUTH_FAILED);
             }
-            var identity = identities.authenticate(provider, new SocialIdentityProvider.Callback(code, state,
+            SocialIdentity identity = identities.authenticate(provider, new SocialIdentityProvider.Callback(code, state,
                     transaction.codeVerifier()));
             if (identity.provider() != provider) {
                 throw new AuthException(AuthErrorCode.SOCIAL_AUTH_FAILED);
             }
-            var account = accounts.findActive(provider, identity.providerUserId());
+            Optional<SocialAccounts.Account> account = accounts.findActive(provider, identity.providerUserId());
             if (account.isPresent()) {
                 result = new SocialAuthTicketStore.Result(SocialAuthTicketStore.Status.LOGIN_READY, identity, account.orElseThrow(), null);
             } else {
                 if (!identity.emailVerified() || !EmailAddress.isValid(identity.email())) {
                     throw new AuthException(AuthErrorCode.SOCIAL_EMAIL_REQUIRED);
                 }
-                var existing = identity.emailVerified() ? accounts.findActiveByEmail(EmailAddress.normalize(identity.email()))
+                Optional<SocialAccounts.Account> existing = identity.emailVerified() ? accounts.findActiveByEmail(EmailAddress.normalize(identity.email()))
                         : java.util.Optional.<SocialAccounts.Account>empty();
                 if (existing.isPresent()) {
                     result = new SocialAuthTicketStore.Result(SocialAuthTicketStore.Status.AUTO_LINK_READY, identity, existing.orElseThrow(), null);
@@ -117,17 +119,17 @@ public class SocialLoginService {
     public Exchanged exchange(String resultCode, String browserBinding) {
         requireSecret(resultCode);
         requireSecret(browserBinding);
-        var result = tickets.consumeResult(digest(resultCode), digest(browserBinding))
+        SocialAuthTicketStore.Result result = tickets.consumeResult(digest(resultCode), digest(browserBinding))
                 .orElseThrow(() -> new AuthException(AuthErrorCode.SOCIAL_AUTH_INVALID));
         return switch (result.status()) {
             case FAILED -> throw new AuthException(result.error());
             case AUTO_LINK_READY -> {
-                var current = accounts.linkVerifiedEmail(result.account(), result.identity());
+                SocialAccounts.Account current = accounts.linkVerifiedEmail(result.account(), result.identity());
                 yield new Exchanged(tokens.issue(current.userId(), current.authVersion()), null);
             }
             case LOGIN_READY -> {
                 // 콜백 이후 탈퇴·연결 해제·인증 버전 변경도 다시 검사한다.
-                var current = accounts.findActive(result.identity().provider(), result.identity().providerUserId())
+                SocialAccounts.Account current = accounts.findActive(result.identity().provider(), result.identity().providerUserId())
                         .filter(account -> account.equals(result.account()))
                         .orElseThrow(() -> new AuthException(AuthErrorCode.AUTHENTICATION_REVOKED));
                 yield new Exchanged(tokens.issue(current.userId(), current.authVersion()), null);

@@ -32,7 +32,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     @ExceptionHandler(BusinessException.class)
     public ResponseEntity<ProblemDetail> handleBusiness(BusinessException e) {
         ProblemDetail body = ApiProblems.of(e.getErrorCode());
-        var response = ResponseEntity.status(body.getStatus()).cacheControl(CacheControl.noStore());
+        ResponseEntity.BodyBuilder response = ResponseEntity.status(body.getStatus()).cacheControl(CacheControl.noStore());
         if (e.getErrorCode().getType() == ErrorType.UNAUTHENTICATED) {
             response.header(HttpHeaders.WWW_AUTHENTICATE, "Bearer");
         }
@@ -42,7 +42,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     @ExceptionHandler(AuthException.class)
     public ResponseEntity<ProblemDetail> handleAuth(AuthException exception) {
         ProblemDetail problem = ApiProblems.of(exception.getErrorCode());
-        var response = ResponseEntity.status(problem.getStatus()).cacheControl(CacheControl.noStore());
+        ResponseEntity.BodyBuilder response = ResponseEntity.status(problem.getStatus()).cacheControl(CacheControl.noStore());
         if (exception.getErrorCode() == AuthErrorCode.REFRESH_TOKEN_INVALID
                 || exception.getErrorCode() == AuthErrorCode.REFRESH_TOKEN_REUSED
                 || exception.getErrorCode() == AuthErrorCode.PASSWORD_CHANGE_UNAVAILABLE

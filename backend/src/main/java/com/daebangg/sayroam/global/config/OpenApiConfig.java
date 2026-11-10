@@ -35,13 +35,13 @@ public class OpenApiConfig {
     OpenApiCustomizer authCsrfSecurity() {
         // 필수 입력 파라미터 대신 보안 조건으로 표시해 Swagger의 자동 헤더 전달을 허용한다.
         // 기존 Bearer/Refresh 조건과 같은 객체에 넣어 OR가 아닌 AND 조건을 유지한다.
-        var safeMethods = Set.of(PathItem.HttpMethod.GET, PathItem.HttpMethod.HEAD,
+        Set<PathItem.HttpMethod> safeMethods = Set.of(PathItem.HttpMethod.GET, PathItem.HttpMethod.HEAD,
                 PathItem.HttpMethod.OPTIONS, PathItem.HttpMethod.TRACE);
         return api -> api.getPaths().forEach((path, item) -> {
             if (!path.equals("/api/auth") && !path.startsWith("/api/auth/")) return;
             item.readOperationsMap().forEach((method, operation) -> {
                 if (safeMethods.contains(method)) return;
-                var requirements = operation.getSecurity();
+                List<SecurityRequirement> requirements = operation.getSecurity();
                 if (requirements == null || requirements.isEmpty()) {
                     operation.setSecurity(List.of(new SecurityRequirement().addList("csrfToken")));
                 } else {
@@ -53,7 +53,7 @@ public class OpenApiConfig {
 
     @Bean
     OpenAPI openAPI(Optional<BuildProperties> buildProperties) {
-        var errorCode = new StringSchema();
+        StringSchema errorCode = new StringSchema();
         errorCode.setEnum(Stream.of(CommonErrorCode.values(), AuthErrorCode.values(),
                         RoomErrorCode.values(), UserErrorCode.values())
                 .flatMap(Arrays::stream).map(ErrorCode::getCode).distinct().sorted().toList());
@@ -82,9 +82,9 @@ public class OpenApiConfig {
                         .description("INVALID_CREDENTIALS 로그인 실패 후 해당 이메일의 남은 시도 횟수. IP 제한 횟수는 공개하지 않음").example(4))
                 .addProperty("errors", new ArraySchema().items(new Schema<>().$ref("#/components/schemas/FieldError")));
         problem.setRequired(List.of("title", "status", "detail", "instance", "code"));
-        var limitedCode = new StringSchema();
+        StringSchema limitedCode = new StringSchema();
         limitedCode.setEnum(List.of("LOGIN_RATE_LIMITED"));
-        var limitedStatus = new IntegerSchema();
+        IntegerSchema limitedStatus = new IntegerSchema();
         limitedStatus.setEnum(List.of(429));
         Schema<Object> loginLimitFields = new Schema<>();
         loginLimitFields.setType("object");
@@ -96,7 +96,7 @@ public class OpenApiConfig {
         Schema<Object> loginLimited = new Schema<>();
         loginLimited.addAllOfItem(new Schema<>().$ref("#/components/schemas/ApiProblem"));
         loginLimited.addAllOfItem(loginLimitFields);
-        var credentialsCode = new StringSchema();
+        StringSchema credentialsCode = new StringSchema();
         credentialsCode.setEnum(List.of("INVALID_CREDENTIALS"));
         Schema<Object> credentialsFields = new Schema<>();
         credentialsFields.setType("object");
@@ -104,7 +104,7 @@ public class OpenApiConfig {
                 .addProperty("remainingAttempts", new IntegerSchema().minimum(java.math.BigDecimal.ONE)
                         .description("해당 이메일의 남은 시도 횟수. 기본 정책에서 4, 3, 2, 1").example(4));
         credentialsFields.setRequired(List.of("code", "remainingAttempts"));
-        var filterCode = new StringSchema();
+        StringSchema filterCode = new StringSchema();
         filterCode.setEnum(List.of("UNAUTHENTICATED"));
         Schema<Object> filterFields = new Schema<>();
         filterFields.setType("object");
@@ -113,7 +113,7 @@ public class OpenApiConfig {
         Schema<Object> loginUnauthorized = new Schema<>();
         loginUnauthorized.addAllOfItem(new Schema<>().$ref("#/components/schemas/ApiProblem"));
         loginUnauthorized.addAllOfItem(new Schema<>().addOneOfItem(credentialsFields).addOneOfItem(filterFields));
-        var components = new Components()
+        Components components = new Components()
                 .addSecuritySchemes("csrfToken", new SecurityScheme()
                         .type(SecurityScheme.Type.APIKEY).in(SecurityScheme.In.HEADER).name("X-XSRF-TOKEN")
                         .description("XSRF-TOKEN 쿠키의 원문을 전달합니다. local Swagger UI는 쿠키에서 자동 입력하므로 Authorize에 입력할 필요가 없습니다. 일반 클라이언트는 GET /api/auth/csrf로 쿠키를 준비한 뒤 헤더를 직접 전달해야 합니다."))
