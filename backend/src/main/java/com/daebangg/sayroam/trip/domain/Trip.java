@@ -23,12 +23,13 @@ public class Trip extends BaseTimeEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "room_id", nullable = false, unique = true)
-    private Long roomId;
+    // 여행을 만든 회원. 방이 없는 동안에는 이 회원만 수정한다
+    @Column(name = "created_by", nullable = false, updatable = false)
+    private Long createdById;
 
-    // 동행 매칭으로 만들어진 여행이면 그 요청, 친구끼리 만든 여행은 NULL
-    @Column(name = "source_companion_request_id")
-    private Long sourceCompanionRequestId;
+    // 혼자 가는 여행은 NULL
+    @Column(name = "room_id", unique = true)
+    private Long roomId;
 
     @Column(length = 50)
     private String region;
@@ -38,9 +39,9 @@ public class Trip extends BaseTimeEntity {
     private TravelPeriod period;
 
     @Builder
-    private Trip(Long roomId, Long sourceCompanionRequestId, String region, TravelPeriod period) {
+    private Trip(Long createdById, Long roomId, String region, TravelPeriod period) {
+        this.createdById = createdById;
         this.roomId = roomId;
-        this.sourceCompanionRequestId = sourceCompanionRequestId;
         this.region = region;
         this.period = period;
     }

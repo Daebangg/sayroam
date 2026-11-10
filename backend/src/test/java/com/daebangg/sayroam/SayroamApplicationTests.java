@@ -1,6 +1,5 @@
 package com.daebangg.sayroam;
 
-import com.daebangg.sayroam.room.domain.Room;
 import com.daebangg.sayroam.trip.domain.Trip;
 import com.daebangg.sayroam.user.domain.type.Role;
 import com.daebangg.sayroam.user.domain.entity.User;
@@ -41,22 +40,19 @@ class SayroamApplicationTests extends DatabaseIntegrationTest {
                 SELECT COUNT(*) FROM information_schema.tables
                 WHERE table_schema = DATABASE() AND table_type = 'BASE TABLE'
                 """, Integer.class)).isEqualTo(18);
-        assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("4");
+        assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("5");
         flyway.validate();
         assertThat(flyway.migrate().migrationsExecuted).isZero();
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM flyway_schema_history WHERE success = 1",
-                Integer.class)).isEqualTo(4);
+                Integer.class)).isEqualTo(5);
     }
 
     @Test
     @Transactional
     void jpaPersistsAuditingEnumsAndOptionalTravelPeriod() {
         User user = User.builder().nickname("테스트 회원").role(Role.USER).build();
-        Room room = new Room("날짜 미정 여행");
         entityManager.persist(user);
-        entityManager.persist(room);
-        Long roomId = (Long) entityManagerFactory.getPersistenceUnitUtil().getIdentifier(room);
-        Trip trip = Trip.builder().roomId(roomId).build();
+        Trip trip = Trip.builder().createdById(user.getId()).build();
         entityManager.persist(trip);
         entityManager.flush();
         Object tripId = entityManagerFactory.getPersistenceUnitUtil().getIdentifier(trip);
@@ -66,6 +62,8 @@ class SayroamApplicationTests extends DatabaseIntegrationTest {
                 Integer.class)).isEqualTo(1);
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM trip WHERE start_date IS NULL AND end_date IS NULL",
                 Integer.class)).isEqualTo(1);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM trip WHERE room_id IS NULL AND created_by = ?",
+                Integer.class, user.getId())).isEqualTo(1);
     }
 
     @Test
