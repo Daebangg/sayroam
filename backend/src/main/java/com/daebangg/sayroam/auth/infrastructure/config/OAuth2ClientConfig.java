@@ -18,7 +18,7 @@ import java.util.Set;
 public class OAuth2ClientConfig {
     @Bean
     ClientRegistrationRepository socialClientRegistrations(OAuth2ClientProperties properties) {
-        var registrations = new HashMap<String, ClientRegistration>();
+        HashMap<String, ClientRegistration> registrations = new HashMap<String, ClientRegistration>();
         register(registrations, properties.google(), ClientRegistration.withRegistrationId("google")
                 .clientName("Google").clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
                 .scope("https://www.googleapis.com/auth/userinfo.email", "https://www.googleapis.com/auth/userinfo.profile")
@@ -38,7 +38,7 @@ public class OAuth2ClientConfig {
                 .userInfoUri("https://openapi.naver.com/v1/nid/me").userNameAttributeName("id")
                 .providerConfigurationMetadata(Map.of("token-request-state", true,
                         "user-info-id-container", "response")), "naver", false);
-        var clients = Map.copyOf(registrations);
+        Map<String, ClientRegistration> clients = Map.copyOf(registrations);
         return clients::get;
     }
 

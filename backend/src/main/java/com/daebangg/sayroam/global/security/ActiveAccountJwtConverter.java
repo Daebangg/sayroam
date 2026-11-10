@@ -3,6 +3,7 @@ package com.daebangg.sayroam.global.security;
 import com.daebangg.sayroam.auth.application.error.AuthErrorCode;
 import com.daebangg.sayroam.auth.application.error.AuthException;
 import com.daebangg.sayroam.auth.application.port.out.AccountLookup;
+import com.daebangg.sayroam.auth.domain.AuthenticatedAccount;
 import org.springframework.core.convert.converter.Converter;
 import org.springframework.security.authentication.AbstractAuthenticationToken;
 import org.springframework.security.authentication.AuthenticationServiceException;
@@ -37,7 +38,7 @@ public class ActiveAccountJwtConverter implements Converter<Jwt, AbstractAuthent
             throw new BadCredentialsException("Invalid access token");
         }
         try {
-            var account = accounts.findActiveAccount(userId)
+            AuthenticatedAccount account = accounts.findActiveAccount(userId)
                     .orElseThrow(() -> new BadCredentialsException("Authentication is required"));
             if (authVersion < 0 || account.authVersion() != authVersion) {
                 throw new BadCredentialsException("Authentication is required");

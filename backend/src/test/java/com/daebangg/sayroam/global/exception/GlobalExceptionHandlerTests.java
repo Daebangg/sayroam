@@ -15,6 +15,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
+import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 
 import java.time.Duration;
@@ -39,7 +40,7 @@ class GlobalExceptionHandlerTests {
     @BeforeEach
     void setUp() {
         login = mock(LoginService.class);
-        var refreshCookie = new RefreshTokenCookie(new RefreshCookieProperties(true));
+        RefreshTokenCookie refreshCookie = new RefreshTokenCookie(new RefreshCookieProperties(true));
         mvc = standaloneSetup(new LoginController(login, refreshCookie))
                 .setControllerAdvice(new GlobalExceptionHandler(refreshCookie))
                 .build();
@@ -83,7 +84,7 @@ class GlobalExceptionHandlerTests {
             boolean clearCookie, boolean bearerChallenge) throws Exception {
         given(login.login(anyString(), anyString(), anyString(), org.mockito.ArgumentMatchers.anyBoolean())).willThrow(new AuthException(code));
 
-        var result = mvc.perform(loginRequest())
+        ResultActions result = mvc.perform(loginRequest())
                 .andExpect(status().is(expectedStatus))
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
                 .andExpect(jsonPath("$.status").value(expectedStatus))
@@ -116,7 +117,7 @@ class GlobalExceptionHandlerTests {
     @ParameterizedTest
     @CsvSource({"0, 0", "1, 1", "1000000000, 1", "1000000001, 2"})
     void 재시도_시간을_초_단위로_올려_헤더와_본문에_전달한다(long nanos, long seconds) throws Exception {
-        var exception = new AuthException(AuthErrorCode.EMAIL_RATE_LIMITED, Duration.ofNanos(nanos));
+        AuthException exception = new AuthException(AuthErrorCode.EMAIL_RATE_LIMITED, Duration.ofNanos(nanos));
         given(login.login(anyString(), anyString(), anyString(), org.mockito.ArgumentMatchers.anyBoolean())).willThrow(exception);
 
         mvc.perform(loginRequest())
@@ -129,9 +130,9 @@ class GlobalExceptionHandlerTests {
 
     @Test
     void 원인과_suppressed_예외는_보존하지만_응답에는_노출하지_않는다() throws Exception {
-        var cause = new IllegalStateException("private-database-connection");
-        var suppressed = new IllegalStateException("private-mail-response");
-        var exception = new AuthException(AuthErrorCode.AUTHENTICATION_UNAVAILABLE, cause);
+        IllegalStateException cause = new IllegalStateException("private-database-connection");
+        IllegalStateException suppressed = new IllegalStateException("private-mail-response");
+        AuthException exception = new AuthException(AuthErrorCode.AUTHENTICATION_UNAVAILABLE, cause);
         exception.addSuppressed(suppressed);
         given(login.login(anyString(), anyString(), anyString(), org.mockito.ArgumentMatchers.anyBoolean())).willThrow(exception);
 
@@ -151,8 +152,8 @@ class GlobalExceptionHandlerTests {
 
     @Test
     void 일반_업무_예외에는_인증_전용_쿠키나_헤더를_추가하지_않는다() throws Exception {
-        var cause = new IllegalStateException("private-persistence-error");
-        var exception = new BusinessException(CommonErrorCode.INVALID_INPUT, cause);
+        IllegalStateException cause = new IllegalStateException("private-persistence-error");
+        BusinessException exception = new BusinessException(CommonErrorCode.INVALID_INPUT, cause);
         given(login.login(anyString(), anyString(), anyString(), org.mockito.ArgumentMatchers.anyBoolean()))
                 .willThrow(exception);
 

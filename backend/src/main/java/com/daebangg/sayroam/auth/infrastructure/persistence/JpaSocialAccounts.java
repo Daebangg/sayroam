@@ -26,6 +26,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
+import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Supplier;
@@ -91,7 +92,7 @@ public class JpaSocialAccounts implements SocialAccounts {
                 throw new AuthException(AuthErrorCode.SOCIAL_AUTH_INVALID);
             }
             // 회원별 공급자 중복은 회원 잠금으로 직렬화한다. 다른 회원의 동일 소셜 ID는 DB UNIQUE로 막는다.
-            var subjects = entities.createQuery("select s.providerUserId from UserSocialAccount s where s.user.id = :id and s.provider = :provider", String.class)
+            List<String> subjects = entities.createQuery("select s.providerUserId from UserSocialAccount s where s.user.id = :id and s.provider = :provider", String.class)
                     .setParameter("id", account.userId()).setParameter("provider", identity.provider()).getResultList();
             if (!subjects.isEmpty()) {
                 if (subjects.getFirst().equals(identity.providerUserId())) return account;

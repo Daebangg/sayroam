@@ -28,7 +28,7 @@ public class SignupService {
             throw new AuthException(AuthErrorCode.PASSWORD_POLICY_VIOLATION);
         }
         String email = EmailAddress.normalize(rawEmail);
-        var proof = verificationStore.consumeSignupProof(email, VerificationDigests.sha256(signupProof));
+        EmailVerificationStore.ProofConsumption proof = verificationStore.consumeSignupProof(email, VerificationDigests.sha256(signupProof));
         switch (proof.status()) {
             case EXPIRED -> throw new AuthException(AuthErrorCode.SIGNUP_PROOF_EXPIRED);
             case INVALID -> throw new AuthException(AuthErrorCode.SIGNUP_PROOF_INVALID);

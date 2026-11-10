@@ -22,7 +22,7 @@ public enum EmailLanguage {
     public static EmailLanguage fromAcceptLanguage(String header) {
         if (header == null || header.isBlank()) return KO;
         try {
-            var ranges = Locale.LanguageRange.parse(header).stream().filter(range -> range.getWeight() > 0).toList();
+            List<Locale.LanguageRange> ranges = Locale.LanguageRange.parse(header).stream().filter(range -> range.getWeight() > 0).toList();
             return "en".equals(Locale.lookupTag(ranges, List.of("ko", "en"))) ? EN : KO;
         } catch (IllegalArgumentException exception) {
             return KO;
@@ -30,8 +30,8 @@ public enum EmailLanguage {
     }
 
     public String text(String key, Object... arguments) {
-        var locale = Locale.forLanguageTag(tag);
-        var bundle = ResourceBundle.getBundle("mail.messages", locale,
+        Locale locale = Locale.forLanguageTag(tag);
+        ResourceBundle bundle = ResourceBundle.getBundle("mail.messages", locale,
                 ResourceBundle.Control.getNoFallbackControl(ResourceBundle.Control.FORMAT_PROPERTIES));
         String pattern = bundle.getString(key);
         return arguments.length == 0 ? pattern : new MessageFormat(pattern, locale).format(arguments);

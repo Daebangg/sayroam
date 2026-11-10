@@ -31,18 +31,18 @@ public class SecurityConfig {
     SecurityFilterChain securityFilterChain(HttpSecurity http, JsonMapper jsonMapper,
                                           JwtDecoder accessTokenDecoder,
                                           ActiveAccountJwtConverter accountConverter) throws Exception {
-        var problemHandler = new SecurityProblemHandler(jsonMapper);
-        var jwtProvider = new JwtAuthenticationProvider(accessTokenDecoder);
+        SecurityProblemHandler problemHandler = new SecurityProblemHandler(jsonMapper);
+        JwtAuthenticationProvider jwtProvider = new JwtAuthenticationProvider(accessTokenDecoder);
         jwtProvider.setJwtAuthenticationConverter(accountConverter);
-        var bearerConverter = new BearerTokenAuthenticationConverter();
+        BearerTokenAuthenticationConverter bearerConverter = new BearerTokenAuthenticationConverter();
         // 만료·변조된 Access Token이 함께 전달돼도 쿠키 기반 갱신·로그아웃을 가로막지 않는다.
-        var bearerFilter = new BearerTokenAuthenticationFilter(new ProviderManager(jwtProvider),
+        BearerTokenAuthenticationFilter bearerFilter = new BearerTokenAuthenticationFilter(new ProviderManager(jwtProvider),
                 request -> HttpMethod.POST.matches(request.getMethod())
                         && ("/api/auth/refresh".equals(request.getServletPath())
                         || "/api/auth/logout".equals(request.getServletPath()))
                         ? null : bearerConverter.convert(request));
         bearerFilter.setAuthenticationEntryPoint(problemHandler);
-        var failureHandler = new AuthenticationEntryPointFailureHandler(problemHandler);
+        AuthenticationEntryPointFailureHandler failureHandler = new AuthenticationEntryPointFailureHandler(problemHandler);
         failureHandler.setRethrowAuthenticationServiceException(false);
         bearerFilter.setAuthenticationFailureHandler(failureHandler);
         http

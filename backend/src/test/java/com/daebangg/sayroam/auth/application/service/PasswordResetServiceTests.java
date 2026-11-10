@@ -7,6 +7,7 @@ import com.daebangg.sayroam.auth.application.port.out.*;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.mockito.InOrder;
 
 import java.time.Duration;
 import java.util.Optional;
@@ -43,7 +44,7 @@ class PasswordResetServiceTests {
         when(passwords.hash("NewPass1!")).thenReturn("new-hash");
         when(store.consumeProof(eq(SUBJECT), anyString())).thenReturn(PasswordResetStore.ProofStatus.CONSUMED);
         service.reset(" MEMBER@EXAMPLE.TEST ", PROOF, "NewPass1!");
-        var order = inOrder(passwords, store, changes);
+        InOrder order = inOrder(passwords, store, changes);
         order.verify(passwords).hash("NewPass1!");
         order.verify(store).consumeProof(eq(SUBJECT), anyString());
         order.verify(changes).change(55, EMAIL, 3, "new-hash");
@@ -70,7 +71,7 @@ class PasswordResetServiceTests {
 
     @Test
     void disabledMailDoesNotQueryAccountsOrConsumeRateLimits() {
-        var disabled = new PasswordResetService(accounts, store, Optional.empty(), passwords, changes);
+        PasswordResetService disabled = new PasswordResetService(accounts, store, Optional.empty(), passwords, changes);
         assertThatThrownBy(() -> disabled.request(EMAIL, "127.0.0.1", EmailLanguage.KO))
                 .isInstanceOfSatisfying(AuthException.class,
                         exception -> assertThat(exception.getErrorCode()).isEqualTo(AuthErrorCode.EMAIL_DELIVERY_DISABLED));
@@ -81,8 +82,8 @@ class PasswordResetServiceTests {
     void cleanupFailurePreservesDeliveryCauseWithoutActivatingCode() {
         when(accounts.findActiveCredentials(EMAIL)).thenReturn(Optional.empty());
         when(store.reserve(any(), anyString(), anyString(), anyString())).thenReturn(Duration.ZERO);
-        var delivery = new AuthException(AuthErrorCode.EMAIL_DELIVERY_FAILED);
-        var cleanup = new AuthException(AuthErrorCode.EMAIL_VERIFICATION_UNAVAILABLE);
+        AuthException delivery = new AuthException(AuthErrorCode.EMAIL_DELIVERY_FAILED);
+        AuthException cleanup = new AuthException(AuthErrorCode.EMAIL_VERIFICATION_UNAVAILABLE);
         doThrow(delivery).when(mail).sendPasswordResetCode(eq(EMAIL), anyString(), eq(EmailLanguage.KO));
         doThrow(cleanup).when(store).discard(any(), anyString());
         assertThatThrownBy(() -> service.request(EMAIL, "127.0.0.1", EmailLanguage.KO)).isSameAs(cleanup);

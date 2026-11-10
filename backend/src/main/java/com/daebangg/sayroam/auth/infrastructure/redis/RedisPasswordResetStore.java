@@ -74,7 +74,7 @@ public class RedisPasswordResetStore implements PasswordResetStore {
                 requestId, codeDigest, proofDigest, Integer.toString(policy.maxVerificationAttempts()),
                 millis(policy.proofTtlSeconds()), Long.toString(subject.userId()),
                 VerificationDigests.sha256(subject.email()), PURPOSE, Long.toString(subject.authVersion()));
-        var status = switch (Math.toIntExact(number(result, 0))) {
+        PasswordResetStore.ConfirmationStatus status = switch (Math.toIntExact(number(result, 0))) {
             case 0 -> ConfirmationStatus.CONFIRMED;
             case 1 -> ConfirmationStatus.EXPIRED;
             case 2 -> ConfirmationStatus.SUPERSEDED;
@@ -124,7 +124,7 @@ public class RedisPasswordResetStore implements PasswordResetStore {
     private static String millis(int seconds) { return Long.toString(seconds * 1000L); }
     private static long seconds(long millis) { return Math.max(0, (millis + 999) / 1000); }
     private static DefaultRedisScript<List> script(String fileName) {
-        var script = new DefaultRedisScript<List>();
+        DefaultRedisScript<List> script = new DefaultRedisScript<List>();
         script.setLocation(new ClassPathResource("redis/" + fileName));
         script.setResultType(List.class);
         return script;

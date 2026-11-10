@@ -45,7 +45,7 @@ public class AccessTokenConfig {
 
     @Bean
     JwtDecoder accessTokenDecoder(SecretKey accessTokenSigningKey, AccessTokenProperties properties) {
-        var decoder = NimbusJwtDecoder.withSecretKey(accessTokenSigningKey)
+        NimbusJwtDecoder decoder = NimbusJwtDecoder.withSecretKey(accessTokenSigningKey)
                 .macAlgorithm(MacAlgorithm.HS256).validateType(false).build();
         OAuth2TokenValidator<Jwt> accessClaims = jwt -> {
             Instant issuedAt = jwt.getIssuedAt();

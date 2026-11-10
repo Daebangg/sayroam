@@ -23,8 +23,8 @@ public class OAuth2UserInfoMapper {
                         text(attributes, "name"), text(attributes, "picture"));
             }
             case KAKAO -> {
-                var account = object(attributes, "kakao_account");
-                var profile = object(account, "profile");
+                Map<?, ?> account = object(attributes, "kakao_account");
+                Map<?, ?> profile = object(account, "profile");
                 boolean verified = Boolean.TRUE.equals(account.get("is_email_valid"))
                         && Boolean.TRUE.equals(account.get("is_email_verified"));
                 yield identity(provider, text(attributes, "id"), text(account, "email"), verified,
@@ -32,7 +32,7 @@ public class OAuth2UserInfoMapper {
             }
             case NAVER -> {
                 if (!"00".equals(text(attributes, "resultcode"))) throw new AuthException(AuthErrorCode.SOCIAL_AUTH_FAILED);
-                var response = object(attributes, "response");
+                Map<?, ?> response = object(attributes, "response");
                 String nickname = text(response, "nickname");
                 // 인증된 네이버 UserInfo가 제공한 이메일을 서비스 이메일로 수락한다. 별도 인증 메일은 보내지 않는다.
                 yield identity(provider, text(response, "id"), text(response, "email"), true,

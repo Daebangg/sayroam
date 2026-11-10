@@ -31,8 +31,8 @@ class EmailLanguageTests {
 
     @Test
     void hasCompleteTranslationsAndFormatsSingleAndPluralDurations() {
-        var korean = ResourceBundle.getBundle("mail.messages", Locale.KOREAN);
-        var english = ResourceBundle.getBundle("mail.messages", Locale.ENGLISH);
+        ResourceBundle korean = ResourceBundle.getBundle("mail.messages", Locale.KOREAN);
+        ResourceBundle english = ResourceBundle.getBundle("mail.messages", Locale.ENGLISH);
         assertThat(english.keySet()).containsExactlyInAnyOrderElementsOf(korean.keySet());
         assertThat(EmailLanguage.EN.text("duration.minutes", 1)).isEqualTo("1 minute");
         assertThat(EmailLanguage.EN.text("duration.minutes", 5)).isEqualTo("5 minutes");

@@ -23,7 +23,7 @@ public class LoginTokenService {
 
     public TokenPair issue(long userId, long authVersion, boolean rememberMe) {
         RefreshToken refresh = RefreshToken.create();
-        var access = tokens.issue(userId, authVersion);
+        AccessTokenIssuer.IssuedAccessToken access = tokens.issue(userId, authVersion);
         // Redis 저장이 성공한 경우에만 두 토큰을 클라이언트에 전달한다.
         long expiresIn = refreshTokens.create(refresh.sessionId(), userId, refresh.digest(), authVersion, rememberMe);
         return new TokenPair(access, refresh.value(), expiresIn, rememberMe);

@@ -24,15 +24,20 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
+import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
+import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 
 import java.net.URI;
+import java.nio.file.Path;
 import java.time.Instant;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -75,9 +80,9 @@ class SocialLinkIntegrationTests extends DatabaseIntegrationTest {
     @Test void verifiedMatchingEmailConnectsAndSignsInWithoutPasswordOrAnotherRequest() throws Exception {
         long id = register();
         String hash = jdbc.queryForObject("select password_hash from user_credential where user_id = ?", String.class, id);
-        var result = returned();
+        Returned result = returned();
         assertThat(countLinks()).isZero();
-        var response = exchange(result);
+        MvcResult response = exchange(result);
         assertAuthenticatedAs(response, id);
         assertThat(response.getResponse().getCookie("sayroam_refresh")).isNotNull();
         assertThat(countLinks()).isEqualTo(1);
@@ -91,9 +96,9 @@ class SocialLinkIntegrationTests extends DatabaseIntegrationTest {
     void missingOrUnverifiedEmailDoesNotConnectToAnExistingMember(String email) throws Exception {
         register();
         when(identities.authenticate(eq(SocialProvider.GOOGLE), any())).thenReturn(identity("subject", email, false));
-        var response = exchange(returned());
+        MvcResult response = exchange(returned());
         assertThat(response.getResponse().getStatus()).isEqualTo(400);
-        var body = json.readTree(response.getResponse().getContentAsByteArray());
+        JsonNode body = json.readTree(response.getResponse().getContentAsByteArray());
         assertThat(body.path("code").asText()).isEqualTo("SOCIAL_EMAIL_REQUIRED");
         assertThat(response.getResponse().getCookie("sayroam_refresh")).isNull();
         assertThat(countLinks()).isZero();
@@ -102,9 +107,9 @@ class SocialLinkIntegrationTests extends DatabaseIntegrationTest {
     @ParameterizedTest @ValueSource(strings = {"auth_version = auth_version + 1", "deleted_at = UTC_TIMESTAMP()", "email_verified_at = NULL", "email = 'changed@example.test'"})
     void accountChangesBetweenCallbackAndExchangeCannotAuthorizeTheOldIdentity(String change) throws Exception {
         long id = register();
-        var result = returned();
+        Returned result = returned();
         jdbc.update("update users set " + change + " where id = ?", id);
-        var response = exchange(result);
+        MvcResult response = exchange(result);
         assertThat(response.getResponse().getStatus()).isIn(400, 401);
         assertThat(response.getResponse().getCookie("sayroam_refresh")).isNull();
         assertThat(countLinks()).isZero();
@@ -113,14 +118,14 @@ class SocialLinkIntegrationTests extends DatabaseIntegrationTest {
     @Test void unverifiedExistingMemberCannotBeAutomaticallyLinked() throws Exception {
         long id = register();
         jdbc.update("update users set email_verified_at = NULL where id = ?", id);
-        var response = exchange(returned());
+        MvcResult response = exchange(returned());
         assertThat(response.getResponse().getStatus()).isEqualTo(409);
         assertThat(countLinks()).isZero();
     }
 
     @Test void aDifferentIdentityForAnAlreadyConnectedProviderIsNotReplaced() throws Exception {
         accounts.register(identity("original-subject", EMAIL, true), EMAIL, "기존 여행자", Instant.now());
-        var response = exchange(returned());
+        MvcResult response = exchange(returned());
         assertThat(response.getResponse().getStatus()).isEqualTo(409);
         assertThat(jdbc.queryForObject("select provider_user_id from user_social_account", String.class)).isEqualTo("original-subject");
         assertThat(countLinks()).isEqualTo(1);
@@ -128,11 +133,11 @@ class SocialLinkIntegrationTests extends DatabaseIntegrationTest {
 
     @Test void concurrentVerifiedLoginsLinkOnceAndAuthenticateAsTheSameMember() throws Exception {
         long id = register();
-        var first = returned(); var second = returned();
-        try (var executor = Executors.newFixedThreadPool(2)) {
-            var gate = new CountDownLatch(1);
-            var one = executor.submit(() -> { gate.await(); return exchange(first); });
-            var two = executor.submit(() -> { gate.await(); return exchange(second); });
+        Returned first = returned(); Returned second = returned();
+        try (ExecutorService executor = Executors.newFixedThreadPool(2)) {
+            CountDownLatch gate = new CountDownLatch(1);
+            Future<MvcResult> one = executor.submit(() -> { gate.await(); return exchange(first); });
+            Future<MvcResult> two = executor.submit(() -> { gate.await(); return exchange(second); });
             gate.countDown();
             assertAuthenticatedAs(one.get(10, TimeUnit.SECONDS), id);
             assertAuthenticatedAs(two.get(10, TimeUnit.SECONDS), id);
@@ -141,7 +146,7 @@ class SocialLinkIntegrationTests extends DatabaseIntegrationTest {
     }
 
     @Test void wrongBrowserDoesNotConsumeTheResultAndAConsumedResultCannotLoginAgain() throws Exception {
-        long id = register(); var result = returned();
+        long id = register(); Returned result = returned();
         assertThat(exchange(new Returned(result.code(), new Cookie(result.browser().getName(), OAuthSecrets.create()))).getResponse().getStatus()).isEqualTo(400);
         assertThat(countLinks()).isZero();
         assertAuthenticatedAs(exchange(result), id);
@@ -149,12 +154,12 @@ class SocialLinkIntegrationTests extends DatabaseIntegrationTest {
     }
 
     @Test void schemaKeepsTheAuthenticatedResponseWithoutLinkingSteps() throws Exception {
-        var response = mvc.perform(get("/v3/api-docs")).andExpect(status().isOk()).andReturn().getResponse().getContentAsByteArray();
-        var spec = json.readTree(response);
+        byte[] response = mvc.perform(get("/v3/api-docs")).andExpect(status().isOk()).andReturn().getResponse().getContentAsByteArray();
+        JsonNode spec = json.readTree(response);
         assertThat(spec.path("paths").has("/api/auth/social/links")).isFalse();
         assertThat(spec.path("components").path("schemas").path("SocialExchangeResponse").path("properties").has("link")).isFalse();
         assertThat(spec.path("components").path("schemas").path("SocialSignupRequest").path("properties").has("signupProof")).isFalse();
-        var output = java.nio.file.Path.of("build/openapi/openapi.json");
+        Path output = java.nio.file.Path.of("build/openapi/openapi.json");
         java.nio.file.Files.createDirectories(output.getParent()); java.nio.file.Files.write(output, response);
     }
 
@@ -176,7 +181,7 @@ class SocialLinkIntegrationTests extends DatabaseIntegrationTest {
     @ParameterizedTest @EnumSource(value = SocialProvider.class, names = {"NAVER", "KAKAO"})
     void missingProviderEmailRequestsConsentWithoutIssuingASignupTicket(SocialProvider provider) throws Exception {
         when(identities.authenticate(eq(provider), any())).thenReturn(userInfos.map(provider, profile(provider, null)));
-        var response = exchange(returned(provider));
+        MvcResult response = exchange(returned(provider));
         assertThat(response.getResponse().getStatus()).isEqualTo(400);
         assertThat(json.readTree(response.getResponse().getContentAsByteArray()).path("code").asText()).isEqualTo("SOCIAL_EMAIL_REQUIRED");
         assertThat(jdbc.queryForObject("select count(*) from users", Long.class)).isZero();
@@ -190,7 +195,7 @@ class SocialLinkIntegrationTests extends DatabaseIntegrationTest {
     @ParameterizedTest @NullAndEmptySource @ValueSource(strings = {"   ", "\u200B"})
     void missingProviderNameUsesDefaultNicknameWithoutASetupScreen(String name) throws Exception {
         when(identities.authenticate(eq(SocialProvider.NAVER), any())).thenReturn(new SocialIdentity(SocialProvider.NAVER, "subject", EMAIL, true, name, null));
-        var response = exchange(returned(SocialProvider.NAVER));
+        MvcResult response = exchange(returned(SocialProvider.NAVER));
         assertThat(response.getResponse().getStatus()).isEqualTo(200);
         assertThat(json.readTree(response.getResponse().getContentAsByteArray()).path("status").asText()).isEqualTo("AUTHENTICATED");
         assertThat(jdbc.queryForObject("select nickname from users where email = ?", String.class, EMAIL)).isEqualTo("여행자");
@@ -222,10 +227,10 @@ class SocialLinkIntegrationTests extends DatabaseIntegrationTest {
     private SocialIdentity identity(String subject, String email, boolean verified) { return new SocialIdentity(SocialProvider.GOOGLE, subject, email, verified, "소셜 이름", null); }
     private void assertAuthenticatedAs(MvcResult result, long id) throws Exception {
         assertThat(result.getResponse().getStatus()).isEqualTo(200);
-        var body = json.readTree(result.getResponse().getContentAsByteArray());
+        JsonNode body = json.readTree(result.getResponse().getContentAsByteArray());
         assertThat(body.path("status").asText()).isEqualTo("AUTHENTICATED");
         assertThat(body.path("signup").isNull()).isTrue();
-        var me = mvc.perform(get("/api/users/me").servletPath("/api/users/me").header("Authorization", "Bearer " + body.path("login").path("accessToken").asText())).andExpect(status().isOk()).andReturn();
+        MvcResult me = mvc.perform(get("/api/users/me").servletPath("/api/users/me").header("Authorization", "Bearer " + body.path("login").path("accessToken").asText())).andExpect(status().isOk()).andReturn();
         assertThat(json.readTree(me.getResponse().getContentAsByteArray()).path("userId").asLong()).isEqualTo(id);
     }
     private Returned returned() throws Exception {
@@ -233,7 +238,7 @@ class SocialLinkIntegrationTests extends DatabaseIntegrationTest {
     }
     private Returned returned(SocialProvider provider) throws Exception {
         String name = provider.name().toLowerCase(java.util.Locale.ROOT);
-        var start = postJson("/api/auth/social/" + name + "/authorizations", Map.of("returnPath", "/"));
+        MvcResult start = postJson("/api/auth/social/" + name + "/authorizations", Map.of("returnPath", "/"));
         assertThat(start.getResponse().getStatus()).isEqualTo(200);
         Cookie browser = Arrays.stream(start.getResponse().getCookies()).filter(cookie -> cookie.getName().endsWith("oauth")).findFirst().orElseThrow();
         String address = json.readTree(start.getResponse().getContentAsByteArray()).path("authorizationUrl").asText();
@@ -244,7 +249,7 @@ class SocialLinkIntegrationTests extends DatabaseIntegrationTest {
     }
     private MvcResult exchange(Returned result) throws Exception { return postJson("/api/auth/social/results/exchange", Map.of("resultCode", result.code()), result.browser()); }
     private MvcResult postJson(String path, Object body, Cookie... cookies) throws Exception {
-        var builder = post(path).servletPath(path).cookie(csrf).header("X-XSRF-TOKEN", csrf.getValue()).contentType("application/json").content(json.writeValueAsString(body));
+        MockHttpServletRequestBuilder builder = post(path).servletPath(path).cookie(csrf).header("X-XSRF-TOKEN", csrf.getValue()).contentType("application/json").content(json.writeValueAsString(body));
         if (cookies.length > 0) builder.cookie(cookies);
         return mvc.perform(builder).andReturn();
     }

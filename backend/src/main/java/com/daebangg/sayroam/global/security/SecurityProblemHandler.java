@@ -6,6 +6,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.http.MediaType;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.ProblemDetail;
 import org.springframework.security.authentication.AuthenticationServiceException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.AuthenticationException;
@@ -44,7 +45,7 @@ public final class SecurityProblemHandler implements AuthenticationEntryPoint, A
 
     private void write(HttpServletRequest request, HttpServletResponse response,
                        CommonErrorCode code) throws IOException {
-        var problem = ApiProblems.of(code);
+        ProblemDetail problem = ApiProblems.of(code);
         problem.setInstance(URI.create(request.getRequestURI()));
         response.setStatus(problem.getStatus());
         response.setHeader(HttpHeaders.CACHE_CONTROL, "no-store");

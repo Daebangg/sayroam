@@ -4,6 +4,7 @@ import com.daebangg.sayroam.auth.application.error.AuthErrorCode;
 import com.daebangg.sayroam.auth.application.error.AuthException;
 import com.daebangg.sayroam.auth.domain.OAuthSecrets;
 import com.daebangg.sayroam.auth.presentation.config.OAuthBrowserCookieProperties;
+import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.ResponseCookie;
 import org.springframework.stereotype.Component;
@@ -33,7 +34,7 @@ public class OAuthBrowserCookie {
     private String readOptional(HttpServletRequest request) {
         String value = null;
         if (request.getCookies() != null) {
-            for (var cookie : request.getCookies()) {
+            for (Cookie cookie : request.getCookies()) {
                 if (name().equals(cookie.getName())) {
                     if (value != null || !OAuthSecrets.isValid(cookie.getValue())) {
                         throw new AuthException(AuthErrorCode.SOCIAL_AUTH_INVALID);

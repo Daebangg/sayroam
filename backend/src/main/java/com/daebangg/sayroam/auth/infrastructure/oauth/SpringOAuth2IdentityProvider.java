@@ -18,11 +18,13 @@ import org.springframework.security.oauth2.client.userinfo.OAuth2UserRequest;
 import org.springframework.security.oauth2.client.userinfo.OAuth2UserRequestEntityConverter;
 import org.springframework.security.oauth2.core.OAuth2AuthorizationException;
 import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
+import org.springframework.security.oauth2.core.endpoint.OAuth2AccessTokenResponse;
 import org.springframework.security.oauth2.core.endpoint.OAuth2AuthorizationExchange;
 import org.springframework.security.oauth2.core.endpoint.OAuth2AuthorizationRequest;
 import org.springframework.security.oauth2.core.endpoint.OAuth2AuthorizationResponse;
 import org.springframework.security.oauth2.core.endpoint.PkceParameterNames;
 import org.springframework.security.oauth2.core.http.converter.OAuth2AccessTokenResponseHttpMessageConverter;
+import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.stereotype.Component;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.web.client.RestClient;
@@ -52,29 +54,29 @@ public class SpringOAuth2IdentityProvider implements SocialIdentityProvider {
     public SpringOAuth2IdentityProvider(ClientRegistrationRepository clients, OAuth2UserInfoMapper mapper) {
         this.clients = clients;
         this.mapper = mapper;
-        var requests = new SimpleClientHttpRequestFactory();
+        SimpleClientHttpRequestFactory requests = new SimpleClientHttpRequestFactory();
         requests.setConnectTimeout(3000);
         requests.setReadTimeout(5000);
-        var rest = RestClient.builder().requestFactory(requests)
+        RestClient rest = RestClient.builder().requestFactory(requests)
                 .configureMessageConverters(converters -> converters.addCustomConverter(new OAuth2AccessTokenResponseHttpMessageConverter()))
                 .defaultStatusHandler(new OAuth2ErrorResponseErrorHandler()).build();
         this.tokens = new RestClientAuthorizationCodeTokenResponseClient();
         this.tokens.setRestClient(rest);
         this.tokens.addParametersConverter(grant -> {
-            var parameters = new LinkedMultiValueMap<String, String>();
+            LinkedMultiValueMap<String, String> parameters = new LinkedMultiValueMap<String, String>();
             if (Boolean.TRUE.equals(grant.getClientRegistration().getProviderDetails().getConfigurationMetadata().get("token-request-state"))) {
                 parameters.add("state", grant.getAuthorizationExchange().getAuthorizationRequest().getState());
             }
             return parameters;
         });
-        var userInfoRest = new RestTemplate(requests);
+        RestTemplate userInfoRest = new RestTemplate(requests);
         userInfoRest.setErrorHandler(new OAuth2ErrorResponseErrorHandler());
         this.users = new DefaultOAuth2UserService();
         this.users.setRestOperations(userInfoRest);
-        var userInfoRequests = new OAuth2UserRequestEntityConverter();
+        OAuth2UserRequestEntityConverter userInfoRequests = new OAuth2UserRequestEntityConverter();
         this.users.setRequestEntityConverter(request -> {
-            var entity = userInfoRequests.convert(request);
-            var contentType = request.getClientRegistration().getProviderDetails().getConfigurationMetadata().get("user-info-content-type");
+            RequestEntity<?> entity = userInfoRequests.convert(request);
+            Object contentType = request.getClientRegistration().getProviderDetails().getConfigurationMetadata().get("user-info-content-type");
             if (contentType instanceof String value) {
                 // 공급자의 추가 헤더 요구만 적용하고 Spring이 만든 Bearer 인증·요청 본문은 유지한다.
                 return RequestEntity.method(entity.getMethod(), entity.getUrl()).headers(entity.getHeaders())
@@ -85,7 +87,7 @@ public class SpringOAuth2IdentityProvider implements SocialIdentityProvider {
         this.users.setAttributesConverter(request -> attributes -> {
             String idAttribute = request.getClientRegistration().getProviderDetails()
                     .getUserInfoEndpoint().getUserNameAttributeName();
-            var container = request.getClientRegistration().getProviderDetails().getConfigurationMetadata().get("user-info-id-container");
+            Object container = request.getClientRegistration().getProviderDetails().getConfigurationMetadata().get("user-info-id-container");
             Map<?, ?> idAttributes = attributes;
             if (container instanceof String key) {
                 if (!(attributes.get(key) instanceof Map<?, ?> nested)) {
@@ -99,7 +101,7 @@ public class SpringOAuth2IdentityProvider implements SocialIdentityProvider {
             }
             if (idAttributes == attributes) return attributes;
             // Spring의 사용자 식별자는 최상위에 두고, 공급자 결과 코드와 중첩 응답은 매퍼를 위해 보존한다.
-            var normalized = new HashMap<>(attributes);
+            HashMap<String, Object> normalized = new HashMap<>(attributes);
             normalized.put(idAttribute, id);
             return normalized;
         });
@@ -107,9 +109,9 @@ public class SpringOAuth2IdentityProvider implements SocialIdentityProvider {
 
     @Override
     public URI authorizationUri(SocialProvider provider, AuthorizationRequest request) {
-        var client = client(provider);
-        var authorization = request(client, request.state());
-        var parameters = new HashMap<String, Object>();
+        ClientRegistration client = client(provider);
+        OAuth2AuthorizationRequest.Builder authorization = request(client, request.state());
+        HashMap<String, Object> parameters = new HashMap<String, Object>();
         if (client.getClientSettings().isRequireProofKey()) {
             parameters.put(PkceParameterNames.CODE_CHALLENGE, request.codeChallenge());
             parameters.put(PkceParameterNames.CODE_CHALLENGE_METHOD, "S256");
@@ -128,17 +130,17 @@ public class SpringOAuth2IdentityProvider implements SocialIdentityProvider {
 
     @Override
     public SocialIdentity authenticate(SocialProvider provider, Callback callback) {
-        var client = client(provider);
+        ClientRegistration client = client(provider);
         try {
-            var authorization = request(client, callback.state());
+            OAuth2AuthorizationRequest.Builder authorization = request(client, callback.state());
             if (client.getClientSettings().isRequireProofKey()) {
                 authorization.attributes(attributes -> attributes.put(PkceParameterNames.CODE_VERIFIER, callback.codeVerifier()));
             }
-            var response = OAuth2AuthorizationResponse.success(callback.authorizationCode()).state(callback.state())
+            OAuth2AuthorizationResponse response = OAuth2AuthorizationResponse.success(callback.authorizationCode()).state(callback.state())
                     .redirectUri(client.getRedirectUri()).build();
-            var grant = new OAuth2AuthorizationCodeGrantRequest(client, new OAuth2AuthorizationExchange(authorization.build(), response));
-            var token = tokens.getTokenResponse(grant);
-            var user = users.loadUser(new OAuth2UserRequest(client, token.getAccessToken(), token.getAdditionalParameters()));
+            OAuth2AuthorizationCodeGrantRequest grant = new OAuth2AuthorizationCodeGrantRequest(client, new OAuth2AuthorizationExchange(authorization.build(), response));
+            OAuth2AccessTokenResponse token = tokens.getTokenResponse(grant);
+            OAuth2User user = users.loadUser(new OAuth2UserRequest(client, token.getAccessToken(), token.getAdditionalParameters()));
             return mapper.map(provider, user.getAttributes());
         } catch (OAuth2AuthorizationException | OAuth2AuthenticationException exception) {
             // 공급자 응답·토큰을 담을 수 있는 메시지를 외부 응답이나 로그로 전달하지 않는다.
@@ -149,7 +151,7 @@ public class SpringOAuth2IdentityProvider implements SocialIdentityProvider {
     }
 
     private ClientRegistration client(SocialProvider provider) {
-        var client = clients.findByRegistrationId(provider.name().toLowerCase(Locale.ROOT));
+        ClientRegistration client = clients.findByRegistrationId(provider.name().toLowerCase(Locale.ROOT));
         if (client == null) throw new AuthException(AuthErrorCode.SOCIAL_PROVIDER_DISABLED);
         return client;
     }

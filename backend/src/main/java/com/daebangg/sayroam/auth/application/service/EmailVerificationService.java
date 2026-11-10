@@ -11,6 +11,7 @@ import com.daebangg.sayroam.auth.domain.VerificationDigests;
 import org.springframework.stereotype.Service;
 
 import java.security.SecureRandom;
+import java.time.Duration;
 import java.util.Base64;
 import java.util.Locale;
 import java.util.Optional;
@@ -38,7 +39,7 @@ public class EmailVerificationService {
         String requestId = UUID.randomUUID().toString();
         String code = String.format(Locale.ROOT, "%06d", random.nextInt(1_000_000));
         String digest = VerificationDigests.sha256(requestId + ":" + code);
-        var retryAfter = store.reserve(email, remoteAddress, requestId, digest);
+        Duration retryAfter = store.reserve(email, remoteAddress, requestId, digest);
         if (!retryAfter.isZero()) {
             throw new AuthException(AuthErrorCode.EMAIL_RATE_LIMITED, retryAfter);
         }
@@ -54,7 +55,7 @@ public class EmailVerificationService {
             }
             throw deliveryFailure;
         }
-        var active = store.activate(email, requestId).orElseThrow(
+        EmailVerificationStore.ActiveRequest active = store.activate(email, requestId).orElseThrow(
                 () -> new AuthException(AuthErrorCode.EMAIL_REQUEST_SUPERSEDED));
         return new IssuedRequest(requestId, active.expiresInSeconds(), active.resendAfterSeconds());
     }
@@ -64,7 +65,7 @@ public class EmailVerificationService {
         byte[] secret = new byte[32];
         random.nextBytes(secret);
         String signupProof = Base64.getUrlEncoder().withoutPadding().encodeToString(secret);
-        var result = store.confirm(email, requestId, VerificationDigests.sha256(requestId + ":" + code),
+        EmailVerificationStore.ConfirmationResult result = store.confirm(email, requestId, VerificationDigests.sha256(requestId + ":" + code),
                 VerificationDigests.sha256(signupProof));
         return switch (result.status()) {
             case CONFIRMED -> new ConfirmedRequest(signupProof, result.proofExpiresInSeconds());

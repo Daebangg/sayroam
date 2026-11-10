@@ -160,7 +160,7 @@ public class RedisEmailVerificationStore implements EmailVerificationStore {
     }
 
     private static DefaultRedisScript<List> script(String fileName) {
-        var script = new DefaultRedisScript<List>();
+        DefaultRedisScript<List> script = new DefaultRedisScript<List>();
         script.setLocation(new ClassPathResource("redis/" + fileName));
         script.setResultType(List.class);
         return script;

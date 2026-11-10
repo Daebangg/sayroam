@@ -105,7 +105,7 @@ class SecurityConfigTests {
     @Test
     void existingSessionAuthenticationIsNotUsed() throws Exception {
         MockHttpSession session = new MockHttpSession();
-        var authentication = UsernamePasswordAuthenticationToken.authenticated(
+        UsernamePasswordAuthenticationToken authentication = UsernamePasswordAuthenticationToken.authenticated(
                 "123", null, AuthorityUtils.createAuthorityList("ROLE_USER"));
         session.setAttribute(HttpSessionSecurityContextRepository.SPRING_SECURITY_CONTEXT_KEY,
                 new SecurityContextImpl(authentication));
