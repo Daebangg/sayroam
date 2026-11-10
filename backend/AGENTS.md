@@ -11,6 +11,15 @@
 - 중첩 타입은 `AccountVerificationStore.Subject`처럼 소유 타입을 드러내는 표기를 우선합니다. 필요한 import를 추가하고 타입 이름 충돌이 없으면 선언에 전체 패키지 경로를 반복하지 않습니다.
 - 타입 선언만 정리하는 작업에서는 초기화식·분기·예외·null 처리·트랜잭션·외부 계약을 함께 바꾸지 않습니다.
 
+## API URL
+
+- 도메인 API(room, chat, users, trip, 이후 매칭 등)는 명사형 리소스 URL만 사용하고 경로에 동사를 넣지 않습니다. 좋은 예 `DELETE /api/rooms/{roomId}/members/me`, 피할 예 `POST /api/rooms/{roomId}/leave`.
+- 새로 생기는 것은 컬렉션에 `POST`, 상태 전환은 그 리소스에 `PATCH`와 `{status}`, 제거·탈퇴는 `DELETE`를 사용합니다. 좋은 예 `PATCH /api/applications/{id}` + `{status}`, 피할 예 `POST /api/applications/{id}/approve`.
+- 현재 사용자의 것은 `me`로 표현하고 userId를 경로나 본문으로 받지 않습니다. 좋은 예 `PATCH /api/users/me`, 피할 예 `PATCH /api/users/{userId}`.
+- Path는 대상 리소스 식별, Query는 조회 필터·정렬·페이지, Body는 생성·수정 데이터에 사용합니다. 초대 코드 같은 비밀값은 Path에 두지 않습니다. 좋은 예 `POST /api/room-members` + `{invitationCode}`, 피할 예 `POST /api/room-invitations/{code}/join`.
+- 중첩은 한 단계로 얕게 유지합니다. 컬렉션은 클라이언트가 부모 ID를 알 때만 부모 아래에 두고, 개별 항목은 평평하게 둡니다. 부모 ID를 모르면 평평한 컬렉션과 Body를 사용합니다(`POST /api/room-members` + `{invitationCode}`). 좋은 예 `GET /api/posts/{postId}/applications`와 `GET /api/applications/{id}`, 피할 예 `GET /api/posts/{postId}/applications/{id}`.
+- 예외로 `/api/auth/**`의 인증 엔드포인트(logout, refresh, verify 등)는 기존 관용 동사를 허용합니다. 이 예외를 도메인 API로 넓히지 않습니다. 허용 예 `POST /api/auth/refresh`, 피할 예 `POST /api/trips/{tripId}/refresh`.
+
 ## 작업 순서
 
 1. 연결 이슈와 변경 파일, 해당 기능 문서, 호출 경로, 기존 테스트를 확인합니다.
