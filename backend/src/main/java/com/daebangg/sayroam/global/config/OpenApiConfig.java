@@ -141,7 +141,7 @@ public class OpenApiConfig {
                 .addResponses("SocialUnavailable", problemResponse("503: SOCIAL_AUTH_UNAVAILABLE, AUTHENTICATION_UNAVAILABLE 또는 EMAIL_VERIFICATION_UNAVAILABLE. 상태·증명 소비나 가입 커밋 결과가 불확실할 수 있음. 자동 재시도 없이 소셜 인증부터 다시 시작"))
                 .addResponses("Unauthorized", problemResponse("401: UNAUTHENTICATED. 토큰 누락·만료·변조·잘못된 발급자/대상·유형·인증 버전 또는 탈퇴·삭제 회원. WWW-Authenticate: Bearer"))
                 .addResponses("AccountAuthenticationRevoked", problemResponse("401: UNAUTHENTICATED 또는 AUTHENTICATION_REVOKED. 현재 DB 인증 버전과 다른 로그인은 거절. 재로그인 필요. WWW-Authenticate: Bearer"))
-                .addResponses("PasswordChangeBadRequest", problemResponse("400: INVALID_INPUT, PASSWORD_POLICY_VIOLATION, ACCOUNT_PROOF_INVALID 또는 Spring 요청 오류. PASSWORD_CHANGE 증명과 8~128자의 새 비밀번호 필요. 비밀번호 정책 실패는 증명을 소비하지 않음"))
+                .addResponses("PasswordChangeBadRequest", problemResponse("400: INVALID_INPUT, PASSWORD_POLICY_VIOLATION, ACCOUNT_PROOF_INVALID 또는 Spring 요청 오류. PASSWORD_CHANGE 증명과 8~24자·대문자·숫자·특수문자를 포함하고 공백·제어·숨김 문자가 없는 새 비밀번호 필요. 비밀번호 정책 실패는 증명을 소비하지 않음"))
                 .addResponses("PasswordResetBadRequest", problemResponse("400: INVALID_INPUT, PASSWORD_POLICY_VIOLATION, PASSWORD_RESET_PROOF_INVALID 또는 Spring 요청 오류. 입력·비밀번호 정책 오류는 증명을 소비하지 않음. 증명 오류·재설정 불가 계정은 원래 로그인 방식 또는 새 코드 사용"))
                 .addResponses("PasswordResetConflict", problemResponse("409: PASSWORD_RESET_PROOF_ALREADY_USED 또는 PASSWORD_RESET_CONFLICT. 증명 재사용·회원 상태 변경. 자동 재전송하지 말고 로그인으로 결과 확인 후 필요한 경우 새 코드 요청"))
                 .addResponses("PasswordResetProofExpired", problemResponse("410: PASSWORD_RESET_PROOF_EXPIRED. 재설정 증명 없음·만료. 새 코드 요청"))

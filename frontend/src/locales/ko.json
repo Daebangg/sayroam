@@ -102,7 +102,7 @@
             "loginUncertain": "로그인 결과를 확인하지 못했어요. 연결 상태를 확인한 후 다시 로그인해 주세요.",
             "logoutUncertain": "이 기기의 로그인 정보는 정리했지만 서버의 로그아웃 결과를 확인하지 못했어요. 연결 후 로그아웃을 다시 시도해 주세요.",
             "profileUnavailable": "로그인은 처리됐지만 회원 정보를 불러오지 못했어요. 회원 정보만 다시 확인해 주세요.",
-            "limited": "로그인 시도가 너무 많습니다. 잠시 후 다시 시도해주세요."
+            "limited": "로그인 시도가 너무 많습니다. 잠시 후 다시 시도해 주세요."
         },
         "flowMessages": {
             "invalidEmail": "올바른 이메일 주소를 입력해 주세요.",
@@ -125,7 +125,7 @@
         "loginPasswordRule": "가입한 비밀번호를 8~128자로 입력해 주세요.",
         "loginComplete": "로그인했어요.",
         "logoutComplete": "로그아웃했어요.",
-        "loginWait": "로그인 시도가 너무 많습니다. {{seconds}}초 후 다시 시도해주세요.",
+        "loginWait": "로그인 시도가 너무 많습니다. {{seconds}}초 후 다시 시도해 주세요.",
         "loginRetryReady": "이제 다시 로그인할 수 있어요.",
         "loginAttemptsRemaining": "이메일 또는 비밀번호가 올바르지 않습니다. 남은 시도 횟수: {{count}}회."
     },

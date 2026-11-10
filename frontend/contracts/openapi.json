@@ -240,7 +240,7 @@
                         "schema": { "$ref": "#/components/schemas/ApiProblem" }
                     }
                 },
-                "description": "400: INVALID_INPUT, PASSWORD_POLICY_VIOLATION, ACCOUNT_PROOF_INVALID 또는 Spring 요청 오류. PASSWORD_CHANGE 증명과 8~128자의 새 비밀번호 필요. 비밀번호 정책 실패는 증명을 소비하지 않음"
+                "description": "400: INVALID_INPUT, PASSWORD_POLICY_VIOLATION, ACCOUNT_PROOF_INVALID 또는 Spring 요청 오류. PASSWORD_CHANGE 증명과 8~24자·대문자·숫자·특수문자를 포함하고 공백·제어·숨김 문자가 없는 새 비밀번호 필요. 비밀번호 정책 실패는 증명을 소비하지 않음"
             },
             "PasswordChangeConflict": {
                 "content": {
