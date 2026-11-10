@@ -1,9 +1,11 @@
 package com.daebangg.sayroam.global.config;
 
 import com.daebangg.sayroam.auth.application.error.AuthErrorCode;
+import com.daebangg.sayroam.common.domain.error.TravelPeriodErrorCode;
 import com.daebangg.sayroam.global.exception.CommonErrorCode;
 import com.daebangg.sayroam.global.exception.ErrorCode;
 import com.daebangg.sayroam.room.domain.RoomErrorCode;
+import com.daebangg.sayroam.trip.domain.TripErrorCode;
 import com.daebangg.sayroam.user.domain.error.UserErrorCode;
 import io.swagger.v3.oas.models.Components;
 import io.swagger.v3.oas.models.OpenAPI;
@@ -55,7 +57,8 @@ public class OpenApiConfig {
     OpenAPI openAPI(Optional<BuildProperties> buildProperties) {
         StringSchema errorCode = new StringSchema();
         errorCode.setEnum(Stream.of(CommonErrorCode.values(), AuthErrorCode.values(),
-                        RoomErrorCode.values(), UserErrorCode.values())
+                        RoomErrorCode.values(), UserErrorCode.values(),
+                        TravelPeriodErrorCode.values(), TripErrorCode.values())
                 .flatMap(Arrays::stream).map(ErrorCode::getCode).distinct().sorted().toList());
         errorCode.setDescription("백엔드에 정의된 업무·공통 오류 코드. Spring 기본 요청 오류와 향후 추가 코드는 별도 문자열로 받을 수 있습니다.");
         // ProblemDetail의 동적 확장 필드도 프론트엔드 타입 생성기에 명시적으로 노출한다.
@@ -196,7 +199,8 @@ public class OpenApiConfig {
                 .addResponses("SignupProofExpired", problemResponse("410: SIGNUP_PROOF_EXPIRED. 없거나 만료된 증명. 새 이메일 인증 필요"))
                 .addResponses("SignupUnavailable", problemResponse("503: EMAIL_VERIFICATION_UNAVAILABLE 또는 SIGNUP_UNAVAILABLE. 증명 소비·DB 커밋 결과가 불확실할 수 있음. 자동 재시도 없이 새 인증 필요; 계정은 이미 생성됐을 수도 있음"))
                 .addResponses("RoomAccessDenied", problemResponse("403: ROOM_ACCESS_DENIED. 없는 방이거나 현재 참여 중인 멤버가 아님"))
-                .addResponses("RoomBadRequest", problemResponse("400: ROOM_NAME_TOO_LONG 또는 Spring 요청 오류. 이름을 20자 이내로 수정 후 재요청"));
+                .addResponses("RoomBadRequest", problemResponse("400: ROOM_NAME_TOO_LONG 또는 Spring 요청 오류. 이름을 20자 이내로 수정 후 재요청"))
+                .addResponses("TripBadRequest", problemResponse("400: INVALID_INPUT(시작일·종료일 누락, errors 포함), TRAVEL_PERIOD_END_BEFORE_START(종료일이 시작일보다 앞섬) 또는 Spring 요청 오류(날짜 형식 오류). 날짜는 yyyy-MM-dd"));
         return new OpenAPI().components(components).servers(List.of(new Server().url("/")))
                 .info(new Info().title("Sayroam API").version(buildProperties.map(BuildProperties::getVersion).orElse("dev")));
     }
