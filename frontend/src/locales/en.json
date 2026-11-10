@@ -135,14 +135,7 @@
         "loginWait": "Too many login attempts. Try again in {{seconds}} seconds.",
         "loginRetryReady": "You can try signing in again now.",
         "loginAttemptsRemaining": "Your email or password is incorrect. Remaining attempts: {{count}}.",
-        "socialSignupTitle": "Complete your signup",
-        "socialSignupDescription": "Choose a nickname and start your journey.",
-        "socialProviderDisabled": "This social login is currently unavailable.",
-        "socialVerifiedEmail": "Social account email: {{email}}",
-        "socialSignupRemaining": "Complete signup within {{seconds}} seconds.",
-        "socialSignupExpired": "Your signup session expired. Return to login and start social authentication again.",
-        "socialComplete": "Sign up and get started",
-        "socialSignupComplete": "You are signed up and logged in."
+        "socialProviderDisabled": "This social login is currently unavailable."
     },
     "trips": {
         "heading": "My trips",

@@ -228,6 +228,8 @@ export function createAuthController(): AuthController {
                 cancelSocialAuthentication();
                 clearAccessToken();
             }
+            // 회원 조회·로그아웃 재시도 안내는 모달 밖에서도 유지한다.
+            if (state.status === "unavailable") return;
             update({
                 status: pending ? state.status : state.user ? "authenticated" : "anonymous",
                 user: state.user,

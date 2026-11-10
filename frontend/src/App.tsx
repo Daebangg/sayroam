@@ -17,12 +17,7 @@ import { LoadingPage } from "@/pages/status/StatusPage";
 import { RouteAccessibility } from "@/routing/RouteAccessibility";
 import { Toast } from "@/components/ui";
 
-type AuthToast =
-    | "socialSignupComplete"
-    | "signupComplete"
-    | "resetComplete"
-    | "loginComplete"
-    | "logoutComplete";
+type AuthToast = "signupComplete" | "resetComplete" | "loginComplete" | "logoutComplete";
 
 export default function App() {
     const { i18n, t } = useTranslation();

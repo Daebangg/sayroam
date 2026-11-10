@@ -10,10 +10,7 @@ import {
 import type { EmailFlowMessage } from "@/hooks/auth.types";
 
 type EmailFlowModalProps = {
-    mode: "signup" | "reset" | "social";
-    emailVerificationRequired?: boolean;
-    suggestedEmail?: string | null;
-    signupExpiresIn?: number;
+    mode: "signup" | "reset";
     busy: boolean;
     sent: boolean;
     verified: boolean;
@@ -54,9 +51,6 @@ function ValidationPanel({
 
 export function EmailFlowModal({
     mode,
-    emailVerificationRequired = true,
-    suggestedEmail,
-    signupExpiresIn = 0,
     busy,
     sent,
     verified,
@@ -74,7 +68,7 @@ export function EmailFlowModal({
     const titleId = useId();
     const errorId = useId();
     const errorRef = useRef<HTMLParagraphElement>(null);
-    const [email, setEmail] = useState(suggestedEmail ?? "");
+    const [email, setEmail] = useState("");
     const [nickname, setNickname] = useState("");
     const [password, setPassword] = useState("");
     const [confirmation, setConfirmation] = useState("");
@@ -82,12 +76,8 @@ export function EmailFlowModal({
     const validPassword = isValidNewPassword(password);
     const rules = newPasswordRules(password);
     const matches = password.length > 0 && password === confirmation;
-    const needsEmail = mode !== "social" || emailVerificationRequired;
-    const socialExpired = mode === "social" && signupExpiresIn === 0;
     const canComplete =
-        (!needsEmail || verified) &&
-        (mode === "social" ? signupExpiresIn > 0 : validPassword && matches) &&
-        (mode === "reset" || isValidNickname(nickname));
+        verified && validPassword && matches && (mode === "reset" || isValidNickname(nickname));
     useEffect(() => {
         if (message) errorRef.current?.focus();
     }, [message]);
@@ -105,23 +95,9 @@ export function EmailFlowModal({
                 </Button>
             </Tooltip>
             <div className="auth-flow-header">
-                <h2 id={titleId}>
-                    {t(
-                        mode === "social"
-                            ? "auth.socialSignupTitle"
-                            : mode === "signup"
-                              ? "auth.signupTitle"
-                              : "auth.reset",
-                    )}
-                </h2>
+                <h2 id={titleId}>{t(mode === "signup" ? "auth.signupTitle" : "auth.reset")}</h2>
                 <p className="auth-preview__description">
-                    {t(
-                        mode === "social"
-                            ? "auth.socialSignupDescription"
-                            : mode === "signup"
-                              ? "auth.signupDescription"
-                              : "auth.resetDescription",
-                    )}
+                    {t(mode === "signup" ? "auth.signupDescription" : "auth.resetDescription")}
                 </p>
             </div>
             <div className="auth-flow-body">
@@ -151,34 +127,32 @@ export function EmailFlowModal({
                             maxLength={50}
                             required
                             value={nickname}
-                            disabled={busy || socialExpired}
+                            disabled={busy}
                             onChange={(event) => setNickname(event.target.value)}
                         />
                     )}
-                    {needsEmail && (
-                        <TextField
-                            label={t("auth.emailLabel")}
-                            name="email"
-                            type="email"
-                            autoComplete="email"
-                            required
-                            maxLength={254}
-                            value={email}
-                            disabled={busy || socialExpired}
-                            onChange={(event) => {
-                                setEmail(event.target.value);
-                                setCode("");
-                                onEmailChange();
-                            }}
-                        />
-                    )}
-                    {needsEmail && mode !== "reset" && (
+                    <TextField
+                        label={t("auth.emailLabel")}
+                        name="email"
+                        type="email"
+                        autoComplete="email"
+                        required
+                        maxLength={254}
+                        value={email}
+                        disabled={busy}
+                        onChange={(event) => {
+                            setEmail(event.target.value);
+                            setCode("");
+                            onEmailChange();
+                        }}
+                    />
+                    {mode !== "reset" && (
                         <ValidationPanel
                             title={t("auth.emailValidation")}
                             items={[{ label: t("auth.emailRule"), valid: isValidEmail(email) }]}
                         />
                     )}
-                    {needsEmail && (mode !== "reset" || sent) && (
+                    {(mode !== "reset" || sent) && (
                         <section className="auth-verification" aria-label={t("auth.verifyEmail")}>
                             {verified ? (
                                 <p className="auth-success" role="status">
@@ -204,16 +178,13 @@ export function EmailFlowModal({
                                                 pattern="[0-9]{6}"
                                                 maxLength={6}
                                                 value={code}
-                                                disabled={busy || socialExpired}
+                                                disabled={busy}
                                                 onChange={(event) => setCode(event.target.value)}
                                             />
                                             <Button
                                                 variant="brand"
                                                 disabled={
-                                                    !/^\d{6}$/.test(code) ||
-                                                    expiresIn === 0 ||
-                                                    busy ||
-                                                    socialExpired
+                                                    !/^\d{6}$/.test(code) || expiresIn === 0 || busy
                                                 }
                                                 onClick={() => {
                                                     void onVerify(code).then((success) => {
@@ -232,12 +203,7 @@ export function EmailFlowModal({
                                     )}
                                     <Button
                                         variant="brand"
-                                        disabled={
-                                            !isValidEmail(email) ||
-                                            resendIn > 0 ||
-                                            busy ||
-                                            socialExpired
-                                        }
+                                        disabled={!isValidEmail(email) || resendIn > 0 || busy}
                                         onClick={() => {
                                             setCode("");
                                             void onRequest(email);
@@ -251,28 +217,7 @@ export function EmailFlowModal({
                             )}
                         </section>
                     )}
-                    {mode === "social" && (
-                        <>
-                            {!needsEmail && (
-                                <p className="auth-success">
-                                    {t("auth.socialVerifiedEmail", { email: suggestedEmail })}
-                                </p>
-                            )}
-                            <p
-                                className={signupExpiresIn > 0 ? "auth-flow-hint" : "auth-feedback"}
-                                role={socialExpired ? "alert" : undefined}
-                                aria-live={socialExpired ? undefined : "off"}
-                            >
-                                {t(
-                                    signupExpiresIn > 0
-                                        ? "auth.socialSignupRemaining"
-                                        : "auth.socialSignupExpired",
-                                    { seconds: signupExpiresIn },
-                                )}
-                            </p>
-                        </>
-                    )}
-                    {mode !== "social" && (mode === "signup" || verified) && (
+                    {(mode === "signup" || verified) && (
                         <>
                             <TextField
                                 label={t(
@@ -287,7 +232,7 @@ export function EmailFlowModal({
                                 minLength={8}
                                 maxLength={24}
                                 value={password}
-                                disabled={busy || socialExpired}
+                                disabled={busy}
                                 onChange={(event) => setPassword(event.target.value)}
                             />
                             <ValidationPanel
@@ -317,7 +262,7 @@ export function EmailFlowModal({
                                 required
                                 maxLength={24}
                                 value={confirmation}
-                                disabled={busy || socialExpired}
+                                disabled={busy}
                                 onChange={(event) => setConfirmation(event.target.value)}
                             />
                             <ValidationPanel
@@ -350,13 +295,11 @@ export function EmailFlowModal({
                         {mode === "reset" && !verified && resendIn > 0
                             ? t("auth.resendAfter", { seconds: resendIn })
                             : t(
-                                  mode === "social"
-                                      ? "auth.socialComplete"
-                                      : mode === "signup"
-                                        ? "auth.createAccount"
-                                        : verified
-                                          ? "auth.setPassword"
-                                          : "auth.sendCode",
+                                  mode === "signup"
+                                      ? "auth.createAccount"
+                                      : verified
+                                        ? "auth.setPassword"
+                                        : "auth.sendCode",
                               )}
                     </Button>
                 </form>

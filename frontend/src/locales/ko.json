@@ -135,14 +135,7 @@
         "loginWait": "로그인 시도가 너무 많습니다. {{seconds}}초 후 다시 시도해 주세요.",
         "loginRetryReady": "이제 다시 로그인할 수 있어요.",
         "loginAttemptsRemaining": "이메일 또는 비밀번호가 올바르지 않습니다. 남은 시도 횟수: {{count}}회.",
-        "socialSignupTitle": "소셜 회원가입",
-        "socialSignupDescription": "닉네임을 정하고 여행을 시작해 보세요.",
-        "socialProviderDisabled": "현재 사용할 수 없는 소셜 로그인이에요.",
-        "socialVerifiedEmail": "소셜 계정 이메일: {{email}}",
-        "socialSignupRemaining": "{{seconds}}초 안에 가입을 완료해 주세요.",
-        "socialSignupExpired": "가입 시간이 지났어요. 로그인으로 돌아가 소셜 인증을 다시 시작해 주세요.",
-        "socialComplete": "가입하고 시작하기",
-        "socialSignupComplete": "가입을 완료하고 로그인했어요."
+        "socialProviderDisabled": "현재 사용할 수 없는 소셜 로그인이에요."
     },
     "trips": {
         "heading": "내 여행",

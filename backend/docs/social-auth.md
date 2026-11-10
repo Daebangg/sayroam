@@ -261,9 +261,10 @@ NX 저장·TTL 설정, 바인딩 검사·삭제를 각각 Lua로 원자 처리�
 | --- | --- | --- |
 | 400 | `SOCIAL_PROVIDER_DISABLED`, `SOCIAL_RETURN_PATH_INVALID` | 공급자 활성 설정·복귀 경로 확인 |
 | 400 | `SOCIAL_AUTH_INVALID`, `SOCIAL_AUTH_CANCELLED`, `SOCIAL_SIGNUP_INVALID` | 바인딩·만료·소비·가입 조건 오류. 새 소셜 인증 필요 |
+| 400 | `SOCIAL_EMAIL_REQUIRED` | 공급자에서 이메일 제공에 동의한 뒤 새 소셜 인증 필요 |
 | 401 | `SOCIAL_AUTH_FAILED`, `AUTHENTICATION_REVOKED` | 공급자 인증 실패 또는 콜백 이후 회원/연결/인증 버전 변경 |
 | 403 | `INVALID_CSRF_TOKEN` | POST의 CSRF 쿠키·헤더 확인 |
-| 409 | `EMAIL_ALREADY_REGISTERED`, `SOCIAL_ACCOUNT_CONFLICT`, `SIGNUP_PROOF_ALREADY_USED` | 회원 정보·기존 소셜 연결을 덮어쓰지 않으며 다른 로그인 수단 또는 새 인증 이용 |
+| 409 | `EMAIL_ALREADY_REGISTERED`, `SOCIAL_ACCOUNT_CONFLICT` | 회원 정보·기존 소셜 연결을 덮어쓰지 않으며 다른 로그인 수단 또는 새 인증 이용 |
 | 503 | `SOCIAL_AUTH_UNAVAILABLE`, `AUTHENTICATION_UNAVAILABLE`, `EMAIL_VERIFICATION_UNAVAILABLE` | 저장·커밋·응답 결과가 불확실할 수 있음. 자동 재시도하지 않음 |
 
 소비한 state·결과 코드·가입 티켓·이메일 증명은 후속 실패 시 복원하지 않습니다.
@@ -286,7 +287,7 @@ NX 저장·TTL 설정, 바인딩 검사·삭제를 각각 Lua로 원자 처리�
 
 인증 시작·콜백·결과 교환·가입·이메일 제공 동의 안내와 OpenAPI를 이번 단계에 포함합니다.
 프론트 로그인·자동 가입·이메일 제공 동의 안내 화면은 #74에서 기존 모달·인증 기반에 연결합니다. 검증된 동일 이메일의 자동 연결·로그인을 포함하며, 소셜 연결 해제는 후속 범위입니다.
-Kakao·Naver 백엔드의 클라이언트 등록·코드 교환·UserInfo 정규화·기존 회원 로그인·신규 가입·이메일 제공 동의 안내을 같은 공통 흐름에 포함합니다.
+Kakao·Naver 백엔드의 클라이언트 등록·코드 교환·UserInfo 정규화·기존 회원 로그인·신규 가입·이메일 제공 동의 안내를 같은 공통 흐름에 포함합니다.
 콘솔 설정과 실제 자격 정보를 통한 각 공급자 인증은 위 확인 순서로 별도 검증합니다.
 추가 테스트 작성·실행은 이슈 지침에 따라 전체 인증 기능 구현 후 진행합니다.
 컴파일·앱 시작·OpenAPI 생성 성공을 실제 Google 로그인·이메일 수신·동시성 검증 완료로 표시하지 않습니다.

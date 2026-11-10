@@ -135,7 +135,7 @@ class AuthIntegrationTests extends DatabaseIntegrationTest {
         assertThat(socialTickets.saveSignup(VerificationDigests.sha256(ticket),
                 VerificationDigests.sha256(browserBinding), identity, Duration.ofMinutes(5))).isTrue();
         var browser = new Cookie(oauthBrowserCookie.issue(browserBinding).getName(), browserBinding);
-        var body = Map.of("signupTicket", ticket, "nickname", "여행자");
+        var body = Map.of("signupTicket", ticket);
 
         var signup = call(HttpMethod.POST, "/api/auth/social/signup", body, null, browser);
         assertStatus(signup, 200);
@@ -146,6 +146,8 @@ class AuthIntegrationTests extends DatabaseIntegrationTest {
         assertStatus(me, 200);
         assertThat(json(me).path("email").asText()).isEqualTo(email);
         String expectedImage = imageUrl == null || imageUrl.isBlank() ? null : imageUrl.strip();
+        assertThat(jdbc.queryForObject("SELECT nickname FROM users WHERE email = ?", String.class, email))
+                .isEqualTo("공급자 닉네임");
         assertThat(jdbc.queryForObject("SELECT profile_image_url FROM users WHERE email = ?", String.class, email))
                 .isEqualTo(expectedImage);
         assertThat(json(me).path("profileImageUrl").isNull()).isEqualTo(expectedImage == null);
