@@ -46,7 +46,7 @@ export const api = createApiRouter(apiRoutes, {
         resetPassword: { cookieAction: "logout" },
         request_1: { parseResponse: validateAccountIssued },
         confirm_1: { parseResponse: validateAccountProof },
-        change: { cookieAction: "logout" },
-        delete: { cookieAction: "logout" },
+        change: { cookieAction: "account" },
+        delete: { cookieAction: "account" },
     },
 });
