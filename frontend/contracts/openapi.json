@@ -1182,6 +1182,21 @@
                     }
                 },
                 "type": "object"
+            },
+            "UserLoginMethodsResponse": {
+                "properties": {
+                    "passwordEnabled": {
+                        "description": "비밀번호 로그인 수단이 등록되어 있는지 여부",
+                        "type": "boolean"
+                    },
+                    "socialProviders": {
+                        "description": "현재 회원에게 실제로 연결된 소셜 로그인 공급자. 연결이 없으면 빈 배열",
+                        "items": { "enum": ["KAKAO", "GOOGLE", "NAVER"], "type": "string" },
+                        "type": "array"
+                    }
+                },
+                "required": ["passwordEnabled", "socialProviders"],
+                "type": "object"
             }
         },
         "securitySchemes": {
@@ -2149,6 +2164,30 @@
                 },
                 "security": [{ "bearerAuth": [] }],
                 "summary": "내 프로필 부분 수정",
+                "tags": ["Users"]
+            }
+        },
+        "/api/users/me/login-methods": {
+            "get": {
+                "description": "비밀번호 로그인 가능 여부와 실제로 연결된 소셜 공급자만 반환합니다. 공급자 회원 ID·토큰·해시는 노출하지 않습니다.",
+                "operationId": "loginMethods",
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/UserLoginMethodsResponse"
+                                }
+                            }
+                        },
+                        "description": "현재 회원의 로그인 수단. Cache-Control: no-store"
+                    },
+                    "401": { "$ref": "#/components/responses/Unauthorized" },
+                    "500": { "$ref": "#/components/responses/InternalServerError" },
+                    "503": { "$ref": "#/components/responses/AuthenticationUnavailable" }
+                },
+                "security": [{ "bearerAuth": [] }],
+                "summary": "내 로그인 수단 조회",
                 "tags": ["Users"]
             }
         }

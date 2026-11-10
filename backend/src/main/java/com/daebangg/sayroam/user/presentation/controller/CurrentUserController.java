@@ -5,6 +5,7 @@ import com.daebangg.sayroam.user.application.result.UserProfileResult;
 import com.daebangg.sayroam.user.application.service.UserService;
 import com.daebangg.sayroam.user.presentation.api.UserApi;
 import com.daebangg.sayroam.user.presentation.dto.CurrentUserResponse;
+import com.daebangg.sayroam.user.presentation.dto.UserLoginMethodsResponse;
 import com.daebangg.sayroam.user.presentation.dto.UpdateUserProfileRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.CacheControl;
@@ -20,6 +21,14 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 public class CurrentUserController implements UserApi {
     private final UserService userService;
+
+    @Override
+    @GetMapping(value = "/api/users/me/login-methods", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<UserLoginMethodsResponse> loginMethods(
+            @AuthenticationPrincipal AuthenticatedAccount account) {
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore())
+                .body(UserLoginMethodsResponse.from(userService.getLoginMethods(account.userId(), account.authVersion())));
+    }
 
     @Override
     @GetMapping(value = "/api/users/me", produces = MediaType.APPLICATION_JSON_VALUE)

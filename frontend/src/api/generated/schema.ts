@@ -505,6 +505,26 @@ export interface paths {
         patch: operations["updateProfile"];
         trace?: never;
     };
+    "/api/users/me/login-methods": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 내 로그인 수단 조회
+         * @description 비밀번호 로그인 가능 여부와 실제로 연결된 소셜 공급자만 반환합니다. 공급자 회원 ID·토큰·해시는 노출하지 않습니다.
+         */
+        get: operations["loginMethods"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -994,6 +1014,12 @@ export interface components {
             nickname?: string;
             /** @description HTTP(S) 이미지 URL. null이면 제거 */
             profileImageUrl?: string | null;
+        };
+        UserLoginMethodsResponse: {
+            /** @description 비밀번호 로그인 수단이 등록되어 있는지 여부 */
+            passwordEnabled: boolean;
+            /** @description 현재 회원에게 실제로 연결된 소셜 로그인 공급자. 연결이 없으면 빈 배열 */
+            socialProviders: ("KAKAO" | "GOOGLE" | "NAVER")[];
         };
     };
     responses: {
@@ -2269,6 +2295,29 @@ export interface operations {
             503: components["responses"]["AuthenticationUnavailable"];
         };
     };
+    loginMethods: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 현재 회원의 로그인 수단. Cache-Control: no-store */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserLoginMethodsResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            500: components["responses"]["InternalServerError"];
+            503: components["responses"]["AuthenticationUnavailable"];
+        };
+    };
 }
 
 /** operationId별 공통 실행 정보. 브라우저 이동용 콜백은 제외합니다. 직접 수정하지 않습니다. */
@@ -2376,6 +2425,13 @@ export const apiRoutes = {
         path: "/api/auth/login",
         auth: "none",
         csrf: true,
+        responses: { "200": true },
+    },
+    loginMethods: {
+        method: "get",
+        path: "/api/users/me/login-methods",
+        auth: "required",
+        csrf: false,
         responses: { "200": true },
     },
     logout: {
