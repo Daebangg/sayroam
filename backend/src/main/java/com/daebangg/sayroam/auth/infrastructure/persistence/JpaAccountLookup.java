@@ -33,6 +33,12 @@ public class JpaAccountLookup implements AccountLookup {
     }
 
     @Override
+    public boolean emailExists(String normalizedEmail) {
+        return read(() -> entityManager.createQuery("select count(u) from User u where u.email = :email", Long.class)
+                .setParameter("email", normalizedEmail).getSingleResult() > 0);
+    }
+
+    @Override
     public Optional<Credentials> findActiveCredentials(String normalizedEmail) {
         return read(() -> entityManager.createQuery("""
                 select new com.daebangg.sayroam.auth.application.port.out.AccountLookup$Credentials(

@@ -63,7 +63,7 @@ class GlobalExceptionHandlerTests {
             EMAIL_ALREADY_REGISTERED|409|Email is already registered|false|false
             SIGNUP_UNAVAILABLE|503|Signup could not be confirmed; the proof is not restored. Verify your email again before retrying; the account may already exist|false|false
             INVALID_CREDENTIALS|401|Email or password is incorrect|false|false
-            PASSWORD_POLICY_VIOLATION|400|Password must contain 8 to 128 characters and must not be blank|false|false
+            PASSWORD_POLICY_VIOLATION|400|Password must contain 8 to 24 characters, an uppercase letter, a number and a special character, without whitespace or invisible characters|false|false
             AUTHENTICATION_UNAVAILABLE|503|Authentication is temporarily unavailable|false|false
             REFRESH_TOKEN_INVALID|401|Refresh token is invalid or expired; sign in again|true|false
             REFRESH_TOKEN_REUSED|401|Refresh token was reused; this login can no longer be refreshed. Sign in again|true|false
@@ -81,7 +81,7 @@ class GlobalExceptionHandlerTests {
     void 기존_인증_오류의_본문과_쿠키_헤더_계약을_유지한다(
             AuthErrorCode code, int expectedStatus, String detail,
             boolean clearCookie, boolean bearerChallenge) throws Exception {
-        given(login.login(anyString(), anyString())).willThrow(new AuthException(code));
+        given(login.login(anyString(), anyString(), anyString(), org.mockito.ArgumentMatchers.anyBoolean())).willThrow(new AuthException(code));
 
         var result = mvc.perform(loginRequest())
                 .andExpect(status().is(expectedStatus))
@@ -117,7 +117,7 @@ class GlobalExceptionHandlerTests {
     @CsvSource({"0, 0", "1, 1", "1000000000, 1", "1000000001, 2"})
     void 재시도_시간을_초_단위로_올려_헤더와_본문에_전달한다(long nanos, long seconds) throws Exception {
         var exception = new AuthException(AuthErrorCode.EMAIL_RATE_LIMITED, Duration.ofNanos(nanos));
-        given(login.login(anyString(), anyString())).willThrow(exception);
+        given(login.login(anyString(), anyString(), anyString(), org.mockito.ArgumentMatchers.anyBoolean())).willThrow(exception);
 
         mvc.perform(loginRequest())
                 .andExpect(status().isTooManyRequests())
@@ -133,7 +133,7 @@ class GlobalExceptionHandlerTests {
         var suppressed = new IllegalStateException("private-mail-response");
         var exception = new AuthException(AuthErrorCode.AUTHENTICATION_UNAVAILABLE, cause);
         exception.addSuppressed(suppressed);
-        given(login.login(anyString(), anyString())).willThrow(exception);
+        given(login.login(anyString(), anyString(), anyString(), org.mockito.ArgumentMatchers.anyBoolean())).willThrow(exception);
 
         MvcResult result = mvc.perform(loginRequest())
                 .andExpect(status().isServiceUnavailable())
@@ -153,7 +153,7 @@ class GlobalExceptionHandlerTests {
     void 일반_업무_예외에는_인증_전용_쿠키나_헤더를_추가하지_않는다() throws Exception {
         var cause = new IllegalStateException("private-persistence-error");
         var exception = new BusinessException(CommonErrorCode.INVALID_INPUT, cause);
-        given(login.login(anyString(), anyString()))
+        given(login.login(anyString(), anyString(), anyString(), org.mockito.ArgumentMatchers.anyBoolean()))
                 .willThrow(exception);
 
         mvc.perform(loginRequest())
@@ -170,7 +170,7 @@ class GlobalExceptionHandlerTests {
         return post("/api/auth/login")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
-                        {"email":"user@example.com","password":"test-password-123"}
+                        {"email":"user@example.com","password":"Test-password-123"}
                         """);
     }
 }

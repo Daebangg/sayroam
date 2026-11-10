@@ -163,7 +163,7 @@
                         "schema": { "$ref": "#/components/schemas/ApiProblem" }
                     }
                 },
-                "description": "503: EMAIL_DELIVERY_DISABLED 또는 EMAIL_VERIFICATION_UNAVAILABLE. 설정·저장소 복구 후 재요청"
+                "description": "503: EMAIL_DELIVERY_DISABLED, EMAIL_VERIFICATION_UNAVAILABLE 또는 AUTHENTICATION_UNAVAILABLE(발송 전 가입 여부 조회). 설정·저장소 복구 후 재요청"
             },
             "Forbidden": {
                 "content": {
@@ -181,13 +181,36 @@
                 },
                 "description": "500: INTERNAL_SERVER_ERROR"
             },
+            "LoginRateLimited": {
+                "content": {
+                    "application/problem+json": {
+                        "schema": { "$ref": "#/components/schemas/LoginRateLimitedProblem" }
+                    }
+                },
+                "description": "429: LOGIN_RATE_LIMITED. 이메일 또는 IP의 로그인 실패 제한. Retry-After와 retryAfterSeconds 이후 재요청",
+                "headers": {
+                    "Retry-After": {
+                        "description": "재시도 전 대기할 초",
+                        "required": true,
+                        "schema": { "format": "int64", "minimum": 1, "type": "integer" }
+                    }
+                }
+            },
             "LoginUnauthorized": {
+                "content": {
+                    "application/problem+json": {
+                        "schema": { "$ref": "#/components/schemas/LoginUnauthorizedProblem" }
+                    }
+                },
+                "description": "401: INVALID_CREDENTIALS와 필수 remainingAttempts. 이메일 없음·비밀번호 불일치·탈퇴·이메일 미인증·비밀번호 미등록에 동일한 응답. 불필요한 Authorization 헤더가 있으면 필터에서 UNAUTHENTICATED로 거절되며 횟수를 제공하지 않음"
+            },
+            "LoginUnavailable": {
                 "content": {
                     "application/problem+json": {
                         "schema": { "$ref": "#/components/schemas/ApiProblem" }
                     }
                 },
-                "description": "401: INVALID_CREDENTIALS. 이메일 없음·비밀번호 불일치·탈퇴·이메일 미인증·비밀번호 미등록에 동일한 응답. 불필요한 Authorization 헤더가 있으면 필터에서 UNAUTHENTICATED로 거절될 수 있음"
+                "description": "503: LOGIN_ATTEMPTS_UNAVAILABLE(제한 저장소) 또는 AUTHENTICATION_UNAVAILABLE(DB·토큰 저장소). 무제한 우회·자동 재시도하지 않음"
             },
             "LogoutCookieInvalid": {
                 "content": {
@@ -217,7 +240,7 @@
                         "schema": { "$ref": "#/components/schemas/ApiProblem" }
                     }
                 },
-                "description": "400: INVALID_INPUT, PASSWORD_POLICY_VIOLATION, ACCOUNT_PROOF_INVALID 또는 Spring 요청 오류. PASSWORD_CHANGE 증명과 8~128자의 새 비밀번호 필요. 비밀번호 정책 실패는 증명을 소비하지 않음"
+                "description": "400: INVALID_INPUT, PASSWORD_POLICY_VIOLATION, ACCOUNT_PROOF_INVALID 또는 Spring 요청 오류. PASSWORD_CHANGE 증명과 8~24자·대문자·숫자·특수문자를 포함하고 공백·제어·숨김 문자가 없는 새 비밀번호 필요. 비밀번호 정책 실패는 증명을 소비하지 않음"
             },
             "PasswordChangeConflict": {
                 "content": {
@@ -340,6 +363,14 @@
                     }
                 },
                 "description": "409: SIGNUP_PROOF_ALREADY_USED 또는 EMAIL_ALREADY_REGISTERED. 이미 소비한 증명은 복구하지 않음"
+            },
+            "SignupEmailConflict": {
+                "content": {
+                    "application/problem+json": {
+                        "schema": { "$ref": "#/components/schemas/ApiProblem" }
+                    }
+                },
+                "description": "409: EMAIL_ALREADY_REGISTERED이면 메일을 보내지 않음. 로그인·비밀번호 재설정 이용. EMAIL_REQUEST_SUPERSEDED이면 최신 발급 요청 사용"
             },
             "SignupProofExpired": {
                 "content": {
@@ -521,6 +552,8 @@
                     "INVALID_CREDENTIALS",
                     "INVALID_CSRF_TOKEN",
                     "INVALID_INPUT",
+                    "LOGIN_ATTEMPTS_UNAVAILABLE",
+                    "LOGIN_RATE_LIMITED",
                     "PASSWORD_CHANGE_CONFLICT",
                     "PASSWORD_CHANGE_NOT_ALLOWED",
                     "PASSWORD_CHANGE_UNAVAILABLE",
@@ -579,6 +612,13 @@
                         "example": "/api/users/me",
                         "format": "uri-reference",
                         "type": "string"
+                    },
+                    "remainingAttempts": {
+                        "description": "INVALID_CREDENTIALS 로그인 실패 후 해당 이메일의 남은 시도 횟수. IP 제한 횟수는 공개하지 않음",
+                        "example": 4,
+                        "format": "int32",
+                        "minimum": 0,
+                        "type": "integer"
                     },
                     "retryAfterSeconds": {
                         "description": "재시도 대기가 있는 429 응답에만 포함하는 대기 초. Retry-After 헤더와 같은 값",
@@ -699,12 +739,12 @@
             "EmailRequest": {
                 "properties": {
                     "email": {
-                        "description": "앞뒤 공백 제거 후 ASCII 이메일을 소문자로 정규화. 가입·로그인에도 같은 기준 적용 예정",
+                        "description": "앞뒤 공백 제거 후 ASCII 이메일을 소문자로 정규화. 로컬 부분 최대 64자·도메인 라벨 최대 63자, 전체 최대 254자",
                         "example": "user@example.com",
                         "format": "email",
                         "maxLength": 254,
                         "minLength": 0,
-                        "pattern": "^[!-~]+$",
+                        "pattern": "^(?=.{1,254}$)(?=[^@]{1,64}@)[A-Za-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\\.[A-Za-z0-9!#$%&'*+/=?^_`{|}~-]+)*@[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?(?:\\.[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?)+$",
                         "type": "string"
                     }
                 },
@@ -725,7 +765,7 @@
                         "format": "email",
                         "maxLength": 254,
                         "minLength": 0,
-                        "pattern": "^[!-~]+$",
+                        "pattern": "^(?=.{1,254}$)(?=[^@]{1,64}@)[A-Za-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\\.[A-Za-z0-9!#$%&'*+/=?^_`{|}~-]+)*@[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?(?:\\.[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?)+$",
                         "type": "string"
                     },
                     "verificationId": {
@@ -790,6 +830,25 @@
                 "required": ["roomId"],
                 "type": "object"
             },
+            "LoginRateLimitedProblem": {
+                "allOf": [
+                    { "$ref": "#/components/schemas/ApiProblem" },
+                    {
+                        "properties": {
+                            "code": { "enum": ["LOGIN_RATE_LIMITED"], "type": "string" },
+                            "retryAfterSeconds": {
+                                "description": "재시도 전 대기 초. Retry-After와 같은 양의 정수",
+                                "example": 300,
+                                "format": "int64",
+                                "minimum": 1,
+                                "type": "integer"
+                            },
+                            "status": { "enum": [429], "format": "int32", "type": "integer" }
+                        },
+                        "required": ["code", "retryAfterSeconds", "status"]
+                    }
+                ]
+            },
             "LoginRequest": {
                 "properties": {
                     "email": {
@@ -798,15 +857,20 @@
                         "format": "email",
                         "maxLength": 254,
                         "minLength": 0,
-                        "pattern": "^[!-~]+$",
+                        "pattern": "^(?=.{1,254}$)(?=[^@]{1,64}@)[A-Za-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\\.[A-Za-z0-9!#$%&'*+/=?^_`{|}~-]+)*@[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?(?:\\.[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?)+$",
                         "type": "string"
                     },
                     "password": {
-                        "description": "가입한 비밀번호. 공백·대소문자를 그대로 검증",
+                        "description": "가입한 비밀번호. 기존 계정의 8~128자 비밀번호도 공백·대소문자를 그대로 검증",
                         "maxLength": 128,
                         "minLength": 8,
                         "type": "string",
                         "writeOnly": true
+                    },
+                    "rememberMe": {
+                        "default": true,
+                        "description": "true는 영속 쿠키, false는 Max-Age 없는 브라우저 세션 쿠키. 생략·null은 기존 동작인 true. 갱신 시에도 선택을 유지",
+                        "type": ["boolean", "null"]
                     }
                 },
                 "required": ["email", "password"],
@@ -833,6 +897,34 @@
                 "required": ["accessToken", "expiresIn", "tokenType"],
                 "type": "object"
             },
+            "LoginUnauthorizedProblem": {
+                "allOf": [
+                    { "$ref": "#/components/schemas/ApiProblem" },
+                    {
+                        "oneOf": [
+                            {
+                                "properties": {
+                                    "code": { "enum": ["INVALID_CREDENTIALS"], "type": "string" },
+                                    "remainingAttempts": {
+                                        "description": "해당 이메일의 남은 시도 횟수. 기본 정책에서 4, 3, 2, 1",
+                                        "example": 4,
+                                        "format": "int32",
+                                        "minimum": 1,
+                                        "type": "integer"
+                                    }
+                                },
+                                "required": ["code", "remainingAttempts"]
+                            },
+                            {
+                                "properties": {
+                                    "code": { "enum": ["UNAUTHENTICATED"], "type": "string" }
+                                },
+                                "required": ["code"]
+                            }
+                        ]
+                    }
+                ]
+            },
             "PasswordChangeRequest": {
                 "properties": {
                     "accountProof": {
@@ -843,9 +935,10 @@
                         "writeOnly": true
                     },
                     "newPassword": {
-                        "description": "가입과 같은 8~128자 정책. 공백 제거·대소문자 변환 없이 해시 처리",
-                        "maxLength": 128,
+                        "description": "가입과 같은 8~24자, 대문자·숫자·특수문자 포함, 공백·숨김 문자 불가 정책. 공백 제거·대소문자 변환 없이 해시 처리",
+                        "maxLength": 24,
                         "minLength": 8,
+                        "pattern": "^(?=.*[A-Z])(?=.*[0-9])(?=.*[\\p{P}\\p{S}])[^\\s\\p{Z}\\p{C}]+$",
                         "type": "string",
                         "writeOnly": true
                     }
@@ -876,13 +969,14 @@
                         "format": "email",
                         "maxLength": 254,
                         "minLength": 0,
-                        "pattern": "^[!-~]+$",
+                        "pattern": "^(?=.{1,254}$)(?=[^@]{1,64}@)[A-Za-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\\.[A-Za-z0-9!#$%&'*+/=?^_`{|}~-]+)*@[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?(?:\\.[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?)+$",
                         "type": "string"
                     },
                     "newPassword": {
-                        "description": "가입과 같은 8~128자 정책. 공백 제거·대소문자 변환 없이 처리",
-                        "maxLength": 128,
+                        "description": "가입과 같은 8~24자, 대문자·숫자·특수문자 포함, 공백·숨김 문자 불가 정책. 공백 제거·대소문자 변환 없이 처리",
+                        "maxLength": 24,
                         "minLength": 8,
+                        "pattern": "^(?=.*[A-Z])(?=.*[0-9])(?=.*[\\p{P}\\p{S}])[^\\s\\p{Z}\\p{C}]+$",
                         "type": "string",
                         "writeOnly": true
                     },
@@ -928,21 +1022,22 @@
                         "format": "email",
                         "maxLength": 254,
                         "minLength": 1,
-                        "pattern": "^[!-~]+$",
+                        "pattern": "^(?=.{1,254}$)(?=[^@]{1,64}@)[A-Za-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\\.[A-Za-z0-9!#$%&'*+/=?^_`{|}~-]+)*@[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?(?:\\.[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?)+$",
                         "type": "string"
                     },
                     "nickname": {
-                        "description": "앞뒤 공백 제거 후 1~50자. 제어 문자 불가",
+                        "description": "앞뒤 공백 제거 후 1~50자. 제어·숨김 문자 불가",
                         "example": "여행자",
                         "maxLength": 50,
                         "minLength": 1,
-                        "pattern": "^[^\\x00-\\x1F\\x7F]+$",
+                        "pattern": "^[^\\p{C}\\p{Zl}\\p{Zp}]+$",
                         "type": "string"
                     },
                     "password": {
-                        "description": "8~128자. 공백 제거·대소문자 변환 없이 해시 처리",
-                        "maxLength": 128,
+                        "description": "8~24자, 대문자·숫자·특수문자 포함, 공백·숨김 문자 불가. 공백 제거·대소문자 변환 없이 해시 처리",
+                        "maxLength": 24,
                         "minLength": 8,
+                        "pattern": "^(?=.*[A-Z])(?=.*[0-9])(?=.*[\\p{P}\\p{S}])[^\\s\\p{Z}\\p{C}]+$",
                         "type": "string",
                         "writeOnly": true
                     },
@@ -1035,14 +1130,14 @@
                         "format": "email",
                         "maxLength": 254,
                         "minLength": 1,
-                        "pattern": "^[!-~]+$",
+                        "pattern": "^(?=.{1,254}$)(?=[^@]{1,64}@)[A-Za-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\\.[A-Za-z0-9!#$%&'*+/=?^_`{|}~-]+)*@[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?(?:\\.[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?)+$",
                         "type": ["string", "null"]
                     },
                     "nickname": {
                         "description": "앞뒤 공백 제거 후 1~50자",
                         "maxLength": 50,
                         "minLength": 0,
-                        "pattern": "^[^\\x00-\\x1F\\x7F]+$",
+                        "pattern": "^[^\\p{C}\\p{Zl}\\p{Zp}]+$",
                         "type": "string"
                     },
                     "signupProof": {
@@ -1077,10 +1172,11 @@
                         "oneOf": [{ "$ref": "#/components/schemas/Gender" }, { "type": "null" }]
                     },
                     "nickname": {
-                        "description": "앞뒤 공백 제거 후 1~50자. 제어 문자와 null 불가",
+                        "description": "앞뒤 공백 제거 후 1~50자. 제어·숨김 문자와 null 불가",
                         "example": "제주 여행자",
                         "maxLength": 50,
                         "minLength": 1,
+                        "pattern": "^[^\\p{C}\\p{Zl}\\p{Zp}]+$",
                         "type": "string"
                     },
                     "profileImageUrl": {
@@ -1251,7 +1347,7 @@
         },
         "/api/auth/email-verifications": {
             "post": {
-                "description": "CSRF 쿠키와 X-XSRF-TOKEN 헤더 필요. 코드는 6자리이며 응답에 포함하지 않습니다. 재발급 승인 시 이전 코드와 가입용 증명은 무효화합니다.",
+                "description": "CSRF 쿠키와 X-XSRF-TOKEN 헤더 필요. 코드는 6자리이며 응답에 포함하지 않습니다. 발송 전 DB 가입 여부를 확인하며 이미 가입된 이메일은 메일을 보내지 않고 409 EMAIL_ALREADY_REGISTERED를 반환합니다. 재발급 승인 시 이전 코드와 가입용 증명은 무효화합니다.",
                 "operationId": "request",
                 "parameters": [
                     {
@@ -1282,7 +1378,7 @@
                     },
                     "400": { "$ref": "#/components/responses/BadRequest" },
                     "403": { "$ref": "#/components/responses/Forbidden" },
-                    "409": { "$ref": "#/components/responses/EmailRequestSuperseded" },
+                    "409": { "$ref": "#/components/responses/SignupEmailConflict" },
                     "429": { "$ref": "#/components/responses/EmailRateLimited" },
                     "500": { "$ref": "#/components/responses/InternalServerError" },
                     "502": { "$ref": "#/components/responses/EmailDeliveryFailed" },
@@ -1333,7 +1429,7 @@
         },
         "/api/auth/login": {
             "post": {
-                "description": "XSRF-TOKEN 쿠키와 X-XSRF-TOKEN 헤더 필요. 활성·이메일 인증 회원의 비밀번호를 확인해 Access Token을 본문에, Refresh Token을 HttpOnly 쿠키에 발급합니다. Redis 저장이 완료된 뒤 응답합니다. 이메일 없음·비밀번호 불일치·탈퇴·비밀번호 미등록은 같은 실패 응답입니다. Authorization 헤더 없이 호출하세요.",
+                "description": "XSRF-TOKEN 쿠키와 X-XSRF-TOKEN 헤더 필요. 활성·이메일 인증 회원의 비밀번호를 확인해 Access Token을 본문에, Refresh Token을 HttpOnly 쿠키에 발급합니다. Redis 저장이 완료된 뒤 응답합니다. 이메일 없음·비밀번호 불일치·탈퇴·비밀번호 미등록은 같은 실패 응답입니다. 첫 실패부터 300초 동안 정규화한 이메일은 5회, 서버가 확인한 IP는 여러 이메일에 걸쳐 100회 실패하면 각각 300초 차단합니다. 이메일 다섯 번째 실패 또는 IP 백 번째 실패부터 429이며 차단 중 요청으로 연장하지 않습니다. 401의 remainingAttempts는 해당 이메일 기준이며 로그인 성공 시 이메일 실패 횟수만 초기화합니다. rememberMe=false는 세션 쿠키, 생략·true는 영속 쿠키이며 갱신에도 유지합니다. Authorization 헤더 없이 호출하세요.",
                 "operationId": "login",
                 "requestBody": {
                     "content": {
@@ -1362,8 +1458,9 @@
                     "400": { "$ref": "#/components/responses/BadRequest" },
                     "401": { "$ref": "#/components/responses/LoginUnauthorized" },
                     "403": { "$ref": "#/components/responses/Forbidden" },
+                    "429": { "$ref": "#/components/responses/LoginRateLimited" },
                     "500": { "$ref": "#/components/responses/InternalServerError" },
-                    "503": { "$ref": "#/components/responses/AuthenticationUnavailable" }
+                    "503": { "$ref": "#/components/responses/LoginUnavailable" }
                 },
                 "security": [{ "csrfToken": [] }],
                 "summary": "이메일·비밀번호 로그인",
@@ -1558,7 +1655,7 @@
         },
         "/api/auth/refresh": {
             "post": {
-                "description": "브라우저의 sayroam_refresh HttpOnly 쿠키와 XSRF-TOKEN 쿠키·X-XSRF-TOKEN 헤더가 필요합니다. Access Token 없이 호출하며 이 경로에서는 Authorization 헤더를 인증에 사용하지 않습니다. 활성 회원을 확인한 뒤 Refresh Token을 일회성 교체합니다. 이전 값 재사용·동시 갱신은 해당 로그인의 갱신 권한을 폐기합니다. 클라이언트는 갱신 요청을 직렬화하고 불확실한 응답을 자동 재시도하지 않아야 합니다. 절대 만료는 연장하지 않습니다.",
+                "description": "브라우저의 sayroam_refresh HttpOnly 쿠키와 XSRF-TOKEN 쿠키·X-XSRF-TOKEN 헤더가 필요합니다. Access Token 없이 호출하며 이 경로에서는 Authorization 헤더를 인증에 사용하지 않습니다. 활성 회원을 확인한 뒤 Refresh Token을 일회성 교체합니다. 이전 값 재사용·동시 갱신은 해당 로그인의 갱신 권한을 폐기합니다. 클라이언트는 갱신 요청을 직렬화하고 불확실한 응답을 자동 재시도하지 않아야 합니다. 절대 만료는 연장하지 않으며 로그인 시 rememberMe의 세션/영속 쿠키 선택을 유지합니다.",
                 "operationId": "refresh",
                 "responses": {
                     "200": {
@@ -1570,7 +1667,7 @@
                         "description": "새 Access Token과 교체된 Refresh 쿠키. Cache-Control: no-store",
                         "headers": {
                             "Set-Cookie": {
-                                "description": "sayroam_refresh 교체. 남은 절대 유효기간만 Max-Age로 지정",
+                                "description": "sayroam_refresh 교체. 영속 쿠키는 남은 절대 유효기간만 Max-Age로 지정, 세션 쿠키는 Max-Age 생략",
                                 "schema": { "type": "string" },
                                 "style": "simple"
                             }

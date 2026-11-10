@@ -5,6 +5,9 @@ import com.daebangg.sayroam.auth.domain.AuthenticatedAccount;
 import java.util.Optional;
 
 public interface AccountLookup {
+    /** DB 이메일 UNIQUE와 동일한 전체 계정을 확인한다. 소셜 전용·탈퇴 계정도 포함한다. */
+    boolean emailExists(String normalizedEmail);
+
     Optional<Credentials> findActiveCredentials(String normalizedEmail);
 
     Optional<AuthenticatedAccount> findActiveAccount(long userId);

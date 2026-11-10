@@ -2,6 +2,7 @@ package com.daebangg.sayroam.user.domain.policy;
 
 import com.daebangg.sayroam.global.exception.BusinessException;
 import com.daebangg.sayroam.user.domain.error.UserErrorCode;
+import com.daebangg.sayroam.global.validation.InputText;
 
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -10,24 +11,23 @@ import java.time.Year;
 /** 회원 생성과 프로필 변경에서 공통으로 사용하는 정규화·검증 규칙. */
 public final class UserProfilePolicy {
     public static final int MAX_NICKNAME_LENGTH = 50;
+    public static final String NICKNAME_PATTERN = "^[^\\p{C}\\p{Zl}\\p{Zp}]+$";
     public static final int MAX_PROFILE_IMAGE_URL_LENGTH = 500;
 
     private UserProfilePolicy() {
     }
 
     public static String normalizeNickname(String nickname) {
-        if (nickname == null || nickname.isBlank()) {
+        String normalized = InputText.trim(nickname);
+        if (normalized == null || normalized.isEmpty()) {
             throw new BusinessException(UserErrorCode.USER_NICKNAME_REQUIRED);
         }
 
-        String normalized = nickname.strip();
         if (normalized.length() > MAX_NICKNAME_LENGTH) {
             throw new BusinessException(UserErrorCode.USER_NICKNAME_TOO_LONG);
         }
 
-        boolean containsControlCharacter = normalized.chars()
-                .anyMatch(character -> character <= 0x1F || character == 0x7F);
-        if (containsControlCharacter) {
+        if (!normalized.matches(NICKNAME_PATTERN)) {
             throw new BusinessException(UserErrorCode.USER_NICKNAME_INVALID);
         }
 

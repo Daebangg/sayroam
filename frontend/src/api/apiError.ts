@@ -59,6 +59,14 @@ export function toApiProblem(response: Response, value: unknown): ApiProblem {
 
     if (typeof source.type === "string") problem.type = source.type;
     if (isFieldErrors(source.errors)) problem.errors = source.errors;
+    if (
+        source.code === "INVALID_CREDENTIALS" &&
+        typeof source.remainingAttempts === "number" &&
+        Number.isSafeInteger(source.remainingAttempts) &&
+        source.remainingAttempts > 0
+    ) {
+        problem.remainingAttempts = source.remainingAttempts;
+    }
 
     const retryHeader = response.headers.get("Retry-After");
     const headerSeconds =

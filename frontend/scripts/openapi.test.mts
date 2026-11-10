@@ -27,6 +27,8 @@ test("같은 저장 명세는 동일한 스냅샷과 타입 파일을 생성", a
     const second = await renderOpenApi(source);
     assert.equal(first.types, second.types);
     assert.equal(first.snapshot, second.snapshot);
+    assert.match(first.types, /rememberMe\?: boolean \| null/);
+    assert.match(first.types, /returnPath\?: string/);
 });
 
 test("스키마에 API를 추가하면 경로·메서드가 타입에 반영됨", async () => {

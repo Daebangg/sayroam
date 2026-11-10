@@ -84,6 +84,50 @@ test("없는 이메일과 잘못된 비밀번호를 같은 실패 메시지로 �
     });
 });
 
+test("로그인 실패의 남은 횟수는 서버 응답을 사용하고 다음 응답에 없으면 유지하지 않음", async (t) => {
+    const fetchMock = t.mock.method(globalThis, "fetch", async () =>
+        Response.json(
+            { status: 401, code: "INVALID_CREDENTIALS", remainingAttempts: 4 },
+            { status: 401 },
+        ),
+    );
+    const session = createAuthController();
+    assert.equal(await session.login(credentials), false);
+    assert.equal(session.getSnapshot().remainingAttempts, 4);
+    fetchMock.mock.mockImplementation(async () => problem(401, "INVALID_CREDENTIALS"));
+    assert.equal(await session.login(credentials), false);
+    assert.equal(session.getSnapshot().remainingAttempts, undefined);
+});
+
+test("로그인 제한의 서버 대기 시간을 표시하고 만료 전 POST를 반복하지 않음", async (t) => {
+    const now = Date.now();
+    const clock = t.mock.method(Date, "now", () => now);
+    const fetchMock = t.mock.method(globalThis, "fetch", async () =>
+        Response.json(
+            { status: 429, code: "LOGIN_RATE_LIMITED", retryAfterSeconds: 300 },
+            { status: 429, headers: { "Retry-After": "300" } },
+        ),
+    );
+    const session = createAuthController();
+    assert.equal(await session.login(credentials), false);
+    assert.equal(session.getSnapshot().message, "limited");
+    assert.equal(session.getSnapshot().retryAt, now + 300_000);
+    assert.equal(await session.login(credentials), false);
+    assert.equal(fetchMock.mock.calls.length, 1);
+    clock.mock.mockImplementation(() => now + 301_000);
+    await session.login(credentials);
+    assert.equal(fetchMock.mock.calls.length, 2);
+});
+
+test("숨김 문자·제어 문자를 새 비밀번호와 닉네임에서 거절하고 기존 긴 비밀번호 로그인은 유지", () => {
+    assert.equal(isValidNewPassword("Aa1!\u200baaaa"), false);
+    assert.equal(isValidNickname("name\u200b"), false);
+    assert.equal(isValidNickname("name\u0085"), false);
+    assert.equal(isValidNickname(" 제주 여행자😀 "), true);
+    assert.equal(isValidPassword("x".repeat(128)), true);
+    assert.equal(isValidNewPassword("Aa1!" + "a".repeat(21)), false);
+});
+
 test("로그인했던 회원의 만료·갱신 거절은 새 방문자의 미로그인과 구분해 재로그인을 안내", async (t) => {
     let expired = false;
     const paths: unknown[] = [];

@@ -30,7 +30,7 @@ PATCH 본문은 JSON 객체이며 아래 네 필드만 허용합니다. `{}`는 
 
 | 필드 | 설정·변경 기준 | null |
 | --- | --- | --- |
-| `nickname` | 앞뒤 공백 제거 후 필수 1~50자, 제어 문자 불가 | 거절 |
+| `nickname` | 앞뒤 공백 제거 후 필수 1~50자, 제어·숨김·줄바꿈 문자 불가 | 거절 |
 | `profileImageUrl` | 앞뒤 공백 제거 후 최대 500자, 호스트가 있는 HTTP(S) URL, 사용자 정보 불가 | 제거 |
 | `gender` | `MALE` 또는 `FEMALE` 문자열 | 미설정으로 변경 |
 | `birthYear` | JSON 정수, 1 이상·현재 연도 이하 | 미설정으로 변경 |
@@ -60,7 +60,7 @@ Content-Type: application/json
 | --- | --- |
 | `USER_NICKNAME_REQUIRED` | null·빈 닉네임 |
 | `USER_NICKNAME_TOO_LONG` | 최대 길이 초과 |
-| `USER_NICKNAME_INVALID` | 제어 문자 포함 |
+| `USER_NICKNAME_INVALID` | 제어·숨김·줄바꿈 문자 포함 |
 | `USER_PROFILE_IMAGE_URL_TOO_LONG` | 이미지 URL 최대 길이 초과 |
 | `USER_PROFILE_IMAGE_URL_INVALID` | 허용하지 않는 URL 형식 |
 | `USER_BIRTH_YEAR_INVALID` | 0 이하 또는 미래 출생연도 |

@@ -5,6 +5,7 @@ import com.daebangg.sayroam.auth.application.error.AuthErrorCode;
 import com.daebangg.sayroam.auth.application.error.AuthException;
 import com.daebangg.sayroam.auth.application.port.out.EmailVerificationStore;
 import com.daebangg.sayroam.auth.application.port.out.VerificationEmailSender;
+import com.daebangg.sayroam.auth.application.port.out.AccountLookup;
 import com.daebangg.sayroam.auth.domain.EmailAddress;
 import com.daebangg.sayroam.auth.domain.VerificationDigests;
 import org.springframework.stereotype.Service;
@@ -19,11 +20,13 @@ import java.util.UUID;
 public class EmailVerificationService {
     private final EmailVerificationStore store;
     private final Optional<VerificationEmailSender> mailSender;
+    private final AccountLookup accounts;
     private final SecureRandom random = new SecureRandom();
 
-    public EmailVerificationService(EmailVerificationStore store, Optional<VerificationEmailSender> mailSender) {
+    public EmailVerificationService(EmailVerificationStore store, Optional<VerificationEmailSender> mailSender, AccountLookup accounts) {
         this.store = store;
         this.mailSender = mailSender;
+        this.accounts = accounts;
     }
 
     public IssuedRequest request(String rawEmail, String remoteAddress, EmailLanguage language) {
@@ -31,6 +34,7 @@ public class EmailVerificationService {
         VerificationEmailSender sender = mailSender.orElseThrow(
                 () -> new AuthException(AuthErrorCode.EMAIL_DELIVERY_DISABLED));
         String email = EmailAddress.normalize(rawEmail);
+        if (accounts.emailExists(email)) throw new AuthException(AuthErrorCode.EMAIL_ALREADY_REGISTERED);
         String requestId = UUID.randomUUID().toString();
         String code = String.format(Locale.ROOT, "%06d", random.nextInt(1_000_000));
         String digest = VerificationDigests.sha256(requestId + ":" + code);

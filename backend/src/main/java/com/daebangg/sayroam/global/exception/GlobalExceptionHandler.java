@@ -61,6 +61,9 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
             problem.setProperty("retryAfterSeconds", seconds);
             response.header(HttpHeaders.RETRY_AFTER, Long.toString(seconds));
         }
+        if (exception.getRemainingAttempts() != null) {
+            problem.setProperty("remainingAttempts", exception.getRemainingAttempts());
+        }
         // cause·suppressed를 포함한 내부 정보는 공개 응답에 포함하지 않는다.
         return response.body(problem);
     }

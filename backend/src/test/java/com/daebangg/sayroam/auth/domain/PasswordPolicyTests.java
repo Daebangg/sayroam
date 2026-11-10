@@ -13,23 +13,23 @@ import static org.assertj.core.api.Assertions.assertThat;
 class PasswordPolicyTests {
     @ParameterizedTest
     @NullAndEmptySource
-    @ValueSource(strings = {"1234567", "        ", "\t\n\r        "})
+    @ValueSource(strings = {"Aa1!aaa", "        ", "\t\n\r        ", "lowercase1!", "Uppercase!", "Uppercase1", "Aa1! aaab", "Aa1!\u200Baaa", "Aa1!\u0085aaa"})
     void rejectsMissingShortAndWhitespaceOnlyPasswords(String password) {
         assertThat(PasswordPolicy.isValid(password)).isFalse();
     }
 
     @Test
-    void rejectsPasswordsLongerThan128Characters() {
-        assertThat(PasswordPolicy.isValid("x".repeat(129))).isFalse();
+    void rejectsPasswordsLongerThan24Characters() {
+        assertThat(PasswordPolicy.isValid("Aa1!" + "a".repeat(21))).isFalse();
     }
 
     @ParameterizedTest
     @MethodSource("validPasswords")
-    void acceptsBoundaryLengthsUnicodeAndSpacesAroundNonblankContent(String password) {
+    void acceptsBoundaryLengthsAndVisibleUnicodeWithAllRequirements(String password) {
         assertThat(PasswordPolicy.isValid(password)).isTrue();
     }
 
     static Stream<String> validPasswords() {
-        return Stream.of("12345678", "x".repeat(128), "  Pass!  ", "가나다라마바사아");
+        return Stream.of("Aa1!aaaa", "Aa1!" + "a".repeat(20), "Aa1!가나다라", "Aa1😀aaaa");
     }
 }

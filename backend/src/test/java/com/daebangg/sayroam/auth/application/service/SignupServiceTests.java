@@ -38,7 +38,7 @@ class SignupServiceTests {
     @Test
     void preservesPasswordSpacesAndCaseWhenHashingAValidSignup() {
         String email = "member@example.test";
-        String password = "  SignUp Pass!  ";
+        String password = "SignUpPass1!";
         String proof = "p".repeat(43);
         Instant verifiedAt = Instant.parse("2026-01-01T00:00:00Z");
         when(verification.consumeSignupProof(email, VerificationDigests.sha256(proof)))

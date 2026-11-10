@@ -14,6 +14,7 @@ function needsLogin(error: unknown): boolean {
 
 function messageFor(error: unknown, login: boolean): AuthMessage {
     if (!(error instanceof ApiError)) return "unavailable";
+    if (login && error.problem?.code === "LOGIN_RATE_LIMITED") return "limited";
     if (login && error.problem?.code === "INVALID_CREDENTIALS") return "credentials";
     if (needsLogin(error)) return "expired";
     if (error.kind === "authentication-unavailable") return "browserUnavailable";
@@ -75,9 +76,27 @@ export function createAuthController(): AuthController {
                 const profilePending =
                     kind !== "logout" && !!getAccessTokenSnapshot() && !needsLogin(error);
                 const anonymous = needsLogin(error) || kind === "login";
+                const waitSeconds =
+                    kind === "login" &&
+                    error instanceof ApiError &&
+                    error.problem?.code === "LOGIN_RATE_LIMITED"
+                        ? error.problem.retryAfterSeconds
+                        : undefined;
+                const retryAt =
+                    waitSeconds !== undefined &&
+                    Number.isSafeInteger(waitSeconds) &&
+                    waitSeconds > 0
+                        ? Date.now() + waitSeconds * 1000
+                        : undefined;
                 update({
                     status: profilePending || !anonymous ? "unavailable" : "anonymous",
                     user: null,
+                    ...(retryAt === undefined ? {} : { retryAt }),
+                    ...(kind === "login" &&
+                    error instanceof ApiError &&
+                    error.problem?.remainingAttempts !== undefined
+                        ? { remainingAttempts: error.problem.remainingAttempts }
+                        : {}),
                     message:
                         kind === "logout"
                             ? "logoutUncertain"
@@ -131,7 +150,8 @@ export function createAuthController(): AuthController {
                 return Promise.resolve(false);
             return run("restore");
         },
-        login: (input: LoginInput): Promise<boolean> => run("login", input),
+        login: (input: LoginInput): Promise<boolean> =>
+            (state.retryAt ?? 0) > Date.now() ? Promise.resolve(false) : run("login", input),
         logout: (): Promise<boolean> => run("logout"),
     };
 }

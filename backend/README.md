@@ -17,6 +17,7 @@ cp -n backend/config/application-local.properties.example backend/config/applica
 개인 파일의 `app.auth.access-token.secret-base64`에 입력합니다. 상세 정책은 [로그인 문서](docs/login.md)를 참고합니다.
 로그인·토큰 갱신에는 MySQL과 Redis가 필요하며 [Refresh 쿠키·교체 정책](docs/refresh-token.md)을 함께 따릅니다.
 현재 로그인 종료는 [로그아웃·Access Token 잔여 시간 정책](docs/logout.md)을 따릅니다.
+로그인 실패 이메일 5회·IP 100회·300초 차단과 비밀번호·이메일·닉네임 기준은 [인증 입력 정책](docs/auth-input-policy.md)을 따릅니다.
 비밀번호 변경·탈퇴 전 본인 확인은 [계정 관리용 이메일 인증·일회성 증명](docs/account-verification.md)을 따릅니다.
 비밀번호 변경과 모든 기기의 기존 로그인 무효화는 [비밀번호 변경 문서](docs/password-change.md)를 따릅니다.
 회원 탈퇴와 개인정보·로그인 수단 정리 및 재가입 기준은 [회원 탈퇴 문서](docs/account-deletion.md)를 따릅니다.

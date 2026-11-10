@@ -33,12 +33,12 @@ public class EmailVerificationController {
         this.service = service;
     }
 
-    @Operation(summary = "이메일 인증 코드 발급·재발송", description = "CSRF 쿠키와 X-XSRF-TOKEN 헤더 필요. 코드는 6자리이며 응답에 포함하지 않습니다. 재발급 승인 시 이전 코드와 가입용 증명은 무효화합니다.")
+    @Operation(summary = "이메일 인증 코드 발급·재발송", description = "CSRF 쿠키와 X-XSRF-TOKEN 헤더 필요. 코드는 6자리이며 응답에 포함하지 않습니다. 발송 전 DB 가입 여부를 확인하며 이미 가입된 이메일은 메일을 보내지 않고 409 EMAIL_ALREADY_REGISTERED를 반환합니다. 재발급 승인 시 이전 코드와 가입용 증명은 무효화합니다.")
     @ApiResponses({
             @ApiResponse(responseCode = "202", description = "SMTP 서버에 발송 요청 완료. 수신함 도착을 보장하지 않음"),
             @ApiResponse(responseCode = "400", ref = "#/components/responses/BadRequest"),
             @ApiResponse(responseCode = "403", ref = "#/components/responses/Forbidden"),
-            @ApiResponse(responseCode = "409", ref = "#/components/responses/EmailRequestSuperseded"),
+            @ApiResponse(responseCode = "409", ref = "#/components/responses/SignupEmailConflict"),
             @ApiResponse(responseCode = "429", ref = "#/components/responses/EmailRateLimited"),
             @ApiResponse(responseCode = "502", ref = "#/components/responses/EmailDeliveryFailed"),
             @ApiResponse(responseCode = "503", ref = "#/components/responses/EmailVerificationUnavailable"),

@@ -48,7 +48,8 @@ Cookie: XSRF-TOKEN=<같은 원문>
 ```json
 {
   "email": "user@example.com",
-  "password": "replace-with-your-password"
+  "password": "replace-with-your-password",
+  "rememberMe": true
 }
 ```
 
@@ -56,9 +57,11 @@ Cookie: XSRF-TOKEN=<같은 원문>
 가입과 같은 정규화이며 Gmail 점 제거·플러스 주소 병합은 하지 않습니다.
 비밀번호는 필수 8~128자이며 공백 제거·소문자화 등 정규화를 하지 않습니다.
 형식이 유효한 요청에서 없는 이메일·잘못된 비밀번호·탈퇴·이메일 미인증·비밀번호 없는 소셜 계정은
-모두 **401 INVALID_CREDENTIALS**, `Email or password is incorrect`로 응답합니다.
+모두 **401 INVALID_CREDENTIALS**, `Email or password is incorrect`와 필수 `remainingAttempts`로 응답합니다.
+남은 횟수는 해당 이메일 기준으로 기본 정책에서 4·3·2·1입니다. 성공하면 이메일 횟수만 초기화합니다.
 없는 계정도 실제 계정과 같은 인코더의 더미 해시를 검증합니다. 정확한 응답 시간의 동일함을 보장하지는 않습니다.
-로그인 시도 횟수 제한·잠금 정책은 이번 단계에 추가하지 않습니다.
+300초 동안 동일 이메일에서 5회 또는 접속 IP에서 여러 이메일에 걸쳐 100회 실패하면 300초 차단합니다. 각 임계 실패부터
+**429 LOGIN_RATE_LIMITED**와 대기 시간을 반환합니다. [로그인 제한·공통 입력 정책](auth-input-policy.md)을 따릅니다.
 
 성공하면 **200 OK**, `Cache-Control: no-store`와 아래 필드를 반환합니다.
 
@@ -73,7 +76,10 @@ Cookie: XSRF-TOKEN=<같은 원문>
 같은 응답의 `Set-Cookie`로 Refresh Token을 전달합니다. `sayroam_refresh`는 HttpOnly·SameSite=Strict·
 Path=/api/auth·기본 Secure이며 Domain을 지정하지 않는 호스트 전용 쿠키입니다.
 Refresh 원문은 JSON 응답에 넣지 않습니다. 비밀번호·서명 키도 응답에 포함하지 않습니다.
-Redis에는 로그인별 회원 ID·토큰 해시·절대 만료·교체 횟수·사용 이력만 보관하며 HttpSession은 사용하지 않습니다.
+`rememberMe`는 생략·null이면 true입니다. true는 남은 절대 TTL의 영속 쿠키, false는 Max-Age 없는
+브라우저 세션 쿠키를 발급합니다. 브라우저의 세션 복원 설정에 따라 쿠키가 복원될 수 있습니다.
+Redis에는 로그인별 회원 ID·토큰 해시·절대 만료·교체 횟수·사용 이력·선택 값을 보관하며 HttpSession은 사용하지 않습니다.
+갱신할 때도 최초 선택을 유지하고 기존 Redis 세션에 선택 값이 없으면 true로 처리합니다.
 Redis 저장이 실패하면 로그인 성공 응답과 Refresh 쿠키를 반환하지 않습니다.
 요청·응답·포트 결과 객체의 문자열 표현은 비밀번호·토큰을 가립니다.
 
@@ -155,6 +161,8 @@ CSRF 쿠키·헤더를 준비합니다. Swagger의 인증 입력은 CSRF 헤더�
 | 401 | REFRESH_TOKEN_INVALID / REFRESH_TOKEN_REUSED | 갱신 실패. Refresh 쿠키 만료, 재로그인 필요 |
 | 403 | INVALID_CSRF_TOKEN | auth 변경 요청의 CSRF 쿠키·헤더 누락·변조 |
 | 403 | ACCESS_DENIED | 현재 회원의 권한 부족 |
+| 429 | LOGIN_RATE_LIMITED | 이메일 또는 IP 실패 제한. Retry-After·retryAfterSeconds의 양의 정수 초 이후 수동 재시도 |
+| 503 | LOGIN_ATTEMPTS_UNAVAILABLE | 로그인 제한 Redis 장애. 토큰·쿠키 발급 없이 종료 |
 | 503 | AUTHENTICATION_UNAVAILABLE | DB 또는 Refresh Redis 장애. 갱신 결과가 불확실할 수 있으므로 자동 재시도하지 않음 |
 | 500 | INTERNAL_SERVER_ERROR | 예상하지 못한 매핑·서명 처리·프로그래밍 오류 |
 

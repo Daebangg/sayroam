@@ -21,8 +21,8 @@ public final class UpdateUserProfileRequest {
     private static final Set<String> ALLOWED_FIELDS =
             Set.of("nickname", "profileImageUrl", "gender", "birthYear");
 
-    @Schema(description = "앞뒤 공백 제거 후 1~50자. 제어 문자와 null 불가",
-            example = "제주 여행자", minLength = 1, maxLength = UserProfilePolicy.MAX_NICKNAME_LENGTH,
+    @Schema(description = "앞뒤 공백 제거 후 1~50자. 제어·숨김 문자와 null 불가",
+            example = "제주 여행자", minLength = 1, maxLength = UserProfilePolicy.MAX_NICKNAME_LENGTH, pattern = UserProfilePolicy.NICKNAME_PATTERN,
             requiredMode = Schema.RequiredMode.NOT_REQUIRED)
     private final String nickname;
 

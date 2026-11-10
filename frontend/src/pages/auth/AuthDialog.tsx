@@ -9,6 +9,8 @@ type AuthDialogProps = {
     onSubmit: (input: LoginInput) => Promise<boolean>;
     busy: boolean;
     message: AuthMessage | null;
+    retryAt?: number;
+    remainingAttempts?: number;
     onRetryProfile: () => void;
     onComplete: (mode: EmailFlowMode) => void;
 };

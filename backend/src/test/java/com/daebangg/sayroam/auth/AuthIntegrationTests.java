@@ -62,7 +62,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc
 @Import({AuthIntegrationTests.MailCaptureConfig.class, SwaggerAuthIndexTransformer.class})
 class AuthIntegrationTests extends DatabaseIntegrationTest {
-    private static final String PASSWORD = "test-password-123";
+    private static final String PASSWORD = "Test-password-123";
     private static final String REFRESH = "sayroam_refresh";
     private static final String[] TABLES = {"expense_share", "expense", "trip_place", "trip",
             "companion_request", "companion_search", "room_invitation", "room_member", "chat_message",
@@ -77,6 +77,8 @@ class AuthIntegrationTests extends DatabaseIntegrationTest {
     @Autowired JwtEncoder encoder;
     @Autowired SocialAuthTicketStore socialTickets;
     @Autowired OAuthBrowserCookie oauthBrowserCookie;
+    @Autowired org.springframework.data.redis.core.StringRedisTemplate redis;
+    @Autowired com.daebangg.sayroam.auth.application.port.out.AccountRegistration registrations;
     private Cookie csrf;
 
     @BeforeEach
@@ -473,9 +475,9 @@ class AuthIntegrationTests extends DatabaseIntegrationTest {
         Login otherUser = login(register(), PASSWORD);
         String proof = accountProof(one, email, "PASSWORD_CHANGE");
         assertStatus(call(HttpMethod.POST, "/api/auth/account-deletion", Map.of("accountProof", proof), one.access()), 410);
-        assertStatus(call(HttpMethod.PATCH, "/api/auth/password", Map.of("accountProof", proof, "newPassword", "new-password-456"), otherUser.access()), 410);
+        assertStatus(call(HttpMethod.PATCH, "/api/auth/password", Map.of("accountProof", proof, "newPassword", "New-password-456!"), otherUser.access()), 410);
         assertStatus(call(HttpMethod.PATCH, "/api/auth/password", Map.of("accountProof", proof, "newPassword", "short"), one.access()), 400);
-        var changed = call(HttpMethod.PATCH, "/api/auth/password", Map.of("accountProof", proof, "newPassword", "new-password-456"), one.access());
+        var changed = call(HttpMethod.PATCH, "/api/auth/password", Map.of("accountProof", proof, "newPassword", "New-password-456!"), one.access());
         assertStatus(changed, 204);
         assertThat(changed.getResponse().getCookie(REFRESH).getMaxAge()).isZero();
         for (Login old : new Login[]{one, two}) {
@@ -484,7 +486,7 @@ class AuthIntegrationTests extends DatabaseIntegrationTest {
             assertStatus(call(HttpMethod.POST, "/api/auth/refresh", null, null, old.refresh()), 401);
         }
         assertStatus(call(HttpMethod.POST, "/api/auth/login", Map.of("email", email, "password", PASSWORD), null), 401);
-        assertThat(login(email, "new-password-456").access()).isNotBlank();
+        assertThat(login(email, "New-password-456!").access()).isNotBlank();
     }
 
     @Test
@@ -613,7 +615,7 @@ class AuthIntegrationTests extends DatabaseIntegrationTest {
         Login first = login(email, PASSWORD);
         Login second = login(email, PASSWORD);
         String proof = resetProof(email.toUpperCase());
-        String replacement = "  Replacement password!  ";
+        String replacement = "Replacement-pass1!";
         var reset = reset(email, proof, replacement);
         assertStatus(reset, 204);
         assertThat(reset.getResponse().getCookie(REFRESH).getMaxAge()).isZero();
@@ -663,7 +665,7 @@ class AuthIntegrationTests extends DatabaseIntegrationTest {
         jdbc.update("DELETE FROM user_credential WHERE user_id = (SELECT id FROM users WHERE email = ?)", socialOnly);
         jdbc.update("UPDATE users SET deleted_at = NOW() WHERE email = ?", deleted);
         for (String email : java.util.List.of(socialOnly, deleted, email())) {
-            var rejected = reset(email, resetProof(email), "replacement-password");
+            var rejected = reset(email, resetProof(email), "Replacement-pass1!");
             assertStatus(rejected, 400);
             assertThat(json(rejected).path("code").asText()).isEqualTo("PASSWORD_RESET_PROOF_INVALID");
         }
@@ -680,21 +682,21 @@ class AuthIntegrationTests extends DatabaseIntegrationTest {
         String change = accountProof(login, email, "PASSWORD_CHANGE");
         String reset = resetProof(email);
         for (String wrongPurpose : java.util.List.of(signup, change)) {
-            assertStatus(reset(email, wrongPurpose, "replacement-password"), 400);
+            assertStatus(reset(email, wrongPurpose, "Replacement-pass1!"), 400);
         }
-        assertStatus(reset(email(), reset, "replacement-password"), 410);
-        assertStatus(call(HttpMethod.PATCH, "/api/auth/password", Map.of("accountProof", reset, "newPassword", "replacement-password"), login.access()), 400);
+        assertStatus(reset(email(), reset, "Replacement-pass1!"), 410);
+        assertStatus(call(HttpMethod.PATCH, "/api/auth/password", Map.of("accountProof", reset, "newPassword", "Replacement-pass1!"), login.access()), 400);
         assertStatus(call(HttpMethod.POST, "/api/auth/account-deletion", Map.of("accountProof", reset), login.access()), 410);
         assertStatus(call(HttpMethod.POST, "/api/auth/signup", Map.of("email", email, "signupProof", reset,
                 "password", PASSWORD, "nickname", "여행자"), null), 400);
-        assertStatus(reset(email, reset, "replacement-password"), 204);
+        assertStatus(reset(email, reset, "Replacement-pass1!"), 204);
     }
 
     @Test
     void resetPreservesProofOnInvalidPasswordAndRequiresRealCsrfForEveryStep() throws Exception {
         String email = register();
         String proof = resetProof(email);
-        var resetBody = Map.of("email", email, "resetProof", proof, "newPassword", "replacement-password");
+        var resetBody = Map.of("email", email, "resetProof", proof, "newPassword", "Replacement-pass1!");
         var bodies = Map.of("/api/auth/password-reset-verifications", Map.of("email", email),
                 "/api/auth/password-reset-verifications/verify", Map.of("email", email, "verificationId", UUID.randomUUID().toString(), "code", "000000"),
                 "/api/auth/password-reset", resetBody);
@@ -708,7 +710,7 @@ class AuthIntegrationTests extends DatabaseIntegrationTest {
         }
         assertStatus(reset(email, proof, "short"), 400);
         assertStatus(reset(email, proof, "        "), 400);
-        assertStatus(reset(email, proof, "replacement-password"), 204);
+        assertStatus(reset(email, proof, "Replacement-pass1!"), 204);
     }
 
     @Test
@@ -721,7 +723,7 @@ class AuthIntegrationTests extends DatabaseIntegrationTest {
         redisReset("DEL", "cooldown", email);
         var second = requestReset(email);
         assertStatus(second, 202);
-        assertStatus(reset(email, json(previous).path("resetProof").asText(), "replacement-password"), 410);
+        assertStatus(reset(email, json(previous).path("resetProof").asText(), "Replacement-pass1!"), 410);
         var replaced = call(HttpMethod.POST, "/api/auth/password-reset-verifications/verify", oldConfirmation, null);
         assertStatus(replaced, 409);
         assertThat(json(replaced).path("code").asText()).isEqualTo("EMAIL_REQUEST_SUPERSEDED");
@@ -729,7 +731,7 @@ class AuthIntegrationTests extends DatabaseIntegrationTest {
         assertStatus(current, 200);
         assertThat(redisReset("GET", "email-limit", email)).isEqualTo("2");
         assertStatus(call(HttpMethod.POST, "/api/auth/password-reset-verifications/verify", resetConfirmation(email, second), null), 409);
-        assertStatus(reset(email, json(current).path("resetProof").asText(), "replacement-password"), 204);
+        assertStatus(reset(email, json(current).path("resetProof").asText(), "Replacement-pass1!"), 204);
     }
 
     @Test
@@ -750,7 +752,7 @@ class AuthIntegrationTests extends DatabaseIntegrationTest {
         String proof = resetProof(email);
         assertThat(Long.parseLong(redisReset("PTTL", "proof", email))).isBetween(1L, 300_000L);
         redisReset("PEXPIREAT", "proof", email, "1");
-        var expired = reset(email, proof, "replacement-password");
+        var expired = reset(email, proof, "Replacement-pass1!");
         assertStatus(expired, 410);
         assertThat(json(expired).path("code").asText()).isEqualTo("PASSWORD_RESET_PROOF_EXPIRED");
     }
@@ -775,12 +777,12 @@ class AuthIntegrationTests extends DatabaseIntegrationTest {
         String email = register();
         Login original = login(email, PASSWORD);
         String proof = resetProof(email);
-        var results = concurrent(() -> reset(email, proof, "replacement-password"));
+        var results = concurrent(() -> reset(email, proof, "Replacement-pass1!"));
         assertThat(results).filteredOn(result -> result.getResponse().getStatus() == 204).hasSize(1);
         assertThat(results).filteredOn(result -> result.getResponse().getStatus() == 400 || result.getResponse().getStatus() == 409).hasSize(1);
         assertThat(jdbc.queryForObject("SELECT auth_version FROM users WHERE email = ?", Long.class, email)).isEqualTo(1);
         assertStatus(call(HttpMethod.GET, "/api/users/me", null, original.access()), 401);
-        login(email, "replacement-password");
+        login(email, "Replacement-pass1!");
     }
 
     @Test
@@ -792,7 +794,7 @@ class AuthIntegrationTests extends DatabaseIntegrationTest {
                 CREATE TRIGGER test_fail_user_update BEFORE UPDATE ON users FOR EACH ROW
                 SIGNAL SQLSTATE '40001' SET MYSQL_ERRNO = 1213, MESSAGE_TEXT = 'test transaction failure'
                 """);
-        var failed = reset(email, proof, "replacement-password");
+        var failed = reset(email, proof, "Replacement-pass1!");
         assertStatus(failed, 503);
         assertThat(json(failed).path("code").asText()).isEqualTo("PASSWORD_RESET_UNAVAILABLE");
         assertThat(failed.getResponse().getCookie(REFRESH).getMaxAge()).isZero();
@@ -800,7 +802,7 @@ class AuthIntegrationTests extends DatabaseIntegrationTest {
         assertThat(jdbc.queryForObject("SELECT auth_version FROM users WHERE email = ?", Long.class, email)).isZero();
         login(email, PASSWORD);
         assertStatus(call(HttpMethod.GET, "/api/users/me", null, original.access()), 200);
-        assertStatus(reset(email, proof, "replacement-password"), 409);
+        assertStatus(reset(email, proof, "Replacement-pass1!"), 409);
     }
 
     @Test
@@ -809,14 +811,160 @@ class AuthIntegrationTests extends DatabaseIntegrationTest {
         Login original = login(email, PASSWORD);
         String proof = resetProof(email);
         String change = accountProof(original, email, "PASSWORD_CHANGE");
-        assertStatus(call(HttpMethod.PATCH, "/api/auth/password", Map.of("accountProof", change, "newPassword", "changed-password"), original.access()), 204);
+        assertStatus(call(HttpMethod.PATCH, "/api/auth/password", Map.of("accountProof", change, "newPassword", "Changed-password1!"), original.access()), 204);
         assertStatus(reset(email, proof, "unexpected-password"), 400);
-        login(email, "changed-password");
+        login(email, "Changed-password1!");
         redisReset("DEL", "cooldown", email);
         var issued = requestReset(email);
         var confirmation = resetConfirmation(email, issued);
         jdbc.update("UPDATE users SET auth_version = auth_version + 1 WHERE email = ?", email);
         assertStatus(call(HttpMethod.POST, "/api/auth/password-reset-verifications/verify", confirmation, null), 409);
+    }
+
+    @Test
+    void fifthPasswordFailureReturnsTheRequired429ContractWithoutExtendingTheBlock() throws Exception {
+        String email = email();
+        for (int i = 0; i < 4; i++) {
+            var failed = loginAttempt(email, "wrong-password", "192.0.2.85", true);
+            assertStatus(failed, 401);
+            assertThat(json(failed).path("remainingAttempts").asInt()).isEqualTo(4 - i);
+        }
+        var fifth = loginAttempt(" " + email.toUpperCase() + " ", "wrong-password", "192.0.2.85", true);
+        assertStatus(fifth, 429);
+        assertThat(json(fifth).path("code").asText()).isEqualTo("LOGIN_RATE_LIMITED");
+        assertThat(json(fifth).path("retryAfterSeconds").asLong()).isEqualTo(300);
+        assertThat(json(fifth).has("remainingAttempts")).isFalse();
+        assertThat(fifth.getResponse().getHeader("Retry-After")).isEqualTo("300");
+        assertThat(fifth.getResponse().getHeader("Cache-Control")).contains("no-store");
+        assertThat(fifth.getResponse().getCookie(REFRESH)).isNull();
+        String key = "sayroam:auth:{login-attempts}:email:" + VerificationDigests.sha256(email);
+        var deadline = redis.opsForHash().get(key, "blockedUntil");
+        assertStatus(loginAttempt(email, "wrong-password", "198.51.100.85", true), 429);
+        assertThat(redis.opsForHash().get(key, "blockedUntil")).isEqualTo(deadline);
+        assertThat(redis.opsForHash().get(key, "failures")).isEqualTo("5");
+    }
+
+    @Test
+    void correctFifthAttemptResetsEmailAndTheNextFailureStillHasFourAttempts() throws Exception {
+        String email = register();
+        for (int i = 0; i < 4; i++) assertStatus(loginAttempt(email, "wrong-password", "192.0.2.85", true), 401);
+        assertStatus(loginAttempt(email, PASSWORD, "192.0.2.85", true), 200);
+        assertThat(redis.hasKey("sayroam:auth:{login-attempts}:email:" + VerificationDigests.sha256(email))).isFalse();
+        var nextFailure = loginAttempt(email, "wrong-password", "192.0.2.85", true);
+        assertStatus(nextFailure, 401);
+        assertThat(json(nextFailure).path("remainingAttempts").asInt()).isEqualTo(4);
+        var otherEmailFailure = loginAttempt(email(), "wrong-password", "192.0.2.85", true);
+        assertStatus(otherEmailFailure, 401);
+        assertThat(json(otherEmailFailure).path("remainingAttempts").asInt()).isEqualTo(4);
+        assertStatus(loginAttempt(email, PASSWORD, "192.0.2.85", true), 200);
+        assertThat(redis.opsForHash().get("sayroam:auth:{login-attempts}:ip-wide:" + VerificationDigests.sha256("192.0.2.85"), "failures")).isEqualTo("6");
+    }
+
+    @Test
+    void hundredthIpFailureBlocksAcrossEmailsAndForgedForwardedHeadersCannotBypassIt() throws Exception {
+        String email = register();
+        String ipKey = "sayroam:auth:{login-attempts}:ip-wide:" + VerificationDigests.sha256("192.0.2.85");
+        redis.opsForHash().put(ipKey, "failures", "99");
+        redis.expire(ipKey, Duration.ofSeconds(300));
+        var blocked = loginAttempt(email(), "wrong-password", "192.0.2.85", true);
+        assertStatus(blocked, 429);
+        assertThat(json(blocked).path("retryAfterSeconds").asInt()).isEqualTo(300);
+        assertThat(json(blocked).has("remainingAttempts")).isFalse();
+        assertThat(blocked.getResponse().getHeader("Retry-After")).isEqualTo("300");
+        assertThat(blocked.getResponse().getCookie(REFRESH)).isNull();
+        // X-Forwarded-For를 바꿔도 실제 remoteAddr 기준의 IP 제한은 유지된다.
+        assertStatus(loginAttempt(email, PASSWORD, "192.0.2.85", true), 429);
+        assertStatus(loginAttempt(email, PASSWORD, "198.51.100.85", true), 200);
+        assertThat(redis.opsForHash().get(ipKey, "failures")).isEqualTo("100");
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = {true, false})
+    void rememberChoiceSurvivesRefreshRotation(boolean rememberMe) throws Exception {
+        String email = register();
+        var signedIn = loginAttempt(email, PASSWORD, "192.0.2.85", rememberMe);
+        assertStatus(signedIn, 200);
+        var cookie = signedIn.getResponse().getCookie(REFRESH);
+        assertThat(cookie).isNotNull();
+        assertThat(cookie.getMaxAge() > 0).isEqualTo(rememberMe);
+        assertThat(cookie.isHttpOnly()).isTrue();
+        var refreshed = call(HttpMethod.POST, "/api/auth/refresh", null, null, cookie);
+        assertStatus(refreshed, 200);
+        assertThat(refreshed.getResponse().getCookie(REFRESH).getMaxAge() > 0).isEqualTo(rememberMe);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"long", "spaces"})
+    void legacyPasswordsCanStillLoginAndChangeToTheNewPolicy(String kind) throws Exception {
+        String email = register();
+        String legacy = kind.equals("long") ? "x".repeat(128) : "  old password  ";
+        jdbc.update("UPDATE user_credential SET password_hash = ? WHERE user_id = (SELECT id FROM users WHERE email = ?)", passwords.encode(legacy), email);
+        var oldLogin = login(email, legacy);
+        String proof = accountProof(oldLogin, email, "PASSWORD_CHANGE");
+        assertStatus(call(HttpMethod.PATCH, "/api/auth/password", Map.of("accountProof", proof, "newPassword", "UpdatedPass1!"), oldLogin.access()), 204);
+        login(email, "UpdatedPass1!");
+    }
+
+    @Test
+    void registeredEmailsAreRejectedBeforeAnySignupEmailIsSent() throws Exception {
+        String email = register();
+        mail.codes.remove(email + ":signup");
+        String key = "sayroam:auth:{email-verification}:state:" + VerificationDigests.sha256(email);
+        var previous = redis.opsForHash().entries(key);
+        var denied = call(HttpMethod.POST, "/api/auth/email-verifications", Map.of("email", " " + email.toUpperCase() + " "), null);
+        assertStatus(denied, 409);
+        assertThat(json(denied).path("code").asText()).isEqualTo("EMAIL_ALREADY_REGISTERED");
+        assertThat(mail.code(email, "signup")).isNull();
+        assertThat(redis.opsForHash().entries(key)).isEqualTo(previous);
+        jdbc.update("DELETE FROM user_credential WHERE user_id = (SELECT id FROM users WHERE email = ?)", email);
+        assertStatus(call(HttpMethod.POST, "/api/auth/email-verifications", Map.of("email", email), null), 409);
+    }
+
+    @Test
+    void databaseUniquenessStillProtectsSignupAfterTheEmailAvailabilityCheck() throws Exception {
+        String email = email();
+        String proof = signupProof(email);
+        registrations.register(email, "동시 가입", passwords.encode(PASSWORD), Instant.now());
+        var conflict = call(HttpMethod.POST, "/api/auth/signup", Map.of("email", email, "nickname", "후속 가입", "password", PASSWORD, "signupProof", proof), null);
+        assertStatus(conflict, 409);
+        assertThat(json(conflict).path("code").asText()).isEqualTo("EMAIL_ALREADY_REGISTERED");
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM users WHERE email = ?", Long.class, email)).isEqualTo(1L);
+    }
+
+    @Test
+    void unavailableLoginLimitStorageReturns503WithoutIssuingCookies() throws Exception {
+        var docker = org.testcontainers.DockerClientFactory.instance().client();
+        docker.pauseContainerCmd(REDIS.getContainerId()).exec();
+        try {
+            var failed = loginAttempt(email(), "wrong-password", "192.0.2.85", true);
+            assertStatus(failed, 503);
+            assertThat(json(failed).path("code").asText()).isEqualTo("LOGIN_ATTEMPTS_UNAVAILABLE");
+            assertThat(failed.getResponse().getCookie(REFRESH)).isNull();
+            assertThat(failed.getResponse().getHeader("Retry-After")).isNull();
+        } finally {
+            docker.unpauseContainerCmd(REDIS.getContainerId()).exec();
+        }
+    }
+
+    @Test
+    void loginOpenApiRequiresRetryTimingAndDocumentsPersistence() throws Exception {
+        var spec = json(mvc.perform(get("/v3/api-docs")).andExpect(status().isOk()).andReturn());
+        var response = spec.path("components").path("responses").path("LoginRateLimited");
+        assertThat(response.path("headers").path("Retry-After").path("required").asBoolean()).isTrue();
+        assertThat(response.path("content").path("application/problem+json").path("schema").path("$ref").asText()).endsWith("/LoginRateLimitedProblem");
+        assertThat(spec.path("components").path("schemas").path("LoginRateLimitedProblem").toString()).contains("retryAfterSeconds", "LOGIN_RATE_LIMITED", "minimum");
+        assertThat(spec.path("components").path("schemas").path("LoginUnauthorizedProblem").toString()).contains("remainingAttempts", "INVALID_CREDENTIALS", "required");
+        assertThat(spec.path("components").path("schemas").path("LoginRequest").path("properties").has("rememberMe")).isTrue();
+        assertThat(spec.path("components").path("schemas").path("LoginRequest").path("required").toString()).doesNotContain("rememberMe");
+    }
+
+    private MvcResult loginAttempt(String email, String password, String ip, boolean rememberMe) throws Exception {
+        String path = "/api/auth/login";
+        return mvc.perform(post(path).servletPath(path).cookie(csrf).header("X-XSRF-TOKEN", csrf.getValue())
+                        .header("X-Forwarded-For", UUID.randomUUID().toString())
+                        .with(request -> { request.setRemoteAddr(ip); return request; })
+                        .contentType("application/json").content(mapper.writeValueAsString(Map.of("email", email, "password", password, "rememberMe", rememberMe))))
+                .andReturn();
     }
 
     @Test

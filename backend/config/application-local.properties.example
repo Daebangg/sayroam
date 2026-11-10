@@ -115,3 +115,9 @@ app.auth.account-verification.max-requests-per-account=5
 app.auth.account-verification.max-requests-per-ip=20
 app.auth.account-verification.max-verification-attempts=5
 app.auth.account-verification.proof-ttl-seconds=600
+
+# 비밀번호 로그인 실패 제한 (이메일 5회·IP 100회, 단위: 초)
+app.auth.login-attempts.max-failures=5
+app.auth.login-attempts.ip-max-failures=100
+app.auth.login-attempts.window-seconds=300
+app.auth.login-attempts.block-seconds=300
