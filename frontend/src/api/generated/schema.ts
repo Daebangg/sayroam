@@ -481,6 +481,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/trips": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 여행 생성
+         * @description 로그인한 회원이 방 없이 혼자 가는 여행을 만듭니다. 기간만 입력받으며 제목은 비어 있는 상태로 만들어집니다.
+         */
+        post: operations["createTrip"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/users/me": {
         parameters: {
             query?: never;
@@ -644,6 +664,8 @@ export interface components {
             | "SOCIAL_PROVIDER_DISABLED"
             | "SOCIAL_RETURN_PATH_INVALID"
             | "SOCIAL_SIGNUP_INVALID"
+            | "TRAVEL_PERIOD_END_BEFORE_START"
+            | "TRIP_PERIOD_REQUIRED"
             | "UNAUTHENTICATED"
             | "USER_BIRTH_YEAR_INVALID"
             | "USER_NICKNAME_INVALID"
@@ -743,6 +765,28 @@ export interface components {
              * @example 7
              */
             roomId: number;
+        };
+        CreateTripRequest: {
+            /**
+             * Format: date
+             * @description 여행 종료일. 시작일과 같거나 이후
+             * @example 2026-12-04
+             */
+            endDate: string;
+            /**
+             * Format: date
+             * @description 여행 시작일
+             * @example 2026-12-01
+             */
+            startDate: string;
+        };
+        CreateTripResponse: {
+            /**
+             * Format: int64
+             * @description 생성된 여행 ID
+             * @example 12
+             */
+            tripId: number;
         };
         CurrentUserResponse: {
             /**
@@ -1453,6 +1497,15 @@ export interface components {
         };
         /** @description 503: SOCIAL_AUTH_UNAVAILABLE, AUTHENTICATION_UNAVAILABLE 또는 EMAIL_VERIFICATION_UNAVAILABLE. 상태·증명 소비나 가입 커밋 결과가 불확실할 수 있음. 자동 재시도 없이 소셜 인증부터 다시 시작 */
         SocialUnavailable: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/problem+json": components["schemas"]["ApiProblem"];
+            };
+        };
+        /** @description 400: INVALID_INPUT(시작일·종료일 누락, errors 포함), TRAVEL_PERIOD_END_BEFORE_START(종료일이 시작일보다 앞섬) 또는 Spring 요청 오류(날짜 형식 오류). 날짜는 yyyy-MM-dd */
+        TripBadRequest: {
             headers: {
                 [name: string]: unknown;
             };
@@ -2244,6 +2297,34 @@ export interface operations {
             503: components["responses"]["AuthenticationUnavailable"];
         };
     };
+    createTrip: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateTripRequest"];
+            };
+        };
+        responses: {
+            /** @description 여행 생성 완료 */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CreateTripResponse"];
+                };
+            };
+            400: components["responses"]["TripBadRequest"];
+            401: components["responses"]["Unauthorized"];
+            500: components["responses"]["InternalServerError"];
+            503: components["responses"]["AuthenticationUnavailable"];
+        };
+    };
     me: {
         parameters: {
             query?: never;
@@ -2367,6 +2448,13 @@ export const apiRoutes = {
     createInvitation: {
         method: "post",
         path: "/api/rooms/{roomId}/invitations",
+        auth: "required",
+        csrf: false,
+        responses: { "201": true },
+    },
+    createTrip: {
+        method: "post",
+        path: "/api/trips",
         auth: "required",
         csrf: false,
         responses: { "201": true },

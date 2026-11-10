@@ -1,9 +1,10 @@
 package com.daebangg.sayroam;
 
-import com.daebangg.sayroam.trip.domain.Trip;
-import com.daebangg.sayroam.user.domain.type.Role;
-import com.daebangg.sayroam.user.domain.entity.User;
+import com.daebangg.sayroam.common.domain.TravelPeriod;
 import com.daebangg.sayroam.support.DatabaseIntegrationTest;
+import com.daebangg.sayroam.trip.domain.Trip;
+import com.daebangg.sayroam.user.domain.entity.User;
+import com.daebangg.sayroam.user.domain.type.Role;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityManagerFactory;
 import jakarta.persistence.PersistenceContext;
@@ -13,6 +14,8 @@ import org.springframework.core.env.Environment;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDate;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -40,19 +43,20 @@ class SayroamApplicationTests extends DatabaseIntegrationTest {
                 SELECT COUNT(*) FROM information_schema.tables
                 WHERE table_schema = DATABASE() AND table_type = 'BASE TABLE'
                 """, Integer.class)).isEqualTo(18);
-        assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("5");
+        assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("6");
         flyway.validate();
         assertThat(flyway.migrate().migrationsExecuted).isZero();
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM flyway_schema_history WHERE success = 1",
-                Integer.class)).isEqualTo(5);
+                Integer.class)).isEqualTo(6);
     }
 
     @Test
     @Transactional
-    void jpaPersistsAuditingEnumsAndOptionalTravelPeriod() {
+    void jpaPersistsAuditingEnumsAndTravelPeriod() {
         User user = User.builder().nickname("테스트 회원").role(Role.USER).build();
         entityManager.persist(user);
-        Trip trip = Trip.builder().createdById(user.getId()).build();
+        TravelPeriod period = new TravelPeriod(LocalDate.of(2026, 12, 1), LocalDate.of(2026, 12, 4));
+        Trip trip = new Trip(user.getId(), period);
         entityManager.persist(trip);
         entityManager.flush();
         Object tripId = entityManagerFactory.getPersistenceUnitUtil().getIdentifier(trip);
@@ -60,8 +64,8 @@ class SayroamApplicationTests extends DatabaseIntegrationTest {
         assertThat(entityManager.find(Trip.class, tripId)).isNotNull();
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM users WHERE created_at IS NOT NULL AND updated_at IS NOT NULL",
                 Integer.class)).isEqualTo(1);
-        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM trip WHERE start_date IS NULL AND end_date IS NULL",
-                Integer.class)).isEqualTo(1);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM trip WHERE start_date = ? AND end_date = ?",
+                Integer.class, period.startDate(), period.endDate())).isEqualTo(1);
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM trip WHERE room_id IS NULL AND created_by = ?",
                 Integer.class, user.getId())).isEqualTo(1);
     }
