@@ -2,6 +2,7 @@ package com.daebangg.sayroam.user.presentation.api;
 
 import com.daebangg.sayroam.auth.domain.AuthenticatedAccount;
 import com.daebangg.sayroam.user.presentation.dto.CurrentUserResponse;
+import com.daebangg.sayroam.user.presentation.dto.UserLoginMethodsResponse;
 import com.daebangg.sayroam.user.presentation.dto.UpdateUserProfileRequest;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -15,6 +16,17 @@ import org.springframework.web.bind.annotation.RequestBody;
 
 @Tag(name = "Users")
 public interface UserApi {
+
+    @Operation(summary = "내 로그인 수단 조회", description = "비밀번호 로그인 가능 여부와 실제로 연결된 소셜 공급자만 반환합니다. 공급자 회원 ID·토큰·해시는 노출하지 않습니다.")
+    @SecurityRequirement(name = "bearerAuth")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "현재 회원의 로그인 수단. Cache-Control: no-store"),
+            @ApiResponse(responseCode = "401", ref = "#/components/responses/Unauthorized"),
+            @ApiResponse(responseCode = "503", ref = "#/components/responses/AuthenticationUnavailable"),
+            @ApiResponse(responseCode = "500", ref = "#/components/responses/InternalServerError")
+    })
+    ResponseEntity<UserLoginMethodsResponse> loginMethods(
+            @Parameter(hidden = true) @AuthenticationPrincipal AuthenticatedAccount account);
 
     @Operation(summary = "내 회원 정보 조회",
             description = "현재 로그인한 회원의 정보를 조회합니다. 성별·출생연도·프로필 이미지가 미설정이면 null을 반환합니다.")

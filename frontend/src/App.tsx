@@ -1,7 +1,7 @@
 import { socialReturn } from "@/routing/socialReturn";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Outlet, ScrollRestoration, useLocation, useNavigate, useNavigation } from "react-router";
+import { Outlet, ScrollRestoration, useLocation, useNavigate } from "react-router";
 import { AppShell } from "@/components/layout/AppShell";
 import { AuthDialog } from "@/pages/auth/AuthDialog";
 import { MemberGate } from "@/components/features/auth/MemberGate";
@@ -13,15 +13,24 @@ import { getMockupScreen } from "@/routing/mockups";
 import { setLanguage } from "@/i18n";
 import type { Language } from "@/i18n/locale";
 import { useTheme, type ThemePreference } from "@/hooks/useTheme";
-import { LoadingPage } from "@/pages/status/StatusPage";
 import { RouteAccessibility } from "@/routing/RouteAccessibility";
 import { Toast } from "@/components/ui";
+import { AccountResultDialog } from "@/components/features/settings/AccountDialogs";
+import type { AccountResult } from "@/hooks/account.types";
 
-type AuthToast = "signupComplete" | "resetComplete" | "loginComplete" | "logoutComplete";
+type AuthToast =
+    | "signupComplete"
+    | "resetComplete"
+    | "loginComplete"
+    | "logoutComplete"
+    | "nicknameSaved"
+    | "passwordChanged"
+    | "accountDeleted";
 
 export default function App() {
     const { i18n, t } = useTranslation();
     const [toast, setToast] = useState<{ id: number; message: AuthToast } | null>(null);
+    const [accountResult, setAccountResult] = useState<AccountResult | null>(null);
     const toastSequence = useRef(0);
 
     function showToast(message: AuthToast): void {
@@ -30,9 +39,6 @@ export default function App() {
     const location = useLocation();
     const mockupScreen = getMockupScreen(location.pathname, location.search);
     const navigate = useNavigate();
-    const navigation = useNavigation();
-    const isPageLoading =
-        navigation.state !== "idle" && navigation.location?.pathname !== location.pathname;
     const theme = useTheme();
     const auth = useAuthSession(socialReturn !== null);
     const checkSession = auth.check;
@@ -157,7 +163,6 @@ export default function App() {
             mockupScreen={mockupScreen}
             isHome={location.pathname === "/"}
             theme={theme.resolved}
-            themePreference={theme.preference}
             onThemeChange={changeTheme}
             onLanguageChange={changeLanguage}
             onOpenAuth={openAuth}
@@ -174,9 +179,7 @@ export default function App() {
                     onRetryProfile={retryProfile}
                 />
             )}
-            {isPageLoading ? (
-                <LoadingPage />
-            ) : isMemberPath(location.pathname) && !auth.user ? (
+            {isMemberPath(location.pathname) && !auth.user ? (
                 <MemberGate
                     checking={authBusy}
                     unavailable={auth.status === "unavailable"}
@@ -188,6 +191,25 @@ export default function App() {
                         onOpenAuth: openAuth,
                         onLanguageChange: () =>
                             changeLanguage(i18n.resolvedLanguage === "ko" ? "en" : "ko"),
+                        member: auth.user,
+                        themePreference: theme.preference,
+                        onThemeChange: changeTheme,
+                        onSelectLanguage: changeLanguage,
+                        onUpdateNickname: async (nickname: string, signal: AbortSignal) => {
+                            await auth.updateNickname(nickname, signal);
+                            showToast("nicknameSaved");
+                        },
+                        onAccountResult: (result: AccountResult) => {
+                            auth.endSession();
+                            setAccountResult(result.outcome === "complete" ? null : result);
+                            if (result.outcome === "complete")
+                                showToast(
+                                    result.purpose === "ACCOUNT_DELETION"
+                                        ? "accountDeleted"
+                                        : "passwordChanged",
+                                );
+                            void navigate(pagePaths.plaza, { replace: true });
+                        },
                     }}
                 />
             )}
@@ -219,6 +241,16 @@ export default function App() {
                     key={toast.id}
                     message={t(`auth.${toast.message}`)}
                     onDismiss={() => setToast(null)}
+                />
+            )}
+            {accountResult && (
+                <AccountResultDialog
+                    result={accountResult}
+                    onClose={() => setAccountResult(null)}
+                    onLogin={() => {
+                        setAccountResult(null);
+                        openAuth();
+                    }}
                 />
             )}
         </AppShell>

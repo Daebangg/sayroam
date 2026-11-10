@@ -33,6 +33,7 @@ function EmailDialog({
         <EmailFlowModal
             mode={mode}
             busy={flow.busy}
+            sending={flow.sending}
             sent={flow.sent}
             verified={flow.verified}
             expiresIn={flow.expiresIn}

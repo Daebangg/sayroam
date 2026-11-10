@@ -4,6 +4,7 @@ import com.daebangg.sayroam.global.exception.BusinessException;
 import com.daebangg.sayroam.global.exception.CommonErrorCode;
 import com.daebangg.sayroam.user.application.command.UpdateUserProfileCommand;
 import com.daebangg.sayroam.user.application.result.UserProfileResult;
+import com.daebangg.sayroam.user.application.result.UserLoginMethodsResult;
 import com.daebangg.sayroam.user.domain.entity.User;
 import com.daebangg.sayroam.user.domain.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -19,6 +20,13 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class UserService {
     private final UserRepository userRepository;
+
+    @Transactional(readOnly = true)
+    public UserLoginMethodsResult getLoginMethods(long userId, long expectedAuthVersion) {
+        User user = requireCurrentUser(userRepository.findByIdAndDeletedAtIsNull(userId), expectedAuthVersion);
+        return new UserLoginMethodsResult(userRepository.hasPassword(user.getId()),
+                userRepository.findSocialProviders(user.getId()));
+    }
 
     @Transactional(readOnly = true)
     public UserProfileResult getCurrentUser(long userId, long expectedAuthVersion) {

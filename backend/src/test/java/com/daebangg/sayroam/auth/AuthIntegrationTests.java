@@ -127,6 +127,13 @@ class AuthIntegrationTests extends DatabaseIntegrationTest {
         assertThat(json(me).path("email").asText()).isEqualTo(email);
         assertThat(json(me).path("nickname").asText()).isEqualTo("여행자");
         assertThat(me.getRequest().getSession(false)).isNull();
+        MvcResult methods = call(HttpMethod.GET, "/api/users/me/login-methods", null, login.access());
+        assertStatus(methods, 200);
+        assertThat(json(methods).size()).isEqualTo(2);
+        assertThat(json(methods).path("passwordEnabled").asBoolean()).isTrue();
+        assertThat(json(methods).path("socialProviders").isEmpty()).isTrue();
+        assertThat(methods.getResponse().getHeader("Cache-Control")).isEqualTo("no-store");
+        assertStatus(call(HttpMethod.GET, "/api/users/me/login-methods", null, null), 401);
     }
 
     @ParameterizedTest
@@ -164,6 +171,12 @@ class AuthIntegrationTests extends DatabaseIntegrationTest {
                 + "AND provider_user_id = 'profile-user' AND user_id = ?", Integer.class,
                 json(me).path("userId").asLong())).isEqualTo(1);
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM user_credential", Integer.class)).isZero();
+        MvcResult methods = call(HttpMethod.GET, "/api/users/me/login-methods", null, access);
+        assertStatus(methods, 200);
+        assertThat(json(methods).size()).isEqualTo(2);
+        assertThat(json(methods).path("passwordEnabled").asBoolean()).isFalse();
+        assertThat(json(methods).path("socialProviders").size()).isEqualTo(1);
+        assertThat(json(methods).path("socialProviders").get(0).asText()).isEqualTo("NAVER");
 
         MvcResult replay = call(HttpMethod.POST, "/api/auth/social/signup", body, null, browser);
         assertStatus(replay, 400);

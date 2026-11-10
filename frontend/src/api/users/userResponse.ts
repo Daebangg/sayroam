@@ -38,3 +38,24 @@ export function validateCurrentUser(value: unknown, status: number): CurrentUser
         role: value.role,
     };
 }
+
+export function validateLoginMethods(
+    value: unknown,
+    status: number,
+): components["schemas"]["UserLoginMethodsResponse"] {
+    if (
+        typeof value !== "object" ||
+        value === null ||
+        !("passwordEnabled" in value) ||
+        typeof value.passwordEnabled !== "boolean" ||
+        !("socialProviders" in value) ||
+        !Array.isArray(value.socialProviders) ||
+        !value.socialProviders.every(
+            (provider: unknown) =>
+                provider === "GOOGLE" || provider === "KAKAO" || provider === "NAVER",
+        ) ||
+        new Set(value.socialProviders).size !== value.socialProviders.length
+    )
+        throw new ApiError("invalid-response", { status });
+    return { passwordEnabled: value.passwordEnabled, socialProviders: value.socialProviders };
+}

@@ -48,6 +48,7 @@ const icons = [
     "bookmark",
     "calendar",
     "settings",
+    "edit",
     "grid",
     "plus",
     "minus",

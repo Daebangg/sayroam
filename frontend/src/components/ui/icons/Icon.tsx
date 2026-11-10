@@ -5,6 +5,7 @@ export type IconName =
     | "rooms"
     | "profile"
     | "settings"
+    | "edit"
     | "grid"
     | "bell"
     | "search"
