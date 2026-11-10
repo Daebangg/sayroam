@@ -22,7 +22,6 @@ import java.time.LocalDateTime;
 import java.util.Objects;
 
 // 테이블명 user는 예약어라 users를 쓴다
-@Getter
 @Entity
 @Table(
         name = "users",
@@ -31,33 +30,43 @@ import java.util.Objects;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class User extends BaseTimeEntity {
 
+    @Getter
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     // 대표 이메일. 탈퇴 시 NULL로 비워 재가입 시 UNIQUE 충돌을 막는다
+    @Getter
     private String email;
 
+    @Getter
     private LocalDateTime emailVerifiedAt;
 
+    @Getter
     @Column(nullable = false, length = UserProfilePolicy.MAX_NICKNAME_LENGTH)
     private String nickname;
 
+    @Getter
     @Column(length = UserProfilePolicy.MAX_PROFILE_IMAGE_URL_LENGTH)
     private String profileImageUrl;
 
+    @Getter
     @Enumerated(EnumType.STRING)
     @Column(length = 10)
     private Gender gender;
 
+    @Getter
     private Integer birthYear;
 
+    @Getter
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private Role role;
 
+    @Getter
     private LocalDateTime deletedAt;
 
+    @Getter
     @Column(nullable = false)
     private long authVersion;
 

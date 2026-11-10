@@ -13,6 +13,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import lombok.AccessLevel;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.util.regex.Pattern;
@@ -26,24 +27,30 @@ public class ChatMessage extends BaseTimeEntity {
     private static final int MAX_CONTENT_LENGTH = 500;
     private static final Pattern UUID_PATTERN = Pattern.compile("[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}");
 
+    @Getter
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Getter
     @Column(name = "room_id", nullable = false)
     private Long roomId;
 
     // 시스템 메시지는 NULL
+    @Getter
     @Column(name = "sender_id")
     private Long senderId;
 
+    @Getter
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private ChatMessageType type;
 
+    @Getter
     @Column(nullable = false, columnDefinition = "TEXT")
     private String content;
 
+    @Getter
     @Column(name = "client_message_id", length = 36)
     private String clientMessageId;
 
@@ -63,30 +70,6 @@ public class ChatMessage extends BaseTimeEntity {
         validateContent(content);
 
         return new ChatMessage(roomId, senderId, ChatMessageType.TEXT, clientMessageId, content);
-    }
-
-    public Long getId() {
-        return id;
-    }
-
-    public Long getRoomId() {
-        return roomId;
-    }
-
-    public Long getSenderId() {
-        return senderId;
-    }
-
-    public ChatMessageType getType() {
-        return type;
-    }
-
-    public String getContent() {
-        return content;
-    }
-
-    public String getClientMessageId() {
-        return clientMessageId;
     }
 
     private static void validateContent(String content) {
