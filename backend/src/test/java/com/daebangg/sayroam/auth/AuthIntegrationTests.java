@@ -163,7 +163,8 @@ class AuthIntegrationTests extends DatabaseIntegrationTest {
                 Integer.class, originalId)).isZero();
         assertStatus(call(HttpMethod.POST, "/api/auth/login",
                 Map.of("email", email, "password", changedPassword), null), 401);
-        assertStatus(call(HttpMethod.GET, "/api/users/me", null, null), 401);
+        assertStatus(call(HttpMethod.GET, "/api/users/me", null, afterChange.access()), 401);
+        assertStatus(call(HttpMethod.POST, "/api/auth/refresh", null, null, afterChange.refresh()), 401);
 
         // 재가입 대기 시간만 경과시킨다. 같은 여정의 제한 카운터·폐기된 로그인은 보존한다.
         String emailHash = VerificationDigests.sha256(email);

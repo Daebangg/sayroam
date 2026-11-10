@@ -57,7 +57,7 @@ JPA 트랜잭션과 Redis Lua를 통과합니다. Security MVC 슬라이스는 �
 | 공통 실패 종류 | 입력·인증·권한·충돌·만료·요청 제한·일시 장애·외부 처리 실패·내부 오류의 HTTP 상태 변환 |
 | 스키마 | 빈 DB의 현재 마이그레이션 적용, 재적용 없음, 엔티티 매핑·감사 시각·UNIQUE/FK 제약 |
 
-전체 Java 테스트 개수와 성공·실패·스킵 결과는 실행 후 `build/reports/tests/test/index.html`에서
+전체 Java 테스트 개수와 성공·실패·스킵 결과는 실행 후 `backend/build/reports/tests/test/index.html`에서
 확인합니다. Swagger JavaScript 검사는 위의 Node 명령으로 별도 실행합니다.
 
 실제 SMTP 발송·수신과 동일 출처 프론트엔드의 쿠키 연동은 위 전체 흐름 문서의 확인 범위를 따릅니다.
