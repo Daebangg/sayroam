@@ -3,11 +3,13 @@ package com.daebangg.sayroam.auth.infrastructure.persistence;
 import com.daebangg.sayroam.auth.application.error.AuthErrorCode;
 import com.daebangg.sayroam.auth.application.error.AuthException;
 import com.daebangg.sayroam.auth.application.port.out.PasswordChange;
+import com.daebangg.sayroam.auth.domain.event.LoginsInvalidated;
 import com.daebangg.sayroam.user.domain.entity.User;
 import com.daebangg.sayroam.user.domain.entity.UserCredential;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.LockModeType;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataAccessException;
 import org.springframework.dao.DataAccessResourceFailureException;
 import org.springframework.dao.RecoverableDataAccessException;
@@ -29,9 +31,12 @@ public class JpaPasswordChange implements PasswordChange {
     private static final HibernateJpaDialect JPA_DIALECT = new HibernateJpaDialect();
     private final EntityManager entityManager;
     private final TransactionTemplate transaction;
+    private final ApplicationEventPublisher eventPublisher;
 
-    public JpaPasswordChange(EntityManager entityManager, PlatformTransactionManager transactionManager) {
+    public JpaPasswordChange(EntityManager entityManager, PlatformTransactionManager transactionManager,
+                             ApplicationEventPublisher eventPublisher) {
         this.entityManager = entityManager;
+        this.eventPublisher = eventPublisher;
         this.transaction = new TransactionTemplate(transactionManager);
         this.transaction.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
     }
@@ -53,6 +58,8 @@ public class JpaPasswordChange implements PasswordChange {
                 credential.changePassword(passwordHash, LocalDateTime.now(ZoneOffset.UTC));
                 user.invalidateLogins();
                 entityManager.flush();
+                // 트랜잭션 안에서 발행해야 커밋 후 리스너가 받는다.
+                eventPublisher.publishEvent(new LoginsInvalidated(userId));
             });
         } catch (AuthException exception) {
             throw exception;

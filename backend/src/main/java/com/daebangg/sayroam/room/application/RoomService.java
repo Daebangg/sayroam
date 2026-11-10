@@ -8,7 +8,9 @@ import com.daebangg.sayroam.room.domain.RoomInvitationRepository;
 import com.daebangg.sayroam.room.domain.RoomMember;
 import com.daebangg.sayroam.room.domain.RoomMemberRepository;
 import com.daebangg.sayroam.room.domain.RoomRepository;
+import com.daebangg.sayroam.room.domain.event.RoomMemberLeft;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,6 +24,7 @@ public class RoomService {
     private final RoomRepository roomRepository;
     private final RoomMemberRepository roomMemberRepository;
     private final RoomInvitationRepository roomInvitationRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Transactional
     public Long create(Long userId, String name) {
@@ -62,6 +65,7 @@ public class RoomService {
     public void leave(Long roomId, Long userId) {
         RoomMember member = getMember(roomId, userId);
         member.leave(LocalDateTime.now(ZoneOffset.UTC));
+        eventPublisher.publishEvent(new RoomMemberLeft(roomId, userId));
     }
 
     private RoomMember getMember(Long roomId, Long userId) {

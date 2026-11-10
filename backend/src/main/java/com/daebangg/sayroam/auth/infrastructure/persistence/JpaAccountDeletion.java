@@ -4,10 +4,12 @@ import com.daebangg.sayroam.auth.application.error.AuthErrorCode;
 import com.daebangg.sayroam.auth.application.error.AuthException;
 import com.daebangg.sayroam.auth.application.port.in.AccountDeletionCleanup;
 import com.daebangg.sayroam.auth.application.port.out.AccountDeletion;
+import com.daebangg.sayroam.auth.domain.event.LoginsInvalidated;
 import com.daebangg.sayroam.user.domain.entity.User;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.LockModeType;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataAccessException;
 import org.springframework.dao.DataAccessResourceFailureException;
 import org.springframework.dao.RecoverableDataAccessException;
@@ -30,13 +32,15 @@ public class JpaAccountDeletion implements AccountDeletion {
     private final EntityManager entityManager;
     private final TransactionTemplate transaction;
     private final AccountDeletionCleanup cleanup;
+    private final ApplicationEventPublisher eventPublisher;
 
     public JpaAccountDeletion(EntityManager entityManager, PlatformTransactionManager transactionManager,
-                              AccountDeletionCleanup cleanup) {
+                              AccountDeletionCleanup cleanup, ApplicationEventPublisher eventPublisher) {
         this.entityManager = entityManager;
         this.transaction = new TransactionTemplate(transactionManager);
         this.transaction.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
         this.cleanup = cleanup;
+        this.eventPublisher = eventPublisher;
     }
 
     @Override
@@ -52,6 +56,8 @@ public class JpaAccountDeletion implements AccountDeletion {
                 cleanup.deleteOwnedData(userId);
                 user.withdraw(LocalDateTime.now(ZoneOffset.UTC));
                 entityManager.flush();
+                // 트랜잭션 안에서 발행해야 커밋 후 리스너가 받는다.
+                eventPublisher.publishEvent(new LoginsInvalidated(userId));
             });
         } catch (AuthException exception) {
             throw exception;

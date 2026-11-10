@@ -1,6 +1,8 @@
 package com.daebangg.sayroam.chat.presentation.stomp;
 
 import com.daebangg.sayroam.auth.application.port.out.AccessTokenIssuer;
+import com.daebangg.sayroam.auth.application.port.out.AccountDeletion;
+import com.daebangg.sayroam.auth.application.port.out.PasswordChange;
 import com.daebangg.sayroam.auth.infrastructure.config.AccessTokenProperties;
 import com.daebangg.sayroam.chat.domain.ChatMessageRepository;
 import com.daebangg.sayroam.global.exception.CommonErrorCode;
@@ -13,6 +15,7 @@ import com.daebangg.sayroam.room.domain.RoomRepository;
 import com.daebangg.sayroam.support.DatabaseIntegrationTest;
 import com.daebangg.sayroam.user.domain.type.Role;
 import com.daebangg.sayroam.user.domain.entity.User;
+import com.daebangg.sayroam.user.domain.entity.UserCredential;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityManagerFactory;
 import org.junit.jupiter.api.AfterEach;
@@ -60,6 +63,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class ChatStompIntegrationTest extends DatabaseIntegrationTest {
     private static final Object PROBE = Map.of("probe", true);
     private static final String CLIENT_MESSAGE_ID = "6f1c2b6e-8a57-4b7a-9d3e-2f4a1c7e9b10";
+    private static final String EMAIL = "user@example.com";
 
     @LocalServerPort
     int port;
@@ -75,6 +79,12 @@ class ChatStompIntegrationTest extends DatabaseIntegrationTest {
 
     @Autowired
     JwtEncoder jwtEncoder;
+
+    @Autowired
+    PasswordChange passwordChange;
+
+    @Autowired
+    AccountDeletion accountDeletion;
 
     @Autowired
     RoomService roomService;
@@ -102,8 +112,10 @@ class ChatStompIntegrationTest extends DatabaseIntegrationTest {
         chatMessageRepository.deleteAllInBatch();
         roomMemberRepository.deleteAllInBatch();
         roomRepository.deleteAllInBatch();
-        transactionTemplate.executeWithoutResult(status ->
-                entityManager.createQuery("DELETE FROM User").executeUpdate());
+        transactionTemplate.executeWithoutResult(status -> {
+            entityManager.createQuery("DELETE FROM UserCredential").executeUpdate();
+            entityManager.createQuery("DELETE FROM User").executeUpdate();
+        });
     }
 
     @Test
@@ -411,6 +423,60 @@ class ChatStompIntegrationTest extends DatabaseIntegrationTest {
     }
 
     @Test
+    void 비밀번호를_변경하면_수신만_하는_연결도_즉시_종료한다() throws Exception {
+        // given
+        Long userId = saveVerifiedUser();
+        Long roomId = roomService.create(userId, "제주 3박 4일");
+        ConnectionEvents events = new ConnectionEvents();
+        StompSession session = connect(tokenOf(userId), events).get(5, TimeUnit.SECONDS);
+        subscribeRoom(session, roomId);
+
+        // when
+        passwordChange.change(userId, EMAIL, 0L, "new-hash");
+
+        // then
+        StompHeaders error = events.errorFrame.get(5, TimeUnit.SECONDS);
+        assertThat(error.getFirst("message")).isEqualTo(CommonErrorCode.UNAUTHENTICATED.getCode());
+        assertThat(events.closed.get(5, TimeUnit.SECONDS)).isNotNull();
+    }
+
+    @Test
+    void 탈퇴하면_수신만_하는_연결도_즉시_종료한다() throws Exception {
+        // given
+        Long userId = saveVerifiedUser();
+        Long roomId = roomService.create(userId, "제주 3박 4일");
+        ConnectionEvents events = new ConnectionEvents();
+        StompSession session = connect(tokenOf(userId), events).get(5, TimeUnit.SECONDS);
+        subscribeRoom(session, roomId);
+
+        // when
+        accountDeletion.delete(userId, EMAIL, 0L);
+
+        // then
+        StompHeaders error = events.errorFrame.get(5, TimeUnit.SECONDS);
+        assertThat(error.getFirst("message")).isEqualTo(CommonErrorCode.UNAUTHENTICATED.getCode());
+        assertThat(events.closed.get(5, TimeUnit.SECONDS)).isNotNull();
+    }
+
+    @Test
+    void 방을_나가면_그_방을_구독한_연결을_즉시_종료한다() throws Exception {
+        // given
+        Long userId = saveUser();
+        Long roomId = roomService.create(userId, "제주 3박 4일");
+        ConnectionEvents events = new ConnectionEvents();
+        StompSession session = connect(tokenOf(userId), events).get(5, TimeUnit.SECONDS);
+        subscribeRoom(session, roomId);
+
+        // when
+        roomService.leave(roomId, userId);
+
+        // then
+        StompHeaders error = events.errorFrame.get(5, TimeUnit.SECONDS);
+        assertThat(error.getFirst("message")).isEqualTo(RoomErrorCode.ROOM_ACCESS_DENIED.getCode());
+        assertThat(events.closed.get(5, TimeUnit.SECONDS)).isNotNull();
+    }
+
+    @Test
     void 토큰이_만료되면_ERROR_프레임에_인증_오류_코드를_담는다() throws Exception {
         // given
         Long userId = saveUser();
@@ -545,6 +611,15 @@ class ChatStompIntegrationTest extends DatabaseIntegrationTest {
         public void handleTransportError(StompSession session, Throwable exception) {
             closed.complete(exception);
         }
+    }
+
+    private Long saveVerifiedUser() {
+        return transactionTemplate.execute(status -> {
+            User user = User.verifiedEmailMember(EMAIL, "회원", LocalDateTime.now(ZoneOffset.UTC));
+            entityManager.persist(user);
+            entityManager.persist(UserCredential.builder().user(user).passwordHash("old-hash").build());
+            return user.getId();
+        });
     }
 
     private Long saveUser() {
