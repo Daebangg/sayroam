@@ -11,6 +11,13 @@
 - 중첩 타입은 `AccountVerificationStore.Subject`처럼 소유 타입을 드러내는 표기를 우선합니다. 필요한 import를 추가하고 타입 이름 충돌이 없으면 선언에 전체 패키지 경로를 반복하지 않습니다.
 - 타입 선언만 정리하는 작업에서는 초기화식·분기·예외·null 처리·트랜잭션·외부 계약을 함께 바꾸지 않습니다.
 
+## 엔티티 getter
+
+- 필드를 그대로 반환하는 getter는 직접 구현하지 않고 Lombok `@Getter`로 생성합니다.
+- `@Getter`는 협력에 필요한 필드에만 붙입니다. 엔티티 클래스 전체에 붙이면 이후 추가되는 필드까지 자동으로 공개되므로 사용하지 않습니다. 엔티티에는 `@Setter`, `@Data`를 사용하지 않습니다.
+- 예외로 감사 시각처럼 읽기 전용 메타데이터만 가진 클래스(`BaseTimeEntity`)는 클래스 전체에 `@Getter`를 붙일 수 있습니다.
+- 값을 계산하거나 연관 객체에서 꺼내는 메서드(`RoomMember.isOwner`, `RoomInvitation.getRoomId`)는 직접 구현합니다.
+
 ## API URL
 
 - 도메인 API(room, chat, users, trip, 이후 매칭 등)는 명사형 리소스 URL만 사용하고 경로에 동사를 넣지 않습니다. 좋은 예 `DELETE /api/rooms/{roomId}/members/me`, 피할 예 `POST /api/rooms/{roomId}/leave`.
