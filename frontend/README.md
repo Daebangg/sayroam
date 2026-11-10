@@ -267,6 +267,9 @@ API·파일·Swagger·서버 및 인증 예약 경로는 앱의 404 화면으로
 
 ## 공통 요청과 CSRF
 
+실제 메일 수신부터 가입·로그인·계정 변경·탈퇴까지의 확인 범위와 남은 소셜 조합은
+[인증 전체 흐름 검증](../backend/docs/auth-user-flows.md)을 참고합니다.
+
 일반 API는 `src/api/api.ts`의 `api.call(operationId, options)`로 호출합니다.
 `schema.ts`의 생성 타입·경로표가 URL·HTTP 메서드·Bearer·CSRF 요구를 제공하므로 호출마다
 정책을 선택하거나 전용 호출 함수를 작성하지 않습니다. 본문·경로·쿼리 입력과 반환 타입도
