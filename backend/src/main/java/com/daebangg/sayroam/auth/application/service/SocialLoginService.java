@@ -25,6 +25,10 @@ public class SocialLoginService {
     private final LoginTokenService tokens;
     private final SocialAuthPolicy policy;
 
+    public java.util.List<SocialProvider> availableProviders() {
+        return identities.availableProviders();
+    }
+
     public SocialLoginService(SocialIdentityProvider identities, OAuthTransactionStore transactions,
                               SocialAuthTicketStore tickets, SocialAccounts accounts,
                               LoginTokenService tokens, SocialAuthPolicy policy) {
@@ -92,7 +96,8 @@ public class SocialLoginService {
             throw new AuthException(AuthErrorCode.SOCIAL_AUTH_UNAVAILABLE);
         }
         // URL에는 로그인 토큰·회원 정보·공급자 오류를 넣지 않는다. fragment는 HTTP Referer로 전송되지 않는다.
-        return URI.create(transaction.returnPath() + "#social_result=" + resultCode);
+        URI location = URI.create(transaction.returnPath() + "#social_result=" + resultCode);
+        return policy.frontendOrigin() == null ? location : policy.frontendOrigin().resolve(location);
     }
 
     public Exchanged exchange(String resultCode, String browserBinding) {

@@ -42,6 +42,13 @@ public class SpringOAuth2IdentityProvider implements SocialIdentityProvider {
     private final RestClientAuthorizationCodeTokenResponseClient tokens;
     private final DefaultOAuth2UserService users;
 
+    @Override
+    public java.util.List<SocialProvider> availableProviders() {
+        return java.util.Arrays.stream(SocialProvider.values())
+                .filter(provider -> clients.findByRegistrationId(provider.name().toLowerCase(Locale.ROOT)) != null)
+                .toList();
+    }
+
     public SpringOAuth2IdentityProvider(ClientRegistrationRepository clients, OAuth2UserInfoMapper mapper) {
         this.clients = clients;
         this.mapper = mapper;

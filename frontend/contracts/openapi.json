@@ -1110,6 +1110,17 @@
                 "required": ["status"],
                 "type": "object"
             },
+            "SocialProvidersResponse": {
+                "properties": {
+                    "providers": {
+                        "description": "서버에 활성화된 공급자만 반환. 클라이언트 ID·비밀값은 포함하지 않음",
+                        "items": { "enum": ["KAKAO", "GOOGLE", "NAVER"], "type": "string" },
+                        "type": "array"
+                    }
+                },
+                "required": ["providers"],
+                "type": "object"
+            },
             "SocialResultExchangeRequest": {
                 "properties": {
                     "resultCode": {
@@ -1713,6 +1724,30 @@
                 },
                 "security": [{ "csrfToken": [] }],
                 "summary": "이메일 인증 후 회원가입",
+                "tags": ["Auth"]
+            }
+        },
+        "/api/auth/social/providers": {
+            "get": {
+                "description": "인증 없이 현재 서버에서 활성화한 공급자 목록만 반환합니다. 자격 정보는 공개하지 않습니다.",
+                "operationId": "listSocialProviders",
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/SocialProvidersResponse" }
+                            }
+                        },
+                        "description": "활성 공급자 목록. Cache-Control: no-store"
+                    },
+                    "400": { "$ref": "#/components/responses/SocialBadRequest" },
+                    "401": { "$ref": "#/components/responses/SocialUnauthorized" },
+                    "403": { "$ref": "#/components/responses/Forbidden" },
+                    "409": { "$ref": "#/components/responses/SocialConflict" },
+                    "500": { "$ref": "#/components/responses/InternalServerError" },
+                    "503": { "$ref": "#/components/responses/SocialUnavailable" }
+                },
+                "summary": "사용 가능한 소셜 로그인 공급자",
                 "tags": ["Auth"]
             }
         },

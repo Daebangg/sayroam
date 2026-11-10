@@ -44,6 +44,14 @@ public class SocialLoginController {
     private final OAuthBrowserCookie browserCookie;
     private final RefreshTokenCookie refreshCookie;
 
+    @Operation(operationId = "listSocialProviders", summary = "사용 가능한 소셜 로그인 공급자",
+            description = "인증 없이 현재 서버에서 활성화한 공급자 목록만 반환합니다. 자격 정보는 공개하지 않습니다.")
+    @ApiResponse(responseCode = "200", description = "활성 공급자 목록. Cache-Control: no-store")
+    @GetMapping(value = "/providers", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<SocialProvidersResponse> providers() {
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(new SocialProvidersResponse(login.availableProviders()));
+    }
+
     public SocialLoginController(SocialLoginService login, SocialSignupService signup,
                                  OAuthBrowserCookie browserCookie, RefreshTokenCookie refreshCookie) {
         this.login = login;

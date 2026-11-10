@@ -91,3 +91,22 @@ test("공유 저장소를 읽을 수 없으면 쿠키 변경 요청을 전송하
             error instanceof ApiError && error.kind === "authentication-unavailable",
     );
 });
+
+test("OAuth 인증 시작은 Refresh 쿠키의 자동 복원 상태를 바꾸지 않음", async () => {
+    await withAuthCookieLock("login", async () => undefined);
+    const before = [...state.values()];
+    await withAuthCookieLock("oauth", async () => ({
+        authorizationUrl: "https://accounts.google.com/",
+    }));
+    assert.deepEqual([...state.values()], before);
+});
+
+test("소셜 가입 대기는 이전 계정의 자동 복원을 막고 실제 인증 성공만 해제", async () => {
+    await withAuthCookieLock("social", async () => ({ status: "SIGNUP_REQUIRED" }));
+    await assert.rejects(
+        withAuthCookieLock("refresh", async () => assert.fail("do not restore old account")),
+        authRequired,
+    );
+    await withAuthCookieLock("social", async () => ({ status: "AUTHENTICATED" }));
+    assert([...state.values()].every((value) => value.startsWith("ready:")));
+});

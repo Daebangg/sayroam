@@ -1,7 +1,11 @@
 import createClient, { type Client } from "openapi-fetch";
 import { ApiError } from "./apiError.ts";
 import { waitForSharedRequest } from "./abort.ts";
-import { invalidateOtherTabs, withAuthCookieLock } from "./auth/cookieCoordination.ts";
+import {
+    invalidateOtherTabs,
+    withAuthCookieLock,
+    type CookieAction,
+} from "./auth/cookieCoordination.ts";
 import {
     clearAccessToken,
     getAccessTokenSnapshot,
@@ -16,7 +20,7 @@ type PolicyOptions = TransportOptions & { auth?: "none" | "required"; csrf?: boo
 export type RequestOptions = Pick<TransportOptions, "signal"> & {
     auth?: "none" | "required";
     csrf?: boolean;
-    cookieAction?: "login" | "refresh" | "logout";
+    cookieAction?: CookieAction;
     responses?: Readonly<Record<string, boolean>>;
     recover?: (revision: number) => Promise<AccessTokenSnapshot>;
 };
@@ -145,7 +149,11 @@ export async function request<T>(
     const run = async (): Promise<T> => {
         try {
             assertCurrent();
-            if (options.cookieAction === "login" || options.cookieAction === "logout") {
+            if (
+                options.cookieAction === "login" ||
+                options.cookieAction === "logout" ||
+                options.cookieAction === "social"
+            ) {
                 invalidateOtherTabs();
             }
             const value = await execute(client);

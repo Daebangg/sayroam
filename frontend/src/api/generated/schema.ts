@@ -320,6 +320,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/auth/social/providers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 사용 가능한 소셜 로그인 공급자
+         * @description 인증 없이 현재 서버에서 활성화한 공급자 목록만 반환합니다. 자격 정보는 공개하지 않습니다.
+         */
+        get: operations["listSocialProviders"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/auth/social/results/exchange": {
         parameters: {
             query?: never;
@@ -939,6 +959,10 @@ export interface components {
             signup?: components["schemas"]["Signup"] | null;
             /** @enum {string} */
             status: "AUTHENTICATED" | "SIGNUP_REQUIRED";
+        };
+        SocialProvidersResponse: {
+            /** @description 서버에 활성화된 공급자만 반환. 클라이언트 ID·비밀값은 포함하지 않음 */
+            providers: ("KAKAO" | "GOOGLE" | "NAVER")[];
         };
         SocialResultExchangeRequest: {
             /** @description 콜백 후 화면 fragment의 social_result 값. 일회성·브라우저 바인딩 */
@@ -1935,6 +1959,32 @@ export interface operations {
             503: components["responses"]["SocialUnavailable"];
         };
     };
+    listSocialProviders: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 활성 공급자 목록. Cache-Control: no-store */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SocialProvidersResponse"];
+                };
+            };
+            400: components["responses"]["SocialBadRequest"];
+            401: components["responses"]["SocialUnauthorized"];
+            403: components["responses"]["Forbidden"];
+            409: components["responses"]["SocialConflict"];
+            500: components["responses"]["InternalServerError"];
+            503: components["responses"]["SocialUnavailable"];
+        };
+    };
     exchangeSocialLoginResult: {
         parameters: {
             query?: never;
@@ -2317,6 +2367,13 @@ export const apiRoutes = {
         auth: "required",
         csrf: false,
         responses: { "204": false },
+    },
+    listSocialProviders: {
+        method: "get",
+        path: "/api/auth/social/providers",
+        auth: "none",
+        csrf: false,
+        responses: { "200": true },
     },
     login: {
         method: "post",

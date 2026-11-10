@@ -102,7 +102,13 @@
             "loginUncertain": "Could not confirm the sign-in result. Check your connection, then sign in again.",
             "logoutUncertain": "Local sign-in details were cleared, but server sign-out could not be confirmed. Reconnect and try signing out again.",
             "profileUnavailable": "Sign-in was processed, but member details could not be loaded. Check your member details again.",
-            "limited": "Sign-in is temporarily limited after too many attempts."
+            "limited": "Sign-in is temporarily limited after too many attempts.",
+            "socialUnavailable": "Social login options could not be loaded. Use email or reopen this dialog.",
+            "socialCancelled": "Social login was cancelled. Choose a provider to try again.",
+            "socialExpired": "This authentication has expired or was already used. Start social login again.",
+            "socialConflict": "This email or social account is already registered. Log in using your existing method.",
+            "socialDisabled": "This provider is unavailable. Choose another login method.",
+            "socialUncertain": "The social login result could not be confirmed. Start a new social login to check the outcome."
         },
         "flowMessages": {
             "invalidEmail": "Enter a valid email address.",
@@ -127,7 +133,15 @@
         "logoutComplete": "You are signed out.",
         "loginWait": "Too many login attempts. Try again in {{seconds}} seconds.",
         "loginRetryReady": "You can try signing in again now.",
-        "loginAttemptsRemaining": "Your email or password is incorrect. Remaining attempts: {{count}}."
+        "loginAttemptsRemaining": "Your email or password is incorrect. Remaining attempts: {{count}}.",
+        "socialSignupTitle": "Complete your signup",
+        "socialSignupDescription": "Choose a nickname and start your journey.",
+        "socialProviderDisabled": "This social login is currently unavailable.",
+        "socialVerifiedEmail": "Verified email: {{email}}",
+        "socialSignupRemaining": "Complete signup within {{seconds}} seconds.",
+        "socialSignupExpired": "Your signup session expired. Return to login and start social authentication again.",
+        "socialComplete": "Sign up and get started",
+        "socialSignupComplete": "You are signed up and logged in."
     },
     "trips": {
         "heading": "My trips",

@@ -1,3 +1,4 @@
+import type { SocialProvider } from "@/hooks/auth.types";
 import { useEffect, useId, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Button, Checkbox, Icon, Modal, TextField, Tooltip } from "@/components/ui";
@@ -6,6 +7,8 @@ import { isValidEmail, isValidPassword } from "@/hooks/authValidation";
 import { useCountdown } from "@/hooks/useCountdown";
 
 type LoginModalProps = {
+    providers: readonly SocialProvider[];
+    onSocialLogin: (provider: SocialProvider) => Promise<void>;
     open: boolean;
     onClose: () => void;
     onSubmit: (input: LoginInput) => Promise<boolean>;
@@ -18,6 +21,8 @@ type LoginModalProps = {
 };
 
 export function LoginModal({
+    providers,
+    onSocialLogin,
     open,
     onClose,
     onSubmit,
@@ -60,8 +65,11 @@ export function LoginModal({
                 <Button
                     variant="outline"
                     className="oauth-button oauth-button--google"
-                    disabled
-                    title={t("common.disabled")}
+                    disabled={busy || !providers.includes("GOOGLE")}
+                    title={
+                        providers.includes("GOOGLE") ? undefined : t("auth.socialProviderDisabled")
+                    }
+                    onClick={() => void onSocialLogin("GOOGLE")}
                 >
                     <img className="oauth-logo" src="/brand/providers/google.png" alt="" />
                     {t("auth.google")}
@@ -69,8 +77,11 @@ export function LoginModal({
                 <Button
                     variant="soft"
                     className="oauth-button oauth-button--kakao"
-                    disabled
-                    title={t("common.disabled")}
+                    disabled={busy || !providers.includes("KAKAO")}
+                    title={
+                        providers.includes("KAKAO") ? undefined : t("auth.socialProviderDisabled")
+                    }
+                    onClick={() => void onSocialLogin("KAKAO")}
                 >
                     <img className="oauth-logo" src="/brand/providers/kakao.svg" alt="" />
                     {t("auth.kakao")}
@@ -78,8 +89,11 @@ export function LoginModal({
                 <Button
                     variant="soft"
                     className="oauth-button oauth-button--naver"
-                    disabled
-                    title={t("common.disabled")}
+                    disabled={busy || !providers.includes("NAVER")}
+                    title={
+                        providers.includes("NAVER") ? undefined : t("auth.socialProviderDisabled")
+                    }
+                    onClick={() => void onSocialLogin("NAVER")}
                 >
                     <span className="oauth-logo oauth-logo--naver">
                         <img src="/brand/providers/naver.png" alt="" />

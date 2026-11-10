@@ -1,3 +1,4 @@
+import { socialReturn } from "@/routing/socialReturn";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Outlet, ScrollRestoration, useLocation, useNavigate, useNavigation } from "react-router";
@@ -16,7 +17,12 @@ import { LoadingPage } from "@/pages/status/StatusPage";
 import { RouteAccessibility } from "@/routing/RouteAccessibility";
 import { Toast } from "@/components/ui";
 
-type AuthToast = "signupComplete" | "resetComplete" | "loginComplete" | "logoutComplete";
+type AuthToast =
+    | "socialSignupComplete"
+    | "signupComplete"
+    | "resetComplete"
+    | "loginComplete"
+    | "logoutComplete";
 
 export default function App() {
     const { i18n, t } = useTranslation();
@@ -33,10 +39,11 @@ export default function App() {
     const isPageLoading =
         navigation.state !== "idle" && navigation.location?.pathname !== location.pathname;
     const theme = useTheme();
-    const auth = useAuthSession();
+    const auth = useAuthSession(socialReturn !== null);
     const checkSession = auth.check;
     const authBusy = ["checking", "signingIn", "signingOut"].includes(auth.status);
     const modalOnlyAuthMessage =
+        auth.message?.startsWith("social") ||
         auth.message === "credentials" ||
         auth.message === "limited" ||
         auth.message === "invalidInput" ||
@@ -45,8 +52,23 @@ export default function App() {
         if (isMemberPath(location.pathname)) void checkSession();
     }, [location.pathname, checkSession]);
     const [authOpen, setAuthOpen] = useState(
-        () => new URLSearchParams(window.location.search).get("modal") === "auth",
+        () =>
+            socialReturn !== null ||
+            new URLSearchParams(window.location.search).get("modal") === "auth",
     );
+    const socialReturnHandled = useRef(false);
+    const exchangeSocial = auth.exchangeSocial;
+    useEffect(() => {
+        const returned = socialReturn;
+        if (!returned || socialReturnHandled.current) return;
+        void exchangeSocial(returned.code).then((success) => {
+            socialReturnHandled.current = true;
+            if (!success) return;
+            setAuthOpen(false);
+            setToast({ id: ++toastSequence.current, message: "loginComplete" });
+            void navigate(returned.returnPath, { replace: true });
+        });
+    }, [exchangeSocial, navigate]);
     const authTrigger = useRef<HTMLElement | null>(null);
     useLayoutEffect(() => {
         if (authOpen || !authTrigger.current) return;
@@ -105,6 +127,7 @@ export default function App() {
             if (success) {
                 closeAuth();
                 showToast("loginComplete");
+                if (socialReturn) void navigate(socialReturn.returnPath, { replace: true });
             }
         });
     }
@@ -174,6 +197,18 @@ export default function App() {
             <ScrollRestoration />
             {authOpen && (
                 <AuthDialog
+                    {...(auth.socialSignup ? { socialSignup: auth.socialSignup } : {})}
+                    onSocialComplete={async (input) => {
+                        const success = await auth.completeSocial(input);
+                        if (success) {
+                            closeAuth();
+                            showToast("socialSignupComplete");
+                            if (socialReturn)
+                                void navigate(socialReturn.returnPath, { replace: true });
+                        }
+                        return success;
+                    }}
+                    onCancelSocial={auth.cancelSocial}
                     onClose={closeAuth}
                     onSubmit={login}
                     busy={authBusy}

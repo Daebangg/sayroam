@@ -1,3 +1,4 @@
+import type { components } from "../generated/schema.ts";
 import { ApiError } from "../apiError.ts";
 import { api } from "../api.ts";
 import type { ApiCallOptions } from "../router.ts";
@@ -28,10 +29,17 @@ function assertCurrentAttempt(revision: number, options: AuthCallOptions): void 
     }
 }
 
-export async function signIn(
-    input: LoginRequest,
+export type PendingSocialSignup = components["schemas"]["Signup"] & { expiresAt: number };
+export type AuthenticationResult = {
+    revision: number;
+    user: CurrentUserResponse | null;
+    signup: PendingSocialSignup | null;
+};
+
+async function authenticate(
+    execute: () => Promise<LoginResponse | components["schemas"]["SocialExchangeResponse"]>,
     options: AuthCallOptions = {},
-): Promise<CurrentUserResponse> {
+): Promise<AuthenticationResult> {
     // 같은 탭에서 로그인 요청이 겹쳐 Refresh 쿠키가 서로 덮어쓰이지 않게 한다.
     if (signingIn) throw new ApiError("authentication-in-progress");
     if (options.signal?.aborted) throw new ApiError("aborted", { cause: options.signal.reason });
@@ -41,23 +49,67 @@ export async function signIn(
     invalidateOtherTabs();
     const attemptRevision = getAuthRevision();
     try {
-        let response: LoginResponse;
+        let response: LoginResponse | components["schemas"]["SocialExchangeResponse"];
         try {
-            response = await loginApi(input, options);
+            response = await execute();
         } catch (error) {
             assertCurrentAttempt(attemptRevision, options);
             throw error;
         }
         assertCurrentAttempt(attemptRevision, options);
-        setAccessToken(response);
+        if ("status" in response && response.status === "SIGNUP_REQUIRED" && response.signup) {
+            return {
+                revision: getAuthRevision(),
+                user: null,
+                signup: {
+                    ...response.signup,
+                    expiresAt: Date.now() + response.signup.expiresInSeconds * 1000,
+                },
+            };
+        }
+        const login = "status" in response ? response.login : response;
+        if (!login) throw new ApiError("invalid-response");
+        setAccessToken(login);
 
         const sessionRevision = getAuthRevision();
         const user = await getCurrentUser(options);
         assertCurrentAttempt(sessionRevision, options);
-        return user;
+        return { user, signup: null, revision: getAuthRevision() };
     } finally {
         signingIn = false;
     }
+}
+
+export async function signIn(
+    input: LoginRequest,
+    options: AuthCallOptions = {},
+): Promise<CurrentUserResponse> {
+    const result = await authenticate(() => loginApi(input, options), options);
+    if (!result.user) throw new ApiError("invalid-response");
+    return result.user;
+}
+
+const socialExchanges = new Map<string, Promise<AuthenticationResult>>();
+export function exchangeSocialSession(resultCode: string): Promise<AuthenticationResult> {
+    let pending = socialExchanges.get(resultCode);
+    if (!pending) {
+        pending = authenticate(() =>
+            api.call("exchangeSocialLoginResult", { body: { resultCode } }),
+        );
+        // 결과 코드는 일회성이다. StrictMode·재마운트에서도 실패한 POST를 재실행하지 않는다.
+        socialExchanges.set(resultCode, pending);
+    }
+    return pending;
+}
+
+export async function completeSocialSession(
+    input: ApiCallOptions<"completeSocialSignup">["body"],
+    options: AuthCallOptions = {},
+): Promise<AuthenticationResult> {
+    return authenticate(
+        () => api.call("completeSocialSignup", { ...options, body: input }),
+        options,
+    );
 }
 
 export async function restoreSession(options: AuthCallOptions = {}): Promise<CurrentUserResponse> {
