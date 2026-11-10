@@ -1,11 +1,11 @@
 import { useEffect, useId, useState, type ReactNode } from "react";
 import { ProfileMenu } from "@/components/features/profile/ProfileMenu";
-import { AppearancePreview } from "@/components/features/profile/AppearancePreview";
 import { useTranslation } from "react-i18next";
 import { Brand, Button, Icon, Tooltip, Modal, TextField } from "@/components/ui";
 import { PreviewDialog } from "@/components/features/travel/PreviewDialog";
 import { mockupUrl, type MockupScreen } from "@/routing/mockups";
 import { appNavigation } from "@/data/preview";
+import { pagePaths } from "@/routing/paths";
 import { Link, NavLink, useNavigate } from "react-router";
 import type { ResolvedTheme, ThemePreference } from "@/hooks/useTheme";
 import type { Language } from "@/i18n/locale";
@@ -14,7 +14,6 @@ type AppShellProps = {
     mockupScreen: MockupScreen | null;
     isHome: boolean;
     theme: ResolvedTheme;
-    themePreference: ThemePreference;
     onThemeChange: (preference: ThemePreference) => void;
     onLanguageChange: (language: Language) => void;
     onOpenAuth: () => void;
@@ -28,7 +27,6 @@ export function AppShell({
     mockupScreen,
     isHome,
     theme,
-    themePreference,
     onThemeChange,
     onLanguageChange,
     onOpenAuth,
@@ -39,7 +37,6 @@ export function AppShell({
 }: AppShellProps) {
     const navigate = useNavigate();
     const { t, i18n } = useTranslation();
-    const [settingsOpen, setSettingsOpen] = useState(false);
     const [utility, setUtility] = useState<"search" | "notifications" | null>(null);
     const [query, setQuery] = useState("");
     const searchId = useId();
@@ -54,12 +51,12 @@ export function AppShell({
                 return;
             if ((event.metaKey || event.ctrlKey) && event.key === "," && !event.isComposing) {
                 event.preventDefault();
-                setSettingsOpen(true);
+                void navigate(pagePaths.settings);
             }
         };
         window.addEventListener("keydown", shortcut);
         return () => window.removeEventListener("keydown", shortcut);
-    }, []);
+    }, [navigate]);
 
     return (
         <div
@@ -157,7 +154,7 @@ export function AppShell({
                             onLogout={onLogout}
                             onLogin={onOpenAuth}
                             onBrand={() => void navigate("/brand")}
-                            onSettings={() => setSettingsOpen(true)}
+                            onSettings={() => void navigate(pagePaths.settings)}
                         />
                     </div>
                 </header>
@@ -191,16 +188,9 @@ export function AppShell({
                         mobile
                         onLogin={onOpenAuth}
                         onBrand={() => void navigate("/brand")}
-                        onSettings={() => setSettingsOpen(true)}
+                        onSettings={() => void navigate(pagePaths.settings)}
                     />
                 </nav>
-                <AppearancePreview
-                    open={settingsOpen}
-                    onClose={() => setSettingsOpen(false)}
-                    theme={themePreference}
-                    onThemeChange={onThemeChange}
-                    onLanguageChange={onLanguageChange}
-                />
                 <PreviewDialog
                     open={utility === "notifications"}
                     title={t("common.notifications")}

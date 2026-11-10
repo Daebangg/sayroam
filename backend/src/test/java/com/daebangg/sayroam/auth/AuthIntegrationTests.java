@@ -107,6 +107,84 @@ class AuthIntegrationTests extends DatabaseIntegrationTest {
     }
 
     @Test
+    void emailAccountLifecycleKeepsRevokedLoginsInvalidAfterResetChangeDeletionAndRejoin() throws Exception {
+        String email = email();
+        long originalId = signup(email, signupProof(email));
+        Login first = login(email, PASSWORD);
+        MvcResult restored = call(HttpMethod.POST, "/api/auth/refresh", null, null, first.refresh());
+        assertStatus(restored, 200);
+        Login refreshed = new Login(json(restored).path("accessToken").asText(),
+                restored.getResponse().getCookie(REFRESH));
+        assertStatus(call(HttpMethod.GET, "/api/users/me", null, refreshed.access()), 200);
+        Login otherDevice = login(email, PASSWORD);
+        assertStatus(call(HttpMethod.POST, "/api/auth/logout", null, null, refreshed.refresh()), 204);
+        assertStatus(call(HttpMethod.POST, "/api/auth/refresh", null, null, refreshed.refresh()), 401);
+
+        String resetPassword = "Reset-password-456!";
+        assertStatus(reset(email, resetProof(email), resetPassword), 204);
+        assertStatus(call(HttpMethod.GET, "/api/users/me", null, otherDevice.access()), 401);
+        assertStatus(call(HttpMethod.POST, "/api/auth/refresh", null, null, otherDevice.refresh()), 401);
+        assertStatus(call(HttpMethod.POST, "/api/auth/login",
+                Map.of("email", email, "password", PASSWORD), null), 401);
+        Login afterReset = login(email, resetPassword);
+        Login anotherAfterReset = login(email, resetPassword);
+        assertThat(json(call(HttpMethod.GET, "/api/users/me", null, afterReset.access()))
+                .path("userId").asLong()).isEqualTo(originalId);
+
+        String changedPassword = "Changed-password-789!";
+        String changeProof = accountProof(afterReset, email, "PASSWORD_CHANGE");
+        assertStatus(call(HttpMethod.PATCH, "/api/auth/password",
+                Map.of("accountProof", changeProof, "newPassword", changedPassword), afterReset.access()), 204);
+        for (Login prior : List.of(afterReset, anotherAfterReset)) {
+            assertStatus(call(HttpMethod.GET, "/api/users/me", null, prior.access()), 401);
+            assertStatus(call(HttpMethod.POST, "/api/auth/refresh", null, null, prior.refresh()), 401);
+        }
+        assertStatus(call(HttpMethod.POST, "/api/auth/login",
+                Map.of("email", email, "password", resetPassword), null), 401);
+        Login afterChange = login(email, changedPassword);
+        seedDeletionData(originalId);
+        // 비밀번호 변경과 삭제의 발송 cooldown은 같은 회원 기준으로 공유한다.
+        assertStatus(call(HttpMethod.POST, "/api/auth/account-verifications",
+                Map.of("purpose", "ACCOUNT_DELETION"), afterChange.access()), 429);
+        assertThat(REDIS.execInContainer("redis-cli", "DEL",
+                "sayroam:auth:{account-verification}:cooldown:" + originalId).getExitCode()).isZero();
+        String deletionProof = accountProof(afterChange, email, "ACCOUNT_DELETION");
+        assertStatus(call(HttpMethod.POST, "/api/auth/account-deletion",
+                Map.of("accountProof", deletionProof), afterChange.access()), 204);
+        assertThat(jdbc.queryForObject("SELECT email FROM users WHERE id = ?",
+                String.class, originalId)).isNull();
+        assertThat(jdbc.queryForObject("SELECT auth_version FROM users WHERE id = ?",
+                Long.class, originalId)).isEqualTo(3);
+        for (String table : List.of("user_credential", "user_social_account", "user_travel_style")) {
+            assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM " + table + " WHERE user_id = ?",
+                    Integer.class, originalId)).isZero();
+        }
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM notification WHERE receiver_id = ?",
+                Integer.class, originalId)).isZero();
+        assertStatus(call(HttpMethod.POST, "/api/auth/login",
+                Map.of("email", email, "password", changedPassword), null), 401);
+        assertStatus(call(HttpMethod.GET, "/api/users/me", null, afterChange.access()), 401);
+        assertStatus(call(HttpMethod.POST, "/api/auth/refresh", null, null, afterChange.refresh()), 401);
+
+        // 재가입 대기 시간만 경과시킨다. 같은 여정의 제한 카운터·폐기된 로그인은 보존한다.
+        String emailHash = VerificationDigests.sha256(email);
+        assertThat(REDIS.execInContainer("redis-cli", "DEL",
+                "sayroam:auth:{email-verification}:cooldown:" + emailHash).getExitCode()).isZero();
+        long newId = signup(email, signupProof(email));
+        assertThat(newId).isNotEqualTo(originalId);
+        assertThat(json(call(HttpMethod.GET, "/api/users/me", null, login(email, PASSWORD).access()))
+                .path("userId").asLong()).isEqualTo(newId);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM room_member WHERE user_id = ?",
+                Integer.class, newId)).isZero();
+        assertThat(REDIS.execInContainer("redis-cli", "GET",
+                "sayroam:auth:{email-verification}:email-limit:" + emailHash).getStdout().strip()).isEqualTo("2");
+        for (Login prior : List.of(first, refreshed, otherDevice, afterReset, anotherAfterReset, afterChange)) {
+            assertStatus(call(HttpMethod.GET, "/api/users/me", null, prior.access()), 401);
+            assertStatus(call(HttpMethod.POST, "/api/auth/refresh", null, null, prior.refresh()), 401);
+        }
+    }
+
+    @Test
     void verifiedSignupConsumesProofOnceAndLoginIssuesOnlyAccessInBody() throws Exception {
         String email = email();
         String proof = signupProof(email);
@@ -127,6 +205,13 @@ class AuthIntegrationTests extends DatabaseIntegrationTest {
         assertThat(json(me).path("email").asText()).isEqualTo(email);
         assertThat(json(me).path("nickname").asText()).isEqualTo("여행자");
         assertThat(me.getRequest().getSession(false)).isNull();
+        MvcResult methods = call(HttpMethod.GET, "/api/users/me/login-methods", null, login.access());
+        assertStatus(methods, 200);
+        assertThat(json(methods).size()).isEqualTo(2);
+        assertThat(json(methods).path("passwordEnabled").asBoolean()).isTrue();
+        assertThat(json(methods).path("socialProviders").isEmpty()).isTrue();
+        assertThat(methods.getResponse().getHeader("Cache-Control")).isEqualTo("no-store");
+        assertStatus(call(HttpMethod.GET, "/api/users/me/login-methods", null, null), 401);
     }
 
     @ParameterizedTest
@@ -164,6 +249,12 @@ class AuthIntegrationTests extends DatabaseIntegrationTest {
                 + "AND provider_user_id = 'profile-user' AND user_id = ?", Integer.class,
                 json(me).path("userId").asLong())).isEqualTo(1);
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM user_credential", Integer.class)).isZero();
+        MvcResult methods = call(HttpMethod.GET, "/api/users/me/login-methods", null, access);
+        assertStatus(methods, 200);
+        assertThat(json(methods).size()).isEqualTo(2);
+        assertThat(json(methods).path("passwordEnabled").asBoolean()).isFalse();
+        assertThat(json(methods).path("socialProviders").size()).isEqualTo(1);
+        assertThat(json(methods).path("socialProviders").get(0).asText()).isEqualTo("NAVER");
 
         MvcResult replay = call(HttpMethod.POST, "/api/auth/social/signup", body, null, browser);
         assertStatus(replay, 400);

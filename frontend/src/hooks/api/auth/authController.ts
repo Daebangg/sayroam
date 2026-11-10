@@ -14,6 +14,9 @@ import {
     clearAccessToken,
 } from "../../../api/auth/tokenStore.ts";
 import type { AuthMessage, AuthState, LoginInput } from "../../auth.types.ts";
+import { api } from "../../../api/api.ts";
+import { isValidNickname } from "../../authValidation.ts";
+import { invalidateOtherTabs } from "../../../api/auth/cookieCoordination.ts";
 
 function needsLogin(error: unknown): boolean {
     return (
@@ -69,6 +72,8 @@ export type AuthController = {
     exchangeSocial: (code: string) => Promise<boolean>;
     cancelSocial: () => void;
     resetDialog: () => void;
+    updateNickname: (nickname: string, signal: AbortSignal) => Promise<void>;
+    endSession: () => void;
 };
 
 export function createAuthController(): AuthController {
@@ -168,6 +173,34 @@ export function createAuthController(): AuthController {
 
     return {
         getSnapshot: (): AuthState => state,
+        updateNickname: async (nickname: string, signal: AbortSignal): Promise<void> => {
+            if (!state.user || state.status !== "authenticated")
+                throw new ApiError("authentication-required");
+            if (!isValidNickname(nickname)) throw new ApiError("http", { status: 400 });
+            const revision = getAuthRevision();
+            const current = generation;
+            const userId = state.user.userId;
+            const user = await api.call("updateProfile", {
+                body: { nickname: nickname.trim() },
+                signal,
+            });
+            if (
+                signal.aborted ||
+                revision !== getAuthRevision() ||
+                current !== generation ||
+                state.user?.userId !== userId
+            )
+                throw new ApiError("aborted");
+            update({ ...state, user });
+        },
+        endSession: (): void => {
+            generation++;
+            pending?.controller.abort();
+            pending = undefined;
+            clearAccessToken();
+            invalidateOtherTabs();
+            update({ status: "anonymous", user: null, message: null });
+        },
         subscribe(listener: () => void): () => void {
             listeners.add(listener);
             return () => {

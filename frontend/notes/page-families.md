@@ -4,16 +4,17 @@
 타이포그래피·액션 위치를 공유하되 서로 다른 유형을 같은 크기로 강제하지 않습니다.
 [스타일 가이드북](../STYLE_GUIDE.md)의 팔레트·아이콘·일러스트와 실제 공용 컴포넌트를 기준으로 비교합니다.
 
-| 유형           | 기준 소유자                                                                   | 공유 규칙                                                                             |
-| -------------- | ----------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
-| 공개 홈        | `pages/home/HomePage.tsx`                                                     | 큐비즘 해안 히어로·검색·바로가기·여행/동행/방 요약                                    |
-| 앱 셸          | `components/layout/AppShell.tsx`                                              | 뷰포트 전체 폭·데스크톱 상단 메뉴·모바일 하단 메뉴·브랜드·공용 액션                   |
-| 여행 카드      | `pages/trips/TripsPage.tsx`                                                   | 일러스트·제목·날짜·멤버·필터·저장 액션·카드 표면                                      |
-| 동행 목록      | `pages/matching/MatchingPage.tsx`                                             | 일러스트·제목·일정·인원·필터·저장·빈 상태                                             |
-| 방 목록        | `pages/rooms/RoomsPage.tsx`                                                   | 여행 일러스트·이름·최근 메시지·시간·읽지 않은 개수                                    |
-| 인증 모달      | `components/features/auth/LoginModal.tsx`, `EmailFlowModal.tsx`, 공용 `Modal` | 380/400px의 간결한 폭·닫기·중앙 제목·포커스·본문 내부 스크롤                          |
-| 브랜드·공용 UI | `pages/brand/BrandPage.tsx`                                                   | 실제 로고·팔레트·아이콘·공용 컨트롤과 상태 예시                                       |
-| 목업 탐색      | `pages/mockups/MockupPage.tsx`, `routing/mockups.ts`                          | `/brand?preview=welcome\|onboarding\|home\|trips\|matching\|rooms`의 예시 데이터 탐색 |
+| 유형           | 기준 소유자                                                                   | 공유 규칙                                                                                            |
+| -------------- | ----------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| 공개 홈        | `pages/home/HomePage.tsx`                                                     | 큐비즘 해안 히어로·검색·바로가기·여행/동행/방 요약                                                   |
+| 앱 셸          | `components/layout/AppShell.tsx`                                              | 뷰포트 전체 폭·데스크톱 상단 메뉴·모바일 하단 메뉴·브랜드·공용 액션                                  |
+| 설정·계정      | `pages/settings/SettingsPage.tsx`                                             | 해안 풍경 배경·데스크톱 좌측/모바일 상단 설정 메뉴·구분선 중심 정보 행·계정 및 프로필 회원 전용 접근 |
+| 여행 카드      | `pages/trips/TripsPage.tsx`                                                   | 일러스트·제목·날짜·멤버·필터·저장 액션·카드 표면                                                     |
+| 동행 목록      | `pages/matching/MatchingPage.tsx`                                             | 일러스트·제목·일정·인원·필터·저장·빈 상태                                                            |
+| 방 목록        | `pages/rooms/RoomsPage.tsx`                                                   | 여행 일러스트·이름·최근 메시지·시간·읽지 않은 개수                                                   |
+| 인증 모달      | `components/features/auth/LoginModal.tsx`, `EmailFlowModal.tsx`, 공용 `Modal` | 380/400px의 간결한 폭·닫기·중앙 제목·포커스·본문 내부 스크롤                                         |
+| 브랜드·공용 UI | `pages/brand/BrandPage.tsx`                                                   | 실제 로고·팔레트·아이콘·공용 컨트롤과 상태 예시                                                      |
+| 목업 탐색      | `pages/mockups/MockupPage.tsx`, `routing/mockups.ts`                          | `/brand?preview=welcome\|onboarding\|home\|trips\|matching\|rooms`의 예시 데이터 탐색                |
 
 여행·동행·방의 목록·일정·인원·메시지는 #60의 정적 예시입니다. 인증 모달은 #72에 통합한 로그인·회원가입·비밀번호 재설정의 실제 API를 연결합니다.
 화면은 실제 주소로 이동하고 언어·테마 선택은 브라우저에 저장합니다. 여행·채팅 업무 API 연결은 별도 범위입니다.

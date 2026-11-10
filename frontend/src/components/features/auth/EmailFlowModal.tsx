@@ -12,6 +12,7 @@ import type { EmailFlowMessage } from "@/hooks/auth.types";
 type EmailFlowModalProps = {
     mode: "signup" | "reset";
     busy: boolean;
+    sending: boolean;
     sent: boolean;
     verified: boolean;
     expiresIn: number;
@@ -25,7 +26,7 @@ type EmailFlowModalProps = {
     onClose: () => void;
 };
 
-function ValidationPanel({
+export function ValidationPanel({
     title,
     items,
 }: {
@@ -52,6 +53,7 @@ function ValidationPanel({
 export function EmailFlowModal({
     mode,
     busy,
+    sending,
     sent,
     verified,
     expiresIn,
@@ -73,6 +75,7 @@ export function EmailFlowModal({
     const [password, setPassword] = useState("");
     const [confirmation, setConfirmation] = useState("");
     const [code, setCode] = useState("");
+    const blocking = busy && !sending;
     const validPassword = isValidNewPassword(password);
     const rules = newPasswordRules(password);
     const matches = password.length > 0 && password === confirmation;
@@ -127,7 +130,7 @@ export function EmailFlowModal({
                             maxLength={50}
                             required
                             value={nickname}
-                            disabled={busy}
+                            disabled={blocking}
                             onChange={(event) => setNickname(event.target.value)}
                         />
                     )}
@@ -139,7 +142,8 @@ export function EmailFlowModal({
                         required
                         maxLength={254}
                         value={email}
-                        disabled={busy}
+                        disabled={blocking}
+                        readOnly={sending}
                         onChange={(event) => {
                             setEmail(event.target.value);
                             setCode("");
@@ -152,7 +156,7 @@ export function EmailFlowModal({
                             items={[{ label: t("auth.emailRule"), valid: isValidEmail(email) }]}
                         />
                     )}
-                    {(mode !== "reset" || sent) && (
+                    {(mode !== "reset" || sent || sending) && (
                         <section className="auth-verification" aria-label={t("auth.verifyEmail")}>
                             {verified ? (
                                 <p className="auth-success" role="status">
@@ -160,16 +164,18 @@ export function EmailFlowModal({
                                 </p>
                             ) : (
                                 <>
-                                    {sent && (
+                                    {(sent || sending) && (
                                         <>
-                                            <p className="auth-flow-hint" role="status">
-                                                {t(
-                                                    mode === "reset"
-                                                        ? "auth.resetCodeSent"
-                                                        : "auth.codeSent",
-                                                    { seconds: expiresIn },
-                                                )}
-                                            </p>
+                                            {sent && (
+                                                <p className="auth-flow-hint" role="status">
+                                                    {t(
+                                                        mode === "reset"
+                                                            ? "auth.resetCodeSent"
+                                                            : "auth.codeSent",
+                                                        { seconds: expiresIn },
+                                                    )}
+                                                </p>
+                                            )}
                                             <TextField
                                                 label={t("auth.codeLabel")}
                                                 name="code"
@@ -178,7 +184,7 @@ export function EmailFlowModal({
                                                 pattern="[0-9]{6}"
                                                 maxLength={6}
                                                 value={code}
-                                                disabled={busy}
+                                                disabled={blocking}
                                                 onChange={(event) => setCode(event.target.value)}
                                             />
                                             <Button
@@ -194,7 +200,7 @@ export function EmailFlowModal({
                                             >
                                                 {t("auth.verifyCode")}
                                             </Button>
-                                            {expiresIn === 0 && (
+                                            {!sending && expiresIn === 0 && (
                                                 <p className="auth-feedback">
                                                     {t("auth.flowMessages.expired")}
                                                 </p>
@@ -211,7 +217,11 @@ export function EmailFlowModal({
                                     >
                                         {resendIn > 0
                                             ? t("auth.resendAfter", { seconds: resendIn })
-                                            : t(sent ? "auth.resendCode" : "auth.sendCode")}
+                                            : t(
+                                                  sent || sending
+                                                      ? "auth.resendCode"
+                                                      : "auth.sendCode",
+                                              )}
                                     </Button>
                                 </>
                             )}
@@ -232,7 +242,7 @@ export function EmailFlowModal({
                                 minLength={8}
                                 maxLength={24}
                                 value={password}
-                                disabled={busy}
+                                disabled={blocking}
                                 onChange={(event) => setPassword(event.target.value)}
                             />
                             <ValidationPanel
@@ -262,7 +272,7 @@ export function EmailFlowModal({
                                 required
                                 maxLength={24}
                                 value={confirmation}
-                                disabled={busy}
+                                disabled={blocking}
                                 onChange={(event) => setConfirmation(event.target.value)}
                             />
                             <ValidationPanel
@@ -282,26 +292,28 @@ export function EmailFlowModal({
                             {t(`auth.flowMessages.${message}`)}
                         </p>
                     )}
-                    <Button
-                        variant="brand"
-                        type="submit"
-                        loading={busy}
-                        disabled={
-                            mode === "reset" && !verified
-                                ? sent || !isValidEmail(email) || resendIn > 0
-                                : !canComplete
-                        }
-                    >
-                        {mode === "reset" && !verified && resendIn > 0
-                            ? t("auth.resendAfter", { seconds: resendIn })
-                            : t(
-                                  mode === "signup"
-                                      ? "auth.createAccount"
-                                      : verified
-                                        ? "auth.setPassword"
-                                        : "auth.sendCode",
-                              )}
-                    </Button>
+                    {(mode === "signup" || verified || (!sent && !sending)) && (
+                        <Button
+                            variant="brand"
+                            type="submit"
+                            loading={mode === "reset" ? busy : blocking}
+                            disabled={
+                                mode === "reset" && !verified
+                                    ? sent || !isValidEmail(email) || resendIn > 0 || busy
+                                    : !canComplete || busy
+                            }
+                        >
+                            {mode === "reset" && !verified && resendIn > 0
+                                ? t("auth.resendAfter", { seconds: resendIn })
+                                : t(
+                                      mode === "signup"
+                                          ? "auth.createAccount"
+                                          : verified
+                                            ? "auth.setPassword"
+                                            : "auth.sendCode",
+                                  )}
+                        </Button>
+                    )}
                 </form>
                 <p className="auth-flow-footer">
                     {t(mode !== "reset" ? "auth.haveAccount" : "auth.rememberPassword")}{" "}
@@ -309,7 +321,7 @@ export function EmailFlowModal({
                         variant="plain"
                         className="auth-text-link"
                         onClick={onLogin}
-                        disabled={busy}
+                        disabled={blocking}
                     >
                         {t("auth.backToLogin")}
                     </Button>

@@ -11,7 +11,19 @@ channel?.addEventListener("message", (event: MessageEvent<unknown>) => {
 });
 
 const stateKey = "sayroam.auth.cookie-state.v1";
-export type CookieAction = "login" | "refresh" | "logout" | "oauth" | "social";
+export type CookieAction = "login" | "refresh" | "logout" | "oauth" | "social" | "account";
+
+function isRejectedAccountChange(error: unknown): boolean {
+    if (!(error instanceof ApiError) || error.kind !== "http") return false;
+    const code = error.problem?.code;
+    if (code === "PASSWORD_CHANGE_CONFLICT" || code === "ACCOUNT_DELETION_CONFLICT") return false;
+    const status = error.status ?? 0;
+    if (status >= 400 && status < 500 && status !== 401) return true;
+    return (
+        status === 503 &&
+        (code === "AUTHENTICATION_UNAVAILABLE" || code === "EMAIL_VERIFICATION_UNAVAILABLE")
+    );
+}
 
 if (typeof window !== "undefined") {
     window.addEventListener("storage", (event) => {
@@ -52,13 +64,21 @@ export async function withAuthCookieLock<T>(
     return navigator.locks.request("sayroam-auth-cookie", async () => {
         if (action === "oauth") return execute();
         const current = getAuthCookieState();
-        if (action === "refresh" && (before !== current || current?.startsWith("blocked:"))) {
+        if (
+            (action === "refresh" || action === "account") &&
+            (before !== current || current?.startsWith("blocked:"))
+        ) {
             throw new ApiError("authentication-required");
         }
         // 명시적인 새 로그인만 실패·로그아웃 이후의 자동 복원 금지를 해제한다.
-        if (action !== "refresh") writeState(true);
+        // 계정 변경은 같은 잠금으로 직렬화하되 결과를 확인한 뒤 세션을 정리한다.
+        if (action !== "refresh" && action !== "account") writeState(true);
         try {
             const value = await execute();
+            if (action === "account") {
+                writeState(true);
+                invalidateOtherTabs();
+            }
             if (
                 action === "login" ||
                 (action === "social" &&
@@ -71,8 +91,10 @@ export async function withAuthCookieLock<T>(
             return value;
         } catch (error) {
             // 잠금을 풀기 전에 기록해 다음 탭이 불확실한 쿠키로 재갱신하지 않게 한다.
-            writeState(true);
-            invalidateOtherTabs();
+            if (action !== "account" || !isRejectedAccountChange(error)) {
+                writeState(true);
+                invalidateOtherTabs();
+            }
             throw error;
         }
     });

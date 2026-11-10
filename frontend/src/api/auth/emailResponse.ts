@@ -54,3 +54,34 @@ export function validateSignup(
         throw new ApiError("invalid-response", { status });
     return { userId: value.userId };
 }
+
+export function validateAccountIssued(
+    value: unknown,
+    status: number,
+): components["schemas"]["AccountVerificationResponse"] {
+    const issued = validateIssued(value, status);
+    if (
+        !record(value) ||
+        (value.purpose !== "PASSWORD_CHANGE" && value.purpose !== "ACCOUNT_DELETION")
+    )
+        throw new ApiError("invalid-response", { status });
+    return { ...issued, purpose: value.purpose };
+}
+
+export function validateAccountProof(
+    value: unknown,
+    status: number,
+): components["schemas"]["AccountVerificationConfirmResponse"] {
+    if (
+        !record(value) ||
+        !proof(value.accountProof) ||
+        !seconds(value.expiresInSeconds) ||
+        (value.purpose !== "PASSWORD_CHANGE" && value.purpose !== "ACCOUNT_DELETION")
+    )
+        throw new ApiError("invalid-response", { status });
+    return {
+        accountProof: value.accountProof,
+        expiresInSeconds: value.expiresInSeconds,
+        purpose: value.purpose,
+    };
+}

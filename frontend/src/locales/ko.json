@@ -27,7 +27,8 @@
         "join": "함께하기",
         "disabled": "준비 중",
         "removeTag": "{{name}} 태그 삭제",
-        "dismissNotification": "알림 닫기"
+        "dismissNotification": "알림 닫기",
+        "cancel": "취소"
     },
     "home": {
         "titleFirst": "함께 떠나는",
@@ -135,7 +136,10 @@
         "loginWait": "로그인 시도가 너무 많습니다. {{seconds}}초 후 다시 시도해 주세요.",
         "loginRetryReady": "이제 다시 로그인할 수 있어요.",
         "loginAttemptsRemaining": "이메일 또는 비밀번호가 올바르지 않습니다. 남은 시도 횟수: {{count}}회.",
-        "socialProviderDisabled": "현재 사용할 수 없는 소셜 로그인이에요."
+        "socialProviderDisabled": "현재 사용할 수 없는 소셜 로그인이에요.",
+        "nicknameSaved": "닉네임이 변경되었습니다.",
+        "passwordChanged": "비밀번호가 변경되어 로그아웃되었습니다. 다시 로그인해 주세요.",
+        "accountDeleted": "계정이 삭제되어 로그아웃되었습니다."
     },
     "trips": {
         "heading": "내 여행",
@@ -427,7 +431,8 @@
             "mail": "이메일",
             "filter": "필터",
             "check": "확인",
-            "flame": "인기"
+            "flame": "인기",
+            "edit": "수정"
         },
         "saveTrip": "{{title}} 북마크",
         "customControls": "여행 입력",
@@ -464,5 +469,96 @@
             "decrease": "{{label}} 줄이기",
             "increase": "{{label}} 늘리기"
         }
+    },
+    "settings": {
+        "signature": "Settings",
+        "navigation": "설정 메뉴",
+        "backToApp": "앱으로 돌아가기",
+        "backToAccount": "계정으로 돌아가기",
+        "general": "일반",
+        "appearance": "화면 및 언어",
+        "account": "계정",
+        "profile": "프로필",
+        "basicInformation": "기본 정보",
+        "nickname": "닉네임",
+        "email": "이메일",
+        "noEmail": "등록된 이메일이 없어요",
+        "viewProfile": "프로필 보기",
+        "security": "로그인 및 보안",
+        "changePassword": "비밀번호 변경",
+        "deleteAccount": "계정 삭제",
+        "comingSoon": "곧 제공",
+        "gender": "성별",
+        "birthYear": "출생연도",
+        "birthYearValue": "{{year}}년",
+        "unset": "아직 설정하지 않았어요",
+        "editProfile": "프로필 편집",
+        "genderValues": {
+            "MALE": "남성",
+            "FEMALE": "여성"
+        }
+    },
+    "accountAction": {
+        "connectedOAuth": "연결된 OAuth",
+        "noneConnected": "연결 없음",
+        "methodsFailed": "로그인 수단 확인 실패",
+        "retry": "다시 확인",
+        "loading": "확인 중",
+        "socialOnly": "소셜 로그인 전용",
+        "providers": {
+            "GOOGLE": "Google",
+            "KAKAO": "카카오",
+            "NAVER": "네이버"
+        },
+        "editNickname": "닉네임 수정",
+        "save": "저장",
+        "newPassword": "새 비밀번호",
+        "sendCode": "인증 코드 발송",
+        "verifyCode": "인증 코드 확인",
+        "resend": "재발송",
+        "codeExpires": "인증 코드 유효시간 {{seconds}}초",
+        "verified": "본인 확인 완료 · {{seconds}}초 이내 진행",
+        "passwordMismatch": "비밀번호가 일치하지 않습니다.",
+        "deletePersonalData": "프로필·개인정보·로그인 수단이 삭제됩니다.",
+        "keepSharedRecords": "채팅·여행·정산 등 공유 기록은 남습니다.",
+        "newAccountOnRejoin": "재가입하면 새로운 계정으로 시작합니다.",
+        "deleteAgreement": "계정 삭제 및 복구 불가를 확인했습니다.",
+        "messages": {
+            "codeInvalid": "인증 코드를 확인해 주세요.",
+            "expired": "인증이 만료됐습니다. 새 코드를 발송해 주세요.",
+            "limited": "발송 또는 인증 시도 한도에 도달했습니다. 대기 후 다시 진행해 주세요.",
+            "delivery": "이메일을 발송하지 못했습니다. 메일 설정과 잠시 후 재발송을 확인해 주세요.",
+            "unavailable": "요청을 처리하지 못했습니다. 잠시 후 다시 확인해 주세요.",
+            "security": "보안 확인에 실패했습니다. 새로고침 후 다시 진행해 주세요.",
+            "conflict": "이미 사용되거나 변경된 인증입니다. 본인 확인을 다시 진행해 주세요.",
+            "passwordNotAllowed": "비밀번호가 등록되지 않은 소셜 전용 계정입니다.",
+            "verificationNotAllowed": "인증된 대표 이메일이 없어 진행할 수 없습니다.",
+            "uncertain": "인증 결과를 확인하지 못했습니다. 대기 후 새 코드를 발송해 주세요.",
+            "invalidPassword": "비밀번호 조건을 확인해 주세요."
+        },
+        "nicknameMessages": {
+            "invalid": "닉네임은 숨김·제어 문자 없이 1~50자로 입력해 주세요.",
+            "unavailable": "닉네임을 저장하지 못했습니다. 다시 로그인하거나 잠시 후 확인해 주세요.",
+            "uncertain": "저장 결과를 확인하지 못했습니다. 새로고침해 현재 닉네임을 확인해 주세요."
+        },
+        "results": {
+            "deleted": {
+                "title": "계정 삭제 완료",
+                "message": "계정 정보가 정리되고 로그인이 종료됐습니다."
+            },
+            "passwordChanged": {
+                "title": "비밀번호 변경 완료",
+                "message": "모든 기기의 기존 로그인이 종료됐습니다. 새 비밀번호로 로그인해 주세요."
+            },
+            "uncertain": {
+                "title": "처리 결과 확인 필요",
+                "message": "요청이 이미 처리됐을 수 있습니다. 자동으로 다시 요청하지 않습니다. 비밀번호 변경은 새 비밀번호로, 계정 삭제는 로그인 가능 여부를 확인해 주세요. 로그인 실패만으로 삭제 완료를 단정할 수 없습니다."
+            },
+            "reauthenticate": {
+                "title": "다시 로그인",
+                "message": "계정 상태가 변경됐습니다. 다시 로그인한 뒤 새로운 본인 확인으로 진행해 주세요."
+            }
+        },
+        "socialPasswordHint": "소셜 로그인 전용 계정입니다. 비밀번호는 연결된 로그인 제공자에서 변경해 주세요."
     }
 }
