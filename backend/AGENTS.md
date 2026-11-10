@@ -17,7 +17,7 @@
 - 새로 생기는 것은 컬렉션에 `POST`, 상태 전환은 그 리소스에 `PATCH`와 `{status}`, 제거·탈퇴는 `DELETE`를 사용합니다. 좋은 예 `PATCH /api/applications/{id}` + `{status}`, 피할 예 `POST /api/applications/{id}/approve`.
 - 현재 사용자의 것은 `me`로 표현하고 userId를 경로나 본문으로 받지 않습니다. 좋은 예 `PATCH /api/users/me`, 피할 예 `PATCH /api/users/{userId}`.
 - Path는 대상 리소스 식별, Query는 조회 필터·정렬·페이지, Body는 생성·수정 데이터에 사용합니다. 초대 코드 같은 비밀값은 Path에 두지 않습니다. 좋은 예 `POST /api/room-members` + `{invitationCode}`, 피할 예 `POST /api/room-invitations/{code}/join`.
-- 중첩은 한 단계로 얕게 유지합니다. 컬렉션은 클라이언트가 부모 ID를 알 때만 부모 아래에 두고, 개별 항목은 평평하게 둡니다. 부모 ID를 모르면 평평한 컬렉션과 Body를 사용합니다(`POST /api/room-members` + `{invitationCode}`). 좋은 예 `GET /api/posts/{postId}/applications`와 `GET /api/applications/{id}`, 피할 예 `GET /api/posts/{postId}/applications/{id}`.
+- 중첩은 한 단계로 얕게 유지합니다. 컬렉션은 클라이언트가 부모 ID를 알 때만 부모 아래에 두고, 개별 항목은 평평하게 둡니다. 단, `me`처럼 부모 없이는 대상을 특정할 수 없는 항목은 부모 아래에 둡니다(`DELETE /api/rooms/{roomId}/members/me`). 부모 ID를 모르면 평평한 컬렉션과 Body를 사용합니다(`POST /api/room-members` + `{invitationCode}`). 좋은 예 `GET /api/posts/{postId}/applications`와 `GET /api/applications/{id}`, 피할 예 `GET /api/posts/{postId}/applications/{id}`.
 - 예외로 `/api/auth/**`의 인증 엔드포인트(logout, refresh, verify 등)는 기존 관용 동사를 허용합니다. 이 예외를 도메인 API로 넓히지 않습니다. 허용 예 `POST /api/auth/refresh`, 피할 예 `POST /api/trips/{tripId}/refresh`.
 
 ## 작업 순서
