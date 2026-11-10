@@ -32,7 +32,9 @@
 hs_err_pid*
 replay_pid*
 
-# 개인 로컬 에이전트 설정 (팀 공용 CLAUDE.md, AGENTS.md, .claude/skills는 공유)
+# 개인 로컬 에이전트 설정 (팀 공용 CLAUDE.md, AGENTS.md, .agents/skills는 공유)
+AGENTS.local.md
+.agents/settings.local.json
 CLAUDE.local.md
 .claude/settings.local.json
 

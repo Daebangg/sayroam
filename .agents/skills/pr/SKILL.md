@@ -2,16 +2,14 @@
 name: pr
 description: >
   Pull request writer. Verifies linked-issue checkboxes, formats the PR body,
-  and creates the PR with gh against the repository's base branch.
-  Invoke with /pr.
-disable-model-invocation: true
-allowed-tools: Bash(gh pr list *) Bash(gh pr view *) Bash(gh pr create *)
-  Bash(gh pr edit *) Bash(gh issue view *) Bash(gh issue edit *)
-  Bash(gh label list *) Bash(gh repo view *)
-  Bash(git log *) Bash(git diff *) Bash(git branch *)
+  and creates or updates the PR against the repository's base branch.
+  Use only when the user requests creating or updating a PR.
 ---
 
 # Pull Request
+
+Create, update, or push a PR branch only within the user's requested scope. Use the
+available GitHub connector or CLI; the commands below are CLI examples, not platform requirements.
 
 ## Pre-checks
 
@@ -90,7 +88,9 @@ done
 
 ```bash
 gh pr create --base "$BASE" \
-  --title "..." --body "..." \
+  --title "..." --body-file <body-file> \
   --assignee @me \
   "${LABEL_ARGS[@]}"
 ```
+
+Write the exact Markdown body to a temporary UTF-8 file and pass it with `--body-file`.

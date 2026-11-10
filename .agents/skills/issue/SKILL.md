@@ -2,13 +2,14 @@
 name: issue
 description: >
   GitHub issue writer for this project. Formats issues in the
-  problem/introduction style from a business perspective and creates them
-  with gh. Invoke with /issue.
-disable-model-invocation: true
-allowed-tools: Bash(gh issue list *) Bash(gh issue view *) Bash(gh label list *)
+  problem/introduction style from a business perspective.
+  Use only when the user requests issue creation.
 ---
 
 # Issue
+
+Create issues only within the user's requested scope. Use the available GitHub
+connector or CLI; the commands below are CLI examples, not platform requirements.
 
 ## Core principles
 
@@ -41,7 +42,7 @@ For work outside both BE and FE areas, omit area labels.
 Example for backend work:
 
 ```bash
-gh issue create --title "..." --body "..." \
+gh issue create --title "..." --body-file <body-file> \
   --label "<type>" --label "BE" --assignee @me
 ```
 
@@ -55,11 +56,12 @@ gh issue create --title "..." --body "..." \
   Work that touches neither (CI, root config, agent skills) gets no area label.
 
 Check `gh label list` first and use only labels that exist in the repository.
+Write the exact Markdown body to a temporary UTF-8 file and pass it with `--body-file`.
 
 ## After creation
 
 Offer to create the work branch from the new issue number, following the branch convention: `type/이슈번호-desc`, branched
-from `dev`.
+from `dev`. Read the [branch skill](../branch/SKILL.md) before creating it.
 
 ## Example
 

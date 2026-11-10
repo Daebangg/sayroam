@@ -1,5 +1,7 @@
 # sayroam
 
+- [공통 에이전트 작업 지침 및 스킬](AGENTS.md)
+
 - `backend/`: Spring Boot 백엔드 (Java 21, Gradle)
 - `frontend/`: React·TypeScript 프론트엔드 (Vite, pnpm)
 - `docker/`: 로컬 MySQL·Redis 개발 환경

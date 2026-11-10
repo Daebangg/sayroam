@@ -2,12 +2,13 @@
 name: commit
 description: >
   Commit message formatter for this project. Formats [type] Korean title,
-  per-file body, and issue linking, then commits. Invoke with /commit.
-disable-model-invocation: true
-allowed-tools: Bash(git status *) Bash(git diff *) Bash(git log *) Bash(git branch *)
+  per-file body, and issue linking. Use only when the user requests a commit.
 ---
 
 # Commit
+
+Commit only when the user has requested it in the current session. Use the available
+Git interface; the commands below are CLI examples, not platform requirements.
 
 ## Pre-checks
 
@@ -21,7 +22,7 @@ allowed-tools: Bash(git status *) Bash(git diff *) Bash(git log *) Bash(git bran
    committing — the commit would leak into the wrong PR. Suggest switching to (or creating) that issue's branch.
 4. Check `git log --oneline origin/dev..HEAD` for commits that reference a different issue number. If any exist, the
    branch already carries another issue's work; report it to the user before adding more commits.
-5. Exclude Claude working files from the commit (scratch notes, generated reports).
+5. Exclude temporary agent working files from the commit (scratch notes, generated reports).
 
 ## Message format
 

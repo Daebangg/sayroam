@@ -1,12 +1,8 @@
 ---
 name: branch
 description: >
-  Branch naming and branching strategy guide. Always use this skill when the
-  user asks to create a branch, name a branch, checkout a new branch, or start
-  working on a new feature/fix/refactor. Trigger on: 브랜치 만들어줘, 새 브랜치,
-  branch naming, create branch, git checkout -b, new branch.
-  Generates type/issue-description branch names and enforces the dev-based
-  branching strategy.
+  Name, create, or switch work branches when starting a feature, fix, or refactor.
+  Apply the repository's issue-linked naming and dev-based branching rules.
 ---
 
 # Branch
@@ -25,7 +21,7 @@ type/issue-number-concise-description
 ```
 
 Every branch maps to a GitHub issue. If no issue exists yet, create the issue
-first (see /issue), then branch.
+first (see the [issue skill](../issue/SKILL.md)), then branch.
 
 ## Type Guide
 
