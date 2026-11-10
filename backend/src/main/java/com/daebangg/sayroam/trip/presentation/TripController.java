@@ -7,6 +7,7 @@ import com.daebangg.sayroam.trip.presentation.dto.CreateTripResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -19,7 +20,7 @@ public class TripController implements TripApi {
     private final TripService tripService;
 
     @Override
-    @PostMapping("/api/trips")
+    @PostMapping(value = "/api/trips", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<CreateTripResponse> create(@AuthenticationPrincipal AuthenticatedAccount account,
                                                      @Valid @RequestBody CreateTripRequest request) {
         Long tripId = tripService.create(account.userId(), request.startDate(), request.endDate());

@@ -15,7 +15,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 
 @Tag(name = "Trip")
 public interface TripApi {
-    @Operation(summary = "여행 생성",
+    @Operation(operationId = "createTrip", summary = "여행 생성",
             description = "로그인한 회원이 방 없이 혼자 가는 여행을 만듭니다. 기간만 입력받으며 제목은 비어 있는 상태로 만들어집니다.",
             security = @SecurityRequirement(name = "bearerAuth"))
     @ApiResponses({

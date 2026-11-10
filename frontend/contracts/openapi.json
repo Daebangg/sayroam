@@ -420,6 +420,14 @@
                 },
                 "description": "503: SOCIAL_AUTH_UNAVAILABLE, AUTHENTICATION_UNAVAILABLE 또는 EMAIL_VERIFICATION_UNAVAILABLE. 상태·증명 소비나 가입 커밋 결과가 불확실할 수 있음. 자동 재시도 없이 소셜 인증부터 다시 시작"
             },
+            "TripBadRequest": {
+                "content": {
+                    "application/problem+json": {
+                        "schema": { "$ref": "#/components/schemas/ApiProblem" }
+                    }
+                },
+                "description": "400: INVALID_INPUT(시작일·종료일 누락, errors 포함), TRAVEL_PERIOD_END_BEFORE_START(종료일이 시작일보다 앞섬) 또는 Spring 요청 오류(날짜 형식 오류). 날짜는 yyyy-MM-dd"
+            },
             "Unauthorized": {
                 "content": {
                     "application/problem+json": {
@@ -582,6 +590,8 @@
                     "SOCIAL_PROVIDER_DISABLED",
                     "SOCIAL_RETURN_PATH_INVALID",
                     "SOCIAL_SIGNUP_INVALID",
+                    "TRAVEL_PERIOD_END_BEFORE_START",
+                    "TRIP_PERIOD_REQUIRED",
                     "UNAUTHENTICATED",
                     "USER_BIRTH_YEAR_INVALID",
                     "USER_NICKNAME_INVALID",
@@ -707,6 +717,36 @@
                     }
                 },
                 "required": ["roomId"],
+                "type": "object"
+            },
+            "CreateTripRequest": {
+                "properties": {
+                    "endDate": {
+                        "description": "여행 종료일. 시작일과 같거나 이후",
+                        "example": "2026-12-04",
+                        "format": "date",
+                        "type": "string"
+                    },
+                    "startDate": {
+                        "description": "여행 시작일",
+                        "example": "2026-12-01",
+                        "format": "date",
+                        "type": "string"
+                    }
+                },
+                "required": ["endDate", "startDate"],
+                "type": "object"
+            },
+            "CreateTripResponse": {
+                "properties": {
+                    "tripId": {
+                        "description": "생성된 여행 ID",
+                        "example": 12,
+                        "format": "int64",
+                        "type": "integer"
+                    }
+                },
+                "required": ["tripId"],
                 "type": "object"
             },
             "CurrentUserResponse": {
@@ -2114,6 +2154,37 @@
                 "security": [{ "bearerAuth": [] }],
                 "summary": "놓친 메시지 조회",
                 "tags": ["Chat"]
+            }
+        },
+        "/api/trips": {
+            "post": {
+                "description": "로그인한 회원이 방 없이 혼자 가는 여행을 만듭니다. 기간만 입력받으며 제목은 비어 있는 상태로 만들어집니다.",
+                "operationId": "createTrip",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": { "$ref": "#/components/schemas/CreateTripRequest" }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "201": {
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/CreateTripResponse" }
+                            }
+                        },
+                        "description": "여행 생성 완료"
+                    },
+                    "400": { "$ref": "#/components/responses/TripBadRequest" },
+                    "401": { "$ref": "#/components/responses/Unauthorized" },
+                    "500": { "$ref": "#/components/responses/InternalServerError" },
+                    "503": { "$ref": "#/components/responses/AuthenticationUnavailable" }
+                },
+                "security": [{ "bearerAuth": [] }],
+                "summary": "여행 생성",
+                "tags": ["Trip"]
             }
         },
         "/api/users/me": {
