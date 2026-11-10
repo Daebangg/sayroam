@@ -6,6 +6,7 @@ import com.daebangg.sayroam.room.domain.RoomInvitationRepository;
 import com.daebangg.sayroam.room.domain.RoomMember;
 import com.daebangg.sayroam.room.domain.RoomMemberRepository;
 import com.daebangg.sayroam.room.domain.RoomRepository;
+import com.daebangg.sayroam.room.domain.event.RoomMemberLeft;
 import com.daebangg.sayroam.support.DatabaseIntegrationTest;
 import com.daebangg.sayroam.user.domain.entity.User;
 import com.daebangg.sayroam.user.domain.type.Role;
@@ -15,6 +16,8 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.test.context.event.ApplicationEvents;
+import org.springframework.test.context.event.RecordApplicationEvents;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.LocalDateTime;
@@ -24,10 +27,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+@RecordApplicationEvents
 class RoomServiceTest extends DatabaseIntegrationTest {
 
     @Autowired
     RoomService roomService;
+
+    @Autowired
+    ApplicationEvents events;
 
     @Autowired
     RoomRepository roomRepository;
@@ -220,6 +227,36 @@ class RoomServiceTest extends DatabaseIntegrationTest {
                         e -> {
                             assertThat(e.getErrorCode()).isEqualTo(RoomErrorCode.ROOM_ACCESS_DENIED);
                         });
+    }
+
+    @Test
+    void 나가면_멤버_나감_이벤트를_발행한다() {
+        // given
+        Long userId = saveUser();
+        Long roomId = roomService.create(userId, "제주 3박 4일");
+
+        // when
+        roomService.leave(roomId, userId);
+
+        // then
+        assertThat(events.stream(RoomMemberLeft.class))
+                .containsExactly(new RoomMemberLeft(roomId, userId));
+    }
+
+    @Test
+    void 이미_나간_멤버가_다시_나가면_이벤트를_발행하지_않는다() {
+        // given
+        Long userId = saveUser();
+        Long roomId = roomService.create(userId, "제주 3박 4일");
+        roomService.leave(roomId, userId);
+        events.clear();
+
+        // when
+        assertThatThrownBy(() -> roomService.leave(roomId, userId))
+                .isInstanceOf(BusinessException.class);
+
+        // then
+        assertThat(events.stream(RoomMemberLeft.class)).isEmpty();
     }
 
     @Test
