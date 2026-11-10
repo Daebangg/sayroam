@@ -9,6 +9,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 @Entity
@@ -18,11 +19,13 @@ public class Room extends BaseTimeEntity {
 
     private static final int MAX_NAME_LENGTH = 20;
 
+    @Getter
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     // 1:1 방은 NULL로 두고 상대 닉네임을 보여준다
+    @Getter
     @Column(length = 20)
     private String name;
 
@@ -41,15 +44,7 @@ public class Room extends BaseTimeEntity {
         this.name = name.isBlank() ? null : trimmed;
     }
 
-    public Long getId() {
-        return id;
-    }
-
     public boolean hasName() {
         return name != null;
-    }
-
-    public String getName() {
-        return name;
     }
 }
