@@ -45,7 +45,6 @@ export type EmailFlow = {
     requestCode: (email: string) => Promise<boolean>;
     verifyCode: (code: string) => Promise<boolean>;
     complete: (input: { nickname: string; password: string }) => Promise<boolean>;
-    getSignupProof: () => { email: string; signupProof: string } | null;
     invalidate: () => void;
 };
 
@@ -212,12 +211,6 @@ export function useEmailFlow(mode: EmailFlowMode): EmailFlow {
         requestCode,
         verifyCode,
         complete,
-        getSignupProof: () => {
-            const saved = current.current;
-            return saved?.proof && Date.now() < (saved.proofExpiresAt ?? 0)
-                ? { email: saved.email, signupProof: saved.proof }
-                : null;
-        },
         invalidate,
     };
 }

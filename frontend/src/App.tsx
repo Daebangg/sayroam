@@ -53,7 +53,7 @@ export default function App() {
     }, [location.pathname, checkSession]);
     const [authOpen, setAuthOpen] = useState(
         () =>
-            socialReturn !== null ||
+            socialReturn === null &&
             new URLSearchParams(window.location.search).get("modal") === "auth",
     );
     const socialReturnHandled = useRef(false);
@@ -61,13 +61,18 @@ export default function App() {
     useEffect(() => {
         const returned = socialReturn;
         if (!returned || socialReturnHandled.current) return;
+        let current = true;
         void exchangeSocial(returned.code).then((success) => {
+            if (!current) return;
             socialReturnHandled.current = true;
+            setAuthOpen(!success);
             if (!success) return;
-            setAuthOpen(false);
             setToast({ id: ++toastSequence.current, message: "loginComplete" });
             void navigate(returned.returnPath, { replace: true });
         });
+        return () => {
+            current = false;
+        };
     }, [exchangeSocial, navigate]);
     const authTrigger = useRef<HTMLElement | null>(null);
     useLayoutEffect(() => {
@@ -80,6 +85,7 @@ export default function App() {
     }, [authOpen]);
 
     function openAuth(): void {
+        if (socialReturn && !socialReturnHandled.current) return;
         if (auth.user) {
             void navigate(pagePaths.trips);
             return;
@@ -90,6 +96,7 @@ export default function App() {
     }
 
     function closeAuth(): void {
+        auth.resetDialog();
         setAuthOpen(false);
         const current = new URL(window.location.href);
         const params = current.searchParams;
@@ -197,17 +204,6 @@ export default function App() {
             <ScrollRestoration />
             {authOpen && (
                 <AuthDialog
-                    {...(auth.socialSignup ? { socialSignup: auth.socialSignup } : {})}
-                    onSocialComplete={async (input) => {
-                        const success = await auth.completeSocial(input);
-                        if (success) {
-                            closeAuth();
-                            showToast("socialSignupComplete");
-                            if (socialReturn)
-                                void navigate(socialReturn.returnPath, { replace: true });
-                        }
-                        return success;
-                    }}
                     onCancelSocial={auth.cancelSocial}
                     onClose={closeAuth}
                     onSubmit={login}

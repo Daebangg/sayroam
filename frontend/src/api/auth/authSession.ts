@@ -29,11 +29,9 @@ function assertCurrentAttempt(revision: number, options: AuthCallOptions): void 
     }
 }
 
-export type PendingSocialSignup = components["schemas"]["Signup"] & { expiresAt: number };
 export type AuthenticationResult = {
     revision: number;
-    user: CurrentUserResponse | null;
-    signup: PendingSocialSignup | null;
+    user: CurrentUserResponse;
 };
 
 async function authenticate(
@@ -58,14 +56,23 @@ async function authenticate(
         }
         assertCurrentAttempt(attemptRevision, options);
         if ("status" in response && response.status === "SIGNUP_REQUIRED" && response.signup) {
-            return {
-                revision: getAuthRevision(),
-                user: null,
-                signup: {
-                    ...response.signup,
-                    expiresAt: Date.now() + response.signup.expiresInSeconds * 1000,
-                },
-            };
+            // 이전 서버에서 받은 티켓도 이름 입력·인증 메일 화면 없이 한 번만 완료한다.
+            if (response.signup.emailVerificationRequired || !response.signup.suggestedEmail)
+                throw new ApiError("http", {
+                    status: 400,
+                    problem: {
+                        status: 400,
+                        code: "SOCIAL_EMAIL_REQUIRED",
+                        title: "Email consent required",
+                        detail: "Allow access to your social account email",
+                        instance: "/",
+                    },
+                });
+            response = await api.call("completeSocialSignup", {
+                ...options,
+                body: { signupTicket: response.signup.signupTicket },
+            });
+            assertCurrentAttempt(attemptRevision, options);
         }
         const login = "status" in response ? response.login : response;
         if (!login) throw new ApiError("invalid-response");
@@ -74,7 +81,7 @@ async function authenticate(
         const sessionRevision = getAuthRevision();
         const user = await getCurrentUser(options);
         assertCurrentAttempt(sessionRevision, options);
-        return { user, signup: null, revision: getAuthRevision() };
+        return { user, revision: getAuthRevision() };
     } finally {
         signingIn = false;
     }
@@ -90,26 +97,27 @@ export async function signIn(
 }
 
 const socialExchanges = new Map<string, Promise<AuthenticationResult>>();
+const socialRequests = new Set<AbortController>();
+export function cancelSocialAuthentication(): void {
+    for (const controller of socialRequests) controller.abort();
+}
 export function exchangeSocialSession(resultCode: string): Promise<AuthenticationResult> {
     let pending = socialExchanges.get(resultCode);
     if (!pending) {
-        pending = authenticate(() =>
-            api.call("exchangeSocialLoginResult", { body: { resultCode } }),
-        );
+        const controller = new AbortController();
+        socialRequests.add(controller);
+        pending = authenticate(
+            () =>
+                api.call("exchangeSocialLoginResult", {
+                    body: { resultCode },
+                    signal: controller.signal,
+                }),
+            { signal: controller.signal },
+        ).finally(() => socialRequests.delete(controller));
         // 결과 코드는 일회성이다. StrictMode·재마운트에서도 실패한 POST를 재실행하지 않는다.
         socialExchanges.set(resultCode, pending);
     }
     return pending;
-}
-
-export async function completeSocialSession(
-    input: ApiCallOptions<"completeSocialSignup">["body"],
-    options: AuthCallOptions = {},
-): Promise<AuthenticationResult> {
-    return authenticate(
-        () => api.call("completeSocialSignup", { ...options, body: input }),
-        options,
-    );
 }
 
 export async function restoreSession(options: AuthCallOptions = {}): Promise<CurrentUserResponse> {

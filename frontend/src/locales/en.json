@@ -108,7 +108,8 @@
             "socialExpired": "This authentication has expired or was already used. Start social login again.",
             "socialConflict": "This email or social account is already registered. Log in using your existing method.",
             "socialDisabled": "This provider is unavailable. Choose another login method.",
-            "socialUncertain": "The social login result could not be confirmed. Start a new social login to check the outcome."
+            "socialUncertain": "The social login result could not be confirmed. Start a new social login to check the outcome.",
+            "socialEmailRequired": "Allow access to a valid email address in your social account, then try again. No verification email is sent."
         },
         "flowMessages": {
             "invalidEmail": "Enter a valid email address.",
@@ -137,7 +138,7 @@
         "socialSignupTitle": "Complete your signup",
         "socialSignupDescription": "Choose a nickname and start your journey.",
         "socialProviderDisabled": "This social login is currently unavailable.",
-        "socialVerifiedEmail": "Verified email: {{email}}",
+        "socialVerifiedEmail": "Social account email: {{email}}",
         "socialSignupRemaining": "Complete signup within {{seconds}} seconds.",
         "socialSignupExpired": "Your signup session expired. Return to login and start social authentication again.",
         "socialComplete": "Sign up and get started",

@@ -46,7 +46,7 @@ export function useSocialLogin(active = true) {
             });
         return () => controller.abort();
     }, [active]);
-    async function start(provider: SocialProvider): Promise<void> {
+    async function start(provider: SocialProvider, requestEmailConsent = false): Promise<void> {
         if (pending.current) return;
         if (!providers.includes(provider)) {
             setMessage("socialDisabled");
@@ -61,7 +61,7 @@ export function useSocialLogin(active = true) {
             rememberSocialReturn();
             const response = await api.call("startSocialLogin", {
                 params: { path: { provider: provider.toLowerCase() } },
-                body: { returnPath: "/" },
+                body: { returnPath: "/", requestEmailConsent },
                 signal: controller.signal,
             });
             if (!authorizationMatches(provider, response.authorizationUrl))

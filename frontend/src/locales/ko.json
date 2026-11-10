@@ -108,7 +108,8 @@
             "socialExpired": "인증 정보가 만료되었거나 이미 사용됐어요. 소셜 로그인을 다시 시작해 주세요.",
             "socialConflict": "이미 사용 중인 이메일이거나 연결된 계정이에요. 기존에 가입한 방법으로 로그인해 주세요.",
             "socialDisabled": "현재 사용할 수 없는 소셜 로그인이에요. 다른 방법으로 로그인해 주세요.",
-            "socialUncertain": "소셜 로그인 결과를 확인하지 못했어요. 같은 요청을 반복하지 말고 소셜 로그인을 새로 시작해 확인해 주세요."
+            "socialUncertain": "소셜 로그인 결과를 확인하지 못했어요. 같은 요청을 반복하지 말고 소셜 로그인을 새로 시작해 확인해 주세요.",
+            "socialEmailRequired": "소셜 계정의 유효한 이메일 정보 제공에 동의한 뒤 다시 로그인해 주세요. 인증 메일은 보내지 않아요."
         },
         "flowMessages": {
             "invalidEmail": "올바른 이메일 주소를 입력해 주세요.",
@@ -137,7 +138,7 @@
         "socialSignupTitle": "소셜 회원가입",
         "socialSignupDescription": "닉네임을 정하고 여행을 시작해 보세요.",
         "socialProviderDisabled": "현재 사용할 수 없는 소셜 로그인이에요.",
-        "socialVerifiedEmail": "확인된 이메일: {{email}}",
+        "socialVerifiedEmail": "소셜 계정 이메일: {{email}}",
         "socialSignupRemaining": "{{seconds}}초 안에 가입을 완료해 주세요.",
         "socialSignupExpired": "가입 시간이 지났어요. 로그인으로 돌아가 소셜 인증을 다시 시작해 주세요.",
         "socialComplete": "가입하고 시작하기",

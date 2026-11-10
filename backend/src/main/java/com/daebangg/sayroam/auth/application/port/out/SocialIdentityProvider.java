@@ -19,7 +19,7 @@ public interface SocialIdentityProvider {
      */
     SocialIdentity authenticate(SocialProvider provider, Callback request);
 
-    record AuthorizationRequest(String state, String codeChallenge) {
+    record AuthorizationRequest(String state, String codeChallenge, boolean requestEmailConsent) {
         @Override
         public String toString() {
             return "AuthorizationRequest[redacted]";

@@ -115,7 +115,7 @@ test("복귀 경로는 로컬 화면만 허용하고 결과 중복·만료·다�
     );
 });
 
-test("StrictMode 효과 재연결에도 결과 POST는 한 번이며 신규 가입에는 토큰을 만들지 않음", async (t) => {
+test("StrictMode 효과 재연결에도 결과 POST는 한 번이며 미제공 이메일은 동의 안내", async (t) => {
     const calls: string[] = [];
     let release: (value: Response) => void = () => assert.fail("request not started");
     t.mock.method(globalThis, "fetch", async (path: unknown) => {
@@ -135,7 +135,7 @@ test("StrictMode 효과 재연결에도 결과 POST는 한 번이며 신규 가�
     await first;
     await second;
     assert.deepEqual(calls, ["/api/auth/social/results/exchange"]);
-    assert.equal(session.getSnapshot().socialSignup?.emailVerificationRequired, true);
+    assert.equal(session.getSnapshot().message, "socialEmailRequired");
     assert.equal(session.getSnapshot().user, null);
     assert.equal(getAccessToken(), undefined);
     finish();
@@ -159,27 +159,32 @@ test("기존 소셜 회원은 공통 토큰·회원 조회를 거쳐 로그인 �
     assert.deepEqual(calls, ["/api/auth/social/results/exchange", "/api/users/me"]);
 });
 
-for (const required of [false, true])
-    test(`추가 가입은 닉네임과 필요한 이메일 증명만 전달하고 로그인함 (${required})`, async (t) => {
-        const bodies: unknown[] = [];
-        t.mock.method(globalThis, "fetch", async (path: unknown, options?: RequestInit) => {
-            if (path === "/api/users/me") return Response.json(user);
-            bodies.push(JSON.parse(String(options?.body)));
-            return Response.json(
-                path === "/api/auth/social/results/exchange" ? signup(required) : token,
-            );
-        });
-        const session = createAuthController();
-        await session.exchangeSocial((required ? "D" : "E").repeat(43));
-        const input = {
-            nickname: "여행자",
-            ...(required ? { email: "member@example.test", signupProof: "P".repeat(43) } : {}),
-        };
-        assert.equal(await session.completeSocial(input), true);
-        assert.deepEqual(bodies[1], { ...input, signupTicket: "T".repeat(43) });
-        assert.equal(session.getSnapshot().socialSignup, undefined);
-        assert.equal(session.getSnapshot().status, "authenticated");
+test("이전 서버의 가입 티켓도 이름 입력 없이 한 번만 자동 완료", async (t) => {
+    const bodies: unknown[] = [];
+    t.mock.method(globalThis, "fetch", async (path: unknown, options?: RequestInit) => {
+        if (path === "/api/users/me") return Response.json(user);
+        bodies.push(JSON.parse(String(options?.body)));
+        return Response.json(path === "/api/auth/social/results/exchange" ? signup() : token);
     });
+    const session = createAuthController();
+    assert.equal(await session.exchangeSocial("E".repeat(43)), true);
+    assert.deepEqual(bodies[1], { signupTicket: "T".repeat(43) });
+    assert.equal("socialSignup" in session.getSnapshot(), false);
+    assert.equal(session.getSnapshot().status, "authenticated");
+});
+
+test("이메일을 받지 못하면 코드 발송 대신 소셜 제공 동의 안내로 매핑", async (t) => {
+    const calls: string[] = [];
+    t.mock.method(globalThis, "fetch", async (path: unknown) => {
+        calls.push(String(path));
+        return Response.json({ status: 400, code: "SOCIAL_EMAIL_REQUIRED" }, { status: 400 });
+    });
+    const session = createAuthController();
+    assert.equal(await session.exchangeSocial("V".repeat(43)), false);
+    assert.equal(session.getSnapshot().message, "socialEmailRequired");
+    assert.equal("socialSignup" in session.getSnapshot(), false);
+    assert.deepEqual(calls, ["/api/auth/social/results/exchange"]);
+});
 
 test("취소·충돌·소비된 결과는 복구 문구로 안내하고 같은 결과를 자동 재전송하지 않음", async (t) => {
     let calls = 0;
@@ -226,4 +231,82 @@ test("소셜 인증 응답 대기 중 로그아웃되면 늦은 토큰으로 계
     release(Response.json({ status: "AUTHENTICATED", login: token, signup: null }));
     assert.equal(await pending, false);
     assert.equal(getAccessToken(), undefined);
+});
+
+test("모달 닫기는 소셜 동의 안내·오류·시도 횟수 상태를 모두 초기화", async (t) => {
+    let limited = false;
+    t.mock.method(globalThis, "fetch", async (path: unknown) =>
+        path === "/api/auth/social/results/exchange"
+            ? Response.json(signup(true))
+            : limited
+              ? Response.json(
+                    { status: 429, code: "LOGIN_RATE_LIMITED", retryAfterSeconds: 300 },
+                    { status: 429 },
+                )
+              : Response.json(
+                    { status: 401, code: "INVALID_CREDENTIALS", remainingAttempts: 4 },
+                    { status: 401 },
+                ),
+    );
+    const session = createAuthController();
+    await session.exchangeSocial("R".repeat(43));
+    assert.equal(session.getSnapshot().message, "socialEmailRequired");
+    session.resetDialog();
+    assert.deepEqual(session.getSnapshot(), { status: "anonymous", user: null, message: null });
+    await session.login({ email: user.email, password: "Wrong-password-123" });
+    assert.equal(session.getSnapshot().remainingAttempts, 4);
+    session.resetDialog();
+    assert.deepEqual(session.getSnapshot(), { status: "anonymous", user: null, message: null });
+    limited = true;
+    await session.login({ email: user.email, password: "Wrong-password-123" });
+    assert.ok(session.getSnapshot().retryAt);
+    session.resetDialog();
+    assert.deepEqual(session.getSnapshot(), { status: "anonymous", user: null, message: null });
+});
+
+test("로그인 중 모달을 닫으면 요청을 취소하고 늦은 응답으로 로그인 상태가 복구되지 않음", async (t) => {
+    let signal: AbortSignal | null | undefined;
+    let release: (value: Response) => void = () => assert.fail("request not started");
+    t.mock.method(globalThis, "fetch", async (_path: unknown, options?: RequestInit) => {
+        signal = options?.signal;
+        return new Promise<Response>((resolve) => {
+            release = resolve;
+        });
+    });
+    const session = createAuthController();
+    const pending = session.login({ email: user.email, password: "Test-password-123" });
+    await new Promise((resolve) => setImmediate(resolve));
+    session.resetDialog();
+    assert.equal(signal?.aborted, true);
+    release(Response.json(token));
+    assert.equal(await pending, false);
+    assert.equal(getAccessToken(), undefined);
+    assert.deepEqual(session.getSnapshot(), { status: "anonymous", user: null, message: null });
+});
+
+test("소셜 결과 교환 중 모달 닫기는 공유 요청도 취소하며 완료된 기존 로그인은 유지", async (t) => {
+    let signal: AbortSignal | null | undefined;
+    let release: (value: Response) => void = () => assert.fail("request not started");
+    t.mock.method(globalThis, "fetch", async (_path: unknown, options?: RequestInit) => {
+        signal = options?.signal;
+        return new Promise<Response>((resolve) => {
+            release = resolve;
+        });
+    });
+    const session = createAuthController();
+    const pending = session.exchangeSocial("S".repeat(43));
+    await new Promise((resolve) => setImmediate(resolve));
+    session.resetDialog();
+    assert.equal(signal?.aborted, true);
+    release(Response.json(signup(true)));
+    assert.equal(await pending, false);
+    assert.equal("socialSignup" in session.getSnapshot(), false);
+    t.mock.method(globalThis, "fetch", async (path: unknown) =>
+        Response.json(path === "/api/users/me" ? user : token),
+    );
+    assert.equal(await session.login({ email: user.email, password: "Test-password-123" }), true);
+    session.resetDialog();
+    assert.equal(session.getSnapshot().status, "authenticated");
+    assert.deepEqual(session.getSnapshot().user, user);
+    assert.equal(getAccessToken(), token.accessToken);
 });

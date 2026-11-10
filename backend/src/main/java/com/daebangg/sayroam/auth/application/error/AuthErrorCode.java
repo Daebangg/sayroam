@@ -16,6 +16,7 @@ public enum AuthErrorCode implements ErrorCode {
     SOCIAL_AUTH_FAILED(ErrorType.UNAUTHENTICATED, "Social authentication failed; start again"),
     SOCIAL_AUTH_UNAVAILABLE(ErrorType.UNAVAILABLE, "Social authentication could not be confirmed; start again without automatically retrying"),
     SOCIAL_RETURN_PATH_INVALID(ErrorType.INVALID, "The return path is not allowed"),
+    SOCIAL_EMAIL_REQUIRED(ErrorType.INVALID, "Allow access to a valid account email in your social provider and start again"),
     SOCIAL_SIGNUP_INVALID(ErrorType.INVALID, "Social signup requires a valid nickname and verified email; start social authentication again if the ticket was consumed"),
     SOCIAL_ACCOUNT_CONFLICT(ErrorType.CONFLICT, "This social account is already registered; start social authentication again"),
     EMAIL_DELIVERY_DISABLED(ErrorType.UNAVAILABLE,

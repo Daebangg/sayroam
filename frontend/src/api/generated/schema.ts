@@ -291,7 +291,7 @@ export interface paths {
         put?: never;
         /**
          * 소셜 로그인 인증 시작
-         * @description 활성화한 OAuth2 공급자만 사용합니다. 첫 공급자는 google. CSRF 쿠키·헤더 필요. HttpOnly 브라우저 바인딩 쿠키를 설정하고 state 및 지원 공급자의 PKCE S256 인증 주소를 반환합니다. 같은 브라우저에서 authorizationUrl로 이동하세요. returnPath는 서버 허용 목록만 사용합니다. Bearer 헤더 없이 호출하세요.
+         * @description 활성화한 Google·Kakao·Naver만 사용합니다. Google·Kakao는 계정 선택을 요청하고 Naver는 재로그인 화면을 요청합니다. Naver 이메일 재동의 요청은 reprompt를 사용합니다. CSRF 쿠키·헤더 필요. HttpOnly 브라우저 바인딩 쿠키를 설정하고 state 및 지원 공급자의 PKCE S256 인증 주소를 반환합니다. 같은 브라우저에서 authorizationUrl로 이동하세요. returnPath는 서버 허용 목록만 사용합니다. Bearer 헤더 없이 호출하세요.
          */
         post: operations["startSocialLogin"];
         delete?: never;
@@ -351,7 +351,7 @@ export interface paths {
         put?: never;
         /**
          * 소셜 로그인 결과 일회성 교환
-         * @description 인증을 시작한 브라우저의 HttpOnly 바인딩 쿠키와 CSRF 쿠키·헤더 필요. social_result 값을 읽은 뒤 주소에서 제거하세요. AUTHENTICATED이면 login 본문과 Refresh 쿠키, SIGNUP_REQUIRED이면 signup 티켓·이메일 보완 여부를 반환합니다. 실패 결과는 해당 ProblemDetail로 반환합니다. 소비 후 응답 유실·장애 시 자동 재시도하지 말고 소셜 인증을 다시 시작하세요.
+         * @description 인증을 시작한 브라우저의 HttpOnly 바인딩 쿠키와 CSRF 쿠키·헤더 필요. social_result 값을 읽은 뒤 주소에서 제거하세요. 소셜이 검증한 이메일이 기존 활성·이메일 인증 회원과 일치하면 결과 소비 시 같은 회원에 소셜을 연결하고 추가 로그인 없이 AUTHENTICATED를 반환합니다. AUTHENTICATED이면 login 본문과 Refresh 쿠키, 신규 회원도 공급자 이름·별명으로 가입하고 같은 응답에서 AUTHENTICATED를 반환합니다. 이름이 없으면 기본 닉네임을 사용하며 닉네임 입력 화면은 없습니다. 이메일이 없거나 사용할 수 없으면 SOCIAL_EMAIL_REQUIRED로 제공 동의를 안내하며 인증 메일은 보내지 않습니다. 실패 결과는 해당 ProblemDetail로 반환합니다. 소비 후 응답 유실·장애 시 자동 재시도하지 말고 소셜 인증을 다시 시작하세요.
          */
         post: operations["exchangeSocialLoginResult"];
         delete?: never;
@@ -370,8 +370,8 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * 소셜 회원가입 완료·로그인
-         * @description 동일 브라우저 바인딩과 CSRF 쿠키·헤더 필요. 가입 티켓·닉네임을 전달합니다. 이메일 보완이 필요하면 #28의 코드 발급·확인 후 email/signupProof도 전달합니다. 비밀번호 자격 정보 없이 User+소셜 계정을 한 DB 트랜잭션에서 생성합니다. 이메일 충돌 시 자동 병합하지 않으며 기존 계정 로그인 후 연결해야 합니다. 티켓·증명 소비 또는 DB 커밋 이후 실패 시 복원·자동 재시도하지 않습니다.
+         * 이전 소셜 가입 티켓 완료·로그인
+         * @description 동일 브라우저 바인딩과 CSRF 쿠키·헤더 필요. 이전 버전에서 발급한 가입 티켓만 전달합니다. 닉네임은 공급자 이름·별명으로 정합니다. 이메일은 공급자 UserInfo에서 사용하며 인증 메일·이메일 코드·signupProof는 요구하지 않습니다. 비밀번호 자격 정보 없이 User+소셜 계정을 한 DB 트랜잭션에서 생성합니다. 같은 이메일의 기존 활성 회원은 그 계정에 연결하고 로그인합니다. 티켓 소비 또는 DB 커밋 이후 실패 시 복원·자동 재시도하지 않습니다.
          */
         post: operations["completeSocialSignup"];
         delete?: never;
@@ -620,6 +620,7 @@ export interface components {
             | "SOCIAL_AUTH_FAILED"
             | "SOCIAL_AUTH_INVALID"
             | "SOCIAL_AUTH_UNAVAILABLE"
+            | "SOCIAL_EMAIL_REQUIRED"
             | "SOCIAL_PROVIDER_DISABLED"
             | "SOCIAL_RETURN_PATH_INVALID"
             | "SOCIAL_SIGNUP_INVALID"
@@ -897,7 +898,7 @@ export interface components {
             resetProof: string;
         };
         Signup: {
-            /** @description true이면 #28 이메일 인증 후 signupProof 필요 */
+            /** @description 항상 false. 소셜 가입에 별도 인증 메일을 발송하지 않음 */
             emailVerificationRequired: boolean;
             /**
              * Format: int64
@@ -906,7 +907,7 @@ export interface components {
             expiresInSeconds: number;
             /** @description 가입 API에 한 번 전달할 브라우저 바인딩 티켓 */
             signupTicket: string;
-            /** @description 공급자가 제공한 입력 참고용 이메일. 검증 완료를 의미하지 않음 */
+            /** @description 공급자가 동의받아 제공한 서비스 가입 이메일. 없으면 가입 티켓 대신 SOCIAL_EMAIL_REQUIRED 오류 */
             suggestedEmail?: string | null;
         };
         SignupRequest: {
@@ -934,6 +935,11 @@ export interface components {
             userId: number;
         };
         SocialAuthStartRequest: {
+            /**
+             * @description 이메일 미제공 안내 후 재시도할 때 true. Naver 정보 제공 재동의 화면 요청
+             * @default false
+             */
+            requestEmailConsent?: boolean;
             /**
              * @description 서버 허용 목록의 로컬 복귀 경로. 생략하면 /
              * @default /
@@ -969,15 +975,6 @@ export interface components {
             resultCode: string;
         };
         SocialSignupRequest: {
-            /**
-             * Format: email
-             * @description 이메일 보완 시 인증한 이메일. 신뢰한 공급자 이메일이 있으면 생략하거나 동일한 값만 전달
-             */
-            email?: string | null;
-            /** @description 앞뒤 공백 제거 후 1~50자 */
-            nickname: string;
-            /** @description 이메일 보완 시 #28에서 받은 가입 증명 */
-            signupProof?: string | null;
             /** @description 결과 교환에서 받은 가입 티켓 */
             signupTicket: string;
         };
@@ -1401,7 +1398,7 @@ export interface components {
                 "application/problem+json": components["schemas"]["ApiProblem"];
             };
         };
-        /** @description 400: SOCIAL_PROVIDER_DISABLED, SOCIAL_AUTH_INVALID, SOCIAL_AUTH_CANCELLED, SOCIAL_RETURN_PATH_INVALID, SOCIAL_SIGNUP_INVALID, SIGNUP_PROOF_INVALID 또는 INVALID_INPUT. 만료·소비된 상태나 잘못된 브라우저이면 소셜 인증부터 다시 시작 */
+        /** @description 400: SOCIAL_PROVIDER_DISABLED, SOCIAL_AUTH_INVALID, SOCIAL_AUTH_CANCELLED, SOCIAL_RETURN_PATH_INVALID, SOCIAL_SIGNUP_INVALID, SOCIAL_EMAIL_REQUIRED 또는 INVALID_INPUT. 만료·소비된 상태나 잘못된 브라우저이면 소셜 인증부터 다시 시작 */
         SocialBadRequest: {
             headers: {
                 [name: string]: unknown;
@@ -1410,7 +1407,7 @@ export interface components {
                 "application/problem+json": components["schemas"]["ApiProblem"];
             };
         };
-        /** @description 409: EMAIL_ALREADY_REGISTERED, SOCIAL_ACCOUNT_CONFLICT 또는 SIGNUP_PROOF_ALREADY_USED. 이메일 자동 병합 없음. 기존 회원은 기존 계정으로 로그인 후 명시적 연결 필요 */
+        /** @description 409: EMAIL_ALREADY_REGISTERED 또는 SOCIAL_ACCOUNT_CONFLICT. 검증된 동일 이메일의 활성 회원은 자동 연결·로그인. 비활성 회원·이미 다른 소셜 ID가 연결된 공급자 등의 충돌은 거절 */
         SocialConflict: {
             headers: {
                 [name: string]: unknown;
@@ -2041,7 +2038,6 @@ export interface operations {
             401: components["responses"]["SocialUnauthorized"];
             403: components["responses"]["Forbidden"];
             409: components["responses"]["SocialConflict"];
-            410: components["responses"]["SignupProofExpired"];
             500: components["responses"]["InternalServerError"];
             503: components["responses"]["SocialUnavailable"];
         };

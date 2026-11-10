@@ -1,5 +1,3 @@
-import type { PendingSocialSignup, SocialSignupInput } from "@/hooks/auth.types";
-import { useCountdown } from "@/hooks/useCountdown";
 import { useSocialLogin } from "@/hooks/api/auth/useSocialLogin";
 import { useState } from "react";
 import { LoginModal } from "@/components/features/auth/LoginModal";
@@ -8,8 +6,6 @@ import { useEmailFlow, type EmailFlowMode } from "@/hooks/api/auth/useEmailFlow"
 import type { AuthMessage, LoginInput } from "@/hooks/auth.types";
 
 type AuthDialogProps = {
-    socialSignup?: PendingSocialSignup;
-    onSocialComplete: (input: SocialSignupInput) => Promise<boolean>;
     onCancelSocial: () => void;
     onClose: () => void;
     onSubmit: (input: LoginInput) => Promise<boolean>;
@@ -56,68 +52,9 @@ function EmailDialog({
     );
 }
 
-function SocialSignupDialog({
-    signup,
-    onSubmit,
-    onLogin,
-    onClose,
-    busy,
-}: {
-    signup: PendingSocialSignup;
-    onSubmit: AuthDialogProps["onSocialComplete"];
-    onLogin: () => void;
-    onClose: () => void;
-    busy: boolean;
-}) {
-    const flow = useEmailFlow("signup");
-    const remaining = useCountdown(signup.expiresAt);
-    return (
-        <EmailFlowModal
-            mode="social"
-            emailVerificationRequired={signup.emailVerificationRequired}
-            suggestedEmail={signup.suggestedEmail ?? null}
-            signupExpiresIn={remaining}
-            busy={busy || flow.busy}
-            sent={flow.sent}
-            verified={flow.verified}
-            expiresIn={flow.expiresIn}
-            resendIn={flow.resendIn}
-            message={flow.message}
-            onEmailChange={flow.invalidate}
-            onRequest={flow.requestCode}
-            onVerify={flow.verifyCode}
-            onLogin={onLogin}
-            onClose={() => {
-                if (!busy && !flow.busy) onClose();
-            }}
-            onComplete={async (input) => {
-                const proof = flow.getSignupProof();
-                if (signup.emailVerificationRequired && !proof) return false;
-                return onSubmit({
-                    nickname: input.nickname,
-                    ...(signup.emailVerificationRequired && proof ? proof : {}),
-                });
-            }}
-        />
-    );
-}
-
 export function AuthDialog(props: AuthDialogProps) {
     const social = useSocialLogin(!props.busy);
     const [mode, setMode] = useState<"login" | EmailFlowMode>("login");
-    if (props.socialSignup)
-        return (
-            <SocialSignupDialog
-                signup={props.socialSignup}
-                onSubmit={props.onSocialComplete}
-                busy={props.busy}
-                onClose={props.onClose}
-                onLogin={() => {
-                    props.onCancelSocial();
-                    setMode("login");
-                }}
-            />
-        );
     if (mode !== "login")
         return (
             <EmailDialog
@@ -136,7 +73,10 @@ export function AuthDialog(props: AuthDialogProps) {
             {...props}
             open
             providers={social.providers}
-            onSocialLogin={social.start}
+            onSocialLogin={(provider) => {
+                props.onCancelSocial();
+                return social.start(provider, props.message === "socialEmailRequired");
+            }}
             busy={props.busy || social.busy}
             message={social.message ?? props.message}
             onSubmit={(input) => {

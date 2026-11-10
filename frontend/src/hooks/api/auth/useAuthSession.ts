@@ -5,13 +5,7 @@ import type { AuthState } from "../../auth.types";
 type AuthSession = AuthState &
     Pick<
         AuthController,
-        | "login"
-        | "logout"
-        | "restore"
-        | "check"
-        | "exchangeSocial"
-        | "completeSocial"
-        | "cancelSocial"
+        "login" | "logout" | "restore" | "check" | "exchangeSocial" | "cancelSocial" | "resetDialog"
     >;
 
 export function useAuthSession(socialReturn = false): AuthSession {
@@ -36,7 +30,7 @@ export function useAuthSession(socialReturn = false): AuthSession {
         restore: session.restore,
         check: session.check,
         exchangeSocial: session.exchangeSocial,
-        completeSocial: session.completeSocial,
         cancelSocial: session.cancelSocial,
+        resetDialog: session.resetDialog,
     };
 }

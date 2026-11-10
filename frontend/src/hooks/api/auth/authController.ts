@@ -1,17 +1,17 @@
-import type { ApiCallOptions } from "../../../api/router.ts";
 import { ApiError } from "../../../api/apiError.ts";
 import {
     restoreSession,
     signIn,
     signOut,
     exchangeSocialSession,
-    completeSocialSession,
+    cancelSocialAuthentication,
     type AuthenticationResult,
 } from "../../../api/auth/authSession.ts";
 import {
     getAccessTokenSnapshot,
     getAuthRevision,
     subscribeAuthInvalidation,
+    clearAccessToken,
 } from "../../../api/auth/tokenStore.ts";
 import type { AuthMessage, AuthState, LoginInput } from "../../auth.types.ts";
 
@@ -41,6 +41,7 @@ export function socialMessageFor(error: unknown): AuthMessage {
     if (!(error instanceof ApiError)) return "socialUncertain";
     const code = error.problem?.code;
     if (code === "SOCIAL_AUTH_CANCELLED") return "socialCancelled";
+    if (code === "SOCIAL_EMAIL_REQUIRED") return "socialEmailRequired";
     if (code === "SOCIAL_PROVIDER_DISABLED") return "socialDisabled";
     if (code === "EMAIL_ALREADY_REGISTERED" || code === "SOCIAL_ACCOUNT_CONFLICT")
         return "socialConflict";
@@ -66,10 +67,8 @@ export type AuthController = {
     login: (input: LoginInput) => Promise<boolean>;
     logout: () => Promise<boolean>;
     exchangeSocial: (code: string) => Promise<boolean>;
-    completeSocial: (
-        input: Omit<ApiCallOptions<"completeSocialSignup">["body"], "signupTicket">,
-    ) => Promise<boolean>;
     cancelSocial: () => void;
+    resetDialog: () => void;
 };
 
 export function createAuthController(): AuthController {
@@ -117,9 +116,8 @@ export function createAuthController(): AuthController {
                     status: user ? "authenticated" : "anonymous",
                     user,
                     message: null,
-                    ...(outcome?.signup ? { socialSignup: outcome.signup } : {}),
                 });
-                return !outcome?.signup;
+                return true;
             } catch (error) {
                 if (current !== generation) return false;
                 const profilePending =
@@ -218,20 +216,23 @@ export function createAuthController(): AuthController {
                     });
                 return exchangeSocialSession(code);
             }),
-        completeSocial: (input): Promise<boolean> => {
-            const signup = state.socialSignup;
-            return run("login", undefined, async (signal) => {
-                if (!signup || signup.expiresAt <= Date.now())
-                    throw new ApiError("http", { status: 410 });
-                return completeSocialSession(
-                    { ...input, signupTicket: signup.signupTicket },
-                    { signal },
-                );
-            });
-        },
         cancelSocial: (): void => {
             if (pending) return;
             update({ status: "anonymous", user: null, message: null });
+        },
+        resetDialog: (): void => {
+            if (pending && state.status === "signingIn") {
+                generation++;
+                pending.controller.abort();
+                pending = undefined;
+                cancelSocialAuthentication();
+                clearAccessToken();
+            }
+            update({
+                status: pending ? state.status : state.user ? "authenticated" : "anonymous",
+                user: state.user,
+                message: null,
+            });
         },
     };
 }

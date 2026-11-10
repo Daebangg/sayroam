@@ -33,9 +33,10 @@ public class OAuth2UserInfoMapper {
             case NAVER -> {
                 if (!"00".equals(text(attributes, "resultcode"))) throw new AuthException(AuthErrorCode.SOCIAL_AUTH_FAILED);
                 var response = object(attributes, "response");
-                // 이메일 검증 여부를 제공하지 않으므로 서비스의 이메일 보완 인증을 사용한다.
-                yield identity(provider, text(response, "id"), text(response, "email"), false,
-                        text(response, "nickname"), text(response, "profile_image"));
+                String nickname = text(response, "nickname");
+                // 인증된 네이버 UserInfo가 제공한 이메일을 서비스 이메일로 수락한다. 별도 인증 메일은 보내지 않는다.
+                yield identity(provider, text(response, "id"), text(response, "email"), true,
+                        nickname == null || nickname.isBlank() ? text(response, "name") : nickname, text(response, "profile_image"));
             }
         };
     }
@@ -43,7 +44,7 @@ public class OAuth2UserInfoMapper {
     private SocialIdentity identity(SocialProvider provider, String id, String email, boolean verified, String name, String picture) {
         if (id == null || id.isBlank() || id.length() > 100) throw new AuthException(AuthErrorCode.SOCIAL_AUTH_FAILED);
         if (email != null && (!com.daebangg.sayroam.auth.domain.EmailAddress.isValid(email))) email = null;
-        return new SocialIdentity(provider, id, email, verified && email != null, bounded(name, 50), bounded(picture, 500));
+        return new SocialIdentity(provider, id, email, verified && email != null, bounded(name, 500), bounded(picture, 500));
     }
 
     private String text(Map<?, ?> values, String key) {
