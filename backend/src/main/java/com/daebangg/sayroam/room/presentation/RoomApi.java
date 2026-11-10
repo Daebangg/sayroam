@@ -4,6 +4,7 @@ import com.daebangg.sayroam.auth.domain.AuthenticatedAccount;
 import com.daebangg.sayroam.room.presentation.dto.CreateRoomInvitationResponse;
 import com.daebangg.sayroam.room.presentation.dto.CreateRoomRequest;
 import com.daebangg.sayroam.room.presentation.dto.CreateRoomResponse;
+import com.daebangg.sayroam.room.presentation.dto.JoinRoomRequest;
 import com.daebangg.sayroam.room.presentation.dto.JoinRoomResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -44,10 +45,15 @@ public interface RoomApi {
             @Parameter(hidden = true) @AuthenticationPrincipal AuthenticatedAccount account,
             @Parameter(description = "방 ID", example = "7") Long roomId);
 
-    @Operation(summary = "초대 링크로 방 참여", description = "유효한 초대 코드로 방에 참여합니다. 이미 참여 중인 회원은 오류 없이 방 ID를 응답합니다.",
+    @Operation(summary = "초대 코드로 방 참여",
+            description = "유효한 초대 코드로 방 멤버가 됩니다. 나간 멤버도 유효한 코드로 다시 참여할 수 있습니다. "
+                    + "이미 참여 중인 회원은 코드 만료 여부와 무관하게 방 ID를 응답합니다.",
             security = @SecurityRequirement(name = "bearerAuth"))
     @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "참여 완료 또는 이미 참여 중"),
+            @ApiResponse(responseCode = "200", description = "참여·재참여 완료 또는 이미 참여 중"),
+            @ApiResponse(responseCode = "400", description = "INVALID_INPUT. 초대 코드 누락",
+                    content = @Content(mediaType = "application/problem+json",
+                            schema = @Schema(ref = "#/components/schemas/ApiProblem"))),
             @ApiResponse(responseCode = "401", ref = "#/components/responses/Unauthorized"),
             @ApiResponse(responseCode = "404", description = "ROOM_INVITATION_NOT_FOUND. 없는 초대 코드",
                     content = @Content(mediaType = "application/problem+json",
@@ -60,5 +66,20 @@ public interface RoomApi {
     })
     ResponseEntity<JoinRoomResponse> joinByInvitation(
             @Parameter(hidden = true) @AuthenticationPrincipal AuthenticatedAccount account,
-            @Parameter(description = "초대 코드", example = "k3Xv9qLm2Tz8RwYb7NfA") String code);
+            @RequestBody JoinRoomRequest request);
+
+    @Operation(summary = "채팅방 나가기",
+            description = "참여 중인 방에서 나갑니다. 멤버 기록은 정산을 위해 남고, 유효한 초대 코드로 다시 참여할 수 있습니다. "
+                    + "이미 열린 채팅 구독은 서버가 즉시 끊지 않으므로 클라이언트가 해제해야 합니다.",
+            security = @SecurityRequirement(name = "bearerAuth"))
+    @ApiResponses({
+            @ApiResponse(responseCode = "204", description = "나가기 완료"),
+            @ApiResponse(responseCode = "401", ref = "#/components/responses/Unauthorized"),
+            @ApiResponse(responseCode = "403", ref = "#/components/responses/RoomAccessDenied"),
+            @ApiResponse(responseCode = "503", ref = "#/components/responses/AuthenticationUnavailable"),
+            @ApiResponse(responseCode = "500", ref = "#/components/responses/InternalServerError")
+    })
+    ResponseEntity<Void> leave(
+            @Parameter(hidden = true) @AuthenticationPrincipal AuthenticatedAccount account,
+            @Parameter(description = "방 ID", example = "7") Long roomId);
 }

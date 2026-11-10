@@ -5,12 +5,15 @@ import com.daebangg.sayroam.room.application.RoomService;
 import com.daebangg.sayroam.room.presentation.dto.CreateRoomInvitationResponse;
 import com.daebangg.sayroam.room.presentation.dto.CreateRoomRequest;
 import com.daebangg.sayroam.room.presentation.dto.CreateRoomResponse;
+import com.daebangg.sayroam.room.presentation.dto.JoinRoomRequest;
 import com.daebangg.sayroam.room.presentation.dto.JoinRoomResponse;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -40,10 +43,18 @@ public class RoomController implements RoomApi {
     }
 
     @Override
-    @PostMapping(value = "/api/room-invitations/{code}/join", produces = MediaType.APPLICATION_JSON_VALUE)
+    @PostMapping(value = "/api/room-members", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<JoinRoomResponse> joinByInvitation(@AuthenticationPrincipal AuthenticatedAccount account,
-                                                             @PathVariable String code) {
-        Long roomId = roomService.joinByInvitation(code, account.userId());
+                                                             @Valid @RequestBody JoinRoomRequest request) {
+        Long roomId = roomService.joinByInvitation(request.invitationCode(), account.userId());
         return ResponseEntity.ok(new JoinRoomResponse(roomId));
+    }
+
+    @Override
+    @DeleteMapping("/api/rooms/{roomId}/members/me")
+    public ResponseEntity<Void> leave(@AuthenticationPrincipal AuthenticatedAccount account,
+                                      @PathVariable Long roomId) {
+        roomService.leave(roomId, account.userId());
+        return ResponseEntity.noContent().build();
     }
 }

@@ -5,19 +5,20 @@ import com.daebangg.sayroam.room.domain.RoomErrorCode;
 import com.daebangg.sayroam.room.domain.RoomInvitationRepository;
 import com.daebangg.sayroam.room.domain.RoomMember;
 import com.daebangg.sayroam.room.domain.RoomMemberRepository;
-import com.daebangg.sayroam.room.domain.RoomMemberStatus;
 import com.daebangg.sayroam.room.domain.RoomRepository;
 import com.daebangg.sayroam.support.DatabaseIntegrationTest;
-import com.daebangg.sayroam.user.domain.type.Role;
 import com.daebangg.sayroam.user.domain.entity.User;
+import com.daebangg.sayroam.user.domain.type.Role;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityManagerFactory;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.transaction.support.TransactionTemplate;
+
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
@@ -91,18 +92,6 @@ class RoomServiceTest extends DatabaseIntegrationTest {
         Long noneMemberId = 999L;
 
         assertThatThrownBy(() -> roomService.ensureJoined(roomId, noneMemberId))
-                .isInstanceOfSatisfying(BusinessException.class,
-                        e -> assertThat(e.getErrorCode()).isEqualTo(RoomErrorCode.ROOM_ACCESS_DENIED));
-    }
-
-    @Test
-    void 나간_멤버면_접근을_거부한다() {
-        // given
-        Long userId = saveUser();
-        Long roomId = roomService.create(userId, "제주 3박 4일");
-        markMemberAsLeft(roomId, userId);
-
-        assertThatThrownBy(() -> roomService.ensureJoined(roomId, userId))
                 .isInstanceOfSatisfying(BusinessException.class,
                         e -> assertThat(e.getErrorCode()).isEqualTo(RoomErrorCode.ROOM_ACCESS_DENIED));
     }
@@ -216,6 +205,69 @@ class RoomServiceTest extends DatabaseIntegrationTest {
                         });
     }
 
+    @Test
+    void 나가면_방에_접근할_수_없다() {
+        // given
+        Long userId = saveUser();
+        Long roomId = roomService.create(userId, "제주");
+
+        // when
+        roomService.leave(roomId, userId);
+
+        // then
+        assertThatThrownBy(() -> roomService.ensureJoined(roomId, userId))
+                .isInstanceOfSatisfying(BusinessException.class,
+                        e -> {
+                            assertThat(e.getErrorCode()).isEqualTo(RoomErrorCode.ROOM_ACCESS_DENIED);
+                        });
+    }
+
+    @Test
+    void 참여하지_않은_방은_나갈_수_없다() {
+        // given
+        Long ownerId = saveUser();
+        Long roomId = roomService.create(ownerId, "제주 3박 4일");
+        Long outsiderId = saveUser();
+
+        // when & then
+        assertThatThrownBy(() -> roomService.leave(roomId, outsiderId))
+                .isInstanceOfSatisfying(BusinessException.class,
+                        e -> assertThat(e.getErrorCode()).isEqualTo(RoomErrorCode.ROOM_ACCESS_DENIED));
+    }
+
+    @Test
+    void 나간_회원이_초대_링크로_다시_참여하면_방에_접근할_수_있다() {
+        // given
+        Long ownerId = saveUser();
+        Long userId = saveUser();
+        Long roomId = roomService.create(ownerId, "제주 3박 4일");
+        String code = roomService.createInvitation(roomId, ownerId);
+        roomService.joinByInvitation(code, userId);
+        roomService.leave(roomId, userId);
+
+        // when
+        roomService.joinByInvitation(code, userId);
+
+        // then
+        assertThatCode(() -> roomService.ensureJoined(roomId, userId))
+                .doesNotThrowAnyException();
+    }
+
+    @Test
+    void 참여중인_회원은_만료된_초대_링크로도_방_ID를_응답한다() {
+        // given
+        Long ownerId = saveUser();
+        Long roomId = roomService.create(ownerId, "제주 3박 4일");
+        String code = roomService.createInvitation(roomId, ownerId);
+        expireInvitation(code);
+
+        // when
+        Long joinedRoomId = roomService.joinByInvitation(code, ownerId);
+
+        // then
+        assertThat(joinedRoomId).isEqualTo(roomId);
+    }
+
     private Long saveUser() {
         return transactionTemplate.execute(status -> {
             User user = User.builder().nickname("방장").role(Role.USER).build();
@@ -224,9 +276,11 @@ class RoomServiceTest extends DatabaseIntegrationTest {
         });
     }
 
-    private void markMemberAsLeft(Long roomId, Long userId) {
-        RoomMember member = roomMemberRepository.findByRoomIdAndUserId(roomId, userId).orElseThrow();
-        ReflectionTestUtils.setField(member, "status", RoomMemberStatus.LEFT);
-        roomMemberRepository.save(member);
+    private void expireInvitation(String code) {
+        transactionTemplate.executeWithoutResult(status -> entityManager
+                .createQuery("UPDATE RoomInvitation i SET i.expiresAt = :past WHERE i.code = :code")
+                .setParameter("past", LocalDateTime.now(ZoneOffset.UTC).minusDays(1))
+                .setParameter("code", code)
+                .executeUpdate());
     }
 }

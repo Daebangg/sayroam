@@ -19,7 +19,6 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
-import java.time.ZoneOffset;
 
 // 나간 멤버도 정산 대상이라 행을 지우지 않고 status로 남긴다
 @Entity
@@ -60,22 +59,40 @@ public class RoomMember extends BaseTimeEntity {
     @Column(nullable = false)
     private LocalDateTime joinedAt;
 
+    // 지금 나가 있는 경우에만 나간 시각을 가진다. 다시 참여하면 비운다
     private LocalDateTime leftAt;
 
-    private RoomMember(Room room, Long userId, RoomMemberRole role) {
+    private RoomMember(Room room, Long userId, RoomMemberRole role, LocalDateTime joinedAt) {
         this.room = room;
         this.userId = userId;
         this.role = role;
         this.status = RoomMemberStatus.JOINED;
-        this.joinedAt = LocalDateTime.now(ZoneOffset.UTC);
+        this.joinedAt = joinedAt;
     }
 
-    public static RoomMember joinAsOwner(Room room, Long userId) {
-        return new RoomMember(room, userId, RoomMemberRole.OWNER);
+    public static RoomMember joinAsOwner(Room room, Long userId, LocalDateTime now) {
+        return new RoomMember(room, userId, RoomMemberRole.OWNER, now);
     }
 
-    public static RoomMember joinAsMember(Room room, Long userId) {
-        return new RoomMember(room, userId, RoomMemberRole.MEMBER);
+    public static RoomMember joinAsMember(RoomInvitation invitation, Long userId, LocalDateTime now) {
+        invitation.ensureValid(now);
+        return new RoomMember(invitation.getRoom(), userId, RoomMemberRole.MEMBER, now);
+    }
+
+    public void rejoin(RoomInvitation invitation, LocalDateTime now) {
+        if (status == RoomMemberStatus.JOINED) {
+            return;
+        }
+        invitation.ensureValid(now);
+        this.status = RoomMemberStatus.JOINED;
+        this.joinedAt = now;
+        this.leftAt = null;
+    }
+
+    public void leave(LocalDateTime leftAt) {
+        ensureJoined();
+        this.status = RoomMemberStatus.LEFT;
+        this.leftAt = leftAt;
     }
 
     public void ensureJoined() {

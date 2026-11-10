@@ -25,42 +25,30 @@ class RoomInvitationTest {
     }
 
     @Test
-    void 만든_지_7일_이하면_참여할_수_있다() {
+    void 만든_지_7일_이하면_유효하다() {
         // given
         RoomInvitation invitation = createInvitation();
         LocalDateTime now = NOW.plusDays(7);
 
         // when & then
-        assertThatCode(() -> invitation.admit(2L, now))
+        assertThatCode(() -> invitation.ensureValid(now))
                 .doesNotThrowAnyException();
     }
 
     @Test
-    void 만든_지_7일이_지나면_참여할_수_없다() {
+    void 만든_지_7일이_지나면_만료된다() {
         // given
         RoomInvitation invitation = createInvitation();
         LocalDateTime now = NOW.plusDays(7).plusNanos(1);
 
         // when & then
-        assertThatThrownBy(() -> invitation.admit(2L, now))
+        assertThatThrownBy(() -> invitation.ensureValid(now))
                 .isInstanceOf(BusinessException.class)
                 .hasFieldOrPropertyWithValue("errorCode", RoomErrorCode.ROOM_INVITATION_EXPIRED);
     }
 
-    @Test
-    void 하나의_초대로_여러_명이_참여할_수_있다() {
-        RoomInvitation invitation = createInvitation();
-        LocalDateTime now = NOW.plusDays(1);
-
-        assertThatCode(() -> {
-            invitation.admit(2L, now);
-            invitation.admit(3L, now);
-        }).doesNotThrowAnyException();
-    }
-
-
     private RoomMember createMember() {
-        return RoomMember.joinAsOwner(new Room("제주 여행"), 1L);
+        return RoomMember.joinAsOwner(new Room("제주 여행"), 1L, NOW);
     }
 
     private RoomInvitation createInvitation() {

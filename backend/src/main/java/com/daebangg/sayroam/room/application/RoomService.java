@@ -26,7 +26,7 @@ public class RoomService {
     @Transactional
     public Long create(Long userId, String name) {
         Room room = roomRepository.save(new Room(name));
-        roomMemberRepository.save(RoomMember.joinAsOwner(room, userId));
+        roomMemberRepository.save(RoomMember.joinAsOwner(room, userId, LocalDateTime.now(ZoneOffset.UTC)));
         return room.getId();
     }
 
@@ -50,17 +50,27 @@ public class RoomService {
         RoomInvitation invitation = roomInvitationRepository.findByCode(code)
                 .orElseThrow(() -> new BusinessException(RoomErrorCode.ROOM_INVITATION_NOT_FOUND));
         Long roomId = invitation.getRoomId();
+        LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);
 
-        if (roomMemberRepository.findByRoomIdAndUserId(roomId, userId).isEmpty()) {
-            roomMemberRepository.save(invitation.admit(userId, LocalDateTime.now(ZoneOffset.UTC)));
-        }
-
+        roomMemberRepository.findByRoomIdAndUserId(roomId, userId)
+                .ifPresentOrElse(member -> member.rejoin(invitation, now),
+                        () -> roomMemberRepository.save(RoomMember.joinAsMember(invitation, userId, now)));
         return roomId;
     }
 
-    private RoomMember getJoinedMember(Long roomId, Long userId) {
-        RoomMember member = roomMemberRepository.findByRoomIdAndUserId(roomId, userId)
+    @Transactional
+    public void leave(Long roomId, Long userId) {
+        RoomMember member = getMember(roomId, userId);
+        member.leave(LocalDateTime.now(ZoneOffset.UTC));
+    }
+
+    private RoomMember getMember(Long roomId, Long userId) {
+        return roomMemberRepository.findByRoomIdAndUserId(roomId, userId)
                 .orElseThrow(() -> new BusinessException(RoomErrorCode.ROOM_ACCESS_DENIED));
+    }
+
+    private RoomMember getJoinedMember(Long roomId, Long userId) {
+        RoomMember member = getMember(roomId, userId);
         member.ensureJoined();
         return member;
     }

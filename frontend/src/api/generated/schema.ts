@@ -360,7 +360,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/room-invitations/{code}/join": {
+    "/api/room-members": {
         parameters: {
             query?: never;
             header?: never;
@@ -370,8 +370,8 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * 초대 링크로 방 참여
-         * @description 유효한 초대 코드로 방에 참여합니다. 이미 참여 중인 회원은 오류 없이 방 ID를 응답합니다.
+         * 초대 코드로 방 참여
+         * @description 유효한 초대 코드로 방 멤버가 됩니다. 나간 멤버도 유효한 코드로 다시 참여할 수 있습니다. 이미 참여 중인 회원은 코드 만료 여부와 무관하게 방 ID를 응답합니다.
          */
         post: operations["joinByInvitation"];
         delete?: never;
@@ -415,6 +415,26 @@ export interface paths {
          */
         post: operations["createInvitation"];
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/rooms/{roomId}/members/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * 채팅방 나가기
+         * @description 참여 중인 방에서 나갑니다. 멤버 기록은 정산을 위해 남고, 유효한 초대 코드로 다시 참여할 수 있습니다. 이미 열린 채팅 구독은 서버가 즉시 끊지 않으므로 클라이언트가 해제해야 합니다.
+         */
+        delete: operations["leave"];
         options?: never;
         head?: never;
         patch?: never;
@@ -743,6 +763,13 @@ export interface components {
             /** Format: int64 */
             resendAfterSeconds: number;
             verificationId: string;
+        };
+        JoinRoomRequest: {
+            /**
+             * @description 초대 링크의 코드
+             * @example k3Xv9qLm2Tz8RwYb7NfA
+             */
+            invitationCode: string;
         };
         JoinRoomResponse: {
             /**
@@ -1898,24 +1925,31 @@ export interface operations {
         parameters: {
             query?: never;
             header?: never;
-            path: {
-                /**
-                 * @description 초대 코드
-                 * @example k3Xv9qLm2Tz8RwYb7NfA
-                 */
-                code: string;
-            };
+            path?: never;
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["JoinRoomRequest"];
+            };
+        };
         responses: {
-            /** @description 참여 완료 또는 이미 참여 중 */
+            /** @description 참여·재참여 완료 또는 이미 참여 중 */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
                     "application/json": components["schemas"]["JoinRoomResponse"];
+                };
+            };
+            /** @description INVALID_INPUT. 초대 코드 누락 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ApiProblem"];
                 };
             };
             401: components["responses"]["Unauthorized"];
@@ -1992,6 +2026,34 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["CreateRoomInvitationResponse"];
                 };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["RoomAccessDenied"];
+            500: components["responses"]["InternalServerError"];
+            503: components["responses"]["AuthenticationUnavailable"];
+        };
+    };
+    leave: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /**
+                 * @description 방 ID
+                 * @example 7
+                 */
+                roomId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 나가기 완료 */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["RoomAccessDenied"];
@@ -2169,10 +2231,17 @@ export const apiRoutes = {
     },
     joinByInvitation: {
         method: "post",
-        path: "/api/room-invitations/{code}/join",
+        path: "/api/room-members",
         auth: "required",
         csrf: false,
         responses: { "200": true },
+    },
+    leave: {
+        method: "delete",
+        path: "/api/rooms/{roomId}/members/me",
+        auth: "required",
+        csrf: false,
+        responses: { "204": false },
     },
     login: {
         method: "post",
