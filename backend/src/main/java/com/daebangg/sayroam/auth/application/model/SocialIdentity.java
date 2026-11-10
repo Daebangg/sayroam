@@ -4,7 +4,7 @@ import com.daebangg.sayroam.user.domain.type.SocialProvider;
 
 import java.util.Objects;
 
-/** 공급자 인증을 검증한 결과. 회원 식별자는 이메일이 아닌 provider + providerUserId다. */
+/** 공급자 인증 결과. emailVerified는 공급자별 서비스 이메일 수락 정책이며 회원 식별자는 provider + providerUserId다. */
 public record SocialIdentity(SocialProvider provider, String providerUserId, String email,
                              boolean emailVerified, String displayName, String profileImageUrl) {
     public SocialIdentity {

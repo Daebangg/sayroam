@@ -42,6 +42,13 @@ public class SpringOAuth2IdentityProvider implements SocialIdentityProvider {
     private final RestClientAuthorizationCodeTokenResponseClient tokens;
     private final DefaultOAuth2UserService users;
 
+    @Override
+    public java.util.List<SocialProvider> availableProviders() {
+        return java.util.Arrays.stream(SocialProvider.values())
+                .filter(provider -> clients.findByRegistrationId(provider.name().toLowerCase(Locale.ROOT)) != null)
+                .toList();
+    }
+
     public SpringOAuth2IdentityProvider(ClientRegistrationRepository clients, OAuth2UserInfoMapper mapper) {
         this.clients = clients;
         this.mapper = mapper;
@@ -102,10 +109,20 @@ public class SpringOAuth2IdentityProvider implements SocialIdentityProvider {
     public URI authorizationUri(SocialProvider provider, AuthorizationRequest request) {
         var client = client(provider);
         var authorization = request(client, request.state());
+        var parameters = new HashMap<String, Object>();
         if (client.getClientSettings().isRequireProofKey()) {
-            authorization.additionalParameters(Map.of(PkceParameterNames.CODE_CHALLENGE, request.codeChallenge(),
-                    PkceParameterNames.CODE_CHALLENGE_METHOD, "S256"));
+            parameters.put(PkceParameterNames.CODE_CHALLENGE, request.codeChallenge());
+            parameters.put(PkceParameterNames.CODE_CHALLENGE_METHOD, "S256");
         }
+        if (provider == SocialProvider.NAVER) {
+            parameters.put("auth_type", request.requestEmailConsent() ? "reprompt" : "reauthenticate");
+        } else {
+            parameters.put("prompt", "select_account");
+            if (provider == SocialProvider.KAKAO && !client.getScopes().isEmpty()) {
+                parameters.put("scope", String.join(",", client.getScopes().stream().sorted().toList()));
+            }
+        }
+        authorization.additionalParameters(parameters);
         return URI.create(authorization.build().getAuthorizationRequestUri());
     }
 

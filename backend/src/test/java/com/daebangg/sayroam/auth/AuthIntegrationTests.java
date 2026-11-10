@@ -126,17 +126,16 @@ class AuthIntegrationTests extends DatabaseIntegrationTest {
     @ParameterizedTest
     @NullAndEmptySource
     @ValueSource(strings = {" \t\n　 ", "https://example.com/profile.png", " https://example.com/profile.png "})
-    void socialSignupPersistsOptionalImagesAndConsumesTicketAndEmailProofOnce(String imageUrl) throws Exception {
+    void socialSignupPersistsOptionalImagesAndConsumesTicketWithoutEmailProof(String imageUrl) throws Exception {
         String email = email();
-        String proof = signupProof(email);
         String ticket = OAuthSecrets.create();
         String browserBinding = OAuthSecrets.create();
-        var identity = new SocialIdentity(SocialProvider.NAVER, "profile-user", null,
-                false, "공급자 닉네임", imageUrl);
+        var identity = new SocialIdentity(SocialProvider.NAVER, "profile-user", email,
+                true, "공급자 닉네임", imageUrl);
         assertThat(socialTickets.saveSignup(VerificationDigests.sha256(ticket),
                 VerificationDigests.sha256(browserBinding), identity, Duration.ofMinutes(5))).isTrue();
         var browser = new Cookie(oauthBrowserCookie.issue(browserBinding).getName(), browserBinding);
-        var body = Map.of("signupTicket", ticket, "nickname", "여행자", "email", email, "signupProof", proof);
+        var body = Map.of("signupTicket", ticket);
 
         var signup = call(HttpMethod.POST, "/api/auth/social/signup", body, null, browser);
         assertStatus(signup, 200);
@@ -147,6 +146,8 @@ class AuthIntegrationTests extends DatabaseIntegrationTest {
         assertStatus(me, 200);
         assertThat(json(me).path("email").asText()).isEqualTo(email);
         String expectedImage = imageUrl == null || imageUrl.isBlank() ? null : imageUrl.strip();
+        assertThat(jdbc.queryForObject("SELECT nickname FROM users WHERE email = ?", String.class, email))
+                .isEqualTo("공급자 닉네임");
         assertThat(jdbc.queryForObject("SELECT profile_image_url FROM users WHERE email = ?", String.class, email))
                 .isEqualTo(expectedImage);
         assertThat(json(me).path("profileImageUrl").isNull()).isEqualTo(expectedImage == null);
@@ -161,10 +162,6 @@ class AuthIntegrationTests extends DatabaseIntegrationTest {
         var replay = call(HttpMethod.POST, "/api/auth/social/signup", body, null, browser);
         assertStatus(replay, 400);
         assertThat(json(replay).path("code").asText()).isEqualTo("SOCIAL_AUTH_INVALID");
-        var reusedProof = call(HttpMethod.POST, "/api/auth/signup", Map.of("email", email,
-                "password", PASSWORD, "nickname", "여행자", "signupProof", proof), null);
-        assertStatus(reusedProof, 409);
-        assertThat(json(reusedProof).path("code").asText()).isEqualTo("SIGNUP_PROOF_ALREADY_USED");
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM users", Integer.class)).isEqualTo(1);
     }
 

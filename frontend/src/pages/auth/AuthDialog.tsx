@@ -1,3 +1,4 @@
+import { useSocialLogin } from "@/hooks/api/auth/useSocialLogin";
 import { useState } from "react";
 import { LoginModal } from "@/components/features/auth/LoginModal";
 import { EmailFlowModal } from "@/components/features/auth/EmailFlowModal";
@@ -5,6 +6,7 @@ import { useEmailFlow, type EmailFlowMode } from "@/hooks/api/auth/useEmailFlow"
 import type { AuthMessage, LoginInput } from "@/hooks/auth.types";
 
 type AuthDialogProps = {
+    onCancelSocial: () => void;
     onClose: () => void;
     onSubmit: (input: LoginInput) => Promise<boolean>;
     busy: boolean;
@@ -51,6 +53,7 @@ function EmailDialog({
 }
 
 export function AuthDialog(props: AuthDialogProps) {
+    const social = useSocialLogin(!props.busy);
     const [mode, setMode] = useState<"login" | EmailFlowMode>("login");
     if (mode !== "login")
         return (
@@ -65,5 +68,25 @@ export function AuthDialog(props: AuthDialogProps) {
                 }}
             />
         );
-    return <LoginModal {...props} open onMode={setMode} />;
+    return (
+        <LoginModal
+            {...props}
+            open
+            providers={social.providers}
+            onSocialLogin={(provider) => {
+                props.onCancelSocial();
+                return social.start(provider, props.message === "socialEmailRequired");
+            }}
+            busy={props.busy || social.busy}
+            message={social.message ?? props.message}
+            onSubmit={(input) => {
+                social.clearMessage();
+                return props.onSubmit(input);
+            }}
+            onMode={(mode) => {
+                social.clearMessage();
+                setMode(mode);
+            }}
+        />
+    );
 }

@@ -1,6 +1,18 @@
 import { ApiError } from "../../../api/apiError.ts";
-import { restoreSession, signIn, signOut } from "../../../api/auth/authSession.ts";
-import { getAccessTokenSnapshot, subscribeAuthInvalidation } from "../../../api/auth/tokenStore.ts";
+import {
+    restoreSession,
+    signIn,
+    signOut,
+    exchangeSocialSession,
+    cancelSocialAuthentication,
+    type AuthenticationResult,
+} from "../../../api/auth/authSession.ts";
+import {
+    getAccessTokenSnapshot,
+    getAuthRevision,
+    subscribeAuthInvalidation,
+    clearAccessToken,
+} from "../../../api/auth/tokenStore.ts";
 import type { AuthMessage, AuthState, LoginInput } from "../../auth.types.ts";
 
 function needsLogin(error: unknown): boolean {
@@ -25,6 +37,26 @@ function messageFor(error: unknown, login: boolean): AuthMessage {
     return "unavailable";
 }
 
+export function socialMessageFor(error: unknown): AuthMessage {
+    if (!(error instanceof ApiError)) return "socialUncertain";
+    const code = error.problem?.code;
+    if (code === "SOCIAL_AUTH_CANCELLED") return "socialCancelled";
+    if (code === "SOCIAL_EMAIL_REQUIRED") return "socialEmailRequired";
+    if (code === "SOCIAL_PROVIDER_DISABLED") return "socialDisabled";
+    if (code === "EMAIL_ALREADY_REGISTERED" || code === "SOCIAL_ACCOUNT_CONFLICT")
+        return "socialConflict";
+    if (code === "INVALID_CSRF_TOKEN") return "security";
+    if (error.kind === "authentication-unavailable") return "browserUnavailable";
+    if (
+        error.status === 400 ||
+        error.status === 401 ||
+        error.status === 409 ||
+        error.status === 410
+    )
+        return "socialExpired";
+    return "socialUncertain";
+}
+
 // 앱 인스턴스가 소유하는 회원 상태. 토큰·쿠키·갱신은 기존 인증 기반에서 관리한다.
 export type AuthController = {
     getSnapshot: () => AuthState;
@@ -34,6 +66,9 @@ export type AuthController = {
     check: () => Promise<boolean>;
     login: (input: LoginInput) => Promise<boolean>;
     logout: () => Promise<boolean>;
+    exchangeSocial: (code: string) => Promise<boolean>;
+    cancelSocial: () => void;
+    resetDialog: () => void;
 };
 
 export function createAuthController(): AuthController {
@@ -47,7 +82,11 @@ export function createAuthController(): AuthController {
         listeners.forEach((listener) => listener());
     }
 
-    function run(kind: "restore" | "login" | "logout", input?: LoginInput): Promise<boolean> {
+    function run(
+        kind: "restore" | "login" | "logout",
+        input?: LoginInput,
+        social?: (signal: AbortSignal) => Promise<AuthenticationResult>,
+    ): Promise<boolean> {
         // 클릭이나 StrictMode의 효과 재실행으로 인증 요청을 겹치지 않는다.
         if (pending) return Promise.resolve(false);
         const hadMember = state.user !== null;
@@ -60,16 +99,24 @@ export function createAuthController(): AuthController {
         });
         const promise = (async () => {
             try {
-                const user =
-                    kind === "logout"
-                        ? (await signOut(), null)
-                        : kind === "login" && input
-                          ? await signIn(input, { signal: controller.signal })
-                          : await restoreSession({ signal: controller.signal });
+                const outcome = social ? await social(controller.signal) : undefined;
+                if (outcome && outcome.revision !== getAuthRevision())
+                    throw new ApiError("aborted");
+                const user = outcome
+                    ? outcome.user
+                    : kind === "logout"
+                      ? (await signOut(), null)
+                      : kind === "login" && input
+                        ? await signIn(input, { signal: controller.signal })
+                        : await restoreSession({ signal: controller.signal });
                 if (current !== generation) return false;
                 if (user && !getAccessTokenSnapshot())
                     throw new ApiError("authentication-required");
-                update({ status: user ? "authenticated" : "anonymous", user, message: null });
+                update({
+                    status: user ? "authenticated" : "anonymous",
+                    user,
+                    message: null,
+                });
                 return true;
             } catch (error) {
                 if (current !== generation) return false;
@@ -106,7 +153,9 @@ export function createAuthController(): AuthController {
                                 ? hadMember
                                     ? "expired"
                                     : null
-                                : messageFor(error, kind === "login"),
+                                : social
+                                  ? socialMessageFor(error)
+                                  : messageFor(error, kind === "login"),
                 });
                 return false;
             } finally {
@@ -153,5 +202,39 @@ export function createAuthController(): AuthController {
         login: (input: LoginInput): Promise<boolean> =>
             (state.retryAt ?? 0) > Date.now() ? Promise.resolve(false) : run("login", input),
         logout: (): Promise<boolean> => run("logout"),
+        exchangeSocial: (code: string): Promise<boolean> =>
+            run("login", undefined, async () => {
+                if (!/^[A-Za-z0-9_-]{43}$/.test(code))
+                    throw new ApiError("http", {
+                        problem: {
+                            status: 400,
+                            code: "SOCIAL_AUTH_INVALID",
+                            title: "Invalid social result",
+                            detail: "Start again",
+                            instance: "/",
+                        },
+                    });
+                return exchangeSocialSession(code);
+            }),
+        cancelSocial: (): void => {
+            if (pending) return;
+            update({ status: "anonymous", user: null, message: null });
+        },
+        resetDialog: (): void => {
+            if (pending && state.status === "signingIn") {
+                generation++;
+                pending.controller.abort();
+                pending = undefined;
+                cancelSocialAuthentication();
+                clearAccessToken();
+            }
+            // 회원 조회·로그아웃 재시도 안내는 모달 밖에서도 유지한다.
+            if (state.status === "unavailable") return;
+            update({
+                status: pending ? state.status : state.user ? "authenticated" : "anonymous",
+                user: state.user,
+                message: null,
+            });
+        },
     };
 }

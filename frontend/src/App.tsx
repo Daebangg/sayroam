@@ -1,3 +1,4 @@
+import { socialReturn } from "@/routing/socialReturn";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Outlet, ScrollRestoration, useLocation, useNavigate, useNavigation } from "react-router";
@@ -33,10 +34,11 @@ export default function App() {
     const isPageLoading =
         navigation.state !== "idle" && navigation.location?.pathname !== location.pathname;
     const theme = useTheme();
-    const auth = useAuthSession();
+    const auth = useAuthSession(socialReturn !== null);
     const checkSession = auth.check;
     const authBusy = ["checking", "signingIn", "signingOut"].includes(auth.status);
     const modalOnlyAuthMessage =
+        auth.message?.startsWith("social") ||
         auth.message === "credentials" ||
         auth.message === "limited" ||
         auth.message === "invalidInput" ||
@@ -45,8 +47,28 @@ export default function App() {
         if (isMemberPath(location.pathname)) void checkSession();
     }, [location.pathname, checkSession]);
     const [authOpen, setAuthOpen] = useState(
-        () => new URLSearchParams(window.location.search).get("modal") === "auth",
+        () =>
+            socialReturn === null &&
+            new URLSearchParams(window.location.search).get("modal") === "auth",
     );
+    const socialReturnHandled = useRef(false);
+    const exchangeSocial = auth.exchangeSocial;
+    useEffect(() => {
+        const returned = socialReturn;
+        if (!returned || socialReturnHandled.current) return;
+        let current = true;
+        void exchangeSocial(returned.code).then((success) => {
+            if (!current) return;
+            socialReturnHandled.current = true;
+            setAuthOpen(!success);
+            if (!success) return;
+            setToast({ id: ++toastSequence.current, message: "loginComplete" });
+            void navigate(returned.returnPath, { replace: true });
+        });
+        return () => {
+            current = false;
+        };
+    }, [exchangeSocial, navigate]);
     const authTrigger = useRef<HTMLElement | null>(null);
     useLayoutEffect(() => {
         if (authOpen || !authTrigger.current) return;
@@ -58,6 +80,7 @@ export default function App() {
     }, [authOpen]);
 
     function openAuth(): void {
+        if (socialReturn && !socialReturnHandled.current) return;
         if (auth.user) {
             void navigate(pagePaths.trips);
             return;
@@ -68,6 +91,7 @@ export default function App() {
     }
 
     function closeAuth(): void {
+        auth.resetDialog();
         setAuthOpen(false);
         const current = new URL(window.location.href);
         const params = current.searchParams;
@@ -105,6 +129,7 @@ export default function App() {
             if (success) {
                 closeAuth();
                 showToast("loginComplete");
+                if (socialReturn) void navigate(socialReturn.returnPath, { replace: true });
             }
         });
     }
@@ -174,6 +199,7 @@ export default function App() {
             <ScrollRestoration />
             {authOpen && (
                 <AuthDialog
+                    onCancelSocial={auth.cancelSocial}
                     onClose={closeAuth}
                     onSubmit={login}
                     busy={authBusy}

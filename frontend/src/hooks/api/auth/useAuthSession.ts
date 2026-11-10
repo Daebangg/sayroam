@@ -2,14 +2,18 @@ import { useEffect, useState, useSyncExternalStore } from "react";
 import { createAuthController, type AuthController } from "./authController";
 import type { AuthState } from "../../auth.types";
 
-type AuthSession = AuthState & Pick<AuthController, "login" | "logout" | "restore" | "check">;
+type AuthSession = AuthState &
+    Pick<
+        AuthController,
+        "login" | "logout" | "restore" | "check" | "exchangeSocial" | "cancelSocial" | "resetDialog"
+    >;
 
-export function useAuthSession(): AuthSession {
+export function useAuthSession(socialReturn = false): AuthSession {
     const [session] = useState(createAuthController);
     const state = useSyncExternalStore(session.subscribe, session.getSnapshot);
     useEffect(() => {
         const disconnect = session.connect();
-        void session.restore();
+        if (!socialReturn) void session.restore();
         const check = (): void => {
             void session.check();
         };
@@ -18,12 +22,15 @@ export function useAuthSession(): AuthSession {
             window.removeEventListener("focus", check);
             disconnect();
         };
-    }, [session]);
+    }, [session, socialReturn]);
     return {
         ...state,
         login: session.login,
         logout: session.logout,
         restore: session.restore,
         check: session.check,
+        exchangeSocial: session.exchangeSocial,
+        cancelSocial: session.cancelSocial,
+        resetDialog: session.resetDialog,
     };
 }

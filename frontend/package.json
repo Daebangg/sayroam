@@ -31,7 +31,7 @@
         "i18n:check": "node scripts/i18n-check.mts",
         "test:routing": "node --test scripts/routing.test.mts",
         "test:csrf": "node --test scripts/csrf.test.mts",
-        "test:auth": "node --test scripts/auth.test.mts scripts/auth-state.test.mts scripts/refresh.test.mts scripts/cookie-coordination.test.mts",
+        "test:auth": "node --test scripts/auth.test.mts scripts/auth-state.test.mts scripts/refresh.test.mts scripts/cookie-coordination.test.mts scripts/social-auth.test.mts",
         "test:api": "node --test scripts/http.test.mts scripts/router.test.mts scripts/openapi.test.mts scripts/api-boundaries.test.mts",
         "test:calendar": "node --test scripts/calendar.test.mts"
     },

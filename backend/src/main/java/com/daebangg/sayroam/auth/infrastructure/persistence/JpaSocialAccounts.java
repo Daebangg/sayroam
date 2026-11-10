@@ -4,10 +4,12 @@ import com.daebangg.sayroam.auth.application.error.AuthErrorCode;
 import com.daebangg.sayroam.auth.application.error.AuthException;
 import com.daebangg.sayroam.auth.application.model.SocialIdentity;
 import com.daebangg.sayroam.auth.application.port.out.SocialAccounts;
+import com.daebangg.sayroam.auth.domain.EmailAddress;
 import com.daebangg.sayroam.user.domain.type.SocialProvider;
 import com.daebangg.sayroam.user.domain.entity.User;
 import com.daebangg.sayroam.user.domain.entity.UserSocialAccount;
 import jakarta.persistence.EntityManager;
+import jakarta.persistence.LockModeType;
 import org.hibernate.exception.ConstraintViolationException;
 import org.springframework.dao.DataAccessException;
 import org.springframework.dao.DataAccessResourceFailureException;
@@ -62,6 +64,14 @@ public class JpaSocialAccounts implements SocialAccounts {
     }
 
     @Override
+    public Optional<Account> findActiveByEmail(String email) {
+        return execute(() -> read.execute(status -> entities.createQuery("""
+                select new com.daebangg.sayroam.auth.application.port.out.SocialAccounts$Account(u.id, u.authVersion)
+                from User u where u.email = :email and u.deletedAt is null and u.emailVerifiedAt is not null
+                """, Account.class).setParameter("email", email).getResultList().stream().findFirst()));
+    }
+
+    @Override
     public Account register(SocialIdentity identity, String email, String nickname, Instant verifiedAt) {
         return execute(() -> write.execute(status -> {
             User user = User.verifiedSocialMember(email, nickname, identity.profileImageUrl(), LocalDateTime.ofInstant(verifiedAt, ZoneOffset.UTC));
@@ -71,6 +81,36 @@ public class JpaSocialAccounts implements SocialAccounts {
             entities.flush();
             return new Account(user.getId(), 0);
         }));
+    }
+
+    @Override
+    public Account linkVerifiedEmail(Account account, SocialIdentity identity) {
+        return execute(() -> write.execute(status -> {
+            User user = requireAccount(account, LockModeType.PESSIMISTIC_WRITE);
+            if (!identity.emailVerified() || !user.getEmail().equals(EmailAddress.normalize(identity.email()))) {
+                throw new AuthException(AuthErrorCode.SOCIAL_AUTH_INVALID);
+            }
+            // 회원별 공급자 중복은 회원 잠금으로 직렬화한다. 다른 회원의 동일 소셜 ID는 DB UNIQUE로 막는다.
+            var subjects = entities.createQuery("select s.providerUserId from UserSocialAccount s where s.user.id = :id and s.provider = :provider", String.class)
+                    .setParameter("id", account.userId()).setParameter("provider", identity.provider()).getResultList();
+            if (!subjects.isEmpty()) {
+                if (subjects.getFirst().equals(identity.providerUserId())) return account;
+                throw new AuthException(AuthErrorCode.SOCIAL_ACCOUNT_CONFLICT);
+            }
+            entities.persist(UserSocialAccount.builder().user(user).provider(identity.provider())
+                    .providerUserId(identity.providerUserId()).email(identity.email()).build());
+            entities.flush();
+            return account;
+        }));
+    }
+
+    private User requireAccount(Account account, LockModeType lock) {
+        User user = lock == null ? entities.find(User.class, account.userId())
+                : entities.find(User.class, account.userId(), lock);
+        if (user == null || !user.allowsAccountChange(user.getEmail(), account.authVersion())) {
+            throw new AuthException(AuthErrorCode.AUTHENTICATION_REVOKED);
+        }
+        return user;
     }
 
     private <T> T execute(Supplier<T> action) {

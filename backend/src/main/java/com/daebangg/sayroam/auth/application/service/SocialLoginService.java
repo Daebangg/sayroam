@@ -24,19 +24,29 @@ public class SocialLoginService {
     private final SocialAccounts accounts;
     private final LoginTokenService tokens;
     private final SocialAuthPolicy policy;
+    private final SocialSignupService signup;
+
+    public java.util.List<SocialProvider> availableProviders() {
+        return identities.availableProviders();
+    }
 
     public SocialLoginService(SocialIdentityProvider identities, OAuthTransactionStore transactions,
                               SocialAuthTicketStore tickets, SocialAccounts accounts,
-                              LoginTokenService tokens, SocialAuthPolicy policy) {
+                              LoginTokenService tokens, SocialAuthPolicy policy, SocialSignupService signup) {
         this.identities = identities;
         this.transactions = transactions;
         this.tickets = tickets;
         this.accounts = accounts;
         this.tokens = tokens;
         this.policy = policy;
+        this.signup = signup;
     }
 
     public Started start(SocialProvider provider, String returnPath, String browserBinding) {
+        return start(provider, returnPath, browserBinding, false);
+    }
+
+    public Started start(SocialProvider provider, String returnPath, String browserBinding, boolean requestEmailConsent) {
         if (!policy.allowedReturnPaths().contains(returnPath)) {
             throw new AuthException(AuthErrorCode.SOCIAL_RETURN_PATH_INVALID);
         }
@@ -46,7 +56,7 @@ public class SocialLoginService {
         var transaction = new OAuthTransactionStore.Transaction(provider, OAuthTransactionStore.Purpose.LOGIN,
                 digest(browserBinding), returnPath, verifier, null);
         var uri = identities.authorizationUri(provider, new SocialIdentityProvider.AuthorizationRequest(state,
-                OAuthSecrets.challenge(verifier)));
+                OAuthSecrets.challenge(verifier), requestEmailConsent));
         if (!transactions.save(digest(state), transaction, policy.transactionTtl())) {
             throw new AuthException(AuthErrorCode.SOCIAL_AUTH_UNAVAILABLE);
         }
@@ -79,10 +89,18 @@ public class SocialLoginService {
             if (account.isPresent()) {
                 result = new SocialAuthTicketStore.Result(SocialAuthTicketStore.Status.LOGIN_READY, identity, account.orElseThrow(), null);
             } else {
-                if (identity.emailVerified() && accounts.emailExists(EmailAddress.normalize(identity.email()))) {
-                    throw new AuthException(AuthErrorCode.EMAIL_ALREADY_REGISTERED);
+                if (!identity.emailVerified() || !EmailAddress.isValid(identity.email())) {
+                    throw new AuthException(AuthErrorCode.SOCIAL_EMAIL_REQUIRED);
                 }
-                result = new SocialAuthTicketStore.Result(SocialAuthTicketStore.Status.SIGNUP_REQUIRED, identity, null, null);
+                var existing = identity.emailVerified() ? accounts.findActiveByEmail(EmailAddress.normalize(identity.email()))
+                        : java.util.Optional.<SocialAccounts.Account>empty();
+                if (existing.isPresent()) {
+                    result = new SocialAuthTicketStore.Result(SocialAuthTicketStore.Status.AUTO_LINK_READY, identity, existing.orElseThrow(), null);
+                } else if (identity.emailVerified() && accounts.emailExists(EmailAddress.normalize(identity.email()))) {
+                    throw new AuthException(AuthErrorCode.EMAIL_ALREADY_REGISTERED);
+                } else {
+                    result = new SocialAuthTicketStore.Result(SocialAuthTicketStore.Status.SIGNUP_REQUIRED, identity, null, null);
+                }
             }
         } catch (AuthException exception) {
             result = new SocialAuthTicketStore.Result(SocialAuthTicketStore.Status.FAILED, null, null, exception.getErrorCode());
@@ -92,7 +110,8 @@ public class SocialLoginService {
             throw new AuthException(AuthErrorCode.SOCIAL_AUTH_UNAVAILABLE);
         }
         // URL에는 로그인 토큰·회원 정보·공급자 오류를 넣지 않는다. fragment는 HTTP Referer로 전송되지 않는다.
-        return URI.create(transaction.returnPath() + "#social_result=" + resultCode);
+        URI location = URI.create(transaction.returnPath() + "#social_result=" + resultCode);
+        return policy.frontendOrigin() == null ? location : policy.frontendOrigin().resolve(location);
     }
 
     public Exchanged exchange(String resultCode, String browserBinding) {
@@ -102,6 +121,10 @@ public class SocialLoginService {
                 .orElseThrow(() -> new AuthException(AuthErrorCode.SOCIAL_AUTH_INVALID));
         return switch (result.status()) {
             case FAILED -> throw new AuthException(result.error());
+            case AUTO_LINK_READY -> {
+                var current = accounts.linkVerifiedEmail(result.account(), result.identity());
+                yield new Exchanged(tokens.issue(current.userId(), current.authVersion()), null);
+            }
             case LOGIN_READY -> {
                 // 콜백 이후 탈퇴·연결 해제·인증 버전 변경도 다시 검사한다.
                 var current = accounts.findActive(result.identity().provider(), result.identity().providerUserId())
@@ -110,12 +133,8 @@ public class SocialLoginService {
                 yield new Exchanged(tokens.issue(current.userId(), current.authVersion()), null);
             }
             case SIGNUP_REQUIRED -> {
-                String ticket = OAuthSecrets.create();
-                if (!tickets.saveSignup(digest(ticket), digest(browserBinding), result.identity(), policy.signupTtl())) {
-                    throw new AuthException(AuthErrorCode.SOCIAL_AUTH_UNAVAILABLE);
-                }
-                yield new Exchanged(null, new PendingSignup(ticket, policy.signupTtl().toSeconds(),
-                        !result.identity().emailVerified(), result.identity().email()));
+                // 신규 회원도 공급자 이름으로 가입한 뒤 같은 응답에서 로그인한다.
+                yield new Exchanged(signup.complete(result.identity()), null);
             }
         };
     }

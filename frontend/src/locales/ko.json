@@ -102,7 +102,14 @@
             "loginUncertain": "로그인 결과를 확인하지 못했어요. 연결 상태를 확인한 후 다시 로그인해 주세요.",
             "logoutUncertain": "이 기기의 로그인 정보는 정리했지만 서버의 로그아웃 결과를 확인하지 못했어요. 연결 후 로그아웃을 다시 시도해 주세요.",
             "profileUnavailable": "로그인은 처리됐지만 회원 정보를 불러오지 못했어요. 회원 정보만 다시 확인해 주세요.",
-            "limited": "로그인 시도가 너무 많습니다. 잠시 후 다시 시도해 주세요."
+            "limited": "로그인 시도가 너무 많습니다. 잠시 후 다시 시도해 주세요.",
+            "socialUnavailable": "소셜 로그인 목록을 불러오지 못했어요. 이메일로 로그인하거나 창을 다시 열어 주세요.",
+            "socialCancelled": "소셜 로그인이 취소됐어요. 공급자를 선택해 다시 진행해 주세요.",
+            "socialExpired": "인증 정보가 만료되었거나 이미 사용됐어요. 소셜 로그인을 다시 시작해 주세요.",
+            "socialConflict": "이미 사용 중인 이메일이거나 연결된 계정이에요. 기존에 가입한 방법으로 로그인해 주세요.",
+            "socialDisabled": "현재 사용할 수 없는 소셜 로그인이에요. 다른 방법으로 로그인해 주세요.",
+            "socialUncertain": "소셜 로그인 결과를 확인하지 못했어요. 같은 요청을 반복하지 말고 소셜 로그인을 새로 시작해 확인해 주세요.",
+            "socialEmailRequired": "소셜 계정의 유효한 이메일 정보 제공에 동의한 뒤 다시 로그인해 주세요. 인증 메일은 보내지 않아요."
         },
         "flowMessages": {
             "invalidEmail": "올바른 이메일 주소를 입력해 주세요.",
@@ -127,7 +134,8 @@
         "logoutComplete": "로그아웃했어요.",
         "loginWait": "로그인 시도가 너무 많습니다. {{seconds}}초 후 다시 시도해 주세요.",
         "loginRetryReady": "이제 다시 로그인할 수 있어요.",
-        "loginAttemptsRemaining": "이메일 또는 비밀번호가 올바르지 않습니다. 남은 시도 횟수: {{count}}회."
+        "loginAttemptsRemaining": "이메일 또는 비밀번호가 올바르지 않습니다. 남은 시도 횟수: {{count}}회.",
+        "socialProviderDisabled": "현재 사용할 수 없는 소셜 로그인이에요."
     },
     "trips": {
         "heading": "내 여행",

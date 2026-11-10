@@ -1,3 +1,4 @@
+export type { SocialProvider } from "../api/auth/socialResponse.ts";
 import type { LoginRequest } from "../api/auth/authApi.ts";
 import type { CurrentUserResponse } from "../api/users/userApi.ts";
 
@@ -17,6 +18,13 @@ export type EmailFlowMessage =
     | "security";
 export type AuthMessage =
     | "limited"
+    | "socialUnavailable"
+    | "socialEmailRequired"
+    | "socialCancelled"
+    | "socialExpired"
+    | "socialConflict"
+    | "socialDisabled"
+    | "socialUncertain"
     | "credentials"
     | "invalidInput"
     | "expired"

@@ -119,7 +119,7 @@ export function EmailFlowModal({
                     }}
                     aria-describedby={message ? errorId : undefined}
                 >
-                    {mode === "signup" && (
+                    {mode !== "reset" && (
                         <TextField
                             label={t("auth.nicknameLabel")}
                             name="nickname"
@@ -146,13 +146,13 @@ export function EmailFlowModal({
                             onEmailChange();
                         }}
                     />
-                    {mode === "signup" && (
+                    {mode !== "reset" && (
                         <ValidationPanel
                             title={t("auth.emailValidation")}
                             items={[{ label: t("auth.emailRule"), valid: isValidEmail(email) }]}
                         />
                     )}
-                    {(mode === "signup" || sent) && (
+                    {(mode !== "reset" || sent) && (
                         <section className="auth-verification" aria-label={t("auth.verifyEmail")}>
                             {verified ? (
                                 <p className="auth-success" role="status">
@@ -304,7 +304,7 @@ export function EmailFlowModal({
                     </Button>
                 </form>
                 <p className="auth-flow-footer">
-                    {t(mode === "signup" ? "auth.haveAccount" : "auth.rememberPassword")}{" "}
+                    {t(mode !== "reset" ? "auth.haveAccount" : "auth.rememberPassword")}{" "}
                     <Button
                         variant="plain"
                         className="auth-text-link"

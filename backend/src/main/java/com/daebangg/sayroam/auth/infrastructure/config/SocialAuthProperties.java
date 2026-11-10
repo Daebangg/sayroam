@@ -14,4 +14,5 @@ public record SocialAuthProperties(
         @DefaultValue("300") @Min(60) @Max(600) int transactionTtlSeconds,
         @DefaultValue("60") @Min(30) @Max(120) int resultTtlSeconds,
         @DefaultValue("600") @Min(60) @Max(1800) int signupTtlSeconds,
-        @DefaultValue("/") Set<String> allowedReturnPaths) { }
+        @DefaultValue("/") Set<String> allowedReturnPaths,
+        java.net.URI frontendOrigin) { }

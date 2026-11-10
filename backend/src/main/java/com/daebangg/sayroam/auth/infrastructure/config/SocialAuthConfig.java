@@ -12,6 +12,6 @@ public class SocialAuthConfig {
     SocialAuthPolicy socialAuthPolicy(SocialAuthProperties properties) {
         return new SocialAuthPolicy(Duration.ofSeconds(properties.transactionTtlSeconds()),
                 Duration.ofSeconds(properties.resultTtlSeconds()), Duration.ofSeconds(properties.signupTtlSeconds()),
-                properties.allowedReturnPaths());
+                properties.allowedReturnPaths(), properties.frontendOrigin());
     }
 }

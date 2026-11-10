@@ -71,7 +71,7 @@ public class SecurityConfig {
                                 "/v3/api-docs", "/v3/api-docs/**", "/v3/api-docs.yaml").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/auth/signup", "/api/auth/login",
                                 "/api/auth/refresh", "/api/auth/logout").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/auth/csrf").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/auth/csrf", "/api/auth/social/providers").permitAll()
                         // 브라우저 WebSocket은 핸드셰이크에 Authorization을 넣을 수 없어 STOMP CONNECT에서 인증한다.
                         .requestMatchers(HttpMethod.GET, "/ws").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/auth/email-verifications",

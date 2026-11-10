@@ -27,6 +27,7 @@ public class OAuth2ClientConfig {
                 .userInfoUri("https://www.googleapis.com/oauth2/v2/userinfo").userNameAttributeName("id"), "google", true);
         register(registrations, properties.kakao(), ClientRegistration.withRegistrationId("kakao")
                 .clientName("Kakao").clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_POST)
+                .scope("account_email", "profile_nickname")
                 .authorizationUri("https://kauth.kakao.com/oauth/authorize").tokenUri("https://kauth.kakao.com/oauth/token")
                 .userInfoUri("https://kapi.kakao.com/v2/user/me?secure_resource=true").userNameAttributeName("id")
                 .providerConfigurationMetadata(Map.of("user-info-content-type", "application/x-www-form-urlencoded;charset=utf-8")),

@@ -48,6 +48,8 @@ app.auth.social.transaction-ttl-seconds=300
 app.auth.social.result-ttl-seconds=60
 app.auth.social.signup-ttl-seconds=600
 app.auth.social.allowed-return-paths=/
+# Vite 개발 화면으로 복귀. 동일 출처 통합 배포에서는 생략
+app.auth.social.frontend-origin=http://localhost:5173
 # HTTP local 개발 전용. 운영 기본값은 true이며 __Host- 접두사 쿠키를 사용합니다.
 app.auth.social.browser-cookie.secure=false
 app.auth.social.browser-cookie.max-age-seconds=3600

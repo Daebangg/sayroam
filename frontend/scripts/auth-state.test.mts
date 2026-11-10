@@ -57,6 +57,12 @@ test("새 방문자의 갱신 거절은 미로그인으로, 서버 장애는 확
     assert.equal(await session.restore(), false);
     assert.equal(session.getSnapshot().status, "unavailable");
     assert.equal(session.getSnapshot().message, "unavailable");
+    session.resetDialog();
+    assert.deepEqual(session.getSnapshot(), {
+        status: "unavailable",
+        user: null,
+        message: "unavailable",
+    });
 });
 
 test("복원 요청을 공유하고 로그인 성공 후 회원 상태 하나를 반영", async (t) => {
@@ -157,7 +163,7 @@ test("로그인했던 회원의 만료·갱신 거절은 새 방문자의 미로
     }
 });
 
-test("회원 조회만 실패하면 토큰을 유지하고 조회 재시도 시 로그인 POST를 반복하지 않음", async (t) => {
+test("회원 조회 실패 후 모달을 닫아도 토큰과 재시도 안내를 유지하고 로그인 POST를 반복하지 않음", async (t) => {
     let logins = 0;
     let reads = 0;
     t.mock.method(globalThis, "fetch", async (path: unknown) => {
@@ -171,13 +177,21 @@ test("회원 조회만 실패하면 토큰을 유지하고 조회 재시도 시 
     assert.equal(await session.login(credentials), false);
     assert.equal(session.getSnapshot().message, "profileUnavailable");
     assert.equal(getAccessToken(), "access-a");
+    session.resetDialog();
+    assert.deepEqual(session.getSnapshot(), {
+        status: "unavailable",
+        user: null,
+        message: "profileUnavailable",
+    });
+    assert.equal(getAccessToken(), "access-a");
     assert.equal(await session.restore(), true);
+    assert.equal(session.getSnapshot().status, "authenticated");
     assert.equal(logins, 1);
     assert.equal(reads, 2);
 });
 
-test("로그아웃은 회원 정보를 즉시 지우고 서버 실패를 성공으로 표시하지 않음", async (t) => {
-    t.mock.method(globalThis, "fetch", async (path: unknown) =>
+test("로그아웃 실패 후 모달을 닫아도 재시도 안내를 유지하고 명시적 재시도로 완료", async (t) => {
+    const fetchMock = t.mock.method(globalThis, "fetch", async (path: unknown) =>
         path === "/api/auth/logout"
             ? problem(503, "AUTHENTICATION_UNAVAILABLE")
             : Response.json(path === "/api/users/me" ? user : token),
@@ -191,6 +205,16 @@ test("로그아웃은 회원 정보를 즉시 지우고 서버 실패를 성공�
         assert.equal(getAccessToken(), undefined);
         assert.equal(await logout, false);
         assert.equal(session.getSnapshot().message, "logoutUncertain");
+        session.resetDialog();
+        assert.deepEqual(session.getSnapshot(), {
+            status: "unavailable",
+            user: null,
+            message: "logoutUncertain",
+        });
+        assert.equal(getAccessToken(), undefined);
+        fetchMock.mock.mockImplementation(async () => new Response(null, { status: 204 }));
+        assert.equal(await session.logout(), true);
+        assert.deepEqual(session.getSnapshot(), { status: "anonymous", user: null, message: null });
     } finally {
         disconnect();
     }

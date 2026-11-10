@@ -1,3 +1,8 @@
+import {
+    validateAuthorization,
+    validateProviders,
+    validateSocialExchange,
+} from "./auth/socialResponse.ts";
 import { refreshAccessToken } from "./auth/refreshSession.ts";
 import { validateToken } from "./auth/tokenResponse.ts";
 import type { AccessTokenSnapshot } from "./auth/tokenStore.ts";
@@ -18,6 +23,13 @@ function recoverSession(revision: number): Promise<AccessTokenSnapshot> {
 export const api = createApiRouter(apiRoutes, {
     recover: recoverSession,
     extensions: {
+        listSocialProviders: { parseResponse: validateProviders },
+        startSocialLogin: { cookieAction: "oauth", parseResponse: validateAuthorization },
+        exchangeSocialLoginResult: {
+            cookieAction: "social",
+            parseResponse: validateSocialExchange,
+        },
+        completeSocialSignup: { cookieAction: "login", parseResponse: validateToken },
         login: { cookieAction: "login", parseResponse: validateToken },
         refresh: { cookieAction: "refresh", parseResponse: validateToken },
         logout: { cookieAction: "logout" },

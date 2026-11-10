@@ -13,7 +13,7 @@ public interface SocialAuthTicketStore {
     boolean saveSignup(String digest, String browserDigest, SocialIdentity identity, Duration ttl);
     Optional<SocialIdentity> consumeSignup(String digest, String browserDigest);
 
-    enum Status { LOGIN_READY, SIGNUP_REQUIRED, FAILED }
+    enum Status { LOGIN_READY, AUTO_LINK_READY, SIGNUP_REQUIRED, FAILED }
 
     record Result(Status status, SocialIdentity identity, SocialAccounts.Account account, AuthErrorCode error) {
         @Override

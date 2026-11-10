@@ -7,6 +7,8 @@ import java.net.URI;
 
 /** 외부 OAuth2 인증 포트. Spring 객체와 공급자 응답은 어댑터 안에 둔다. */
 public interface SocialIdentityProvider {
+    java.util.List<SocialProvider> availableProviders();
+
     /** 서버의 공급자 설정과 state로 인증 주소를 만든다. 지원하는 공급자에는 PKCE S256을 적용한다. */
     URI authorizationUri(SocialProvider provider, AuthorizationRequest request);
 
@@ -17,7 +19,7 @@ public interface SocialIdentityProvider {
      */
     SocialIdentity authenticate(SocialProvider provider, Callback request);
 
-    record AuthorizationRequest(String state, String codeChallenge) {
+    record AuthorizationRequest(String state, String codeChallenge, boolean requestEmailConsent) {
         @Override
         public String toString() {
             return "AuthorizationRequest[redacted]";

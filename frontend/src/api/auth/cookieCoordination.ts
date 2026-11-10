@@ -11,7 +11,7 @@ channel?.addEventListener("message", (event: MessageEvent<unknown>) => {
 });
 
 const stateKey = "sayroam.auth.cookie-state.v1";
-type CookieAction = "login" | "refresh" | "logout";
+export type CookieAction = "login" | "refresh" | "logout" | "oauth" | "social";
 
 if (typeof window !== "undefined") {
     window.addEventListener("storage", (event) => {
@@ -19,7 +19,8 @@ if (typeof window !== "undefined") {
     });
 }
 
-function readState(): string | null {
+export function getAuthCookieState(): string | null {
+    if (typeof window === "undefined") return null;
     try {
         return localStorage.getItem(stateKey);
     } catch (cause) {
@@ -47,9 +48,10 @@ export async function withAuthCookieLock<T>(
     // Node 테스트에는 쿠키를 공유하는 브라우저 탭이 없다.
     if (typeof window === "undefined") return execute();
     if (!navigator.locks) throw new ApiError("authentication-unavailable");
-    const before = readState();
+    const before = getAuthCookieState();
     return navigator.locks.request("sayroam-auth-cookie", async () => {
-        const current = readState();
+        if (action === "oauth") return execute();
+        const current = getAuthCookieState();
         if (action === "refresh" && (before !== current || current?.startsWith("blocked:"))) {
             throw new ApiError("authentication-required");
         }
@@ -57,7 +59,15 @@ export async function withAuthCookieLock<T>(
         if (action !== "refresh") writeState(true);
         try {
             const value = await execute();
-            if (action === "login") writeState(false);
+            if (
+                action === "login" ||
+                (action === "social" &&
+                    typeof value === "object" &&
+                    value !== null &&
+                    "status" in value &&
+                    value.status === "AUTHENTICATED")
+            )
+                writeState(false);
             return value;
         } catch (error) {
             // 잠금을 풀기 전에 기록해 다음 탭이 불확실한 쿠키로 재갱신하지 않게 한다.
