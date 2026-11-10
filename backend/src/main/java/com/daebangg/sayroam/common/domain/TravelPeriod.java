@@ -1,5 +1,6 @@
 package com.daebangg.sayroam.common.domain;
 
+import com.daebangg.sayroam.common.domain.error.TravelPeriodErrorCode;
 import com.daebangg.sayroam.global.exception.BusinessException;
 import com.daebangg.sayroam.global.exception.CommonErrorCode;
 import jakarta.persistence.Embeddable;
@@ -14,8 +15,11 @@ public record TravelPeriod(
 ) {
 
     public TravelPeriod {
-        if (startDate == null || endDate == null || startDate.isAfter(endDate)) {
+        if (startDate == null || endDate == null) {
             throw new BusinessException(CommonErrorCode.INVALID_INPUT);
+        }
+        if (startDate.isAfter(endDate)) {
+            throw new BusinessException(TravelPeriodErrorCode.TRAVEL_PERIOD_END_BEFORE_START);
         }
     }
 
