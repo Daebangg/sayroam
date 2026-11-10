@@ -71,6 +71,13 @@ export const router = createBrowserRouter([
                                 }),
                             },
                             {
+                                path: "keyboard",
+                                lazy: async () => ({
+                                    Component: (await import("@/pages/settings/SettingsPage"))
+                                        .KeyboardSettingsPage,
+                                }),
+                            },
+                            {
                                 path: "account",
                                 lazy: async () => ({
                                     Component: (await import("@/pages/settings/SettingsPage"))

@@ -1,6 +1,7 @@
 /// <reference lib="dom" />
 import assert from "node:assert/strict";
 import { afterEach, beforeEach, test } from "node:test";
+import type { CurrentUserResponse } from "../src/api/users/userApi.ts";
 import { ApiError } from "../src/api/apiError.ts";
 import { clearAccessToken, getAccessToken } from "../src/api/auth/tokenStore.ts";
 import { createAuthController } from "../src/hooks/api/auth/authController.ts";
@@ -19,7 +20,7 @@ import {
 const originalDocument = Object.getOwnPropertyDescriptor(globalThis, "document");
 const credentials = { email: "user@example.test", password: " password with spaces " };
 const token = { accessToken: "access-a", tokenType: "Bearer", expiresIn: 900 };
-const user = {
+const user: CurrentUserResponse = {
     userId: 1,
     email: "user@example.test",
     nickname: "여행자",
@@ -27,6 +28,8 @@ const user = {
     gender: null,
     birthYear: null,
     role: "USER",
+    createdAt: "2026-11-10T12:00:00Z",
+    birthDate: null,
 };
 
 function problem(status: number, code: string): Response {
@@ -62,6 +65,7 @@ test("새 방문자의 갱신 거절은 미로그인으로, 서버 장애는 확
         status: "unavailable",
         user: null,
         message: "unavailable",
+        failureStatus: 503,
     });
 });
 
@@ -182,6 +186,7 @@ test("회원 조회 실패 후 모달을 닫아도 토큰과 재시도 안내를
         status: "unavailable",
         user: null,
         message: "profileUnavailable",
+        failureStatus: 503,
     });
     assert.equal(getAccessToken(), "access-a");
     assert.equal(await session.restore(), true);
@@ -319,4 +324,56 @@ test("신규 비밀번호는 8~24자·대문자·숫자·특수문자·공백 �
     assert.equal(isValidNickname(" \t "), false);
     assert.equal(isValidNickname("여행\n자"), false);
     assert.equal(isValidNickname("가".repeat(51)), false);
+});
+
+test("프로필 사진과 생일·성별 저장 후 회원 상태와 가입일을 유지하고 늦은 응답은 로그인 종료 후 폐기", async (t) => {
+    let stored = { ...user };
+    let release: (() => void) | undefined;
+    t.mock.method(globalThis, "fetch", async (path: unknown, options?: RequestInit) => {
+        if (path === "/api/auth/refresh") return Response.json(token);
+        if (path === "/api/users/me/profile-image") {
+            assert.equal(
+                JSON.parse(String(options?.body)).dataUrl,
+                "data:image/jpeg;base64,fixture",
+            );
+            stored = { ...stored, profileImageUrl: "/images/profiles/fixture.jpg" };
+        }
+        if (options?.method === "PATCH") {
+            if (release !== undefined)
+                await new Promise<void>((resolve) => {
+                    release = resolve;
+                });
+            stored = { ...stored, ...JSON.parse(String(options.body)) };
+        }
+        return Response.json(stored);
+    });
+    const session = createAuthController();
+    assert.equal(await session.restore(), true);
+    await session.updateProfileImage("/brand/avatars/cat.svg", new AbortController().signal);
+    assert.equal(session.getSnapshot().user?.profileImageUrl, "/brand/avatars/cat.svg");
+    await session.updateProfileDetails(
+        { birthDate: "2000-02-29", gender: "FEMALE" },
+        new AbortController().signal,
+    );
+    assert.equal(session.getSnapshot().user?.birthDate, "2000-02-29");
+    assert.equal(session.getSnapshot().user?.gender, "FEMALE");
+    assert.equal(session.getSnapshot().user?.createdAt, user.createdAt);
+    await session.uploadProfileImage(
+        "data:image/jpeg;base64,fixture",
+        new AbortController().signal,
+    );
+    assert.equal(session.getSnapshot().user?.profileImageUrl, "/images/profiles/fixture.jpg");
+    release = () => {};
+    const delayed = session.updateProfileImage(
+        "/brand/avatars/dog.svg",
+        new AbortController().signal,
+    );
+    await new Promise<void>((resolve) => setTimeout(resolve, 0));
+    session.endSession();
+    release();
+    await assert.rejects(
+        delayed,
+        (error: unknown) => error instanceof ApiError && error.kind === "aborted",
+    );
+    assert.equal(session.getSnapshot().user, null);
 });

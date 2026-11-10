@@ -1,4 +1,6 @@
 /// <reference lib="dom" />
+import { sendRequest } from "../src/api/transport.ts";
+import { subscribeBadGateway } from "../src/api/serverErrors.ts";
 import assert from "node:assert/strict";
 import { afterEach, beforeEach, test } from "node:test";
 import { ApiError } from "../src/api/apiError.ts";
@@ -25,6 +27,8 @@ const user = {
     gender: null,
     birthYear: null,
     role: "USER",
+    createdAt: "2026-11-10T12:00:00Z",
+    birthDate: null,
 };
 
 beforeEach(() => {
@@ -373,5 +377,28 @@ test("잘못된 Refresh 응답은 잠금 해제 전에 복원을 차단해 대�
             if (original) Object.defineProperty(target, key, original);
             else Reflect.deleteProperty(target, key);
         }
+    }
+});
+
+test("502 응답은 원래 오류를 유지하면서 공통 알림을 한 번 전달하고 구독 해제를 지킴", async (t) => {
+    let notices = 0;
+    const unsubscribe = subscribeBadGateway(() => {
+        notices++;
+    });
+    t.mock.method(globalThis, "fetch", async () => new Response("Bad Gateway", { status: 502 }));
+    try {
+        await assert.rejects(
+            sendRequest("/api/auth/csrf"),
+            (error: unknown) => error instanceof ApiError && error.status === 502,
+        );
+        assert.equal(notices, 1);
+        unsubscribe();
+        await assert.rejects(
+            sendRequest("/api/auth/csrf"),
+            (error: unknown) => error instanceof ApiError && error.status === 502,
+        );
+        assert.equal(notices, 1);
+    } finally {
+        unsubscribe();
     }
 });

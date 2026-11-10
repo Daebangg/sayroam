@@ -39,6 +39,7 @@ export type AuthState = Readonly<{
     status: "checking" | "anonymous" | "authenticated" | "signingIn" | "signingOut" | "unavailable";
     user: CurrentUserResponse | null;
     message: AuthMessage | null;
+    failureStatus?: number;
     retryAt?: number;
     remainingAttempts?: number;
 }>;

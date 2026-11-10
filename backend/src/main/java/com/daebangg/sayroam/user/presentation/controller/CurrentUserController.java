@@ -5,6 +5,7 @@ import com.daebangg.sayroam.user.application.result.UserProfileResult;
 import com.daebangg.sayroam.user.application.service.UserService;
 import com.daebangg.sayroam.user.presentation.api.UserApi;
 import com.daebangg.sayroam.user.presentation.dto.CurrentUserResponse;
+import com.daebangg.sayroam.user.presentation.dto.UploadProfileImageRequest;
 import com.daebangg.sayroam.user.presentation.dto.UserLoginMethodsResponse;
 import com.daebangg.sayroam.user.presentation.dto.UpdateUserProfileRequest;
 import lombok.RequiredArgsConstructor;
@@ -14,6 +15,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -48,5 +50,16 @@ public class CurrentUserController implements UserApi {
         UserProfileResult profile = userService.updateProfile(account.userId(), account.authVersion(), request.toCommand());
         return ResponseEntity.ok().cacheControl(CacheControl.noStore())
                 .body(CurrentUserResponse.from(profile));
+    }
+
+    @Override
+    @PostMapping(value = "/api/users/me/profile-image", consumes = MediaType.APPLICATION_JSON_VALUE,
+            produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<CurrentUserResponse> uploadProfileImage(
+            @AuthenticationPrincipal AuthenticatedAccount account,
+            @RequestBody UploadProfileImageRequest request) {
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore())
+                .body(CurrentUserResponse.from(userService.uploadProfileImage(
+                        account.userId(), account.authVersion(), request.dataUrl())));
     }
 }

@@ -125,18 +125,19 @@ public class SocialLoginService {
             case FAILED -> throw new AuthException(result.error());
             case AUTO_LINK_READY -> {
                 SocialAccounts.Account current = accounts.linkVerifiedEmail(result.account(), result.identity());
-                yield new Exchanged(tokens.issue(current.userId(), current.authVersion()), null);
+                yield new Exchanged(tokens.issue(current.userId(), current.authVersion()), null, false);
             }
             case LOGIN_READY -> {
                 // 콜백 이후 탈퇴·연결 해제·인증 버전 변경도 다시 검사한다.
                 SocialAccounts.Account current = accounts.findActive(result.identity().provider(), result.identity().providerUserId())
                         .filter(account -> account.equals(result.account()))
                         .orElseThrow(() -> new AuthException(AuthErrorCode.AUTHENTICATION_REVOKED));
-                yield new Exchanged(tokens.issue(current.userId(), current.authVersion()), null);
+                yield new Exchanged(tokens.issue(current.userId(), current.authVersion()), null, false);
             }
             case SIGNUP_REQUIRED -> {
                 // 신규 회원도 공급자 이름으로 가입한 뒤 같은 응답에서 로그인한다.
-                yield new Exchanged(signup.complete(result.identity()), null);
+                SocialSignupService.Completion completed = signup.completeWithOutcome(result.identity());
+                yield new Exchanged(completed.tokens(), null, completed.newlyRegistered());
             }
         };
     }
@@ -153,7 +154,7 @@ public class SocialLoginService {
     public record PendingSignup(String signupTicket, long expiresInSeconds, boolean emailVerificationRequired, String suggestedEmail) {
         @Override public String toString() { return "PendingSignup[redacted]"; }
     }
-    public record Exchanged(TokenPair tokens, PendingSignup signup) {
+    public record Exchanged(TokenPair tokens, PendingSignup signup, boolean newlyRegistered) {
         @Override public String toString() { return "Exchanged[redacted]"; }
     }
 }

@@ -12,7 +12,7 @@ public final class FrontendPaths {
     public static final String PAGE_SEGMENT = "{page:(?!(?:" + RESERVED_NAMES + ")$)[^.]+}";
     private static final Set<String> RESERVED = Set.of(RESERVED_NAMES.split("\\|"));
     private static final Set<String> PAGES = Set.of("/", "/trips", "/matching", "/rooms", "/brand",
-            "/settings", "/settings/appearance", "/settings/account", "/settings/profile");
+            "/settings", "/settings/appearance", "/settings/keyboard", "/settings/account", "/settings/profile");
 
     private FrontendPaths() {
     }

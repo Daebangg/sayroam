@@ -510,7 +510,7 @@ export interface paths {
         };
         /**
          * 내 회원 정보 조회
-         * @description 현재 로그인한 회원의 정보를 조회합니다. 성별·출생연도·프로필 이미지가 미설정이면 null을 반환합니다.
+         * @description 현재 로그인한 회원의 정보를 조회합니다. 가입 시각은 UTC로 반환하고 성별·생일·출생연도·프로필 이미지가 미설정이면 null을 반환합니다.
          */
         get: operations["me"];
         put?: never;
@@ -520,7 +520,7 @@ export interface paths {
         head?: never;
         /**
          * 내 프로필 부분 수정
-         * @description 닉네임·프로필 이미지·성별·출생연도만 변경할 수 있습니다. 생략한 필드는 유지하고, 선택 정보에 null을 전달하면 제거합니다. 닉네임은 null로 변경할 수 없습니다. 회원 ID·이메일·권한 등 허용하지 않은 필드를 포함하면 요청을 거절합니다.
+         * @description 닉네임·프로필 이미지·성별·생일·출생연도만 변경할 수 있습니다. 생략한 필드는 유지하고, 선택 정보에 null을 전달하면 제거합니다. 닉네임은 null로 변경할 수 없습니다. 회원 ID·이메일·권한 등 허용하지 않은 필드를 포함하면 요청을 거절합니다.
          */
         patch: operations["updateProfile"];
         trace?: never;
@@ -539,6 +539,26 @@ export interface paths {
         get: operations["loginMethods"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/users/me/profile-image": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 내 프로필 사진 업로드
+         * @description JPEG·PNG를 512px 정사각형 JPEG로 변환해 저장하고 변경된 회원 정보를 반환합니다. 이전 업로드 사진은 교체합니다.
+         */
+        post: operations["uploadProfileImage"];
         delete?: never;
         options?: never;
         head?: never;
@@ -667,10 +687,12 @@ export interface components {
             | "TRAVEL_PERIOD_END_BEFORE_START"
             | "TRIP_PERIOD_REQUIRED"
             | "UNAUTHENTICATED"
+            | "USER_BIRTH_DATE_INVALID"
             | "USER_BIRTH_YEAR_INVALID"
             | "USER_NICKNAME_INVALID"
             | "USER_NICKNAME_REQUIRED"
             | "USER_NICKNAME_TOO_LONG"
+            | "USER_PROFILE_IMAGE_INVALID"
             | "USER_PROFILE_IMAGE_URL_INVALID"
             | "USER_PROFILE_IMAGE_URL_TOO_LONG";
         ApiProblem: {
@@ -790,10 +812,21 @@ export interface components {
         };
         CurrentUserResponse: {
             /**
+             * Format: date
+             * @description 생일. 연도만 등록된 기존 계정은 null
+             */
+            birthDate: string | null;
+            /**
              * Format: int32
              * @description 미설정이면 null
              */
             birthYear: number | null;
+            /**
+             * Format: date-time
+             * @description 가입 시각(UTC)
+             * @example 2026-11-10T12:00:00Z
+             */
+            createdAt: string;
             /** @example user@example.com */
             email: string | null;
             /** @description 미설정이면 null */
@@ -1025,6 +1058,8 @@ export interface components {
         SocialExchangeResponse: {
             /** @description AUTHENTICATED일 때만 존재. Refresh는 HttpOnly 쿠키 */
             login?: components["schemas"]["LoginResponse"] | null;
+            /** @description 이번 요청에서 새 회원을 생성했으면 true. 기존 회원 로그인·연결은 false */
+            newlyRegistered?: boolean;
             /** @description SIGNUP_REQUIRED일 때만 존재. 가입 전 일반 서비스 토큰은 발급하지 않음 */
             signup?: components["schemas"]["Signup"] | null;
             /** @enum {string} */
@@ -1045,6 +1080,11 @@ export interface components {
         /** @description 생략한 필드는 유지합니다. 선택 정보의 null은 삭제를 의미합니다. */
         UpdateUserProfileRequest: {
             /**
+             * Format: date
+             * @description 생일(YYYY-MM-DD), 오늘 이하의 실제 날짜. null이면 제거. birthYear와 동시에 전달할 수 없습니다.
+             */
+            birthDate?: string | null;
+            /**
              * Format: int32
              * @description 양의 정수이며 현재 연도 이하. null이면 미설정
              */
@@ -1056,8 +1096,12 @@ export interface components {
              * @example 제주 여행자
              */
             nickname?: string;
-            /** @description HTTP(S) 이미지 URL. null이면 제거 */
+            /** @description HTTP(S) 이미지 URL 또는 기본 아바타 경로(/brand/avatars/{preset}.svg). null이면 제거 */
             profileImageUrl?: string | null;
+        };
+        /** @description JPEG 또는 PNG의 Base64 data URL. 디코딩 후 최대 2MB, 가로·세로 최대 4096px. */
+        UploadProfileImageRequest: {
+            dataUrl: string;
         };
         UserLoginMethodsResponse: {
             /** @description 비밀번호 로그인 수단이 등록되어 있는지 여부 */
@@ -1522,7 +1566,7 @@ export interface components {
                 "application/problem+json": components["schemas"]["ApiProblem"];
             };
         };
-        /** @description 400: USER_NICKNAME_REQUIRED, USER_NICKNAME_TOO_LONG, USER_NICKNAME_INVALID, USER_PROFILE_IMAGE_URL_TOO_LONG, USER_PROFILE_IMAGE_URL_INVALID, USER_BIRTH_YEAR_INVALID 또는 Spring 요청 오류. 허용 필드는 nickname·profileImageUrl·gender·birthYear이며 보호 필드와 잘못된 JSON 타입은 거절 */
+        /** @description 400: USER_NICKNAME_REQUIRED, USER_NICKNAME_TOO_LONG, USER_NICKNAME_INVALID, USER_PROFILE_IMAGE_URL_TOO_LONG, USER_PROFILE_IMAGE_URL_INVALID, USER_PROFILE_IMAGE_INVALID, USER_BIRTH_YEAR_INVALID, USER_BIRTH_DATE_INVALID 또는 Spring 요청 오류. 허용 필드는 nickname·profileImageUrl·gender·birthYear·birthDate이며 보호 필드와 잘못된 JSON 타입은 거절 */
         UserProfileBadRequest: {
             headers: {
                 [name: string]: unknown;
@@ -2399,6 +2443,33 @@ export interface operations {
             503: components["responses"]["AuthenticationUnavailable"];
         };
     };
+    uploadProfileImage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UploadProfileImageRequest"];
+            };
+        };
+        responses: {
+            /** @description 사진이 변경된 회원 정보. Cache-Control: no-store */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CurrentUserResponse"];
+                };
+            };
+            400: components["responses"]["UserProfileBadRequest"];
+            401: components["responses"]["Unauthorized"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
 }
 
 /** operationId별 공통 실행 정보. 브라우저 이동용 콜백은 제외합니다. 직접 수정하지 않습니다. */
@@ -2588,6 +2659,13 @@ export const apiRoutes = {
     updateProfile: {
         method: "patch",
         path: "/api/users/me",
+        auth: "required",
+        csrf: false,
+        responses: { "200": true },
+    },
+    uploadProfileImage: {
+        method: "post",
+        path: "/api/users/me/profile-image",
         auth: "required",
         csrf: false,
         responses: { "200": true },

@@ -18,6 +18,8 @@ const user = {
     gender: null,
     birthYear: null,
     role: "USER",
+    createdAt: "2026-11-10T12:00:00Z",
+    birthDate: null,
 };
 const invalidResponse = (error: unknown): boolean =>
     error instanceof ApiError && error.kind === "invalid-response";
@@ -100,7 +102,7 @@ test("프로필 조회·변경 응답의 선택 정보는 null을 허용하고 �
     assert.deepEqual(validateCurrentUser(user, 200), user);
     const configured = { ...user, gender: "FEMALE", birthYear: 1995 };
     assert.deepEqual(validateCurrentUser(configured, 200), configured);
-    for (const field of ["gender", "birthYear"]) {
+    for (const field of ["gender", "birthYear", "birthDate", "createdAt"]) {
         const missing: Record<string, unknown> = { ...user };
         Reflect.deleteProperty(missing, field);
         assert.throws(() => validateCurrentUser(missing, 200), invalidResponse);
@@ -111,6 +113,13 @@ test("프로필 조회·변경 응답의 선택 정보는 null을 허용하고 �
         { ...user, birthYear: "1995" },
         { ...user, birthYear: 1995.5 },
         { ...user, birthYear: 0 },
+        { ...user, birthDate: "2001-02-29" },
+        { ...user, birthDate: "2000-02-30" },
+        { ...user, birthDate: "0000-01-01" },
+        { ...user, birthDate: "2000-1-1" },
+        { ...user, createdAt: null },
+        { ...user, createdAt: "invalid" },
+        { ...user, createdAt: "2026-11-10T12:00:00" },
     ]) {
         assert.throws(() => validateCurrentUser(value, 200), invalidResponse);
     }

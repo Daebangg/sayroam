@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import { normalizeLanguage } from "../../../i18n/locale";
 import { Button } from "../buttons/Button";
+import { DropdownMenu } from "../dropdowns/DropdownMenu";
 import { Icon } from "../icons/Icon";
 import {
     addCalendarDays,
@@ -25,6 +26,7 @@ type DatePickerProps = {
     disabled?: boolean;
     placeholder?: string;
     className?: string;
+    yearNavigation?: boolean;
 };
 
 const firstDate = parseCalendarDate("0001-01-01")!;
@@ -40,6 +42,7 @@ export function DatePicker({
     disabled = false,
     placeholder,
     className = "",
+    yearNavigation = false,
 }: DatePickerProps) {
     const { t, i18n } = useTranslation();
     const locale = normalizeLanguage(i18n.resolvedLanguage) === "en" ? "en-US" : "ko-KR";
@@ -150,13 +153,17 @@ export function DatePicker({
             if (
                 event.target instanceof Node &&
                 !root.current?.contains(event.target) &&
-                !panel.current?.contains(event.target)
+                !panel.current?.contains(event.target) &&
+                !(
+                    event.target instanceof Element &&
+                    event.target.closest(`[data-overlay-owner="${panelId}"]`)
+                )
             )
                 setPhase("closing");
         };
         document.addEventListener("pointerdown", outside);
         return () => document.removeEventListener("pointerdown", outside);
-    }, [open]);
+    }, [open, panelId]);
 
     useEffect(() => {
         if (phase !== "closing") return;
@@ -237,7 +244,12 @@ export function DatePicker({
                 if (
                     open &&
                     (!(next instanceof Node) ||
-                        (!root.current?.contains(next) && !panel.current?.contains(next)))
+                        (!root.current?.contains(next) &&
+                            !panel.current?.contains(next) &&
+                            !(
+                                next instanceof Element &&
+                                next.closest(`[data-overlay-owner="${panelId}"]`)
+                            )))
                 )
                     closeCalendar(false);
             }}
@@ -292,7 +304,70 @@ export function DatePicker({
                         className={`ui-calendar${phase === "closing" ? " ui-calendar--closing" : ""}`}
                     >
                         <div className="ui-calendar__header">
-                            <span className="ui-calendar__month" id={monthId} aria-live="polite">
+                            {yearNavigation && (
+                                <div className="ui-calendar__selectors">
+                                    <DropdownMenu
+                                        label={t("controls.datePicker.year")}
+                                        value={String(activeDate.getUTCFullYear())}
+                                        overlayOwner={panelId}
+                                        options={Array.from(
+                                            {
+                                                length:
+                                                    upperBound.getUTCFullYear() -
+                                                    lowerBound.getUTCFullYear() +
+                                                    1,
+                                            },
+                                            (_, index) => {
+                                                const year = upperBound.getUTCFullYear() - index;
+                                                return { value: String(year), label: String(year) };
+                                            },
+                                        )}
+                                        onChange={(value) =>
+                                            moveDate(
+                                                addCalendarMonths(
+                                                    activeDate,
+                                                    (Number(value) - activeDate.getUTCFullYear()) *
+                                                        12,
+                                                ),
+                                                false,
+                                            )
+                                        }
+                                    />
+                                    <DropdownMenu
+                                        label={t("controls.datePicker.month")}
+                                        value={String(activeDate.getUTCMonth())}
+                                        overlayOwner={panelId}
+                                        options={Array.from({ length: 12 }, (_, index) => ({
+                                            value: String(index),
+                                            label: new Intl.DateTimeFormat(locale, {
+                                                month: "long",
+                                                timeZone: "UTC",
+                                            }).format(new Date(Date.UTC(2000, index, 1))),
+                                            disabled:
+                                                (activeDate.getUTCFullYear() ===
+                                                    upperBound.getUTCFullYear() &&
+                                                    index > upperBound.getUTCMonth()) ||
+                                                (activeDate.getUTCFullYear() ===
+                                                    lowerBound.getUTCFullYear() &&
+                                                    index < lowerBound.getUTCMonth()),
+                                        }))}
+                                        onChange={(value) =>
+                                            moveDate(
+                                                addCalendarMonths(
+                                                    activeDate,
+                                                    Number(value) - activeDate.getUTCMonth(),
+                                                ),
+                                                false,
+                                            )
+                                        }
+                                    />
+                                </div>
+                            )}
+                            <span
+                                className={`ui-calendar__month ${yearNavigation ? "visually-hidden" : ""}`}
+                                id={monthId}
+                                aria-live="polite"
+                            >
                                 {monthLabel}
                             </span>
                             <div className="ui-calendar__navigation">

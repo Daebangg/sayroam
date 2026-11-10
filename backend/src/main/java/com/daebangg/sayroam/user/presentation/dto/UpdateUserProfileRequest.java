@@ -13,20 +13,22 @@ import org.jspecify.annotations.Nullable;
 import tools.jackson.databind.JsonNode;
 
 import java.util.Set;
+import java.time.LocalDate;
+import java.time.format.DateTimeParseException;
 
 @Getter
 @Schema(description = "생략한 필드는 유지합니다. 선택 정보의 null은 삭제를 의미합니다.",
         additionalProperties = Schema.AdditionalPropertiesValue.FALSE)
 public final class UpdateUserProfileRequest {
     private static final Set<String> ALLOWED_FIELDS =
-            Set.of("nickname", "profileImageUrl", "gender", "birthYear");
+            Set.of("nickname", "profileImageUrl", "gender", "birthYear", "birthDate");
 
     @Schema(description = "앞뒤 공백 제거 후 1~50자. 제어·숨김 문자와 null 불가",
             example = "제주 여행자", minLength = 1, maxLength = UserProfilePolicy.MAX_NICKNAME_LENGTH, pattern = UserProfilePolicy.NICKNAME_PATTERN,
             requiredMode = Schema.RequiredMode.NOT_REQUIRED)
     private final String nickname;
 
-    @Schema(description = "HTTP(S) 이미지 URL. null이면 제거",
+    @Schema(description = "HTTP(S) 이미지 URL 또는 기본 아바타 경로(/brand/avatars/{preset}.svg). null이면 제거",
             types = {"string", "null"}, maxLength = UserProfilePolicy.MAX_PROFILE_IMAGE_URL_LENGTH,
             requiredMode = Schema.RequiredMode.NOT_REQUIRED)
     private final String profileImageUrl;
@@ -39,6 +41,9 @@ public final class UpdateUserProfileRequest {
             types = {"integer", "null"}, format = "int32", minimum = "1",
             requiredMode = Schema.RequiredMode.NOT_REQUIRED)
     private final Integer birthYear;
+
+    @Schema(description = "생일(YYYY-MM-DD), 오늘 이하의 실제 날짜. null이면 제거. birthYear와 동시에 전달할 수 없습니다.", types = {"string", "null"}, format = "date", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
+    private final LocalDate birthDate;
 
     @JsonIgnore
     @Getter(AccessLevel.NONE)
@@ -55,13 +60,15 @@ public final class UpdateUserProfileRequest {
         providedFields = Set.copyOf(body.propertyNames());
         if (!ALLOWED_FIELDS.containsAll(providedFields)) {
             throw new IllegalArgumentException(
-                    "Only nickname, profileImageUrl, gender and birthYear can be updated");
+                    "Only nickname, profileImageUrl, gender, birthYear and birthDate can be updated");
         }
 
         nickname = nullableString(body.get("nickname"), "nickname");
         profileImageUrl = nullableString(body.get("profileImageUrl"), "profileImageUrl");
         gender = nullableGender(body.get("gender"));
         birthYear = nullableBirthYear(body.get("birthYear"));
+        birthDate = nullableBirthDate(body.get("birthDate"));
+        if (providedFields.contains("birthYear") && providedFields.contains("birthDate")) throw new IllegalArgumentException("Specify birthDate or birthYear, not both");
     }
 
     public UpdateUserProfileCommand toCommand() {
@@ -69,7 +76,8 @@ public final class UpdateUserProfileRequest {
                 fieldUpdate("nickname", nickname),
                 fieldUpdate("profileImageUrl", profileImageUrl),
                 fieldUpdate("gender", gender),
-                fieldUpdate("birthYear", birthYear));
+                fieldUpdate("birthYear", birthYear),
+                fieldUpdate("birthDate", birthDate));
     }
 
     private <T> FieldUpdate<T> fieldUpdate(String field, T value) {
@@ -96,6 +104,17 @@ public final class UpdateUserProfileRequest {
             case "FEMALE" -> Gender.FEMALE;
             default -> throw new IllegalArgumentException("gender must be MALE, FEMALE or null");
         };
+    }
+
+    private static LocalDate nullableBirthDate(JsonNode node) {
+        String value = nullableString(node, "birthDate");
+        if (value == null) return null;
+        if (!value.matches("[0-9]{4}-[0-9]{2}-[0-9]{2}")) throw new IllegalArgumentException("birthDate must be YYYY-MM-DD");
+        try {
+            return LocalDate.parse(value);
+        } catch (DateTimeParseException exception) {
+            throw new IllegalArgumentException("birthDate must be a valid calendar date", exception);
+        }
     }
 
     private static Integer nullableBirthYear(JsonNode node) {

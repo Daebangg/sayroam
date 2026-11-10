@@ -91,8 +91,8 @@
         "setPassword": "비밀번호 재설정",
         "rememberPassword": "비밀번호가 기억나셨나요?",
         "backToLogin": "로그인으로 돌아가기",
-        "signupComplete": "계정을 만들었어요. 이메일로 로그인해 주세요.",
-        "resetComplete": "비밀번호를 변경했어요. 새 비밀번호로 로그인해 주세요.",
+        "signupComplete": "회원가입이 완료되었습니다. 이메일로 로그인해 주세요.",
+        "resetComplete": "비밀번호가 재설정되었습니다. 새 비밀번호로 로그인해 주세요.",
         "messages": {
             "credentials": "이메일 또는 비밀번호가 올바르지 않습니다.",
             "invalidInput": "이메일과 비밀번호 입력 내용을 확인해 주세요.",
@@ -131,15 +131,20 @@
         "passwordNumberRule": "숫자 최소 1개 포함",
         "passwordSpecialRule": "특수문자 최소 1개 포함",
         "loginPasswordRule": "가입한 비밀번호를 8~128자로 입력해 주세요.",
-        "loginComplete": "로그인했어요.",
-        "logoutComplete": "로그아웃했어요.",
+        "loginComplete": "로그인되었습니다.",
+        "logoutComplete": "로그아웃되었습니다.",
         "loginWait": "로그인 시도가 너무 많습니다. {{seconds}}초 후 다시 시도해 주세요.",
         "loginRetryReady": "이제 다시 로그인할 수 있어요.",
         "loginAttemptsRemaining": "이메일 또는 비밀번호가 올바르지 않습니다. 남은 시도 횟수: {{count}}회.",
         "socialProviderDisabled": "현재 사용할 수 없는 소셜 로그인이에요.",
         "nicknameSaved": "닉네임이 변경되었습니다.",
-        "passwordChanged": "비밀번호가 변경되어 로그아웃되었습니다. 다시 로그인해 주세요.",
-        "accountDeleted": "계정이 삭제되어 로그아웃되었습니다."
+        "passwordChanged": "비밀번호가 변경되었습니다. 다시 로그인해 주세요.",
+        "accountDeleted": "회원 탈퇴가 완료되었습니다.",
+        "codeDigit": "인증번호 {{position}}번째 자리",
+        "profileImageSaved": "프로필 사진이 변경되었습니다.",
+        "profileDetailsSaved": "프로필 정보가 저장되었습니다.",
+        "badGateway": "일시적인 서버 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.",
+        "socialSignupComplete": "회원가입이 완료되었습니다."
     },
     "trips": {
         "heading": "내 여행",
@@ -293,7 +298,8 @@
             },
             "preview": "{{background}}의 {{layout}}",
             "download": "{{variant}} {{layout}} {{format}} 다운로드"
-        }
+        },
+        "divider": "구분선"
     },
     "profile": {
         "settings": "설정",
@@ -326,7 +332,12 @@
             "description": "화면을 불러오는 중이에요. 잠시만 기다려 주세요."
         },
         "home": "홈으로 돌아가기",
-        "retry": "다시 시도하기"
+        "retry": "다시 시도하기",
+        "serverError": {
+            "label": "서버 오류",
+            "title": "서버에 문제가 생겼어요",
+            "description": "잠시 후 다시 시도해 주세요. 문제가 계속되면 나중에 다시 방문해 주세요."
+        }
     },
     "mockup": {
         "toolbar": "디자인 목업",
@@ -432,7 +443,11 @@
             "filter": "필터",
             "check": "확인",
             "flame": "인기",
-            "edit": "수정"
+            "edit": "수정",
+            "keyboard": "키보드",
+            "gender-unset": "성별 미설정",
+            "gender-male": "남성",
+            "gender-female": "여성"
         },
         "saveTrip": "{{title}} 북마크",
         "customControls": "여행 입력",
@@ -463,7 +478,9 @@
             "previousMonth": "이전 달",
             "nextMonth": "다음 달",
             "today": "오늘",
-            "clear": "초기화"
+            "clear": "초기화",
+            "year": "연도",
+            "month": "월"
         },
         "numberStepper": {
             "decrease": "{{label}} 줄이기",
@@ -476,7 +493,7 @@
         "backToApp": "앱으로 돌아가기",
         "backToAccount": "계정으로 돌아가기",
         "general": "일반",
-        "appearance": "화면 및 언어",
+        "appearance": "화면",
         "account": "계정",
         "profile": "프로필",
         "basicInformation": "기본 정보",
@@ -496,7 +513,36 @@
         "genderValues": {
             "MALE": "남성",
             "FEMALE": "여성"
-        }
+        },
+        "keyboard": "키보드",
+        "openSettings": "설정 열기",
+        "openProfile": "프로필 열기",
+        "joinedAt": "가입일",
+        "yourJourney": "내 프로필",
+        "profileDescription": "함께 여행할 사람들에게 이렇게 보여요.",
+        "chooseAvatar": "기본 프로필",
+        "imageMessages": {
+            "uncertain": "저장 결과를 확인하지 못했어요. 새로고침 후 프로필을 확인해 주세요.",
+            "unavailable": "프로필 사진을 저장하지 못했어요. 잠시 후 다시 시도해 주세요.",
+            "invalid": "선택한 프로필을 다시 확인해 주세요.",
+            "fileInvalid": "JPG 또는 PNG 사진을 선택해 주세요. 사진이 손상되지 않았는지도 확인해 주세요.",
+            "fileTooLarge": "5MB 이하의 사진을 선택해 주세요."
+        },
+        "profileSignature": "Profile",
+        "birthday": "생일",
+        "goToAccount": "계정 설정으로 이동",
+        "detailsMessages": {
+            "invalid": "성별과 생일을 다시 확인해 주세요.",
+            "uncertain": "저장 결과를 확인하지 못했어요. 새로고침 후 정보를 확인해 주세요.",
+            "unavailable": "프로필 정보를 저장하지 못했어요. 잠시 후 다시 시도해 주세요."
+        },
+        "themeSettings": "테마 설정",
+        "genderUnset": "미설정",
+        "uploadPhoto": "프로필 사진 올리기",
+        "photoFileHint": "JPG, PNG · 최대 5MB",
+        "cropPhoto": "프로필 사진 조정",
+        "cropPhotoHint": "원을 움직이고 모서리를 드래그해 크기를 조절해 주세요.",
+        "applyPhoto": "적용"
     },
     "accountAction": {
         "connectedOAuth": "연결된 OAuth",
@@ -559,6 +605,14 @@
                 "message": "계정 상태가 변경됐습니다. 다시 로그인한 뒤 새로운 본인 확인으로 진행해 주세요."
             }
         },
-        "socialPasswordHint": "소셜 로그인 전용 계정입니다. 비밀번호는 연결된 로그인 제공자에서 변경해 주세요."
+        "socialPasswordHint": "소셜 로그인 전용 계정입니다. 비밀번호는 연결된 로그인 제공자에서 변경해 주세요.",
+        "linkedEmailHint": "연결된 이메일로 인증 코드를 보내요."
+    },
+    "validation": {
+        "requiredField": "{{field}} 입력해 주세요.",
+        "required": "필수 항목을 입력해 주세요.",
+        "email": "올바른 이메일 주소를 입력해 주세요.",
+        "url": "올바른 주소를 입력해 주세요.",
+        "invalid": "입력 내용을 확인해 주세요."
     }
 }

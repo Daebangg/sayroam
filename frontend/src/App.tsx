@@ -1,3 +1,6 @@
+import { useInputValidation } from "@/hooks/useInputValidation";
+import { useServerErrors } from "@/hooks/useServerErrors";
+import { StatusPage } from "@/pages/status/StatusPage";
 import { socialReturn } from "@/routing/socialReturn";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -16,22 +19,48 @@ import { useTheme, type ThemePreference } from "@/hooks/useTheme";
 import { RouteAccessibility } from "@/routing/RouteAccessibility";
 import { Toast } from "@/components/ui";
 import { AccountResultDialog } from "@/components/features/settings/AccountDialogs";
-import type { AccountResult } from "@/hooks/account.types";
+import type { AccountResult, ProfileDetailsUpdate } from "@/hooks/account.types";
 
 type AuthToast =
     | "signupComplete"
+    | "socialSignupComplete"
     | "resetComplete"
     | "loginComplete"
     | "logoutComplete"
     | "nicknameSaved"
+    | "profileImageSaved"
+    | "profileDetailsSaved"
+    | "badGateway"
     | "passwordChanged"
     | "accountDeleted";
 
 export default function App() {
     const { i18n, t } = useTranslation();
-    const [toast, setToast] = useState<{ id: number; message: AuthToast } | null>(null);
+    const [toast, setToast] = useState<
+        | ({ id: number; error?: boolean } & (
+              { message: AuthToast; text?: never } | { text: string; message?: never }
+          ))
+        | null
+    >(null);
+    const [recovering, setRecovering] = useState(false);
     const [accountResult, setAccountResult] = useState<AccountResult | null>(null);
     const toastSequence = useRef(0);
+    useServerErrors(() =>
+        setToast({ id: ++toastSequence.current, message: "badGateway", error: true }),
+    );
+
+    useInputValidation((message, field) => {
+        const last = field.charCodeAt(field.length - 1);
+        const particle =
+            last >= 0xac00 && last <= 0xd7a3 && (last - 0xac00) % 28 !== 0 ? "을" : "를";
+        const text =
+            message === "required" && field
+                ? t("validation.requiredField", {
+                      field: i18n.resolvedLanguage === "ko" ? field + particle : field,
+                  })
+                : t(`validation.${message}`);
+        setToast({ id: ++toastSequence.current, text, error: true });
+    });
 
     function showToast(message: AuthToast): void {
         setToast({ id: ++toastSequence.current, message });
@@ -68,7 +97,10 @@ export default function App() {
             socialReturnHandled.current = true;
             setAuthOpen(!success);
             if (!success) return;
-            setToast({ id: ++toastSequence.current, message: "loginComplete" });
+            setToast({
+                id: ++toastSequence.current,
+                message: success === "signup" ? "socialSignupComplete" : "loginComplete",
+            });
             void navigate(returned.returnPath, { replace: true });
         });
         return () => {
@@ -131,13 +163,18 @@ export default function App() {
     }
 
     function retryProfile(): void {
-        void auth.restore().then((success) => {
-            if (success) {
-                closeAuth();
-                showToast("loginComplete");
-                if (socialReturn) void navigate(socialReturn.returnPath, { replace: true });
-            }
-        });
+        setAuthOpen(false);
+        setRecovering(true);
+        void auth
+            .restore()
+            .then((success) => {
+                if (success) {
+                    closeAuth();
+                    showToast("loginComplete");
+                    if (socialReturn) void navigate(socialReturn.returnPath, { replace: true });
+                }
+            })
+            .finally(() => setRecovering(false));
     }
 
     function syncPreviewUrl(): void {
@@ -158,19 +195,21 @@ export default function App() {
         syncPreviewUrl();
     }
 
+    const normalizedPath = location.pathname.replace(/\/+$/, "").toLowerCase() || "/";
+    const knownPage = Object.values(pagePaths).some((path) => path === normalizedPath);
+    const showAuthFailure =
+        knownPage && auth.status === "unavailable" && auth.message !== "logoutUncertain";
     return (
         <AppShell
             mockupScreen={mockupScreen}
             isHome={location.pathname === "/"}
             theme={theme.resolved}
-            onThemeChange={changeTheme}
-            onLanguageChange={changeLanguage}
             onOpenAuth={openAuth}
             member={auth.user}
             authBusy={authBusy}
             onLogout={logout}
         >
-            {auth.message && !authOpen && !modalOnlyAuthMessage && (
+            {auth.message && !authOpen && !modalOnlyAuthMessage && !showAuthFailure && (
                 <AuthNotice
                     message={auth.message}
                     busy={authBusy}
@@ -179,7 +218,15 @@ export default function App() {
                     onRetryProfile={retryProfile}
                 />
             )}
-            {isMemberPath(location.pathname) && !auth.user ? (
+            {showAuthFailure ? (
+                <StatusPage
+                    kind={(auth.failureStatus ?? 0) >= 500 ? "serverError" : "error"}
+                    onRetry={retryProfile}
+                    reloadHome
+                />
+            ) : recovering && authBusy ? (
+                <StatusPage kind="loading" />
+            ) : isMemberPath(location.pathname) && !auth.user ? (
                 <MemberGate
                     checking={authBusy}
                     unavailable={auth.status === "unavailable"}
@@ -195,6 +242,24 @@ export default function App() {
                         themePreference: theme.preference,
                         onThemeChange: changeTheme,
                         onSelectLanguage: changeLanguage,
+                        onUpdateProfileDetails: async (
+                            input: ProfileDetailsUpdate,
+                            signal: AbortSignal,
+                        ) => {
+                            await auth.updateProfileDetails(input, signal);
+                            showToast("profileDetailsSaved");
+                        },
+                        onUploadProfileImage: async (dataUrl: string, signal: AbortSignal) => {
+                            await auth.uploadProfileImage(dataUrl, signal);
+                            showToast("profileImageSaved");
+                        },
+                        onUpdateProfileImage: async (
+                            profileImageUrl: string,
+                            signal: AbortSignal,
+                        ) => {
+                            await auth.updateProfileImage(profileImageUrl, signal);
+                            showToast("profileImageSaved");
+                        },
                         onUpdateNickname: async (nickname: string, signal: AbortSignal) => {
                             await auth.updateNickname(nickname, signal);
                             showToast("nicknameSaved");
@@ -215,11 +280,14 @@ export default function App() {
             )}
             <RouteAccessibility
                 contentKey={
-                    mockupScreen ?? (isMemberPath(location.pathname) ? auth.status : undefined)
+                    mockupScreen ??
+                    (isMemberPath(location.pathname) || showAuthFailure || recovering
+                        ? auth.status
+                        : undefined)
                 }
             />
             <ScrollRestoration />
-            {authOpen && (
+            {authOpen && !showAuthFailure && (
                 <AuthDialog
                     onCancelSocial={auth.cancelSocial}
                     onClose={closeAuth}
@@ -239,7 +307,9 @@ export default function App() {
             {toast && (
                 <Toast
                     key={toast.id}
-                    message={t(`auth.${toast.message}`)}
+                    message={toast.text ?? t(`auth.${toast.message}`)}
+                    tone={toast.error ? "error" : "success"}
+                    durationMs={toast.error ? 6000 : 3000}
                     onDismiss={() => setToast(null)}
                 />
             )}

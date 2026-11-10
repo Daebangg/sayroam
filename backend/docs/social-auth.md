@@ -4,6 +4,9 @@
 첫 공급자인 Google에 이어 Kakao·Naver도 같은 인증 흐름을 사용합니다. OAuth2 Authorization Code로 공급자 Access Token을 받은 뒤
 UserInfo API에서 사용자를 확인합니다. 서비스의 Access JWT·Refresh Token은 기존 공통 흐름으로 발급합니다.
 
+소셜 결과 교환 응답의 `newlyRegistered`는 이번 요청에서 새 회원을 만들었을 때만 true입니다.
+프론트엔드는 이를 사용해 가입 완료와 기존 회원 로그인 완료 토스트를 구분합니다.
+
 ## 구조
 
 ```text

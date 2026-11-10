@@ -32,6 +32,7 @@ function assertCurrentAttempt(revision: number, options: AuthCallOptions): void 
 export type AuthenticationResult = {
     revision: number;
     user: CurrentUserResponse;
+    signedUp: boolean;
 };
 
 async function authenticate(
@@ -55,7 +56,9 @@ async function authenticate(
             throw error;
         }
         assertCurrentAttempt(attemptRevision, options);
+        let signedUp = "status" in response && response.newlyRegistered === true;
         if ("status" in response && response.status === "SIGNUP_REQUIRED" && response.signup) {
+            signedUp = true;
             // 이전 서버에서 받은 티켓도 이름 입력·인증 메일 화면 없이 한 번만 완료한다.
             if (response.signup.emailVerificationRequired || !response.signup.suggestedEmail)
                 throw new ApiError("http", {
@@ -81,7 +84,7 @@ async function authenticate(
         const sessionRevision = getAuthRevision();
         const user = await getCurrentUser(options);
         assertCurrentAttempt(sessionRevision, options);
-        return { user, revision: getAuthRevision() };
+        return { user, revision: getAuthRevision(), signedUp };
     } finally {
         signingIn = false;
     }

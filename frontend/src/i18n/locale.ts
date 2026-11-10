@@ -20,3 +20,11 @@ export function formatDateRange(language: string, start: string, end: string): s
 export function formatNumber(language: string, value: number): string {
     return new Intl.NumberFormat(locale(language)).format(value);
 }
+
+export function formatDate(language: string, value: string): string {
+    return new Intl.DateTimeFormat(locale(language), {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+    }).format(new Date(value));
+}

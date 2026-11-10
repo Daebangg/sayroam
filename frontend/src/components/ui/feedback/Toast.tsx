@@ -1,8 +1,5 @@
 import { useEffect, useEffectEvent, useRef, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
-import { useTranslation } from "react-i18next";
-import { Button } from "../buttons/Button";
-import { Icon } from "../icons/Icon";
 
 export type ToastTone = "success" | "error" | "info";
 type ToastProps = {
@@ -28,8 +25,8 @@ function subscribeToastHost(notify: () => void): () => void {
 }
 
 export function Toast({ message, onDismiss, tone = "success", durationMs = 3000 }: ToastProps) {
-    const { t } = useTranslation();
     const ref = useRef<HTMLDivElement>(null);
+    const [entered, setEntered] = useState(false);
     const [closing, setClosing] = useState(false);
     // 활성 모달 밖의 DOM은 inert 상태이므로 모달의 열림·닫힘에 따라 포털 위치를 맞춘다.
     const host = useSyncExternalStore(subscribeToastHost, getToastHost);
@@ -58,24 +55,15 @@ export function Toast({ message, onDismiss, tone = "success", durationMs = 3000 
         <div
             ref={ref}
             popover="manual"
-            className={`ui-toast ui-toast--${tone}${closing ? " ui-toast--closing" : ""}`}
+            className={`ui-toast ui-toast--${tone}${closing ? " ui-toast--closing" : entered ? "" : " ui-toast--entering"}`}
+            onAnimationEnd={(event) => {
+                if (event.animationName === "toast-enter") setEntered(true);
+            }}
             role="status"
             aria-live="polite"
             aria-atomic="true"
         >
-            <span className="ui-toast__symbol" aria-hidden="true">
-                {tone === "success" ? "✓" : tone === "error" ? "!" : "i"}
-            </span>
             <p className="ui-toast__message">{message}</p>
-            <Button
-                variant="ghost"
-                className="icon-button ui-toast__close"
-                onClick={() => setClosing(true)}
-                disabled={closing}
-                aria-label={t("common.dismissNotification")}
-            >
-                <Icon name="close" variant="outline" />
-            </Button>
         </div>,
         host,
     );

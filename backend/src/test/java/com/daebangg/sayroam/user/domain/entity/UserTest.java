@@ -12,6 +12,7 @@ import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.ValueSource;
 
 import java.time.LocalDateTime;
+import java.time.LocalDate;
 import java.time.Year;
 import java.util.stream.Stream;
 
@@ -21,6 +22,20 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class UserTest {
     private static final String EMAIL = "user@example.com";
     private static final LocalDateTime VERIFIED_AT = LocalDateTime.of(2026, 11, 7, 10, 0);
+
+    @Test
+    void 생일을_저장하면_출생연도도_맞추고_미래_날짜는_기존_값을_보존한다() {
+        User user = member();
+        user.changeBirthYear(1996);
+        assertThat(user.getBirthDate()).isNull();
+        user.changeBirthDate(LocalDate.of(2000, 2, 29));
+        assertThat(user.getBirthYear()).isEqualTo(2000);
+        assertThatThrownBy(() -> user.changeBirthDate(LocalDate.now().plusDays(1))).isInstanceOf(BusinessException.class);
+        assertThat(user.getBirthDate()).isEqualTo(LocalDate.of(2000, 2, 29));
+        user.changeBirthDate(null);
+        assertThat(user.getBirthYear()).isNull();
+        assertThat(user.getBirthDate()).isNull();
+    }
 
     @Test
     void 회원_생성과_수정에서_닉네임의_앞뒤_공백을_제거한다() {
@@ -100,6 +115,15 @@ class UserTest {
     }
 
     @ParameterizedTest
+    @ValueSource(strings = {"coast", "sand", "dusk", "sea", "traveler", "sunrise", "poet", "explorer", "alien", "dog", "rabbit", "cat", "sunset", "twilight", "night", "flight"})
+    void 제공된_기본_아바타는_상대_경로로_저장한다(String preset) {
+        User user = member();
+        String path = "/brand/avatars/" + preset + ".svg";
+        user.changeProfileImageUrl(path);
+        assertThat(user.getProfileImageUrl()).isEqualTo(path);
+    }
+
+    @ParameterizedTest
     @NullAndEmptySource
     @ValueSource(strings = {"   ", "\t\n　"})
     void 소셜_가입에서_빈_이미지는_미설정으로_처리한다(String imageUrl) {
@@ -137,7 +161,7 @@ class UserTest {
     }
 
     static Stream<String> invalidImageUrls() {
-        return Stream.concat(Stream.of("", "   "), malformedImageUrls());
+        return Stream.concat(Stream.of("", "   ", "/brand/avatars/unknown.svg", "/brand/avatars/../coast.svg", "/brand/avatars/coast.svg?x=1", "//evil.example/coast.svg", "/brand/avatars/%63oast.svg"), malformedImageUrls());
     }
 
     static Stream<String> malformedImageUrls() {

@@ -6,6 +6,9 @@ import com.daebangg.sayroam.user.application.command.UpdateUserProfileCommand;
 import com.daebangg.sayroam.user.application.result.UserProfileResult;
 import com.daebangg.sayroam.user.application.result.UserLoginMethodsResult;
 import com.daebangg.sayroam.user.domain.entity.User;
+import com.daebangg.sayroam.user.domain.entity.UserProfileImage;
+import com.daebangg.sayroam.user.domain.error.UserErrorCode;
+import com.daebangg.sayroam.user.domain.repository.UserProfileImageRepository;
 import com.daebangg.sayroam.user.domain.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -20,6 +23,8 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class UserService {
     private final UserRepository userRepository;
+    private final UserProfileImageRepository profileImages;
+    private final ProfileImageProcessor imageProcessor;
 
     @Transactional(readOnly = true)
     public UserLoginMethodsResult getLoginMethods(long userId, long expectedAuthVersion) {
@@ -45,7 +50,14 @@ public class UserService {
             user.changeNickname(command.nickname().value());
         }
         if (command.profileImageUrl().present()) {
-            user.changeProfileImageUrl(command.profileImageUrl().value());
+            String imageUrl = command.profileImageUrl().value();
+            if (imageUrl != null && imageUrl.strip().startsWith("/images/profiles/")
+                    && !imageUrl.strip().equals(user.getProfileImageUrl())) {
+                throw new BusinessException(UserErrorCode.USER_PROFILE_IMAGE_URL_INVALID);
+            }
+            String previousUrl = user.getProfileImageUrl();
+            user.changeProfileImageUrl(imageUrl);
+            if (!Objects.equals(previousUrl, user.getProfileImageUrl())) profileImages.deleteById(userId);
         }
         if (command.gender().present()) {
             user.changeGender(command.gender().value());
@@ -54,6 +66,22 @@ public class UserService {
             user.changeBirthYear(command.birthYear().value());
         }
 
+        if (command.birthDate().present()) user.changeBirthDate(command.birthDate().value());
+        return UserProfileResult.from(user);
+    }
+
+    @Transactional(readOnly = true)
+    public Optional<byte[]> getProfileImage(String imageId) {
+        return profileImages.findActiveImage(imageId).map(UserProfileImage::getContent);
+    }
+
+    public UserProfileResult uploadProfileImage(long userId, long expectedAuthVersion, String dataUrl) {
+        User user = requireCurrentUser(userRepository.findActiveByIdForUpdate(userId), expectedAuthVersion);
+        byte[] content = imageProcessor.process(dataUrl);
+        UserProfileImage image = profileImages.findById(userId).orElse(null);
+        if (image == null) image = profileImages.save(new UserProfileImage(userId, content));
+        else image.replace(content);
+        user.changeProfileImageUrl(image.url());
         return UserProfileResult.from(user);
     }
 

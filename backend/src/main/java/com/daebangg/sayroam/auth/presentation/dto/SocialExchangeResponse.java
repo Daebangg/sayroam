@@ -6,7 +6,8 @@ import org.jspecify.annotations.Nullable;
 public record SocialExchangeResponse(
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) Status status,
         @Schema(description = "AUTHENTICATED일 때만 존재. Refresh는 HttpOnly 쿠키") @Nullable LoginResponse login,
-        @Schema(description = "SIGNUP_REQUIRED일 때만 존재. 가입 전 일반 서비스 토큰은 발급하지 않음") @Nullable Signup signup) {
+        @Schema(description = "SIGNUP_REQUIRED일 때만 존재. 가입 전 일반 서비스 토큰은 발급하지 않음") @Nullable Signup signup,
+        @Schema(description = "이번 요청에서 새 회원을 생성했으면 true. 기존 회원 로그인·연결은 false", requiredMode = Schema.RequiredMode.NOT_REQUIRED) boolean newlyRegistered) {
     public enum Status { AUTHENTICATED, SIGNUP_REQUIRED }
 
     public record Signup(

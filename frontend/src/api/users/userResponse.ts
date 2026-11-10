@@ -3,6 +3,18 @@ import type { components } from "../generated/schema.ts";
 
 type CurrentUserResponse = components["schemas"]["CurrentUserResponse"];
 
+function isBirthDate(value: unknown): value is string | null {
+    if (value === null) return true;
+    if (
+        typeof value !== "string" ||
+        !/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(value) ||
+        value.startsWith("0000")
+    )
+        return false;
+    const parsed = new Date(value);
+    return Number.isFinite(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value;
+}
+
 export function validateCurrentUser(value: unknown, status: number): CurrentUserResponse {
     if (
         typeof value !== "object" ||
@@ -24,6 +36,12 @@ export function validateCurrentUser(value: unknown, status: number): CurrentUser
             (typeof value.birthYear !== "number" ||
                 !Number.isSafeInteger(value.birthYear) ||
                 value.birthYear <= 0)) ||
+        !("birthDate" in value) ||
+        !isBirthDate(value.birthDate) ||
+        !("createdAt" in value) ||
+        typeof value.createdAt !== "string" ||
+        !value.createdAt.endsWith("Z") ||
+        !Number.isFinite(Date.parse(value.createdAt)) ||
         !("role" in value) ||
         (value.role !== "USER" && value.role !== "ADMIN")
     )
@@ -36,6 +54,8 @@ export function validateCurrentUser(value: unknown, status: number): CurrentUser
         gender: value.gender,
         birthYear: value.birthYear,
         role: value.role,
+        createdAt: value.createdAt,
+        birthDate: value.birthDate,
     };
 }
 

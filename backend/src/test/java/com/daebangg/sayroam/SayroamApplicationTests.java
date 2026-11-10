@@ -38,16 +38,16 @@ class SayroamApplicationTests extends DatabaseIntegrationTest {
     void schemaMatchesEntitiesAndRepeatedMigrationDoesNotReapply() {
         assertThat(environment.getProperty("spring.flyway.enabled")).isEqualTo("false");
         assertThat(environment.getProperty("spring.jpa.hibernate.ddl-auto")).isEqualTo("validate");
-        assertThat(entityManagerFactory.getMetamodel().getEntities()).hasSize(17);
+        assertThat(entityManagerFactory.getMetamodel().getEntities()).hasSize(18);
         assertThat(jdbc.queryForObject("""
                 SELECT COUNT(*) FROM information_schema.tables
                 WHERE table_schema = DATABASE() AND table_type = 'BASE TABLE'
-                """, Integer.class)).isEqualTo(18);
-        assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("6");
+                """, Integer.class)).isEqualTo(19);
+        assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("8");
         flyway.validate();
         assertThat(flyway.migrate().migrationsExecuted).isZero();
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM flyway_schema_history WHERE success = 1",
-                Integer.class)).isEqualTo(6);
+                Integer.class)).isEqualTo(8);
     }
 
     @Test

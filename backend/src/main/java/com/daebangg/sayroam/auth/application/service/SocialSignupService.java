@@ -39,6 +39,10 @@ public class SocialSignupService {
     }
 
     public TokenPair complete(SocialIdentity identity) {
+        return completeWithOutcome(identity).tokens();
+    }
+
+    public Completion completeWithOutcome(SocialIdentity identity) {
         if (!identity.emailVerified() || !EmailAddress.isValid(identity.email())) {
             throw new AuthException(AuthErrorCode.SOCIAL_EMAIL_REQUIRED);
         }
@@ -47,7 +51,11 @@ public class SocialSignupService {
         SocialAccounts.Account account = existing.isPresent() ? accounts.linkVerifiedEmail(existing.orElseThrow(), identity)
                 : accounts.register(identity, email, nickname(identity.displayName()), Instant.now());
         // 가입 커밋 후 토큰 발급 실패로 회원 생성을 되돌리지 않는다. 새 소셜 로그인으로 확인한다.
-        return tokens.issue(account.userId(), account.authVersion());
+        return new Completion(tokens.issue(account.userId(), account.authVersion()), existing.isEmpty());
+    }
+
+    public record Completion(TokenPair tokens, boolean newlyRegistered) {
+        @Override public String toString() { return "Completion[redacted]"; }
     }
 
     private String nickname(String displayName) {

@@ -1,11 +1,12 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Avatar, Button, Icon, KeyboardShortcut, Tooltip } from "@/components/ui";
+import { Avatar, Button, Icon, KeyboardShortcut, Tooltip, MenuItem } from "@/components/ui";
 
 type ProfileMenuProps = {
     onLogin: () => void;
     onBrand: () => void;
     onSettings: () => void;
+    onProfile: () => void;
     mobile?: boolean;
     member: { nickname: string; email: string | null } | null;
     profileImageUrl?: string | null;
@@ -17,6 +18,7 @@ export function ProfileMenu({
     onLogin,
     onBrand,
     onSettings,
+    onProfile,
     mobile = false,
     member,
     profileImageUrl,
@@ -102,8 +104,27 @@ export function ProfileMenu({
                     role="menu"
                     aria-label={t("common.account")}
                 >
-                    <Button
-                        variant="plain"
+                    {member && (
+                        <div className="profile-menu__identity">
+                            <Avatar src={profileImageUrl ?? null} />
+                            <span>
+                                <strong>{member.nickname}</strong>
+                                <span>{member.email ?? t("settings.viewProfile")}</span>
+                            </span>
+                        </div>
+                    )}
+                    {member && (
+                        <MenuItem
+                            role="menuitem"
+                            className="profile-menu__item"
+                            onClick={() => select(onProfile)}
+                        >
+                            <Icon name="profile" />
+                            <span>{t("settings.profile")}</span>
+                            <KeyboardShortcut keys={["shift", "mod", "P"]} />
+                        </MenuItem>
+                    )}
+                    <MenuItem
                         type="button"
                         role="menuitem"
                         className="profile-menu__item"
@@ -112,9 +133,8 @@ export function ProfileMenu({
                         <Icon name="settings" />
                         <span>{t("profile.settings")}</span>
                         <KeyboardShortcut keys={["mod", ","]} />
-                    </Button>
-                    <Button
-                        variant="plain"
+                    </MenuItem>
+                    <MenuItem
                         type="button"
                         role="menuitem"
                         className="profile-menu__item"
@@ -122,14 +142,14 @@ export function ProfileMenu({
                     >
                         <Icon name="grid" />
                         <span>{t("brand.guide")}</span>
-                    </Button>
+                    </MenuItem>
                     <div className="profile-menu__welcome">
-                        <strong>
-                            {member
-                                ? t("profile.signedIn", { nickname: member.nickname })
-                                : t("profile.welcome")}
-                        </strong>
-                        <p>{member ? member.email : t("profile.description")}</p>
+                        {!member && (
+                            <>
+                                <strong>{t("profile.welcome")}</strong>
+                                <p>{t("profile.description")}</p>
+                            </>
+                        )}
                         <Button
                             variant="brand"
                             role="menuitem"

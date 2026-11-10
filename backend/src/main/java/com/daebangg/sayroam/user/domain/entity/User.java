@@ -19,6 +19,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.time.LocalDate;
 import java.util.Objects;
 
 // 테이블명 user는 예약어라 users를 쓴다
@@ -57,6 +58,9 @@ public class User extends BaseTimeEntity {
 
     @Getter
     private Integer birthYear;
+
+    @Getter
+    private LocalDate birthDate;
 
     @Getter
     @Enumerated(EnumType.STRING)
@@ -114,6 +118,7 @@ public class User extends BaseTimeEntity {
         profileImageUrl = null;
         gender = null;
         birthYear = null;
+        birthDate = null;
         role = Role.USER;
     }
 
@@ -131,6 +136,12 @@ public class User extends BaseTimeEntity {
 
     public void changeBirthYear(Integer birthYear) {
         this.birthYear = UserProfilePolicy.validateBirthYear(birthYear);
+        if (birthDate != null && (birthYear == null || birthDate.getYear() != birthYear)) birthDate = null;
+    }
+
+    public void changeBirthDate(LocalDate birthDate) {
+        this.birthDate = UserProfilePolicy.validateBirthDate(birthDate);
+        this.birthYear = birthDate == null ? null : birthDate.getYear();
     }
 
     @Builder

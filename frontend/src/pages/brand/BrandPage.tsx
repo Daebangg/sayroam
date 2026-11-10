@@ -1,10 +1,14 @@
 import { useOutletContext } from "react-router";
 import type { PageContext } from "@/routing/context";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { calendarToday, formatCalendarDate } from "@/components/ui/inputs/calendar";
 import { formatDateRange, formatNumber } from "@/i18n/locale";
 import { useTranslation } from "react-i18next";
 import {
     Avatar,
+    AvatarPicker,
+    IconChoiceGroup,
+    ThemePicker,
     avatarPresets,
     type AvatarPreset,
     Button,
@@ -21,6 +25,11 @@ import {
     Modal,
     Tag,
     TextField,
+    FilePicker,
+    ImageCropDialog,
+    SectionWordmark,
+    Divider,
+    VerificationCode,
     Tooltip,
     type IconName,
     Toast,
@@ -48,6 +57,10 @@ const icons = [
     "bookmark",
     "calendar",
     "settings",
+    "keyboard",
+    "gender-unset",
+    "gender-male",
+    "gender-female",
     "edit",
     "grid",
     "plus",
@@ -64,15 +77,28 @@ const icons = [
 ] as const satisfies readonly IconName[];
 
 export function BrandPage() {
-    const { onOpenAuth, onLanguageChange } = useOutletContext<PageContext>();
+    const { onOpenAuth, onLanguageChange, themePreference, onThemeChange } =
+        useOutletContext<PageContext>();
     const [avatar, setAvatar] = useState<AvatarPreset>("coast");
     const [pageState, setPageState] = useState<PageStateKind>("notFound");
     const { t, i18n } = useTranslation();
+    const [verificationCode, setVerificationCode] = useState("");
     const [selection, setSelection] = useState("planning");
     const [dialogOpen, setDialogOpen] = useState(false);
+    const [cropOpen, setCropOpen] = useState(false);
+    const [cropSource, setCropSource] = useState<string | null>(null);
+    const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+    const [gender, setGender] = useState<"unset" | "MALE" | "FEMALE">("unset");
+    useEffect(
+        () => () => {
+            if (cropSource) URL.revokeObjectURL(cropSource);
+        },
+        [cropSource],
+    );
     const [pressed, setPressed] = useState(false);
     const [tagVisible, setTagVisible] = useState(true);
     const [filter, setFilter] = useState("all");
+    const [birthday, setBirthday] = useState("");
     const [departure, setDeparture] = useState("");
     const [travelers, setTravelers] = useState(2);
     const [toast, setToast] = useState<{ id: number; tone: ToastTone } | null>(null);
@@ -90,6 +116,10 @@ export function BrandPage() {
                 <Button variant="outline" onClick={onLanguageChange}>
                     {t("common.changeLanguage")}
                 </Button>
+            </div>
+            <div className="section-wordmark-showcase">
+                <SectionWordmark variant="settings" />
+                <SectionWordmark variant="profile" />
             </div>
             <section className="brand-design-intro">
                 <div>
@@ -111,7 +141,7 @@ export function BrandPage() {
                     role="group"
                     aria-label={t("brand.pageStates")}
                 >
-                    {(["notFound", "error", "loading"] as const).map((kind) => (
+                    {(["notFound", "error", "serverError", "loading"] as const).map((kind) => (
                         <Button
                             key={kind}
                             variant="outline"
@@ -205,24 +235,25 @@ export function BrandPage() {
                         <Avatar preset={avatar} size="large" alt={t(`mockup.avatars.${avatar}`)} />
                         <span>{t("mockup.avatars.preview")}</span>
                     </div>
-                    <div
-                        className="avatar-showcase__options"
-                        role="group"
-                        aria-label={t("mockup.avatars.title")}
-                    >
-                        {avatarPresets.map((preset) => (
-                            <Button
-                                key={preset}
-                                variant="plain"
-                                className="avatar-showcase__option"
-                                aria-pressed={avatar === preset}
-                                onClick={() => setAvatar(preset)}
-                            >
-                                <Avatar preset={preset} size="large" />
-                                <span>{t(`mockup.avatars.${preset}`)}</span>
-                            </Button>
-                        ))}
-                    </div>
+                    <AvatarPicker
+                        label={t("mockup.avatars.title")}
+                        value={avatar}
+                        options={avatarPresets.map((value) => ({
+                            value,
+                            label: t(`mockup.avatars.${value}`),
+                        }))}
+                        onChange={setAvatar}
+                    />
+                    <h3 className="settings-section-title">{t("common.disabled")}</h3>
+                    <AvatarPicker
+                        label={`${t("mockup.avatars.title")} ${t("common.disabled")}`}
+                        value="coast"
+                        options={avatarPresets
+                            .slice(0, 4)
+                            .map((value) => ({ value, label: t(`mockup.avatars.${value}`) }))}
+                        disabled
+                        onChange={() => {}}
+                    />
                 </div>
             </section>
             <section className="brand-section" aria-labelledby="brand-components-heading">
@@ -279,6 +310,78 @@ export function BrandPage() {
                                 <TravelArtwork key={scene} scene={scene} />
                             ))}
                         </div>
+                    </Card>
+                    <Card className="component-example">
+                        <h3>{t("settings.themeSettings")}</h3>
+                        <ThemePicker
+                            label={t("settings.themeSettings")}
+                            value={themePreference}
+                            onChange={onThemeChange}
+                            options={(["system", "light", "dark"] as const).map((value) => ({
+                                value,
+                                label: t(`profile.${value}`),
+                            }))}
+                        />
+                        <Divider />
+                        <ThemePicker
+                            label={`${t("settings.themeSettings")} ${t("common.disabled")}`}
+                            value="light"
+                            options={(["system", "light", "dark"] as const).map((value) => ({
+                                value,
+                                label: t(`profile.${value}`),
+                            }))}
+                            disabled
+                            onChange={() => {}}
+                        />
+                    </Card>
+                    <Card className="component-example">
+                        <h3>{t("settings.gender")}</h3>
+                        <IconChoiceGroup
+                            label={t("settings.gender")}
+                            value={gender}
+                            onChange={setGender}
+                            options={[
+                                {
+                                    value: "unset",
+                                    label: t("settings.genderUnset"),
+                                    icon: "gender-unset",
+                                },
+                                {
+                                    value: "MALE",
+                                    label: t("settings.genderValues.MALE"),
+                                    icon: "gender-male",
+                                },
+                                {
+                                    value: "FEMALE",
+                                    label: t("settings.genderValues.FEMALE"),
+                                    icon: "gender-female",
+                                },
+                            ]}
+                        />
+                        <Divider />
+                        <IconChoiceGroup
+                            label={`${t("settings.gender")} ${t("common.disabled")}`}
+                            value="unset"
+                            options={[
+                                {
+                                    value: "unset",
+                                    label: t("settings.genderUnset"),
+                                    icon: "gender-unset",
+                                },
+                                {
+                                    value: "MALE",
+                                    label: t("settings.genderValues.MALE"),
+                                    icon: "gender-male",
+                                },
+                                {
+                                    value: "FEMALE",
+                                    label: t("settings.genderValues.FEMALE"),
+                                    icon: "gender-female",
+                                },
+                            ]}
+                            disabled
+                            onChange={() => {}}
+                        />
                     </Card>
                     <Card className="component-example">
                         <h3>{t("brand.buttons")}</h3>
@@ -362,8 +465,13 @@ export function BrandPage() {
                             <Tooltip content={t("common.close")} shortcut={["Escape"]}>
                                 <Button variant="outline">{t("brand.hoverFocus")}</Button>
                             </Tooltip>
-                            <KeyboardShortcut keys={["mod", "shift", "K"]} />
+                            <KeyboardShortcut keys={["mod", ","]} />
+                            <KeyboardShortcut keys={["shift", "mod", "P"]} />
                         </div>
+                    </Card>
+                    <Card className="component-example">
+                        <h3>{t("brand.divider")}</h3>
+                        <Divider />
                     </Card>
                     <Card className="component-example">
                         <h3>{t("brand.inputs")}</h3>
@@ -384,6 +492,68 @@ export function BrandPage() {
                                 disabled
                                 placeholder={t("brand.emailPlaceholder")}
                             />
+                            <VerificationCode
+                                label={t("auth.codeLabel")}
+                                value={verificationCode}
+                                onChange={setVerificationCode}
+                            />
+                            <VerificationCode
+                                label={t("brand.errorInput")}
+                                value="123"
+                                onChange={() => {}}
+                                error={t("auth.flowMessages.codeInvalid")}
+                            />
+                            <VerificationCode
+                                label={t("brand.disabledInput")}
+                                value="123456"
+                                onChange={() => {}}
+                                disabled
+                            />
+                            <FilePicker
+                                label={t("settings.uploadPhoto")}
+                                accept="image/jpeg,image/png"
+                                onSelect={(file) => {
+                                    setCropSource(URL.createObjectURL(file));
+                                    setCropOpen(true);
+                                }}
+                            />
+                            <FilePicker
+                                label={t("brand.disabledInput")}
+                                accept="image/jpeg,image/png"
+                                disabled
+                                onSelect={() => {}}
+                            />
+                            <Button variant="soft" onClick={() => setCropOpen(true)}>
+                                {t("settings.cropPhoto")}
+                            </Button>
+                            {cropOpen && (
+                                <ImageCropDialog
+                                    key={cropSource ?? "sample"}
+                                    source={cropSource ?? "/images/travel-coast.jpg"}
+                                    title={t("settings.cropPhoto")}
+                                    hint={t("settings.cropPhotoHint")}
+                                    applyLabel={t("settings.applyPhoto")}
+                                    cancelLabel={t("common.cancel")}
+                                    loadError={t("settings.imageMessages.fileInvalid")}
+                                    busy={false}
+                                    onClose={() => {
+                                        setCropOpen(false);
+                                        setCropSource(null);
+                                    }}
+                                    onApply={(dataUrl) => {
+                                        setPhotoPreview(dataUrl);
+                                        setCropOpen(false);
+                                        setCropSource(null);
+                                    }}
+                                />
+                            )}
+                            {photoPreview && (
+                                <Avatar
+                                    src={photoPreview}
+                                    size="large"
+                                    alt={t("mockup.avatars.preview")}
+                                />
+                            )}
                             <Checkbox label={t("auth.remember")} />
                             <Checkbox label={t("brand.selected")} defaultChecked />
                             <Checkbox label={t("common.disabled")} defaultChecked disabled />
@@ -403,6 +573,15 @@ export function BrandPage() {
                             onChange={setTravelers}
                             min={1}
                             max={20}
+                        />
+                        <DatePicker
+                            className="ui-date-picker--inline"
+                            label={t("settings.birthday")}
+                            value={birthday}
+                            onChange={setBirthday}
+                            yearNavigation
+                            min={`${calendarToday().getUTCFullYear() - 100}-01-01`}
+                            max={formatCalendarDate(calendarToday())}
                         />
                         <DatePicker
                             label={t("brand.disabledInput")}
@@ -498,7 +677,14 @@ export function BrandPage() {
                 <Toast
                     key={toast.id}
                     tone={toast.tone}
-                    message={t("brand.toastExample")}
+                    message={t(
+                        toast.tone === "success"
+                            ? "auth.profileDetailsSaved"
+                            : toast.tone === "error"
+                              ? "auth.badGateway"
+                              : "brand.toastExample",
+                    )}
+                    durationMs={toast.tone === "error" ? 6000 : 3000}
                     onDismiss={() => setToast(null)}
                 />
             )}
