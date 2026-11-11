@@ -88,7 +88,7 @@ domain은 어떤 계층도 참조하지 않습니다. infrastructure는 applicat
 | --- | --- | --- | --- |
 | presentation | Controller, `XxxApi` 인터페이스, 요청/응답 DTO, 입력 검증(`@Valid`), 예외 핸들러 | 비즈니스 로직, Repository 직접 호출, 엔티티를 응답으로 그대로 반환 | application |
 | application | 유스케이스 서비스, `@Transactional`, out 포트 인터페이스, 서비스 입출력 DTO(Command/Result) | JPA/MyBatis/QueryDSL 코드, `RedisTemplate`·`RestClient` 등 기술 구현 클래스, Spring Data 타입, presentation의 요청 DTO | domain |
-| domain | `@Entity` 도메인 모델과 비즈니스 로직, 값 객체, 도메인 예외·에러 코드, 리포지토리 순수 인터페이스 | Spring 빈 애너테이션(`@Service`, `@Component`), `org.springframework` import, 다른 계층 참조 | 없음(JPA 애너테이션 `jakarta.persistence`만 허용) |
+| domain | `@Entity` 도메인 모델과 비즈니스 로직, 값 객체, 도메인 예외·에러 코드, 리포지토리 순수 인터페이스 | Spring 빈 애너테이션(`@Service`, `@Component`), `org.springframework` import, 다른 계층 참조 | 없음(JPA 애너테이션 `jakarta.persistence`와 Lombok은 허용) |
 | infrastructure | Spring Data JPA 인터페이스, QueryDSL, MyBatis Mapper, 외부 연동 어댑터, 기술 설정(Config) | 비즈니스 규칙 판단 | domain, application(포트 구현용) |
 
 - 외부에서 들어오는 요청·메시지를 받는 코드는 `presentation`, 외부로 나가는 저장·발송·호출 구현은 `infrastructure`에 둡니다. 같은 기술이라도 방향에 따라 계층이 달라집니다. 예: STOMP 메시지를 받는 컨트롤러는 `presentation`, 구독자에게 메시지를 내보내는 구현은 `infrastructure`.
