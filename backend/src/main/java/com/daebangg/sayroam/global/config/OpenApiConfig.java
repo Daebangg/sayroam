@@ -5,7 +5,7 @@ import com.daebangg.sayroam.common.domain.error.TravelPeriodErrorCode;
 import com.daebangg.sayroam.global.exception.CommonErrorCode;
 import com.daebangg.sayroam.global.exception.ErrorCode;
 import com.daebangg.sayroam.room.domain.error.RoomErrorCode;
-import com.daebangg.sayroam.trip.domain.TripErrorCode;
+import com.daebangg.sayroam.trip.domain.error.TripErrorCode;
 import com.daebangg.sayroam.user.domain.error.UserErrorCode;
 import io.swagger.v3.oas.models.Components;
 import io.swagger.v3.oas.models.OpenAPI;

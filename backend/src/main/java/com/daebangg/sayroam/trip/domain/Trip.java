@@ -3,6 +3,7 @@ package com.daebangg.sayroam.trip.domain;
 import com.daebangg.sayroam.common.domain.TravelPeriod;
 import com.daebangg.sayroam.global.entity.BaseTimeEntity;
 import com.daebangg.sayroam.global.exception.BusinessException;
+import com.daebangg.sayroam.trip.domain.error.TripErrorCode;
 import jakarta.persistence.Column;
 import jakarta.persistence.Embedded;
 import jakarta.persistence.Entity;
