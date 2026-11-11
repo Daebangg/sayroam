@@ -488,13 +488,37 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /**
+         * 내 여행 목록 조회
+         * @description 로그인한 회원이 만든 여행을 나중에 만든 여행부터 조회합니다. 지난 여행도 포함합니다.
+         */
+        get: operations["listMyTrips"];
         put?: never;
         /**
          * 여행 생성
          * @description 로그인한 회원이 방 없이 혼자 가는 여행을 만듭니다. 기간만 입력받으며 제목은 비어 있는 상태로 만들어집니다.
          */
         post: operations["createTrip"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/trips/{tripId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 여행 조회
+         * @description 로그인한 회원이 만든 여행 하나를 조회합니다. 다른 회원의 여행은 없는 여행과 같이 404로 응답합니다.
+         */
+        get: operations["getTrip"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -685,6 +709,7 @@ export interface components {
             | "SOCIAL_RETURN_PATH_INVALID"
             | "SOCIAL_SIGNUP_INVALID"
             | "TRAVEL_PERIOD_END_BEFORE_START"
+            | "TRIP_NOT_FOUND"
             | "TRIP_PERIOD_REQUIRED"
             | "UNAUTHENTICATED"
             | "USER_BIRTH_DATE_INVALID"
@@ -1076,6 +1101,41 @@ export interface components {
         SocialSignupRequest: {
             /** @description 결과 교환에서 받은 가입 티켓 */
             signupTicket: string;
+        };
+        TripListResponse: {
+            /** @description 내가 만든 여행. 나중에 만든 여행부터 정렬 */
+            trips: components["schemas"]["TripSummaryResponse"][];
+        };
+        TripSummaryResponse: {
+            /**
+             * Format: date
+             * @description 여행 종료일
+             * @example 2026-12-04
+             */
+            endDate: string;
+            /**
+             * Format: int64
+             * @description 연결된 채팅방 ID. 혼자 가는 여행이면 null
+             * @example 7
+             */
+            roomId: number | null;
+            /**
+             * Format: date
+             * @description 여행 시작일
+             * @example 2026-12-01
+             */
+            startDate: string;
+            /**
+             * @description 회원이 붙인 제목. 붙이지 않았으면 null
+             * @example 제주 3박 4일
+             */
+            title: string | null;
+            /**
+             * Format: int64
+             * @description 여행 ID
+             * @example 12
+             */
+            tripId: number;
         };
         /** @description 생략한 필드는 유지합니다. 선택 정보의 null은 삭제를 의미합니다. */
         UpdateUserProfileRequest: {
@@ -1550,6 +1610,15 @@ export interface components {
         };
         /** @description 400: INVALID_INPUT(시작일·종료일 누락, errors 포함), TRAVEL_PERIOD_END_BEFORE_START(종료일이 시작일보다 앞섬) 또는 Spring 요청 오류(날짜 형식 오류). 날짜는 yyyy-MM-dd */
         TripBadRequest: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/problem+json": components["schemas"]["ApiProblem"];
+            };
+        };
+        /** @description 404: TRIP_NOT_FOUND. 없는 여행이거나 다른 회원의 여행. 둘을 구분하지 않음 */
+        TripNotFound: {
             headers: {
                 [name: string]: unknown;
             };
@@ -2341,6 +2410,29 @@ export interface operations {
             503: components["responses"]["AuthenticationUnavailable"];
         };
     };
+    listMyTrips: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 여행 목록. 만든 여행이 없으면 빈 배열 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TripListResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            500: components["responses"]["InternalServerError"];
+            503: components["responses"]["AuthenticationUnavailable"];
+        };
+    };
     createTrip: {
         parameters: {
             query?: never;
@@ -2365,6 +2457,36 @@ export interface operations {
             };
             400: components["responses"]["TripBadRequest"];
             401: components["responses"]["Unauthorized"];
+            500: components["responses"]["InternalServerError"];
+            503: components["responses"]["AuthenticationUnavailable"];
+        };
+    };
+    getTrip: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /**
+                 * @description 여행 ID
+                 * @example 12
+                 */
+                tripId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 여행 조회 완료 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TripSummaryResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["TripNotFound"];
             500: components["responses"]["InternalServerError"];
             503: components["responses"]["AuthenticationUnavailable"];
         };
@@ -2558,6 +2680,13 @@ export const apiRoutes = {
         csrf: false,
         responses: { "200": true },
     },
+    getTrip: {
+        method: "get",
+        path: "/api/trips/{tripId}",
+        auth: "required",
+        csrf: false,
+        responses: { "200": true },
+    },
     joinByInvitation: {
         method: "post",
         path: "/api/room-members",
@@ -2571,6 +2700,13 @@ export const apiRoutes = {
         auth: "required",
         csrf: false,
         responses: { "204": false },
+    },
+    listMyTrips: {
+        method: "get",
+        path: "/api/trips",
+        auth: "required",
+        csrf: false,
+        responses: { "200": true },
     },
     listSocialProviders: {
         method: "get",

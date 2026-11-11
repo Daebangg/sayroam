@@ -31,13 +31,16 @@ public class Trip extends BaseTimeEntity {
 
     // 혼자 가는 여행은 NULL
     @Column(name = "room_id", unique = true)
+    @Getter
     private Long roomId;
 
     // 회원이 직접 붙인 이름. 붙이지 않았으면 NULL
     @Column(length = 20)
+    @Getter
     private String title;
 
     @Embedded
+    @Getter
     private TravelPeriod period;
 
     public Trip(Long createdById, TravelPeriod period) {
@@ -46,5 +49,9 @@ public class Trip extends BaseTimeEntity {
         }
         this.createdById = createdById;
         this.period = period;
+    }
+
+    public boolean isCreatedBy(Long userId) {
+        return createdById.equals(userId);
     }
 }
