@@ -3,6 +3,8 @@ package com.daebangg.sayroam.trip.presentation.api;
 import com.daebangg.sayroam.auth.domain.AuthenticatedAccount;
 import com.daebangg.sayroam.trip.presentation.dto.CreateTripRequest;
 import com.daebangg.sayroam.trip.presentation.dto.CreateTripResponse;
+import com.daebangg.sayroam.trip.presentation.dto.TripListResponse;
+import com.daebangg.sayroam.trip.presentation.dto.TripSummaryResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -27,4 +29,28 @@ public interface TripApi {
     })
     ResponseEntity<CreateTripResponse> create(@Parameter(hidden = true) @AuthenticationPrincipal AuthenticatedAccount account,
                                               @RequestBody CreateTripRequest request);
+
+    @Operation(operationId = "listMyTrips", summary = "내 여행 목록 조회",
+            description = "로그인한 회원이 만든 여행을 나중에 만든 여행부터 조회합니다. 지난 여행도 포함합니다.",
+            security = @SecurityRequirement(name = "bearerAuth"))
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "여행 목록. 만든 여행이 없으면 빈 배열"),
+            @ApiResponse(responseCode = "401", ref = "#/components/responses/Unauthorized"),
+            @ApiResponse(responseCode = "503", ref = "#/components/responses/AuthenticationUnavailable"),
+            @ApiResponse(responseCode = "500", ref = "#/components/responses/InternalServerError")
+    })
+    ResponseEntity<TripListResponse> findMine(@Parameter(hidden = true) @AuthenticationPrincipal AuthenticatedAccount account);
+
+    @Operation(operationId = "getTrip", summary = "여행 조회",
+            description = "로그인한 회원이 만든 여행 하나를 조회합니다. 다른 회원의 여행은 없는 여행과 같이 404로 응답합니다.",
+            security = @SecurityRequirement(name = "bearerAuth"))
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "여행 조회 완료"),
+            @ApiResponse(responseCode = "401", ref = "#/components/responses/Unauthorized"),
+            @ApiResponse(responseCode = "404", ref = "#/components/responses/TripNotFound"),
+            @ApiResponse(responseCode = "503", ref = "#/components/responses/AuthenticationUnavailable"),
+            @ApiResponse(responseCode = "500", ref = "#/components/responses/InternalServerError")
+    })
+    ResponseEntity<TripSummaryResponse> find(@Parameter(hidden = true) @AuthenticationPrincipal AuthenticatedAccount account,
+                                             @Parameter(description = "여행 ID", example = "12") Long tripId);
 }

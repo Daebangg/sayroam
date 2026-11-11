@@ -3,11 +3,14 @@ package com.daebangg.sayroam.trip.presentation;
 import com.daebangg.sayroam.auth.domain.AuthenticatedAccount;
 import com.daebangg.sayroam.auth.presentation.config.RefreshCookieProperties;
 import com.daebangg.sayroam.auth.presentation.cookie.RefreshTokenCookie;
+import com.daebangg.sayroam.common.domain.TravelPeriod;
 import com.daebangg.sayroam.common.domain.error.TravelPeriodErrorCode;
 import com.daebangg.sayroam.global.exception.BusinessException;
 import com.daebangg.sayroam.global.security.ActiveAccountJwtConverter;
 import com.daebangg.sayroam.global.security.SecurityConfig;
+import com.daebangg.sayroam.trip.application.dto.TripSummaryResult;
 import com.daebangg.sayroam.trip.application.service.TripService;
+import com.daebangg.sayroam.trip.domain.error.TripErrorCode;
 import com.daebangg.sayroam.trip.presentation.controller.TripController;
 import com.daebangg.sayroam.user.domain.type.Role;
 import org.junit.jupiter.api.Test;
@@ -29,6 +32,7 @@ import java.util.List;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -41,6 +45,9 @@ class TripControllerTest {
     private static final Long TRIP_ID = 12L;
     private static final LocalDate START_DATE = LocalDate.of(2026, 12, 1);
     private static final LocalDate END_DATE = LocalDate.of(2026, 12, 4);
+    private static final Long OTHER_TRIP_ID = 13L;
+    private static final Long ROOM_ID = 7L;
+    private static final TravelPeriod PERIOD = new TravelPeriod(START_DATE, END_DATE);
 
     @Autowired
     MockMvc mvc;
@@ -129,10 +136,81 @@ class TripControllerTest {
         then(tripService).shouldHaveNoInteractions();
     }
 
+    @Test
+    void 내_여행_목록을_조회하면_200과_여행_목록을_응답한다() throws Exception {
+        // given
+        given(tripService.findMine(USER_ID)).willReturn(List.of(
+                new TripSummaryResult(OTHER_TRIP_ID, "제주 3박 4일", PERIOD, ROOM_ID),
+                new TripSummaryResult(TRIP_ID, null, PERIOD, null)));
+
+        // when & then
+        mvc.perform(listTripsRequest().with(login()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.trips.length()").value(2))
+                .andExpect(jsonPath("$.trips[0].tripId").value(OTHER_TRIP_ID))
+                .andExpect(jsonPath("$.trips[0].title").value("제주 3박 4일"))
+                .andExpect(jsonPath("$.trips[0].roomId").value(ROOM_ID))
+                .andExpect(jsonPath("$.trips[1].tripId").value(TRIP_ID))
+                .andExpect(jsonPath("$.trips[1].title").isEmpty())
+                .andExpect(jsonPath("$.trips[1].roomId").isEmpty());
+    }
+
+    @Test
+    void 여행을_조회하면_200과_여행을_응답한다() throws Exception {
+        // given
+        given(tripService.find(USER_ID, TRIP_ID)).willReturn(new TripSummaryResult(TRIP_ID, null, PERIOD, null));
+
+        // when & then
+        mvc.perform(getTripRequest(TRIP_ID).with(login()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.tripId").value(TRIP_ID))
+                .andExpect(jsonPath("$.startDate").value("2026-12-01"))
+                .andExpect(jsonPath("$.endDate").value("2026-12-04"))
+                .andExpect(jsonPath("$.title").isEmpty())
+                .andExpect(jsonPath("$.roomId").isEmpty());
+    }
+
+    @Test
+    void 조회할_수_없는_여행이면_404와_에러_코드를_응답한다() throws Exception {
+        // given
+        given(tripService.find(USER_ID, TRIP_ID)).willThrow(new BusinessException(TripErrorCode.TRIP_NOT_FOUND));
+
+        // when & then
+        mvc.perform(getTripRequest(TRIP_ID).with(login()))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("TRIP_NOT_FOUND"));
+    }
+
+    @Test
+    void 로그인하지_않으면_목록_조회에_401을_응답한다() throws Exception {
+        // when & then
+        mvc.perform(listTripsRequest())
+                .andExpect(status().isUnauthorized());
+
+        then(tripService).shouldHaveNoInteractions();
+    }
+
+    @Test
+    void 로그인하지_않으면_단건_조회에_401을_응답한다() throws Exception {
+        // when & then
+        mvc.perform(getTripRequest(TRIP_ID))
+                .andExpect(status().isUnauthorized());
+
+        then(tripService).shouldHaveNoInteractions();
+    }
+
     private MockHttpServletRequestBuilder createTripRequest(String body) {
         return post("/api/trips")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(body);
+    }
+
+    private MockHttpServletRequestBuilder listTripsRequest() {
+        return get("/api/trips");
+    }
+
+    private MockHttpServletRequestBuilder getTripRequest(Long tripId) {
+        return get("/api/trips/{tripId}", tripId);
     }
 
     private RequestPostProcessor login() {
