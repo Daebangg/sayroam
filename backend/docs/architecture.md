@@ -227,7 +227,8 @@ public interface OrderJpaRepository extends OrderRepository, JpaRepository<Order
 
 - `save`, `findById`처럼 `JpaRepository`와 시그니처가 같은 메서드는 Spring Data 기본 구현이 연결됩니다. `save`는 `JpaRepository`와 같은 제네릭 형태(`<S extends T> S save(S)`)로 선언합니다.
 - `findBy...` 쿼리 메서드는 domain 인터페이스에 선언해도 메서드 이름으로 쿼리가 생성됩니다.
-- `@Query`, `Pageable`·`Limit` 같은 Spring Data 타입이 필요한 메서드는 infrastructure 인터페이스에 선언합니다. 스프링 타입을 domain에 두지 않기 위해서입니다.
+- `@Query`만 필요한 메서드는 infrastructure 인터페이스에서 같은 메서드를 `@Override`로 다시 선언하고 거기에 `@Query`를 붙입니다. 스프링 애너테이션을 domain에 두지 않기 위해서입니다.
+- `Pageable`·`Limit` 같은 Spring Data 타입이 필요하거나 직접 작성한 구현이 필요한 메서드는 아래 "일부 메서드를 직접 구현할 때"를 따릅니다. domain 인터페이스의 시그니처에는 Spring 타입을 쓰지 않습니다(예: `Limit` 대신 `int size`).
 - domain 인터페이스에는 application이 실제로 쓰는 메서드만 선언합니다. 테스트 정리(`deleteAllInBatch` 등)처럼 그 밖의 연산이 필요한 테스트는 infrastructure 타입(`OrderJpaRepository`)을 주입받습니다.
 - 리포지토리에 메서드를 추가하면 `DatabaseIntegrationTest` 기반 통합 테스트로 실제 쿼리가 동작하는지 확인합니다.
 
@@ -237,17 +238,17 @@ public interface OrderJpaRepository extends OrderRepository, JpaRepository<Order
 - 인터페이스(`OrderQueryRepository`)는 `application/port/out`에 두고, 구현(`OrderQueryRepositoryImpl`)은 `infrastructure/persistence`에 둡니다.
 - 조회 결과는 엔티티가 아니라 조회 전용 DTO로 반환합니다.
 
-### MyBatis를 함께 쓸 때
+### 일부 메서드를 직접 구현할 때
 
-현재 MyBatis와 QueryDSL은 도입하지 않았습니다. 도입할 때 아래 기준을 적용합니다.
+쿼리 메서드 이름이나 `@Query` 선언만으로 만들 수 없는 메서드에 적용합니다. Spring Data 타입으로 변환해야 하거나, `EntityManager`·QueryDSL·MyBatis처럼 다른 방식으로 구현해야 하는 경우입니다. 간단한 메서드는 선언만 해서 Spring Data 구현을 쓰고, 이런 메서드만 직접 구현합니다. 아래 예시는 MyBatis를 썼지만 구현 방식과 무관하게 같은 구조를 씁니다.
 
-서비스가 `TripRepository` 타입으로 주입받는 한 그 타입의 빈은 **하나만** 있어야 합니다. 같은 인터페이스에 JPA 구현과 MyBatis 구현을 둘 다 빈으로 등록하면 `NoUniqueBeanDefinitionException`이 발생합니다. 메서드 일부만 다른 기술로 구현해야 하면 아래 중 하나를 씁니다.
+서비스가 `TripRepository` 타입으로 주입받는 한 그 타입의 빈은 **하나만** 있어야 합니다. 같은 인터페이스의 구현을 둘 이상 빈으로 등록하면(예: JPA 구현과 MyBatis 구현) `NoUniqueBeanDefinitionException`이 발생합니다. 메서드 일부만 직접 구현해야 하면 아래 중 하나를 씁니다.
 
 | 방법 | 빈 수 | 사용 시점 |
 | --- | --- | --- |
-| A. Spring Data 커스텀 구현 | 1 | 일부 메서드만 다른 기술로 구현하고 인터페이스는 하나로 유지할 때(**기본값**) |
+| A. Spring Data 커스텀 구현 | 1 | 일부 메서드만 직접 구현하고 인터페이스는 하나로 유지할 때(**기본값**) |
 | B. 직접 만든 어댑터가 위임 | 1 | 메서드별 구현을 명시적으로 통제해야 할 때 |
-| C. 역할별 인터페이스 분리 | 2(타입도 2개) | 다른 기술로 구현할 메서드가 조회 전용일 때(위 "복잡한 조회") |
+| C. 역할별 인터페이스 분리 | 2(타입도 2개) | 직접 구현할 메서드가 조회 전용일 때(위 "복잡한 조회") |
 
 #### A. Spring Data 커스텀 구현
 
@@ -258,7 +259,7 @@ Spring Data 프록시는 하나지만 메서드마다 처리할 곳을 다르게
 public interface TripRepository {
     <S extends Trip> S save(S trip);                       // JPA 기본 구현
     Optional<Trip> findById(Long id);                      // JPA 기본 구현
-    List<Trip> findByComplexCondition(TripSearch search);  // MyBatis로 구현
+    List<Trip> findByComplexCondition(TripSearch search);  // 직접 구현(예시는 MyBatis)
 }
 
 // infrastructure/persistence
@@ -282,6 +283,7 @@ public interface TripJpaRepository
 
 - 구현 클래스 이름은 기본 설정에서 `커스텀 인터페이스 이름 + Impl`이어야 합니다.
 - 서비스는 `TripRepository` 하나만 주입받습니다.
+- `Impl` 클래스는 자신이 속한 `TripJpaRepository`를 주입받지 않습니다. 순환 참조가 됩니다. `EntityManager`, QueryDSL, Mapper를 직접 사용합니다.
 
 #### B. 직접 만든 어댑터가 위임
 
