@@ -8,6 +8,7 @@ import com.daebangg.sayroam.common.domain.error.TravelPeriodErrorCode;
 import com.daebangg.sayroam.global.exception.BusinessException;
 import com.daebangg.sayroam.global.security.ActiveAccountJwtConverter;
 import com.daebangg.sayroam.global.security.SecurityConfig;
+import com.daebangg.sayroam.room.domain.error.RoomErrorCode;
 import com.daebangg.sayroam.trip.application.dto.TripSummaryResult;
 import com.daebangg.sayroam.trip.application.service.TripService;
 import com.daebangg.sayroam.trip.domain.error.TripErrorCode;
@@ -137,6 +138,67 @@ class TripControllerTest {
     }
 
     @Test
+    void 여행에_채팅방을_만들면_201과_채팅방_ID를_응답한다() throws Exception {
+        // given
+        given(tripService.createRoom(USER_ID, TRIP_ID, "제주 여행")).willReturn(ROOM_ID);
+
+        // when & then
+        mvc.perform(createTripRoomRequest(TRIP_ID, """
+                        {"name": "제주 여행"}
+                        """).with(login()))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.roomId").value(ROOM_ID));
+    }
+
+    @Test
+    void 채팅방을_만들_수_없는_여행이면_404와_에러_코드를_응답한다() throws Exception {
+        // given
+        given(tripService.createRoom(USER_ID, TRIP_ID, null))
+                .willThrow(new BusinessException(TripErrorCode.TRIP_NOT_FOUND));
+
+        // when & then
+        mvc.perform(createTripRoomRequest(TRIP_ID, "{}").with(login()))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("TRIP_NOT_FOUND"));
+    }
+
+    @Test
+    void 이미_채팅방이_연결된_여행이면_409와_에러_코드를_응답한다() throws Exception {
+        // given
+        given(tripService.createRoom(USER_ID, TRIP_ID, null))
+                .willThrow(new BusinessException(TripErrorCode.TRIP_ROOM_ALREADY_LINKED));
+
+        // when & then
+        mvc.perform(createTripRoomRequest(TRIP_ID, "{}").with(login()))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("TRIP_ROOM_ALREADY_LINKED"));
+    }
+
+    @Test
+    void 채팅방_이름이_20자를_넘으면_400과_에러_코드를_응답한다() throws Exception {
+        // given
+        String longName = "가".repeat(21);
+        given(tripService.createRoom(USER_ID, TRIP_ID, longName))
+                .willThrow(new BusinessException(RoomErrorCode.ROOM_NAME_TOO_LONG));
+
+        // when & then
+        mvc.perform(createTripRoomRequest(TRIP_ID, """
+                        {"name": "%s"}
+                        """.formatted(longName)).with(login()))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("ROOM_NAME_TOO_LONG"));
+    }
+
+    @Test
+    void 로그인하지_않으면_401을_응답하고_채팅방을_만들지_않는다() throws Exception {
+        // when & then
+        mvc.perform(createTripRoomRequest(TRIP_ID, "{}"))
+                .andExpect(status().isUnauthorized());
+
+        then(tripService).shouldHaveNoInteractions();
+    }
+
+    @Test
     void 내_여행_목록을_조회하면_200과_여행_목록을_응답한다() throws Exception {
         // given
         given(tripService.findMine(USER_ID)).willReturn(List.of(
@@ -201,6 +263,12 @@ class TripControllerTest {
 
     private MockHttpServletRequestBuilder createTripRequest(String body) {
         return post("/api/trips")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(body);
+    }
+
+    private MockHttpServletRequestBuilder createTripRoomRequest(Long tripId, String body) {
+        return post("/api/trips/{tripId}/room", tripId)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(body);
     }

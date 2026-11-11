@@ -8,5 +8,7 @@ public interface TripRepository {
 
     Optional<Trip> findById(Long tripId);
 
+    Optional<Trip> findByIdForUpdate(Long tripId);
+
     List<Trip> findAllByCreatedByIdOrderByIdDesc(Long createdById);
 }

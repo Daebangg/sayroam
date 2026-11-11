@@ -54,4 +54,16 @@ public class Trip extends BaseTimeEntity {
     public boolean isCreatedBy(Long userId) {
         return createdById.equals(userId);
     }
+
+    public void ensureRoomLinkable() {
+        if (roomId != null) {
+            throw new BusinessException(TripErrorCode.TRIP_ROOM_ALREADY_LINKED);
+        }
+    }
+
+    public void linkRoom(Long roomId) {
+        ensureRoomLinkable();
+        this.roomId = roomId;
+    }
+
 }

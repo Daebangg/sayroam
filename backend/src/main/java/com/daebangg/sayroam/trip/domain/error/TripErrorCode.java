@@ -9,7 +9,8 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public enum TripErrorCode implements ErrorCode {
     TRIP_PERIOD_REQUIRED(ErrorType.INVALID, "TRIP_PERIOD_REQUIRED", "Trip period is required"),
-    TRIP_NOT_FOUND(ErrorType.NOT_FOUND, "TRIP_NOT_FOUND", "Trip does not exist");
+    TRIP_NOT_FOUND(ErrorType.NOT_FOUND, "TRIP_NOT_FOUND", "Trip does not exist"),
+    TRIP_ROOM_ALREADY_LINKED(ErrorType.CONFLICT, "TRIP_ROOM_ALREADY_LINKED", "Trip is already linked to a chat room");
 
     private final ErrorType type;
     private final String code;
