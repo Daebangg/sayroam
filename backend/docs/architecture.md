@@ -32,7 +32,7 @@
 
 ## 패키지 구조
 
-도메인(기능) 단위로 먼저 나누고, 그 안을 4개 계층으로 나눕니다.
+도메인(기능) 단위로 먼저 나누고, 그 안을 4개 계층으로 나눕니다. 계층 간 의존 방향은 아래와 같습니다.
 
 ```text
 presentation ──▶ application ──▶ domain
@@ -43,36 +43,43 @@ presentation ──▶ application ──▶ domain
 
 domain은 어떤 계층도 참조하지 않습니다. infrastructure는 application의 out 포트와 domain의 리포지토리 인터페이스를 구현하는 방식으로만 안쪽에 의존합니다.
 
+도메인별 최상위 패키지(`com.daebangg.sayroam.<domain>`) 아래에 네 계층을 두고, 계층을 나눌 때는 아래 하위 패키지 이름을 사용합니다.
+
 ```text
-com.daebangg.sayroam.order
-├── presentation
-│   ├── OrderApi                 Swagger 애너테이션을 가진 인터페이스
-│   ├── OrderController          implements OrderApi
-│   └── dto/                     OrderCreateRequest, OrderResponse
-├── application
-│   ├── OrderService             @Transactional
-│   ├── OrderQueryRepository     조회 전용 인터페이스
-│   ├── dto/                     OrderCommand, OrderResult
-│   └── port/
-│       ├── PaymentPort
-│       └── OrderCachePort
-├── domain
-│   ├── Order                    @Entity + 비즈니스 로직
-│   ├── OrderStatus
-│   └── OrderRepository          순수 인터페이스
-└── infrastructure
-    ├── persistence/
-    │   ├── OrderJpaRepository         extends JpaRepository, OrderRepository
-    │   └── OrderQueryRepositoryImpl   조회 전용 구현
-    ├── payment/
-    │   └── TossPaymentAdapter         implements PaymentPort
-    └── cache/
-        └── RedisOrderCacheAdapter     implements OrderCachePort
+<domain>/
+  domain/
+    entity/        JPA 엔티티
+    vo/            생성자에서 검증하는 불변 값 객체
+    type/          enum
+    repository/    리포지토리 인터페이스
+    error/         ErrorCode 구현
+    event/         도메인 이벤트
+  application/
+    service/       유스케이스 서비스
+    dto/           서비스 입출력 객체
+    port/out/      외부 의존 인터페이스
+  presentation/
+    controller/    REST 컨트롤러
+    api/           OpenAPI 애너테이션을 분리한 인터페이스
+    dto/           요청·응답 객체
+  infrastructure/
+    persistence/   리포지토리·저장 포트의 JPA 구현
+    <기술>/        그 밖의 out 포트 어댑터. 기술 이름으로 나눕니다(예: redis/, smtp/)
 ```
 
-- 계층 안의 하위 패키지는 위 구조를 기준으로 합니다. `service/`, `controller/`, `entity/`, `repository/`처럼 클래스 종류별로 한 번 더 나누지 않습니다.
-- infrastructure는 기술별(`persistence/`, `redis/`, `smtp/` 등)로 나눕니다.
-- 여러 도메인이 함께 쓰는 값 객체는 `common/domain`, 공통 설정·예외·보안은 `global`에 둡니다.
+### 하위 패키지
+
+- 위 목록에 없는 하위 패키지를 추가하지 않습니다. 필요하면 이 문서를 먼저 수정합니다.
+- 계층 안의 파일이 적으면 하위 패키지 없이 계층 바로 아래에 둘 수 있습니다. 나눌 때는 위 목록의 이름을 사용합니다.
+- 여러 도메인이 쓰는 값 객체는 `common/domain`, 전역 설정·예외·범용 헬퍼는 `global`에 둡니다.
+
+### DTO 이름
+
+- `application/dto`의 입력은 유스케이스 이름에 `Command`를 붙입니다. 예: `UpdateUserProfileCommand`. 조회 조건이면 `Query`를 붙입니다.
+- `application/dto`의 출력은 담긴 내용에 `Result`를 붙입니다. 예: `UserProfileResult`. 여러 유스케이스가 같은 결과를 반환하면 하나를 함께 씁니다.
+- 인자가 한두 개인 유스케이스는 `Command`를 만들지 않고 값을 직접 받습니다.
+- `presentation/dto`의 클래스는 `XxxRequest`, `XxxResponse`로 이름 짓습니다.
+- 서비스는 `Request`·`Response` 타입을 받거나 반환하지 않습니다. 컨트롤러가 `Request`를 `Command`로, `Result`를 `Response`로 변환합니다.
 
 ## 계층별 규칙
 
@@ -150,7 +157,7 @@ public record UpdateNicknameRequest(@Size(max = Nickname.MAX_LENGTH) String nick
 
 ## Swagger 분리
 
-Swagger 애너테이션(`io.swagger.v3.oas.annotations.*`)은 presentation의 `XxxApi` 인터페이스에만 두고, 컨트롤러는 그 인터페이스를 구현합니다. 컨트롤러에서 문서용 코드를 걷어내 요청 처리 흐름만 보이게 하기 위해서입니다.
+Swagger 애너테이션(`io.swagger.v3.oas.annotations.*`)은 `presentation/api`의 `XxxApi` 인터페이스에만 두고, 컨트롤러는 그 인터페이스를 구현합니다. 컨트롤러에서 문서용 코드를 걷어내 요청 처리 흐름만 보이게 하기 위해서입니다.
 
 | 위치 | 두는 것 |
 | --- | --- |
@@ -182,7 +189,7 @@ Swagger 애너테이션(`io.swagger.v3.oas.annotations.*`)은 presentation의 `X
 - 포트 메서드의 파라미터와 반환값에는 외부 기술 타입(업체 SDK 객체, `ResponseEntity` 등)을 쓰지 않고 도메인 타입이나 application 전용 DTO를 씁니다.
 
 ```java
-// application/port
+// application/port/out
 public interface PaymentPort {
     PaymentResult pay(PaymentRequest request);
 }
@@ -224,7 +231,7 @@ public interface OrderJpaRepository extends OrderRepository, JpaRepository<Order
 ### 복잡한 조회
 
 - 화면용 조회, 동적 검색, 통계처럼 도메인 로직과 무관한 조회는 조회 전용 리포지토리로 분리합니다.
-- 인터페이스(`OrderQueryRepository`)는 application에 두고, 구현(`OrderQueryRepositoryImpl`)은 infrastructure에 둡니다.
+- 인터페이스(`OrderQueryRepository`)는 `application/port/out`에 두고, 구현(`OrderQueryRepositoryImpl`)은 `infrastructure/persistence`에 둡니다.
 - 조회 결과는 엔티티가 아니라 조회 전용 DTO로 반환합니다.
 
 ### MyBatis를 함께 쓸 때
