@@ -60,6 +60,7 @@ domain은 어떤 계층도 참조하지 않습니다. infrastructure는 applicat
     dto/           요청·응답 객체
   infrastructure/
     persistence/   리포지토리·저장 포트의 구현
+    messaging/     클라이언트·외부로 메시지를 내보내는 구현(구독자 전송, 연결 종료 등)
 ```
 
 ### 하위 패키지
@@ -71,6 +72,7 @@ domain은 어떤 계층도 참조하지 않습니다. infrastructure는 applicat
 - `infrastructure`의 하위 패키지는 역할로 나누고, 구현 기술은 클래스 이름의 접두사로 드러냅니다. 예: `persistence/RedisRefreshTokenStore`, `persistence/JpaAccountLookup`. `redis`, `jpa`, `smtp` 같은 기술 이름으로 패키지를 만들지 않습니다.
 - 저장 외의 역할(메일 발송, 결제 등)을 구현할 때는 역할 이름의 하위 패키지를 위 목록에 먼저 추가합니다.
 - 여러 도메인이 쓰는 값 객체는 `common/domain`, 전역 설정·예외·범용 헬퍼는 `global`에 둡니다.
+- REST 외 진입점은 `presentation` 아래 프로토콜 이름의 하위 패키지(예: `stomp/`)에 두고, 그 안은 종류별로 나누지 않습니다.
 
 ### DTO 이름
 
