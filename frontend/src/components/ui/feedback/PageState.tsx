@@ -1,7 +1,7 @@
 import { useId, type ReactNode } from "react";
 import { Spinner } from "./Spinner";
 
-export type PageStateKind = "notFound" | "error" | "loading";
+export type PageStateKind = "notFound" | "error" | "serverError" | "loading";
 type PageStateProps = {
     kind: PageStateKind;
     title: string;
@@ -24,7 +24,9 @@ export function PageState({
                 <Spinner label={title} labelHidden />
             ) : (
                 <div className="ui-page-state__visual" aria-hidden="true">
-                    <span>{kind === "notFound" ? "404" : "!"}</span>
+                    <span>
+                        {kind === "notFound" ? "404" : kind === "serverError" ? "500" : "!"}
+                    </span>
                     <img src="/brand/sayroam-mark.svg" alt="" />
                 </div>
             )}

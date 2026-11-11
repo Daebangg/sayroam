@@ -84,3 +84,7 @@
 Google·카카오·네이버 자산은 [공식 제공자 자산](providers/README.md)을 사용합니다.
 제공자 로고의 공식 형태·색상을 브랜드 팔레트로 다시 그리지 않습니다. 이 디렉터리에는 재사용
 자산만 저장하며 화면 검증 캡처는 PR에 첨부합니다.
+
+## 설정·프로필 제목
+
+`settings-wordmark.svg`와 `profile-wordmark.svg`는 로고와 같은 Avenir Next Demi Bold의 글자 윤곽과 파랑·모래색 면을 사용합니다. `-light.svg`는 어두운 화면용이며 공용 `SectionWordmark`가 테마에 맞춰 선택합니다.

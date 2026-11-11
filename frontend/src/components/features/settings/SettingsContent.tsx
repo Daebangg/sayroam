@@ -1,19 +1,36 @@
+import { calendarToday, formatCalendarDate } from "@/components/ui/inputs/calendar";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import {
     Avatar,
+    AvatarPicker,
+    IconChoiceGroup,
+    ThemePicker,
+    DatePicker,
+    FilePicker,
+    ImageCropDialog,
+    Divider,
+    avatarPresets,
     Button,
     ButtonLink,
     DropdownMenu,
     Icon,
+    KeyboardShortcut,
     TextField,
     Tooltip,
 } from "@/components/ui";
+import type { ProfilePhoto } from "@/hooks/account.types";
 import type { AuthState } from "@/hooks/auth.types";
 import type { ThemePreference } from "@/hooks/useTheme";
-import { normalizeLanguage, type Language } from "@/i18n/locale";
+import { formatDate, normalizeLanguage, type Language } from "@/i18n/locale";
 import { pagePaths } from "@/routing/paths";
-import type { AccountPurpose, LoginMethods, NicknameEditor } from "@/hooks/account.types";
+import type {
+    AccountPurpose,
+    LoginMethods,
+    NicknameEditor,
+    ProfileEditor,
+    ProfileDetailsUpdate,
+} from "@/hooks/account.types";
 
 type Member = NonNullable<AuthState["user"]>;
 
@@ -31,6 +48,7 @@ type SettingsRowProps = {
     to?: string;
     children?: ReactNode;
     danger?: boolean;
+    className?: string;
 };
 
 export function SettingsRow({
@@ -39,26 +57,28 @@ export function SettingsRow({
     to,
     children,
     danger = false,
+    className = "",
 }: SettingsRowProps) {
-    const className = `settings-row ${danger ? "settings-row--danger" : ""}`;
+    const rowClassName = `settings-row ${danger ? "settings-row--danger" : ""} ${className}`;
     const content = (
         <>
             <span className="settings-row__copy">
                 <strong>{label}</strong>
                 {description && <span>{description}</span>}
             </span>
-            <span className="settings-row__value">
+            <div className="settings-row__value">
                 {children}
                 {to && <Icon name="chevron" variant="outline" />}
-            </span>
+            </div>
+            <Divider className="settings-row__divider" />
         </>
     );
     return to ? (
-        <ButtonLink to={to} variant="plain" className={`${className} settings-row--link`}>
+        <ButtonLink to={to} variant="plain" className={`${rowClassName} settings-row--link`}>
             {content}
         </ButtonLink>
     ) : (
-        <div className={className}>{content}</div>
+        <div className={rowClassName}>{content}</div>
     );
 }
 
@@ -78,7 +98,7 @@ export function AccountDetails({
     nicknameEditor,
     onAction,
 }: AccountDetailsProps) {
-    const { t } = useTranslation();
+    const { t, i18n } = useTranslation();
     const socialOnly = methods !== null && !methods.passwordEnabled;
     const passwordButton = (
         <Button
@@ -103,6 +123,9 @@ export function AccountDetails({
                 </SettingsRow>
                 <SettingsRow label={t("settings.email")}>
                     <span>{member.email ?? t("settings.noEmail")}</span>
+                </SettingsRow>
+                <SettingsRow label={t("settings.joinedAt")}>
+                    <span>{formatDate(i18n.resolvedLanguage ?? "ko", member.createdAt)}</span>
                 </SettingsRow>
                 <SettingsRow label={t("settings.profile")} to={pagePaths.profile}>
                     <Avatar src={member.profileImageUrl} size="small" />
@@ -169,35 +192,216 @@ export function AccountDetails({
 export function ProfileDetails({
     member,
     nicknameEditor,
+    imageEditor,
+    detailsEditor,
 }: {
     member: Member;
     nicknameEditor: NicknameEditor;
+    imageEditor: ProfilePhoto;
+    detailsEditor: ProfileEditor<ProfileDetailsUpdate>;
 }) {
-    const { t } = useTranslation();
-    const gender = member.gender
-        ? t(`settings.genderValues.${member.gender}`)
-        : t("settings.unset");
+    const { t, i18n } = useTranslation();
+    const { previewUrl, changed } = imageEditor;
+    const [gender, setGender] = useState(member.gender);
+    const [birthDate, setBirthDate] = useState(member.birthDate ?? "");
+    const detailsChanged = gender !== member.gender || birthDate !== (member.birthDate ?? "");
     return (
         <div className="settings-details">
-            <div className="settings-profile">
-                <Avatar src={member.profileImageUrl} size="large" />
+            <div className="settings-profile settings-profile--hero">
+                <FilePicker
+                    label={t("settings.uploadPhoto")}
+                    accept="image/jpeg,image/png"
+                    disabled={imageEditor.busy}
+                    className="settings-profile__photo"
+                    onSelect={(file) => {
+                        void imageEditor.selectFile(file);
+                    }}
+                >
+                    <Avatar src={previewUrl} size="large" />
+                    <span className="settings-profile__photo-edit" aria-hidden="true">
+                        <Icon name="edit" />
+                    </span>
+                </FilePicker>
                 <div>
-                    <strong>{member.nickname}</strong>
+                    <span className="settings-profile__eyebrow">{t("settings.yourJourney")}</span>
+                    <InlineNickname
+                        nickname={member.nickname}
+                        editor={nicknameEditor}
+                        appearance="hero"
+                    />
+                    <p>{t("settings.profileDescription")}</p>
                 </div>
             </div>
-            <SettingsRow label={t("settings.nickname")}>
-                <InlineNickname nickname={member.nickname} editor={nicknameEditor} />
-            </SettingsRow>
-            <SettingsRow label={t("settings.gender")}>
-                <span>{gender}</span>
-            </SettingsRow>
-            <SettingsRow label={t("settings.birthYear")}>
-                <span>
-                    {member.birthYear
-                        ? t("settings.birthYearValue", { year: member.birthYear })
-                        : t("settings.unset")}
-                </span>
-            </SettingsRow>
+            <div className="settings-photo-upload">
+                <FilePicker
+                    label={t("settings.uploadPhoto")}
+                    accept="image/jpeg,image/png"
+                    disabled={imageEditor.busy}
+                    onSelect={(file) => {
+                        void imageEditor.selectFile(file);
+                    }}
+                />
+                <span>{t("settings.photoFileHint")}</span>
+            </div>
+            {imageEditor.cropSource && (
+                <ImageCropDialog
+                    key={imageEditor.cropSource}
+                    source={imageEditor.cropSource}
+                    title={t("settings.cropPhoto")}
+                    hint={t("settings.cropPhotoHint")}
+                    applyLabel={t("settings.applyPhoto")}
+                    cancelLabel={t("common.cancel")}
+                    loadError={t("settings.imageMessages.fileInvalid")}
+                    {...(imageEditor.message
+                        ? { error: t(`settings.imageMessages.${imageEditor.message}`) }
+                        : {})}
+                    busy={imageEditor.busy}
+                    onClose={imageEditor.closeCrop}
+                    onApply={(dataUrl) => {
+                        void imageEditor.applyPhoto(dataUrl);
+                    }}
+                />
+            )}
+            <section className="settings-avatar-picker" aria-labelledby="avatar-picker-title">
+                <h2 className="settings-section-title" id="avatar-picker-title">
+                    {t("settings.chooseAvatar")}
+                </h2>
+                <AvatarPicker
+                    label={t("settings.chooseAvatar")}
+                    value={
+                        avatarPresets.find(
+                            (preset) => previewUrl === `/brand/avatars/${preset}.svg`,
+                        ) ?? (!previewUrl ? "coast" : null)
+                    }
+                    options={avatarPresets.map((preset) => ({
+                        value: preset,
+                        label: t(`mockup.avatars.${preset}`),
+                    }))}
+                    disabled={imageEditor.busy}
+                    onChange={(preset) => imageEditor.selectPreset(`/brand/avatars/${preset}.svg`)}
+                />
+                {imageEditor.message && (
+                    <p className="auth-feedback" role="alert">
+                        {t(`settings.imageMessages.${imageEditor.message}`)}
+                    </p>
+                )}
+                <div className="settings-avatar-picker__actions">
+                    <Button
+                        variant="outline"
+                        disabled={!changed || imageEditor.busy}
+                        onClick={imageEditor.cancel}
+                    >
+                        {t("common.cancel")}
+                    </Button>
+                    <Button
+                        variant="brand"
+                        disabled={!changed || imageEditor.busy}
+                        loading={imageEditor.busy}
+                        onClick={() => {
+                            void imageEditor.save();
+                        }}
+                    >
+                        {t("accountAction.save")}
+                    </Button>
+                </div>
+            </section>
+            <Divider />
+            <section
+                className="settings-profile-information"
+                aria-labelledby="profile-information-title"
+            >
+                <h2 className="settings-section-title" id="profile-information-title">
+                    {t("settings.basicInformation")}
+                </h2>
+                <SettingsRow label={t("settings.nickname")}>
+                    <InlineNickname nickname={member.nickname} editor={nicknameEditor} />
+                </SettingsRow>
+                <form
+                    className="settings-profile-form"
+                    onSubmit={(event) => {
+                        event.preventDefault();
+                        if (!detailsChanged || detailsEditor.busy) return;
+                        const input: ProfileDetailsUpdate = {};
+                        if (gender !== member.gender) input.gender = gender;
+                        if (birthDate !== (member.birthDate ?? ""))
+                            input.birthDate = birthDate || null;
+                        void detailsEditor.save(input);
+                    }}
+                >
+                    <SettingsRow label={t("settings.gender")}>
+                        <IconChoiceGroup
+                            label={t("settings.gender")}
+                            value={gender ?? "unset"}
+                            options={[
+                                {
+                                    value: "unset",
+                                    label: t("settings.genderUnset"),
+                                    icon: "gender-unset",
+                                },
+                                {
+                                    value: "MALE",
+                                    label: t("settings.genderValues.MALE"),
+                                    icon: "gender-male",
+                                },
+                                {
+                                    value: "FEMALE",
+                                    label: t("settings.genderValues.FEMALE"),
+                                    icon: "gender-female",
+                                },
+                            ]}
+                            disabled={detailsEditor.busy}
+                            onChange={(value) => setGender(value === "unset" ? null : value)}
+                        />
+                    </SettingsRow>
+                    <SettingsRow label={t("settings.birthday")}>
+                        <DatePicker
+                            className="ui-date-picker--inline"
+                            label={t("settings.birthday")}
+                            yearNavigation
+                            name="birthDate"
+                            value={birthDate}
+                            min={`${calendarToday().getUTCFullYear() - 100}-01-01`}
+                            max={formatCalendarDate(calendarToday())}
+                            disabled={detailsEditor.busy}
+                            onChange={setBirthDate}
+                        />
+                    </SettingsRow>
+                    <SettingsRow label={t("settings.joinedAt")}>
+                        <span>{formatDate(i18n.resolvedLanguage ?? "ko", member.createdAt)}</span>
+                    </SettingsRow>
+                    {detailsEditor.message && (
+                        <p className="auth-feedback" role="alert">
+                            {t(`settings.detailsMessages.${detailsEditor.message}`)}
+                        </p>
+                    )}
+                    <div className="settings-avatar-picker__actions">
+                        <Button
+                            variant="outline"
+                            disabled={!detailsChanged || detailsEditor.busy}
+                            onClick={() => {
+                                setGender(member.gender);
+                                setBirthDate(member.birthDate ?? "");
+                            }}
+                        >
+                            {t("common.cancel")}
+                        </Button>
+                        <Button
+                            variant="brand"
+                            type="submit"
+                            loading={detailsEditor.busy}
+                            disabled={!detailsChanged || detailsEditor.busy}
+                        >
+                            {t("accountAction.save")}
+                        </Button>
+                    </div>
+                </form>
+            </section>
+            <Divider className="settings-section-divider" />
+            <ButtonLink to={pagePaths.account} variant="plain" className="profile-account-link">
+                <Icon name="settings" />
+                {t("settings.goToAccount")}
+                <Icon name="chevron" variant="outline" />
+            </ButtonLink>
         </div>
     );
 }
@@ -205,48 +409,35 @@ export function ProfileDetails({
 type AppearanceSettingsProps = {
     theme: ThemePreference;
     onThemeChange: (preference: ThemePreference) => void;
-    onLanguageChange: (language: Language) => void;
 };
 
-export function AppearanceSettings({
-    theme,
-    onThemeChange,
+export function AppearanceSettings({ theme, onThemeChange }: AppearanceSettingsProps) {
+    const { t } = useTranslation();
+    return (
+        <div className="settings-details">
+            <SettingsRow label={t("settings.themeSettings")} className="settings-row--theme">
+                <ThemePicker
+                    label={t("settings.themeSettings")}
+                    value={theme}
+                    onChange={onThemeChange}
+                    options={(["system", "light", "dark"] as const).map((value) => ({
+                        value,
+                        label: t(`profile.${value}`),
+                    }))}
+                />
+            </SettingsRow>
+        </div>
+    );
+}
+
+export function LanguageSettings({
     onLanguageChange,
-}: AppearanceSettingsProps) {
+}: {
+    onLanguageChange: (language: Language) => void;
+}) {
     const { t, i18n } = useTranslation();
     return (
         <div className="settings-details">
-            <section className="settings-theme" aria-labelledby="settings-theme-title">
-                <h2 className="settings-section-title" id="settings-theme-title">
-                    {t("profile.theme")}
-                </h2>
-                <div className="settings-theme__options">
-                    {(["light", "dark", "system"] as const).map((option) => (
-                        <Button
-                            key={option}
-                            variant="plain"
-                            className="settings-theme__option"
-                            aria-pressed={theme === option}
-                            onClick={() => onThemeChange(option)}
-                        >
-                            <span
-                                className={`settings-theme__preview settings-theme__preview--${option}`}
-                                aria-hidden="true"
-                            >
-                                <span />
-                                <span />
-                                <span />
-                            </span>
-                            <span className="settings-theme__label">
-                                {t(`profile.${option}`)}
-                                <span className="settings-theme__check" aria-hidden="true">
-                                    {theme === option && <Icon name="check" variant="outline" />}
-                                </span>
-                            </span>
-                        </Button>
-                    ))}
-                </div>
-            </section>
             <SettingsRow label={t("profile.language")}>
                 <DropdownMenu
                     label={t("profile.language")}
@@ -262,11 +453,45 @@ export function AppearanceSettings({
     );
 }
 
-function InlineNickname({ nickname, editor }: { nickname: string; editor: NicknameEditor }) {
+export function KeyboardSettings() {
+    const { t } = useTranslation();
+    return (
+        <div className="settings-details">
+            <SettingsRow label={t("settings.openSettings")}>
+                <KeyboardShortcut keys={["mod", ","]} />
+            </SettingsRow>
+            <SettingsRow label={t("settings.openProfile")}>
+                <KeyboardShortcut keys={["shift", "mod", "P"]} />
+            </SettingsRow>
+        </div>
+    );
+}
+
+function InlineNickname({
+    nickname,
+    editor,
+    appearance = "row",
+}: {
+    nickname: string;
+    editor: NicknameEditor;
+    appearance?: "row" | "hero";
+}) {
     const { t } = useTranslation();
     const [editing, setEditing] = useState(false);
     const [draft, setDraft] = useState(nickname);
     const trigger = useRef<HTMLButtonElement>(null);
+    const form = useRef<HTMLFormElement>(null);
+    useEffect(() => {
+        if (!editing || editor.busy) return;
+        const dismiss = (event: PointerEvent): void => {
+            if (event.target instanceof Node && !form.current?.contains(event.target)) {
+                setEditing(false);
+                setDraft(nickname);
+            }
+        };
+        document.addEventListener("pointerdown", dismiss);
+        return () => document.removeEventListener("pointerdown", dismiss);
+    }, [editing, editor.busy, nickname]);
     const restoreFocus = useRef(false);
     useEffect(() => {
         if (!editing && restoreFocus.current) {
@@ -281,7 +506,14 @@ function InlineNickname({ nickname, editor }: { nickname: string; editor: Nickna
     }
     return editing ? (
         <form
-            className="settings-nickname-editor"
+            ref={form}
+            className={`settings-nickname-editor${appearance === "hero" ? " settings-nickname-editor--hero" : ""}`}
+            onBlur={(event) => {
+                if (!editor.busy && !event.currentTarget.contains(event.relatedTarget)) {
+                    setEditing(false);
+                    setDraft(nickname);
+                }
+            }}
             onKeyDown={(event) => {
                 if (event.key === "Escape") {
                     event.preventDefault();
@@ -322,6 +554,7 @@ function InlineNickname({ nickname, editor }: { nickname: string; editor: Nickna
                 type="submit"
                 className="settings-edit-button"
                 loading={editor.busy}
+                disabled={editor.busy || draft.trim() === nickname}
                 aria-label={t("accountAction.save")}
             >
                 <Icon name="check" variant="outline" />
@@ -336,6 +569,21 @@ function InlineNickname({ nickname, editor }: { nickname: string; editor: Nickna
                 <Icon name="close" variant="outline" />
             </Button>
         </form>
+    ) : appearance === "hero" ? (
+        <Button
+            ref={trigger}
+            variant="plain"
+            className="settings-profile__nickname"
+            aria-label={`${t("accountAction.editNickname")}, ${nickname}`}
+            onClick={() => {
+                setDraft(nickname);
+                editor.reset();
+                setEditing(true);
+            }}
+        >
+            <strong>{nickname}</strong>
+            <Icon name="edit" />
+        </Button>
     ) : (
         <>
             <span>{nickname}</span>

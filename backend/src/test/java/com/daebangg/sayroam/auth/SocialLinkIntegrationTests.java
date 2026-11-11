@@ -84,6 +84,7 @@ class SocialLinkIntegrationTests extends DatabaseIntegrationTest {
         assertThat(countLinks()).isZero();
         MvcResult response = exchange(result);
         assertAuthenticatedAs(response, id);
+        assertThat(json.readTree(response.getResponse().getContentAsByteArray()).path("newlyRegistered").asBoolean()).isFalse();
         assertThat(response.getResponse().getCookie("sayroam_refresh")).isNotNull();
         assertThat(countLinks()).isEqualTo(1);
         assertThat(jdbc.queryForObject("select count(*) from users", Long.class)).isEqualTo(1);
@@ -216,6 +217,7 @@ class SocialLinkIntegrationTests extends DatabaseIntegrationTest {
     }
 
     private void assertAuthenticatedAsNewProvider(MvcResult response, SocialProvider provider) throws Exception {
+        assertThat(json.readTree(response.getResponse().getContentAsByteArray()).path("newlyRegistered").asBoolean()).isTrue();
         long id = jdbc.queryForObject("select id from users where email = ?", Long.class, EMAIL);
         assertAuthenticatedAs(response, id);
         assertThat(jdbc.queryForObject("select nickname from users where id = ?", String.class, id)).isEqualTo(provider == SocialProvider.NAVER ? "네이버 별명" : "카카오 별명");

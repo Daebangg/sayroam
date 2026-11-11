@@ -18,6 +18,10 @@ export default defineConfig(({ mode }) => {
             port: 5173,
             strictPort: true,
             proxy: {
+                "/images/profiles": {
+                    target: env.API_PROXY_TARGET || "http://localhost:8080",
+                    changeOrigin: true,
+                },
                 "/api": {
                     target: env.API_PROXY_TARGET || "http://localhost:8080",
                     changeOrigin: true,

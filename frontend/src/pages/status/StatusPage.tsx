@@ -3,9 +3,9 @@ import { isRouteErrorResponse, useRouteError } from "react-router";
 import { useTranslation } from "react-i18next";
 import { Button, ButtonLink, PageState, type PageStateKind } from "@/components/ui";
 
-type StatusPageProps = { kind: PageStateKind; reloadHome?: boolean };
+type StatusPageProps = { kind: PageStateKind; reloadHome?: boolean; onRetry?: () => void };
 
-export function StatusPage({ kind, reloadHome = false }: StatusPageProps) {
+export function StatusPage({ kind, reloadHome = false, onRetry }: StatusPageProps) {
     const { t } = useTranslation();
     useEffect(() => {
         if (kind === "loading") return;
@@ -29,8 +29,11 @@ export function StatusPage({ kind, reloadHome = false }: StatusPageProps) {
                             <ButtonLink to="/" reloadDocument={reloadHome}>
                                 {t("pageState.home")}
                             </ButtonLink>
-                            {kind === "error" && (
-                                <Button variant="outline" onClick={() => window.location.reload()}>
+                            {(kind === "error" || kind === "serverError") && (
+                                <Button
+                                    variant="outline"
+                                    onClick={onRetry ?? (() => window.location.reload())}
+                                >
                                     {t("pageState.retry")}
                                 </Button>
                             )}
@@ -52,7 +55,15 @@ export function RouteErrorPage() {
     const error: unknown = useRouteError();
     return (
         <StatusPage
-            kind={isRouteErrorResponse(error) && error.status === 404 ? "notFound" : "error"}
+            kind={
+                isRouteErrorResponse(error)
+                    ? error.status === 404
+                        ? "notFound"
+                        : error.status >= 500
+                          ? "serverError"
+                          : "error"
+                    : "error"
+            }
         />
     );
 }

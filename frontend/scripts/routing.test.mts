@@ -9,6 +9,7 @@ test("여행·내 방·계정·프로필은 보호하고 대소문자·끝 슬�
         "/TRIPS/",
         "/Rooms///",
         "/settings/account",
+        "/settings/keyboard",
         "/Settings/Profile/",
     ])
         assert.equal(isMemberPath(path), true);

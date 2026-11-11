@@ -7,6 +7,7 @@ type ModalProps = {
     children: ReactNode;
     className?: string;
     dismissible?: boolean;
+    closeOnBackdrop?: boolean;
 };
 
 export function Modal({
@@ -16,6 +17,7 @@ export function Modal({
     children,
     className = "",
     dismissible = true,
+    closeOnBackdrop = true,
 }: ModalProps) {
     const ref = useRef<HTMLDialogElement>(null);
 
@@ -39,6 +41,7 @@ export function Modal({
                 const rect = event.currentTarget.getBoundingClientRect();
                 if (
                     dismissible &&
+                    closeOnBackdrop &&
                     event.target === event.currentTarget &&
                     (event.clientX < rect.left ||
                         event.clientX > rect.right ||

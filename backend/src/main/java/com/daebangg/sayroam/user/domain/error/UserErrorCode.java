@@ -32,7 +32,17 @@ public enum UserErrorCode implements ErrorCode {
     USER_PROFILE_IMAGE_URL_INVALID(
             ErrorType.INVALID,
             "USER_PROFILE_IMAGE_URL_INVALID",
-            "Profile image URL must be a valid HTTP or HTTPS URL"
+            "Profile image URL must be an HTTP(S) URL or a supported avatar path"
+    ),
+    USER_PROFILE_IMAGE_INVALID(
+            ErrorType.INVALID,
+            "USER_PROFILE_IMAGE_INVALID",
+            "Profile image must be a valid JPEG or PNG up to 2MB and 4096 pixels per side"
+    ),
+    USER_BIRTH_DATE_INVALID(
+            ErrorType.INVALID,
+            "USER_BIRTH_DATE_INVALID",
+            "Birthday must be a valid date and not in the future"
     ),
     USER_BIRTH_YEAR_INVALID(
             ErrorType.INVALID,

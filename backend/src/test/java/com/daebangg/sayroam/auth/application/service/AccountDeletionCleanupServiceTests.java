@@ -3,6 +3,7 @@ package com.daebangg.sayroam.auth.application.service;
 import com.daebangg.sayroam.notification.application.port.out.NotificationDeletion;
 import com.daebangg.sayroam.travelstyle.application.port.out.TravelStyleDeletion;
 import com.daebangg.sayroam.user.application.port.out.LoginMethodDeletion;
+import com.daebangg.sayroam.user.application.port.out.ProfileImageDeletion;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -15,7 +16,8 @@ class AccountDeletionCleanupServiceTests {
     private final LoginMethodDeletion loginMethods = mock(LoginMethodDeletion.class);
     private final TravelStyleDeletion travelStyles = mock(TravelStyleDeletion.class);
     private final NotificationDeletion notifications = mock(NotificationDeletion.class);
-    private final AccountDeletionCleanupService service = new AccountDeletionCleanupService(loginMethods, travelStyles, notifications);
+    private final ProfileImageDeletion profileImages = mock(ProfileImageDeletion.class);
+    private final AccountDeletionCleanupService service = new AccountDeletionCleanupService(loginMethods, travelStyles, notifications, profileImages);
 
     @Test
     void delegatesEveryCleanupToTheSameMemberId() {
@@ -24,6 +26,7 @@ class AccountDeletionCleanupServiceTests {
         verify(loginMethods).deleteForUser(55);
         verify(travelStyles).deleteForUser(55);
         verify(notifications).deleteForUser(55);
+        verify(profileImages).deleteForUser(55);
     }
 
     @Test
@@ -32,7 +35,7 @@ class AccountDeletionCleanupServiceTests {
         doThrow(failure).when(loginMethods).deleteForUser(55);
 
         assertThatThrownBy(() -> service.deleteOwnedData(55)).isSameAs(failure);
-        verifyNoInteractions(travelStyles, notifications);
+        verifyNoInteractions(travelStyles, notifications, profileImages);
     }
 
     @Test
@@ -42,6 +45,6 @@ class AccountDeletionCleanupServiceTests {
 
         assertThatThrownBy(() -> service.deleteOwnedData(55)).isSameAs(failure);
         verify(loginMethods).deleteForUser(55);
-        verifyNoInteractions(notifications);
+        verifyNoInteractions(notifications, profileImages);
     }
 }

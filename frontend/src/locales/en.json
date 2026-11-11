@@ -91,8 +91,8 @@
         "setPassword": "Reset password",
         "rememberPassword": "Remember your password?",
         "backToLogin": "Back to sign in",
-        "signupComplete": "Account created. Sign in with your email.",
-        "resetComplete": "Password changed. Sign in with your new password.",
+        "signupComplete": "Registration completed. Please sign in with your email.",
+        "resetComplete": "Password reset. Please sign in with your new password.",
         "messages": {
             "credentials": "Your email or password is incorrect.",
             "invalidInput": "Check your email and password.",
@@ -131,15 +131,20 @@
         "passwordNumberRule": "At least one number",
         "passwordSpecialRule": "At least one special character",
         "loginPasswordRule": "Enter your existing password (8–128 characters).",
-        "loginComplete": "You are signed in.",
-        "logoutComplete": "You are signed out.",
+        "loginComplete": "Signed in.",
+        "logoutComplete": "Signed out.",
         "loginWait": "Too many login attempts. Try again in {{seconds}} seconds.",
         "loginRetryReady": "You can try signing in again now.",
         "loginAttemptsRemaining": "Your email or password is incorrect. Remaining attempts: {{count}}.",
         "socialProviderDisabled": "This social login is currently unavailable.",
         "nicknameSaved": "Nickname updated.",
-        "passwordChanged": "Password changed. You have been signed out. Please sign in again.",
-        "accountDeleted": "Account deleted. You have been signed out."
+        "passwordChanged": "Password changed. Please sign in again.",
+        "accountDeleted": "Account deletion completed.",
+        "codeDigit": "Verification code digit {{position}}",
+        "profileImageSaved": "Profile picture updated.",
+        "profileDetailsSaved": "Profile details saved.",
+        "badGateway": "A temporary server error occurred. Please try again shortly.",
+        "socialSignupComplete": "Registration completed."
     },
     "trips": {
         "heading": "My trips",
@@ -293,7 +298,8 @@
             },
             "preview": "{{layout}} on {{background}}",
             "download": "Download {{layout}}, {{variant}}, {{format}}"
-        }
+        },
+        "divider": "Divider"
     },
     "profile": {
         "settings": "Settings",
@@ -326,7 +332,12 @@
             "description": "We’re loading the page. This should only take a moment."
         },
         "home": "Back to home",
-        "retry": "Try again"
+        "retry": "Try again",
+        "serverError": {
+            "label": "Server error",
+            "title": "Something went wrong on the server",
+            "description": "Please try again shortly. If the problem continues, come back later."
+        }
     },
     "mockup": {
         "toolbar": "Design preview",
@@ -432,7 +443,11 @@
             "filter": "Filter",
             "check": "Confirm",
             "flame": "Popular",
-            "edit": "Edit"
+            "edit": "Edit",
+            "keyboard": "Keyboard",
+            "gender-unset": "Gender unset",
+            "gender-male": "Male",
+            "gender-female": "Female"
         },
         "saveTrip": "Bookmark {{title}}",
         "customControls": "Travel controls",
@@ -463,7 +478,9 @@
             "previousMonth": "Previous month",
             "nextMonth": "Next month",
             "today": "Today",
-            "clear": "Clear"
+            "clear": "Clear",
+            "year": "Year",
+            "month": "Month"
         },
         "numberStepper": {
             "decrease": "Decrease {{label}}",
@@ -476,7 +493,7 @@
         "backToApp": "Back to the app",
         "backToAccount": "Back to account",
         "general": "General",
-        "appearance": "Appearance & language",
+        "appearance": "Appearance",
         "account": "Account",
         "profile": "Profile",
         "basicInformation": "Personal information",
@@ -496,7 +513,36 @@
         "genderValues": {
             "MALE": "Male",
             "FEMALE": "Female"
-        }
+        },
+        "keyboard": "Keyboard",
+        "openSettings": "Open settings",
+        "openProfile": "Open profile",
+        "joinedAt": "Member since",
+        "yourJourney": "MY PROFILE",
+        "profileDescription": "This is how fellow travelers see you.",
+        "chooseAvatar": "Default avatars",
+        "imageMessages": {
+            "uncertain": "We could not confirm the save. Refresh to check your profile.",
+            "unavailable": "Could not save your profile picture. Try again shortly.",
+            "invalid": "Check your selected avatar.",
+            "fileInvalid": "Choose a valid JPG or PNG photo.",
+            "fileTooLarge": "Choose a photo up to 5MB."
+        },
+        "profileSignature": "Profile",
+        "birthday": "Birthday",
+        "goToAccount": "Go to account settings",
+        "detailsMessages": {
+            "invalid": "Check your gender and birthday.",
+            "uncertain": "We could not confirm the save. Refresh to check your details.",
+            "unavailable": "Could not save your profile details. Try again shortly."
+        },
+        "themeSettings": "Theme",
+        "genderUnset": "Not set",
+        "uploadPhoto": "Upload a profile photo",
+        "photoFileHint": "JPG, PNG · Up to 5MB",
+        "cropPhoto": "Adjust your profile photo",
+        "cropPhotoHint": "Move the circle and drag its corners to resize it.",
+        "applyPhoto": "Apply"
     },
     "accountAction": {
         "connectedOAuth": "Connected OAuth",
@@ -559,6 +605,14 @@
                 "message": "Your account state changed. Sign in again and start a new verification."
             }
         },
-        "socialPasswordHint": "This account uses social sign-in only. Change your password with your connected sign-in provider."
+        "socialPasswordHint": "This account uses social sign-in only. Change your password with your connected sign-in provider.",
+        "linkedEmailHint": "We’ll send a verification code to your linked email."
+    },
+    "validation": {
+        "requiredField": "Please enter {{field}}.",
+        "required": "Please complete the required fields.",
+        "email": "Please enter a valid email address.",
+        "url": "Please enter a valid URL.",
+        "invalid": "Please check your input."
     }
 }

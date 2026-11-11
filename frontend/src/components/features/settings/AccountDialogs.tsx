@@ -1,6 +1,6 @@
 import { useId, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Button, Checkbox, Icon, Modal, TextField } from "@/components/ui";
+import { Button, Checkbox, Icon, Modal, TextField, VerificationCode } from "@/components/ui";
 import { ValidationPanel } from "@/components/features/auth/EmailFlowModal";
 import { isValidNewPassword, newPasswordRules } from "@/hooks/authValidation";
 import type { AccountFlowView, AccountPurpose, AccountResult } from "@/hooks/account.types";
@@ -56,6 +56,7 @@ export function AccountActionDialog({
             labelledBy={title}
             className="auth-modal--flow account-action-modal"
             dismissible={!blocking}
+            closeOnBackdrop={false}
         >
             <div className="auth-flow-header">
                 <h2 id={title}>
@@ -98,24 +99,19 @@ export function AccountActionDialog({
                     }}
                 >
                     {!verified && (
-                        <TextField
-                            label={t("settings.email")}
-                            value={email ?? ""}
-                            readOnly
-                            autoComplete="email"
-                        />
+                        <div className="account-linked-email">
+                            <span>{t("settings.email")}</span>
+                            <strong>{email ?? t("settings.noEmail")}</strong>
+                            <p>{t("accountAction.linkedEmailHint")}</p>
+                        </div>
                     )}
                     {(sending || (stage === "code" && expiresIn > 0)) && (
                         <>
-                            <TextField
+                            <VerificationCode
                                 label={t("auth.codeLabel")}
                                 value={code}
-                                autoComplete="one-time-code"
-                                inputMode="numeric"
-                                maxLength={6}
-                                pattern="[0-9]{6}"
                                 disabled={blocking}
-                                onChange={(event) => setCode(event.target.value)}
+                                onChange={setCode}
                             />
                             <div className="account-verification-meta">
                                 {expiresIn > 0 && (

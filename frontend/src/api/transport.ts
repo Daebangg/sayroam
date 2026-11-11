@@ -1,3 +1,4 @@
+import { reportBadGateway } from "./serverErrors.ts";
 import { ApiError, toApiProblem } from "./apiError.ts";
 
 export type RequestOptions = Omit<RequestInit, "credentials">;
@@ -28,6 +29,7 @@ export async function sendResponse(
     }
 
     if (!response.ok) {
+        if (response.status === 502 && !options.signal?.aborted) reportBadGateway();
         let value: unknown;
         try {
             value = JSON.parse(body);

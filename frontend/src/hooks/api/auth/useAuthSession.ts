@@ -13,6 +13,9 @@ type AuthSession = AuthState &
         | "cancelSocial"
         | "resetDialog"
         | "updateNickname"
+        | "updateProfileImage"
+        | "uploadProfileImage"
+        | "updateProfileDetails"
         | "endSession"
     >;
 
@@ -41,6 +44,9 @@ export function useAuthSession(socialReturn = false): AuthSession {
         cancelSocial: session.cancelSocial,
         resetDialog: session.resetDialog,
         updateNickname: session.updateNickname,
+        updateProfileImage: session.updateProfileImage,
+        uploadProfileImage: session.uploadProfileImage,
+        updateProfileDetails: session.updateProfileDetails,
         endSession: session.endSession,
     };
 }

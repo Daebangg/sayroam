@@ -1,7 +1,7 @@
 import { readdir, readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import postcss from "postcss";
+import postcss, { type Rule } from "postcss";
 
 const frontend = fileURLToPath(new URL("../", import.meta.url));
 const styles = "styles/app.css";
@@ -16,7 +16,25 @@ for (const path of files) {
 
 const source = await readFile(resolve(frontend, "src", styles), "utf8");
 const stylesheet = postcss.parse(source, { from: styles });
+const owners = new Map<string, Map<string, Rule>>();
 stylesheet.walkRules((rule) => {
+    const scope: string[] = [];
+    for (let parent = rule.parent; parent && parent.type !== "root"; parent = parent.parent) {
+        if (parent.type === "atrule") scope.unshift(`@${parent.name} ${parent.params}`);
+    }
+    const selector = `${scope.join(" > ")}|${rule.selector.replace(/\s+/g, " ")}`;
+    const properties = owners.get(selector) ?? new Map();
+    owners.set(selector, properties);
+    rule.each((node) => {
+        if (node.type !== "decl") return;
+        const previous = properties.get(node.prop);
+        if (previous && previous !== rule) {
+            errors.push(
+                `${styles}:${node.source?.start?.line}: ${rule.selector}의 ${node.prop} 속성을 앞선 공용 규칙과 합쳐 주세요.`,
+            );
+        }
+        properties.set(node.prop, rule);
+    });
     const declarations = new Set<string>();
     rule.each((node) => {
         if (node.type !== "decl") return;
@@ -34,5 +52,5 @@ if (errors.length) {
     process.stderr.write(errors.join("\n") + "\n");
     process.exitCode = 1;
 } else {
-    process.stdout.write("UI 스타일 소유권·동일 규칙 내 중복 선언 검사 통과\n");
+    process.stdout.write("UI 스타일 소유권·규칙 간 속성 중복·동일 선언 검사 통과\n");
 }

@@ -38,6 +38,7 @@ export const api = createApiRouter(apiRoutes, {
         me: { parseResponse: validateCurrentUser },
         loginMethods: { parseResponse: validateLoginMethods },
         updateProfile: { parseResponse: validateCurrentUser },
+        uploadProfileImage: { parseResponse: validateCurrentUser },
         request: { parseResponse: validateIssued },
         requestPasswordReset: { parseResponse: validateIssued },
         confirm: { parseResponse: validateSignupProof },

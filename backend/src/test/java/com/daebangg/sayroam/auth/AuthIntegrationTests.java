@@ -73,7 +73,7 @@ class AuthIntegrationTests extends DatabaseIntegrationTest {
     private static final String[] TABLES = {"expense_share", "expense", "trip_place", "trip",
             "companion_request", "companion_search", "room_invitation", "room_member", "chat_message",
             "room", "place", "user_travel_style", "travel_style_item", "notification",
-            "user_social_account", "user_credential", "users"};
+            "user_social_account", "user_credential", "user_profile_image", "users"};
 
     @Autowired MockMvc mvc;
     @Autowired JsonMapper mapper;
@@ -276,6 +276,8 @@ class AuthIntegrationTests extends DatabaseIntegrationTest {
             assertThat(json(initial).path(field).isNull()).as(field).isTrue();
         }
         assertThat(json(initial).path("role").asText()).isEqualTo("USER");
+        String createdAt = json(initial).path("createdAt").asText();
+        assertThat(java.time.Instant.parse(createdAt)).isBeforeOrEqualTo(java.time.Instant.now());
         assertThat(jdbc.queryForObject("SELECT email_verified_at IS NOT NULL FROM users WHERE id = ?",
                 Boolean.class, id)).isTrue();
 
@@ -293,11 +295,16 @@ class AuthIntegrationTests extends DatabaseIntegrationTest {
         assertThat(jdbc.queryForObject("SELECT birth_year FROM users WHERE id = ?", Integer.class, id))
                 .isEqualTo(1990);
 
+        MvcResult avatar = call(HttpMethod.PATCH, "/api/users/me", Map.of("profileImageUrl", "/brand/avatars/cat.svg"), login.access());
+        assertStatus(avatar, 200);
+        assertThat(json(avatar).path("createdAt").asText()).isEqualTo(createdAt);
+        assertThat(json(call(HttpMethod.GET, "/api/users/me", null, login.access())).path("profileImageUrl").asText()).isEqualTo("/brand/avatars/cat.svg");
+
         MvcResult nicknameOnly = call(HttpMethod.PATCH, "/api/users/me", Map.of("nickname", "다음 여행자"), login.access());
         assertStatus(nicknameOnly, 200);
         assertThat(json(nicknameOnly).path("gender").asText()).isEqualTo("MALE");
         assertThat(json(nicknameOnly).path("birthYear").asInt()).isEqualTo(1990);
-        assertThat(json(nicknameOnly).path("profileImageUrl").asText()).isEqualTo("https://example.com/profile.png");
+        assertThat(json(nicknameOnly).path("profileImageUrl").asText()).isEqualTo("/brand/avatars/cat.svg");
         assertStatus(call(HttpMethod.PATCH, "/api/users/me", Map.of("gender", "FEMALE"), login.access()), 200);
 
         for (String field : new String[]{"gender", "birthYear", "profileImageUrl"}) {
@@ -327,6 +334,71 @@ class AuthIntegrationTests extends DatabaseIntegrationTest {
         assertStatus(call(HttpMethod.POST, "/api/auth/login",
                 Map.of("email", email, "password", PASSWORD), null), 401);
         assertStatus(call(HttpMethod.GET, "/api/users/me", null, other.access()), 200);
+    }
+
+    @Test
+    void uploadedPhotoPersistsReplacesAndIsRemovedWithPresetOrAccount() throws Exception {
+        String email = register();
+        Login login = login(email, PASSWORD);
+        String payload = photoDataUrl();
+        String endpoint = "/api/users/me/profile-image";
+        MvcResult uploaded = call(HttpMethod.POST, endpoint, Map.of("dataUrl", payload), login.access());
+        assertStatus(uploaded, 200);
+        String firstUrl = json(uploaded).path("profileImageUrl").asText();
+        assertThat(firstUrl).startsWith("/images/profiles/").endsWith(".jpg");
+        assertThat(json(call(HttpMethod.GET, "/api/users/me", null, login.access()))
+                .path("profileImageUrl").asText()).isEqualTo(firstUrl);
+        MvcResult photo = call(HttpMethod.GET, firstUrl, null, null);
+        assertStatus(photo, 200);
+        assertThat(photo.getResponse().getContentType()).isEqualTo("image/jpeg");
+        assertThat(photo.getResponse().getHeader("Cache-Control")).isEqualTo("no-store");
+        java.awt.image.BufferedImage decoded = javax.imageio.ImageIO.read(
+                new java.io.ByteArrayInputStream(photo.getResponse().getContentAsByteArray()));
+        assertThat(decoded.getWidth()).isEqualTo(512);
+        assertThat(decoded.getHeight()).isEqualTo(512);
+
+        Login other = login(register(), PASSWORD);
+        assertStatus(call(HttpMethod.PATCH, "/api/users/me", Map.of("profileImageUrl", firstUrl), other.access()), 400);
+        MvcResult replacement = call(HttpMethod.POST, endpoint, Map.of("dataUrl", payload), login.access());
+        assertStatus(replacement, 200);
+        String secondUrl = json(replacement).path("profileImageUrl").asText();
+        assertThat(secondUrl).isNotEqualTo(firstUrl);
+        assertStatus(call(HttpMethod.GET, firstUrl, null, null), 404);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM user_profile_image", Integer.class)).isEqualTo(1);
+        assertStatus(call(HttpMethod.PATCH, "/api/users/me", Map.of("profileImageUrl", "/brand/avatars/rabbit.svg"), login.access()), 200);
+        assertStatus(call(HttpMethod.GET, secondUrl, null, null), 404);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM user_profile_image", Integer.class)).isZero();
+
+        String lastUrl = json(call(HttpMethod.POST, endpoint, Map.of("dataUrl", payload), login.access()))
+                .path("profileImageUrl").asText();
+        String proof = accountProof(login, email, "ACCOUNT_DELETION");
+        assertStatus(call(HttpMethod.POST, "/api/auth/account-deletion", Map.of("accountProof", proof), login.access()), 204);
+        assertStatus(call(HttpMethod.GET, lastUrl, null, null), 404);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM user_profile_image", Integer.class)).isZero();
+        assertStatus(call(HttpMethod.POST, endpoint, Map.of("dataUrl", payload), login.access()), 401);
+    }
+
+    @Test
+    void invalidPhotoUploadsLeaveProfileUnchangedAndRequireAuthentication() throws Exception {
+        Login login = login(register(), PASSWORD);
+        String endpoint = "/api/users/me/profile-image";
+        JsonNode before = json(call(HttpMethod.GET, "/api/users/me", null, login.access()));
+        for (String dataUrl : java.util.List.of("", "data:image/svg+xml;base64,PHN2Zz4=",
+                "data:image/jpeg;base64,broken", "data:image/png;base64," + "A".repeat(2_800_000))) {
+            MvcResult result = call(HttpMethod.POST, endpoint, Map.of("dataUrl", dataUrl), login.access());
+            assertStatus(result, 400);
+            assertThat(json(result).path("code").asText()).isEqualTo("USER_PROFILE_IMAGE_INVALID");
+        }
+        assertStatus(call(HttpMethod.POST, endpoint, Map.of("dataUrl", photoDataUrl()), null), 401);
+        assertThat(json(call(HttpMethod.GET, "/api/users/me", null, login.access()))).isEqualTo(before);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM user_profile_image", Integer.class)).isZero();
+    }
+
+    private String photoDataUrl() throws Exception {
+        java.awt.image.BufferedImage image = new java.awt.image.BufferedImage(32, 20, java.awt.image.BufferedImage.TYPE_INT_RGB);
+        java.io.ByteArrayOutputStream bytes = new java.io.ByteArrayOutputStream();
+        javax.imageio.ImageIO.write(image, "png", bytes);
+        return "data:image/png;base64," + java.util.Base64.getEncoder().encodeToString(bytes.toByteArray());
     }
 
     @Test
@@ -371,12 +443,40 @@ class AuthIntegrationTests extends DatabaseIntegrationTest {
     }
 
     @Test
+    void birthdayCanBeEditedClearedAndPreservesLegacyYearUntilSpecified() throws Exception {
+        Login login = login(register(), PASSWORD);
+        assertStatus(call(HttpMethod.PATCH, "/api/users/me", Map.of("birthYear", 1996), login.access()), 200);
+        JsonNode legacy = json(call(HttpMethod.GET, "/api/users/me", null, login.access()));
+        assertThat(legacy.path("birthYear").asInt()).isEqualTo(1996);
+        assertThat(legacy.path("birthDate").isNull()).isTrue();
+        MvcResult saved = call(HttpMethod.PATCH, "/api/users/me", Map.of("birthDate", "2000-02-29", "gender", "FEMALE"), login.access());
+        assertStatus(saved, 200);
+        JsonNode birthday = json(saved);
+        assertThat(birthday.path("birthDate").asText()).isEqualTo("2000-02-29");
+        assertThat(birthday.path("birthYear").asInt()).isEqualTo(2000);
+        assertThat(birthday.path("gender").asText()).isEqualTo("FEMALE");
+        assertThat(birthday.path("createdAt")).isEqualTo(legacy.path("createdAt"));
+        assertThat(json(call(HttpMethod.GET, "/api/users/me", null, login.access()))).isEqualTo(birthday);
+        for (Object invalid : List.of(Map.of("birthDate", "2001-02-29"), Map.of("birthDate", "2000-02-30"),
+                Map.of("birthDate", "2000-2-2"), Map.of("birthDate", 2000),
+                Map.of("birthDate", java.time.LocalDate.now().plusDays(1).toString()),
+                Map.of("birthDate", "0000-01-01"), Map.of("birthDate", "2000-02-29", "birthYear", 2000))) {
+            assertStatus(call(HttpMethod.PATCH, "/api/users/me", invalid, login.access()), 400);
+            assertThat(json(call(HttpMethod.GET, "/api/users/me", null, login.access()))).isEqualTo(birthday);
+        }
+        MvcResult cleared = call(HttpMethod.PATCH, "/api/users/me", profileField("birthDate", null), login.access());
+        assertStatus(cleared, 200);
+        assertThat(json(cleared).path("birthDate").isNull()).isTrue();
+        assertThat(json(cleared).path("birthYear").isNull()).isTrue();
+    }
+
+    @Test
     void protectedFieldsCannotChangeIdentityOrAnotherMembersProfile() throws Exception {
         Login login = login(register(), PASSWORD);
         Login other = login(register(), PASSWORD);
         JsonNode before = json(call(HttpMethod.GET, "/api/users/me", null, login.access()));
         JsonNode otherBefore = json(call(HttpMethod.GET, "/api/users/me", null, other.access()));
-        for (String field : new String[]{"userId", "id", "email", "role", "emailVerifiedAt", "deletedAt", "authVersion"}) {
+        for (String field : new String[]{"userId", "id", "email", "role", "emailVerifiedAt", "deletedAt", "authVersion", "createdAt"}) {
             Map<String, Object> body = profileField(field, otherBefore.path("userId").asLong());
             body.put("nickname", "권한 없는 변경");
             assertStatus(call(HttpMethod.PATCH, "/api/users/me", body, login.access()), 400);

@@ -14,7 +14,11 @@ export function KeyboardShortcut({ keys }: KeyboardShortcutProps) {
     return (
         <kbd className="ui-shortcut">
             {keys.map((key, index) => (
-                <span key={`${key}-${index}`} className="ui-shortcut__key">
+                <span
+                    key={`${key}-${index}`}
+                    className="ui-shortcut__key"
+                    data-key={key.toLowerCase()}
+                >
                     {labels[key.toLowerCase()] ?? key.toUpperCase()}
                 </span>
             ))}

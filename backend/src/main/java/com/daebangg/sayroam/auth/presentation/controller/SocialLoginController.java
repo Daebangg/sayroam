@@ -100,12 +100,12 @@ public class SocialLoginController {
         if (exchanged.tokens() != null) {
             TokenPair tokens = exchanged.tokens();
             return response.header(HttpHeaders.SET_COOKIE, refreshCookie.issue(tokens.refreshToken(), tokens.refreshExpiresIn()).toString())
-                    .body(new SocialExchangeResponse(SocialExchangeResponse.Status.AUTHENTICATED, loginResponse(tokens), null));
+                    .body(new SocialExchangeResponse(SocialExchangeResponse.Status.AUTHENTICATED, loginResponse(tokens), null, exchanged.newlyRegistered()));
         }
         SocialLoginService.PendingSignup pending = exchanged.signup();
         return response.body(new SocialExchangeResponse(SocialExchangeResponse.Status.SIGNUP_REQUIRED, null,
                 new SocialExchangeResponse.Signup(pending.signupTicket(), pending.expiresInSeconds(),
-                        pending.emailVerificationRequired(), pending.suggestedEmail())));
+                        pending.emailVerificationRequired(), pending.suggestedEmail()), false));
     }
 
     @Operation(operationId = "completeSocialSignup", summary = "이전 소셜 가입 티켓 완료·로그인",

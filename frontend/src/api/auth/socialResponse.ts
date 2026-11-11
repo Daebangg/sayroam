@@ -60,8 +60,15 @@ export function validateSocialExchange(
     status: number,
 ): components["schemas"]["SocialExchangeResponse"] {
     if (!record(value)) throw new ApiError("invalid-response", { status });
+    if (value.newlyRegistered !== undefined && typeof value.newlyRegistered !== "boolean")
+        throw new ApiError("invalid-response", { status });
     if (value.status === "AUTHENTICATED" && value.signup == null)
-        return { status: "AUTHENTICATED", login: validateToken(value.login, status), signup: null };
+        return {
+            status: "AUTHENTICATED",
+            login: validateToken(value.login, status),
+            signup: null,
+            newlyRegistered: value.newlyRegistered === true,
+        };
     const signup = value.signup;
     if (
         value.status !== "SIGNUP_REQUIRED" ||

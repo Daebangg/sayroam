@@ -20,14 +20,16 @@ export function PreviewDialog({
     const { t } = useTranslation();
     return (
         <Modal open={open} onClose={onClose} labelledBy={id} className="preview-dialog">
-            <Button
-                variant="ghost"
-                className="icon-button ui-modal__close"
-                aria-label={t("common.close")}
-                onClick={onClose}
-            >
-                <Icon name="close" variant="outline" />
-            </Button>
+            <div className="preview-dialog__toolbar">
+                <Button
+                    variant="ghost"
+                    className="icon-button"
+                    aria-label={t("common.close")}
+                    onClick={onClose}
+                >
+                    <Icon name="close" variant="outline" />
+                </Button>
+            </div>
             <TravelArtwork scene={scene} />
             <h2 id={id}>{title}</h2>
             <p className="ui-modal__description">{description}</p>

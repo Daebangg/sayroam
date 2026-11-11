@@ -1,6 +1,6 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Button, Icon, Modal, TextField, Tooltip } from "@/components/ui";
+import { Button, Icon, Modal, TextField, VerificationCode, Tooltip } from "@/components/ui";
 import {
     isValidEmail,
     isValidNewPassword,
@@ -86,7 +86,13 @@ export function EmailFlowModal({
     }, [message]);
 
     return (
-        <Modal open onClose={onClose} labelledBy={titleId} className="auth-modal--flow">
+        <Modal
+            open
+            onClose={onClose}
+            labelledBy={titleId}
+            className="auth-modal--flow"
+            closeOnBackdrop={false}
+        >
             <Tooltip content={t("common.close")} shortcut={["Escape"]} className="ui-modal__close">
                 <Button
                     variant="ghost"
@@ -176,16 +182,11 @@ export function EmailFlowModal({
                                                     )}
                                                 </p>
                                             )}
-                                            <TextField
+                                            <VerificationCode
                                                 label={t("auth.codeLabel")}
-                                                name="code"
-                                                autoComplete="one-time-code"
-                                                inputMode="numeric"
-                                                pattern="[0-9]{6}"
-                                                maxLength={6}
                                                 value={code}
                                                 disabled={blocking}
-                                                onChange={(event) => setCode(event.target.value)}
+                                                onChange={setCode}
                                             />
                                             <Button
                                                 variant="brand"

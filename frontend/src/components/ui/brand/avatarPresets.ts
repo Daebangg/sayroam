@@ -3,6 +3,10 @@ export const avatarPresets = [
     "sand",
     "dusk",
     "sea",
+    "sunset",
+    "twilight",
+    "night",
+    "flight",
     "traveler",
     "sunrise",
     "poet",
@@ -11,10 +15,6 @@ export const avatarPresets = [
     "dog",
     "rabbit",
     "cat",
-    "sunset",
-    "twilight",
-    "night",
-    "flight",
 ] as const;
 
 export type AvatarPreset = (typeof avatarPresets)[number];

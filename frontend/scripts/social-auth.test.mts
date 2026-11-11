@@ -21,6 +21,8 @@ const user = {
     gender: null,
     birthYear: null,
     role: "USER",
+    createdAt: "2026-11-10T12:00:00Z",
+    birthDate: null,
 };
 const signup = (required = false) => ({
     status: "SIGNUP_REQUIRED",
@@ -152,11 +154,24 @@ test("기존 소셜 회원은 공통 토큰·회원 조회를 거쳐 로그인 �
         );
     });
     const session = createAuthController();
-    assert.equal(await session.exchangeSocial("B".repeat(43)), true);
+    assert.equal(await session.exchangeSocial("B".repeat(43)), "login");
     assert.equal(session.getSnapshot().status, "authenticated");
     assert.deepEqual(session.getSnapshot().user, user);
     assert.equal(getAccessToken(), token.accessToken);
     assert.deepEqual(calls, ["/api/auth/social/results/exchange", "/api/users/me"]);
+});
+
+test("새 소셜 가입 완료와 기존 소셜 로그인을 서버 결과로 구분", async (t) => {
+    t.mock.method(globalThis, "fetch", async (path: unknown) =>
+        Response.json(
+            path === "/api/users/me"
+                ? user
+                : { status: "AUTHENTICATED", login: token, signup: null, newlyRegistered: true },
+        ),
+    );
+    const session = createAuthController();
+    assert.equal(await session.exchangeSocial("N".repeat(43)), "signup");
+    assert.equal(session.getSnapshot().status, "authenticated");
 });
 
 test("이전 서버의 가입 티켓도 이름 입력 없이 한 번만 자동 완료", async (t) => {
@@ -167,7 +182,7 @@ test("이전 서버의 가입 티켓도 이름 입력 없이 한 번만 자동 �
         return Response.json(path === "/api/auth/social/results/exchange" ? signup() : token);
     });
     const session = createAuthController();
-    assert.equal(await session.exchangeSocial("E".repeat(43)), true);
+    assert.equal(await session.exchangeSocial("E".repeat(43)), "signup");
     assert.deepEqual(bodies[1], { signupTicket: "T".repeat(43) });
     assert.equal("socialSignup" in session.getSnapshot(), false);
     assert.equal(session.getSnapshot().status, "authenticated");

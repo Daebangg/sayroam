@@ -9,6 +9,18 @@ export function RouteAccessibility({ contentKey }: { contentKey?: string | undef
     const announcement = useRef<HTMLSpanElement>(null);
     const focusedPath = useRef<string | null>(null);
     useEffect(() => {
+        if (state !== "idle" || window.matchMedia("(prefers-reduced-motion: reduce)").matches)
+            return;
+        const content =
+            document.querySelector<HTMLElement>(".settings-content") ??
+            document.querySelector<HTMLElement>("main");
+        if (!content) return;
+        content.classList.remove("page-enter");
+        void content.offsetWidth;
+        content.classList.add("page-enter");
+        return () => content.classList.remove("page-enter");
+    }, [pathname, contentKey, state]);
+    useEffect(() => {
         const targetKey = pathname + (contentKey ?? "");
         if (state !== "idle" || focusedPath.current === targetKey) return;
         focusedPath.current = targetKey;

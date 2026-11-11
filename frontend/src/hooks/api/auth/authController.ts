@@ -1,3 +1,5 @@
+import type { ProfileDetailsUpdate } from "../../account.types.ts";
+import type { components } from "../../../api/generated/schema.ts";
 import { ApiError } from "../../../api/apiError.ts";
 import {
     restoreSession,
@@ -69,9 +71,12 @@ export type AuthController = {
     check: () => Promise<boolean>;
     login: (input: LoginInput) => Promise<boolean>;
     logout: () => Promise<boolean>;
-    exchangeSocial: (code: string) => Promise<boolean>;
+    exchangeSocial: (code: string) => Promise<"signup" | "login" | false>;
     cancelSocial: () => void;
     resetDialog: () => void;
+    updateProfileDetails: (input: ProfileDetailsUpdate, signal: AbortSignal) => Promise<void>;
+    updateProfileImage: (profileImageUrl: string, signal: AbortSignal) => Promise<void>;
+    uploadProfileImage: (dataUrl: string, signal: AbortSignal) => Promise<void>;
     updateNickname: (nickname: string, signal: AbortSignal) => Promise<void>;
     endSession: () => void;
 };
@@ -80,6 +85,7 @@ export function createAuthController(): AuthController {
     let state: AuthState = { status: "checking", user: null, message: null };
     const listeners = new Set<() => void>();
     let generation = 0;
+    let socialCompletion: "signup" | "login" = "login";
     let pending: { controller: AbortController; promise: Promise<boolean> } | undefined;
 
     function update(next: AuthState): void {
@@ -117,6 +123,7 @@ export function createAuthController(): AuthController {
                 if (current !== generation) return false;
                 if (user && !getAccessTokenSnapshot())
                     throw new ApiError("authentication-required");
+                socialCompletion = outcome?.signedUp ? "signup" : "login";
                 update({
                     status: user ? "authenticated" : "anonymous",
                     user,
@@ -143,6 +150,12 @@ export function createAuthController(): AuthController {
                 update({
                     status: profilePending || !anonymous ? "unavailable" : "anonymous",
                     user: null,
+                    ...(kind !== "logout" &&
+                    error instanceof ApiError &&
+                    error.status !== undefined &&
+                    error.status >= 500
+                        ? { failureStatus: error.status }
+                        : {}),
                     ...(retryAt === undefined ? {} : { retryAt }),
                     ...(kind === "login" &&
                     error instanceof ApiError &&
@@ -171,28 +184,45 @@ export function createAuthController(): AuthController {
         return promise;
     }
 
+    async function updateProfile(
+        body:
+            | components["schemas"]["UpdateUserProfileRequest"]
+            | components["schemas"]["UploadProfileImageRequest"],
+        signal: AbortSignal,
+    ): Promise<void> {
+        if (!state.user || state.status !== "authenticated")
+            throw new ApiError("authentication-required");
+        const revision = getAuthRevision();
+        const current = generation;
+        const userId = state.user.userId;
+        const user =
+            "dataUrl" in body
+                ? await api.call("uploadProfileImage", { body, signal })
+                : await api.call("updateProfile", { body, signal });
+        if (
+            signal.aborted ||
+            revision !== getAuthRevision() ||
+            current !== generation ||
+            state.user?.userId !== userId
+        )
+            throw new ApiError("aborted");
+        update({ ...state, user });
+    }
+
     return {
         getSnapshot: (): AuthState => state,
         updateNickname: async (nickname: string, signal: AbortSignal): Promise<void> => {
             if (!state.user || state.status !== "authenticated")
                 throw new ApiError("authentication-required");
             if (!isValidNickname(nickname)) throw new ApiError("http", { status: 400 });
-            const revision = getAuthRevision();
-            const current = generation;
-            const userId = state.user.userId;
-            const user = await api.call("updateProfile", {
-                body: { nickname: nickname.trim() },
-                signal,
-            });
-            if (
-                signal.aborted ||
-                revision !== getAuthRevision() ||
-                current !== generation ||
-                state.user?.userId !== userId
-            )
-                throw new ApiError("aborted");
-            update({ ...state, user });
+            await updateProfile({ nickname: nickname.trim() }, signal);
         },
+        updateProfileDetails: (input: ProfileDetailsUpdate, signal: AbortSignal): Promise<void> =>
+            updateProfile(input, signal),
+        updateProfileImage: (profileImageUrl: string, signal: AbortSignal): Promise<void> =>
+            updateProfile({ profileImageUrl }, signal),
+        uploadProfileImage: (dataUrl: string, signal: AbortSignal): Promise<void> =>
+            updateProfile({ dataUrl }, signal),
         endSession: (): void => {
             generation++;
             pending?.controller.abort();
@@ -235,7 +265,7 @@ export function createAuthController(): AuthController {
         login: (input: LoginInput): Promise<boolean> =>
             (state.retryAt ?? 0) > Date.now() ? Promise.resolve(false) : run("login", input),
         logout: (): Promise<boolean> => run("logout"),
-        exchangeSocial: (code: string): Promise<boolean> =>
+        exchangeSocial: (code: string): Promise<"signup" | "login" | false> =>
             run("login", undefined, async () => {
                 if (!/^[A-Za-z0-9_-]{43}$/.test(code))
                     throw new ApiError("http", {
@@ -248,7 +278,7 @@ export function createAuthController(): AuthController {
                         },
                     });
                 return exchangeSocialSession(code);
-            }),
+            }).then((success) => (success ? socialCompletion : false)),
         cancelSocial: (): void => {
             if (pending) return;
             update({ status: "anonymous", user: null, message: null });

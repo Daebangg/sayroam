@@ -7,12 +7,18 @@ import com.daebangg.sayroam.global.validation.InputText;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.time.Year;
+import java.time.LocalDate;
+import java.util.Set;
 
 /** 회원 생성과 프로필 변경에서 공통으로 사용하는 정규화·검증 규칙. */
 public final class UserProfilePolicy {
     public static final int MAX_NICKNAME_LENGTH = 50;
     public static final String NICKNAME_PATTERN = "^[^\\p{C}\\p{Zl}\\p{Zp}]+$";
     public static final int MAX_PROFILE_IMAGE_URL_LENGTH = 500;
+
+    private static final Set<String> AVATAR_PRESETS = Set.of(
+            "coast", "sand", "dusk", "sea", "traveler", "sunrise", "poet", "explorer",
+            "alien", "dog", "rabbit", "cat", "sunset", "twilight", "night", "flight");
 
     private UserProfilePolicy() {
     }
@@ -44,6 +50,15 @@ public final class UserProfilePolicy {
             throw new BusinessException(UserErrorCode.USER_PROFILE_IMAGE_URL_TOO_LONG);
         }
 
+        if (normalized.startsWith("/brand/avatars/") && normalized.endsWith(".svg")) {
+            String preset = normalized.substring("/brand/avatars/".length(), normalized.length() - 4);
+            if (AVATAR_PRESETS.contains(preset)) return normalized;
+        }
+
+        if (normalized.matches("/images/profiles/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\\.jpg")) {
+            return normalized;
+        }
+
         URI uri;
         try {
             uri = new URI(normalized);
@@ -60,6 +75,13 @@ public final class UserProfilePolicy {
         }
 
         return normalized;
+    }
+
+    public static LocalDate validateBirthDate(LocalDate birthDate) {
+        if (birthDate != null && (birthDate.getYear() < 1 || birthDate.isAfter(LocalDate.now()))) {
+            throw new BusinessException(UserErrorCode.USER_BIRTH_DATE_INVALID);
+        }
+        return birthDate;
     }
 
     public static Integer validateBirthYear(Integer birthYear) {

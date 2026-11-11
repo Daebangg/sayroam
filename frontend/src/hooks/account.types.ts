@@ -33,3 +33,28 @@ export type NicknameEditor = {
     save: (nickname: string) => Promise<boolean>;
     reset: () => void;
 };
+
+export type ProfileDetailsUpdate = Pick<
+    components["schemas"]["UpdateUserProfileRequest"],
+    "gender" | "birthDate"
+>;
+export type ProfileEditor<T> = {
+    busy: boolean;
+    message: "invalid" | "uncertain" | "unavailable" | null;
+    save: (input: T) => Promise<boolean>;
+    reset: () => void;
+};
+
+export type ProfilePhoto = {
+    previewUrl: string | null;
+    cropSource: string | null;
+    closeCrop: () => void;
+    applyPhoto: (dataUrl: string) => Promise<void>;
+    changed: boolean;
+    busy: boolean;
+    message: "invalid" | "uncertain" | "unavailable" | "fileInvalid" | "fileTooLarge" | null;
+    selectFile: (file: File) => Promise<void>;
+    selectPreset: (url: string) => void;
+    cancel: () => void;
+    save: () => Promise<void>;
+};
