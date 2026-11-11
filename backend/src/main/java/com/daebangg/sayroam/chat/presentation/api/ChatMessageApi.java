@@ -1,4 +1,4 @@
-package com.daebangg.sayroam.chat.presentation;
+package com.daebangg.sayroam.chat.presentation.api;
 
 import com.daebangg.sayroam.auth.domain.AuthenticatedAccount;
 import com.daebangg.sayroam.chat.presentation.dto.ChatMessageResponse;

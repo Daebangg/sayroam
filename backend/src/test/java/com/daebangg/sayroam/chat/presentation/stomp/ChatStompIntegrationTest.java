@@ -4,7 +4,7 @@ import com.daebangg.sayroam.auth.application.port.out.AccessTokenIssuer;
 import com.daebangg.sayroam.auth.application.port.out.AccountDeletion;
 import com.daebangg.sayroam.auth.application.port.out.PasswordChange;
 import com.daebangg.sayroam.auth.infrastructure.config.AccessTokenProperties;
-import com.daebangg.sayroam.chat.domain.ChatMessageRepository;
+import com.daebangg.sayroam.chat.infrastructure.persistence.ChatMessageJpaRepository;
 import com.daebangg.sayroam.global.exception.CommonErrorCode;
 import com.daebangg.sayroam.room.application.service.RoomService;
 import com.daebangg.sayroam.room.domain.Room;
@@ -96,7 +96,7 @@ class ChatStompIntegrationTest extends DatabaseIntegrationTest {
     RoomMemberJpaRepository roomMemberRepository;
 
     @Autowired
-    ChatMessageRepository chatMessageRepository;
+    ChatMessageJpaRepository chatMessageRepository;
 
     @Autowired
     UserRepository userRepository;

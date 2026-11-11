@@ -1,8 +1,9 @@
 package com.daebangg.sayroam.chat.application;
 
 import com.daebangg.sayroam.chat.application.dto.ChatMessageResult;
+import com.daebangg.sayroam.chat.application.service.ChatMessageService;
 import com.daebangg.sayroam.chat.domain.ChatMessage;
-import com.daebangg.sayroam.chat.domain.ChatMessageRepository;
+import com.daebangg.sayroam.chat.infrastructure.persistence.ChatMessageJpaRepository;
 import com.daebangg.sayroam.chat.domain.event.ChatMessageSent;
 import com.daebangg.sayroam.global.exception.BusinessException;
 import com.daebangg.sayroam.room.application.service.RoomService;
@@ -37,7 +38,7 @@ class ChatMessageServiceTest extends DatabaseIntegrationTest {
     ChatMessageService chatMessageService;
 
     @Autowired
-    ChatMessageRepository chatMessageRepository;
+    ChatMessageJpaRepository chatMessageRepository;
 
     @Autowired
     RoomService roomService;

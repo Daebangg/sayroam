@@ -3,8 +3,9 @@ package com.daebangg.sayroam.chat.presentation.stomp;
 import com.daebangg.sayroam.auth.application.error.AuthErrorCode;
 import com.daebangg.sayroam.auth.application.error.AuthException;
 import com.daebangg.sayroam.auth.application.service.AccountAuthenticationService;
-import com.daebangg.sayroam.chat.application.ChatMessageService;
 import com.daebangg.sayroam.chat.application.dto.ChatMessageResult;
+import com.daebangg.sayroam.chat.application.port.out.ChatConnectionCloser;
+import com.daebangg.sayroam.chat.application.service.ChatMessageService;
 import com.daebangg.sayroam.chat.presentation.dto.ChatErrorResponse;
 import com.daebangg.sayroam.chat.presentation.dto.ChatMessageRequest;
 import com.daebangg.sayroam.chat.presentation.dto.ChatMessageResponse;
@@ -24,7 +25,7 @@ import org.springframework.stereotype.Controller;
 public class ChatMessageStompController {
     private final ChatMessageService chatMessageService;
     private final AccountAuthenticationService accountAuthenticationService;
-    private final StompSessionCloser sessionCloser;
+    private final ChatConnectionCloser sessionCloser;
 
     @MessageMapping("/rooms/{roomId}/messages")
     @SendToUser("/queue/messages")

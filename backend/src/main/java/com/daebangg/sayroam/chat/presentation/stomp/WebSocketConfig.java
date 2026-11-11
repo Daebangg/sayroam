@@ -1,7 +1,5 @@
-package com.daebangg.sayroam.chat.infrastructure.config;
+package com.daebangg.sayroam.chat.presentation.stomp;
 
-import com.daebangg.sayroam.chat.presentation.stomp.StompAuthInterceptor;
-import com.daebangg.sayroam.chat.presentation.stomp.StompErrorHandler;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.messaging.simp.config.ChannelRegistration;

@@ -1,4 +1,4 @@
-package com.daebangg.sayroam.chat.application;
+package com.daebangg.sayroam.chat.application.service;
 
 import com.daebangg.sayroam.chat.application.dto.ChatMessageResult;
 import com.daebangg.sayroam.chat.domain.ChatMessage;
@@ -7,7 +7,6 @@ import com.daebangg.sayroam.chat.domain.event.ChatMessageSent;
 import com.daebangg.sayroam.room.application.service.RoomService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.data.domain.Limit;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -40,7 +39,7 @@ public class ChatMessageService {
     public List<ChatMessageResult> findAfter(Long roomId, Long userId, Long afterId, int size) {
         LocalDateTime joinedAt = roomService.getJoinedAt(roomId, userId);
 
-        return chatMessageRepository.findVisibleAfter(roomId, afterId, joinedAt, Limit.of(size))
+        return chatMessageRepository.findVisibleAfter(roomId, afterId, joinedAt, size)
                 .stream()
                 .map(ChatMessageResult::from)
                 .toList();

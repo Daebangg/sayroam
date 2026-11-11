@@ -1,6 +1,7 @@
-package com.daebangg.sayroam.chat.presentation.stomp;
+package com.daebangg.sayroam.chat.infrastructure.messaging;
 
 import com.daebangg.sayroam.auth.domain.event.LoginsInvalidated;
+import com.daebangg.sayroam.chat.presentation.stomp.ChatPrincipal;
 import com.daebangg.sayroam.room.domain.event.RoomMemberLeft;
 import org.junit.jupiter.api.Test;
 import org.springframework.messaging.Message;
@@ -28,7 +29,7 @@ class StompSessionRevokerTest {
     private final DefaultSimpUserRegistry userRegistry = new DefaultSimpUserRegistry();
     private final List<Message<?>> sentFrames = new ArrayList<>();
     private final StompSessionRevoker revoker = new StompSessionRevoker(userRegistry,
-            new StompSessionCloser((message, timeout) -> sentFrames.add(message)));
+            new StompChatConnectionCloser((message, timeout) -> sentFrames.add(message)));
 
     @Test
     void 로그인이_무효화되면_그_회원의_모든_세션을_종료한다() {
@@ -110,7 +111,7 @@ class StompSessionRevokerTest {
     void 세션_종료에_실패해도_예외를_전파하지_않는다() {
         // given
         StompSessionRevoker failingRevoker = new StompSessionRevoker(userRegistry,
-                new StompSessionCloser((message, timeout) -> {
+                new StompChatConnectionCloser((message, timeout) -> {
                     throw new IllegalStateException("closed channel");
                 }));
         connect("phone", USER_ID);
