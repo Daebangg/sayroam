@@ -4,20 +4,20 @@ import com.daebangg.sayroam.auth.application.port.out.AccessTokenIssuer;
 import com.daebangg.sayroam.auth.application.port.out.AccountDeletion;
 import com.daebangg.sayroam.auth.application.port.out.PasswordChange;
 import com.daebangg.sayroam.auth.infrastructure.config.AccessTokenProperties;
-import com.daebangg.sayroam.chat.domain.ChatMessageRepository;
+import com.daebangg.sayroam.chat.infrastructure.persistence.ChatMessageJpaRepository;
 import com.daebangg.sayroam.global.exception.CommonErrorCode;
-import com.daebangg.sayroam.room.application.RoomService;
+import com.daebangg.sayroam.room.application.service.RoomService;
 import com.daebangg.sayroam.room.domain.Room;
-import com.daebangg.sayroam.room.domain.RoomErrorCode;
 import com.daebangg.sayroam.room.domain.RoomMember;
-import com.daebangg.sayroam.room.domain.RoomMemberRepository;
-import com.daebangg.sayroam.room.domain.RoomRepository;
+import com.daebangg.sayroam.room.domain.error.RoomErrorCode;
+import com.daebangg.sayroam.room.infrastructure.persistence.RoomJpaRepository;
+import com.daebangg.sayroam.room.infrastructure.persistence.RoomMemberJpaRepository;
 import com.daebangg.sayroam.support.DatabaseIntegrationTest;
-import com.daebangg.sayroam.user.domain.type.Role;
 import com.daebangg.sayroam.user.domain.entity.User;
 import com.daebangg.sayroam.user.domain.entity.UserCredential;
+import com.daebangg.sayroam.user.domain.repository.UserRepository;
+import com.daebangg.sayroam.user.domain.type.Role;
 import jakarta.persistence.EntityManager;
-import jakarta.persistence.EntityManagerFactory;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -90,22 +90,22 @@ class ChatStompIntegrationTest extends DatabaseIntegrationTest {
     RoomService roomService;
 
     @Autowired
-    RoomRepository roomRepository;
+    RoomJpaRepository roomRepository;
 
     @Autowired
-    RoomMemberRepository roomMemberRepository;
+    RoomMemberJpaRepository roomMemberRepository;
 
     @Autowired
-    ChatMessageRepository chatMessageRepository;
+    ChatMessageJpaRepository chatMessageRepository;
+
+    @Autowired
+    UserRepository userRepository;
 
     @Autowired
     TransactionTemplate transactionTemplate;
 
     @Autowired
     EntityManager entityManager;
-
-    @Autowired
-    EntityManagerFactory entityManagerFactory;
 
     @AfterEach
     void cleanUp() {
@@ -623,10 +623,7 @@ class ChatStompIntegrationTest extends DatabaseIntegrationTest {
     }
 
     private Long saveUser() {
-        return transactionTemplate.execute(status -> {
-            User user = User.builder().nickname("회원").role(Role.USER).build();
-            entityManager.persist(user);
-            return (Long) entityManagerFactory.getPersistenceUnitUtil().getIdentifier(user);
-        });
+        User user = User.builder().nickname("회원").role(Role.USER).build();
+        return userRepository.save(user).getId();
     }
 }

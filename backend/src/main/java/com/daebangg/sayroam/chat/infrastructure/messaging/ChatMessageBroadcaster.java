@@ -1,4 +1,4 @@
-package com.daebangg.sayroam.chat.infrastructure;
+package com.daebangg.sayroam.chat.infrastructure.messaging;
 
 import com.daebangg.sayroam.chat.domain.event.ChatMessageSent;
 import lombok.RequiredArgsConstructor;

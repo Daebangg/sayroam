@@ -1,4 +1,4 @@
-package com.daebangg.sayroam.trip.application;
+package com.daebangg.sayroam.trip.application.service;
 
 import com.daebangg.sayroam.common.domain.TravelPeriod;
 import com.daebangg.sayroam.trip.domain.Trip;

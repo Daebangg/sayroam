@@ -1,14 +1,14 @@
-package com.daebangg.sayroam.room.application;
+package com.daebangg.sayroam.room.application.service;
 
 import com.daebangg.sayroam.global.exception.BusinessException;
 import com.daebangg.sayroam.room.domain.Room;
-import com.daebangg.sayroam.room.domain.RoomErrorCode;
 import com.daebangg.sayroam.room.domain.RoomInvitation;
-import com.daebangg.sayroam.room.domain.RoomInvitationRepository;
 import com.daebangg.sayroam.room.domain.RoomMember;
+import com.daebangg.sayroam.room.domain.error.RoomErrorCode;
+import com.daebangg.sayroam.room.domain.event.RoomMemberLeft;
+import com.daebangg.sayroam.room.domain.RoomInvitationRepository;
 import com.daebangg.sayroam.room.domain.RoomMemberRepository;
 import com.daebangg.sayroam.room.domain.RoomRepository;
-import com.daebangg.sayroam.room.domain.event.RoomMemberLeft;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
@@ -31,14 +31,6 @@ public class RoomService {
         Room room = roomRepository.save(new Room(name));
         roomMemberRepository.save(RoomMember.joinAsOwner(room, userId, LocalDateTime.now(ZoneOffset.UTC)));
         return room.getId();
-    }
-
-    public void ensureJoined(Long roomId, Long userId) {
-        getJoinedMember(roomId, userId);
-    }
-
-    public LocalDateTime getJoinedAt(Long roomId, Long userId) {
-        return getJoinedMember(roomId, userId).getJoinedAt();
     }
 
     @Transactional
@@ -66,6 +58,14 @@ public class RoomService {
         RoomMember member = getMember(roomId, userId);
         member.leave(LocalDateTime.now(ZoneOffset.UTC));
         eventPublisher.publishEvent(new RoomMemberLeft(roomId, userId));
+    }
+
+    public void ensureJoined(Long roomId, Long userId) {
+        getJoinedMember(roomId, userId);
+    }
+
+    public LocalDateTime getJoinedAt(Long roomId, Long userId) {
+        return getJoinedMember(roomId, userId).getJoinedAt();
     }
 
     private RoomMember getMember(Long roomId, Long userId) {

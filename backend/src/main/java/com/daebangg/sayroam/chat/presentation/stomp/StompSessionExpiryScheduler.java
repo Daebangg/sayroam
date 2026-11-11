@@ -1,5 +1,6 @@
 package com.daebangg.sayroam.chat.presentation.stomp;
 
+import com.daebangg.sayroam.chat.application.port.out.ChatConnectionCloser;
 import com.daebangg.sayroam.global.exception.CommonErrorCode;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.event.EventListener;
@@ -17,11 +18,11 @@ import java.util.concurrent.ScheduledFuture;
 @Component
 public class StompSessionExpiryScheduler {
     private final TaskScheduler taskScheduler;
-    private final StompSessionCloser sessionCloser;
+    private final ChatConnectionCloser sessionCloser;
     private final Map<String, ScheduledFuture<?>> expirations = new ConcurrentHashMap<>();
 
     public StompSessionExpiryScheduler(@Qualifier("messageBrokerTaskScheduler") TaskScheduler taskScheduler,
-                                       StompSessionCloser sessionCloser) {
+                                       ChatConnectionCloser sessionCloser) {
         this.taskScheduler = taskScheduler;
         this.sessionCloser = sessionCloser;
     }

@@ -1,7 +1,8 @@
-package com.daebangg.sayroam.chat.presentation;
+package com.daebangg.sayroam.chat.presentation.controller;
 
 import com.daebangg.sayroam.auth.domain.AuthenticatedAccount;
-import com.daebangg.sayroam.chat.application.ChatMessageService;
+import com.daebangg.sayroam.chat.application.service.ChatMessageService;
+import com.daebangg.sayroam.chat.presentation.api.ChatMessageApi;
 import com.daebangg.sayroam.chat.presentation.dto.ChatMessageResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;

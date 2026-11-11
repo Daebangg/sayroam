@@ -1,6 +1,6 @@
 package com.daebangg.sayroam.room.domain;
 
-import org.springframework.data.jpa.repository.JpaRepository;
+public interface RoomRepository {
 
-public interface RoomRepository extends JpaRepository<Room, Long> {
+    <S extends Room> S save(S room);
 }

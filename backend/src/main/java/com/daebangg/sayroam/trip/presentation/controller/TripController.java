@@ -1,7 +1,8 @@
-package com.daebangg.sayroam.trip.presentation;
+package com.daebangg.sayroam.trip.presentation.controller;
 
 import com.daebangg.sayroam.auth.domain.AuthenticatedAccount;
-import com.daebangg.sayroam.trip.application.TripService;
+import com.daebangg.sayroam.trip.application.service.TripService;
+import com.daebangg.sayroam.trip.presentation.api.TripApi;
 import com.daebangg.sayroam.trip.presentation.dto.CreateTripRequest;
 import com.daebangg.sayroam.trip.presentation.dto.CreateTripResponse;
 import jakarta.validation.Valid;

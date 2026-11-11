@@ -3,7 +3,7 @@ package com.daebangg.sayroam.chat.presentation.stomp;
 import com.daebangg.sayroam.auth.application.service.AccountAuthenticationService;
 import com.daebangg.sayroam.auth.domain.AuthenticatedAccount;
 import com.daebangg.sayroam.global.security.ActiveAccountJwtConverter;
-import com.daebangg.sayroam.room.application.RoomService;
+import com.daebangg.sayroam.room.application.service.RoomService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageChannel;

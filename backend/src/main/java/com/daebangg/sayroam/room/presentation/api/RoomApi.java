@@ -1,4 +1,4 @@
-package com.daebangg.sayroam.room.presentation;
+package com.daebangg.sayroam.room.presentation.api;
 
 import com.daebangg.sayroam.auth.domain.AuthenticatedAccount;
 import com.daebangg.sayroam.room.presentation.dto.CreateRoomInvitationResponse;

@@ -1,7 +1,8 @@
-package com.daebangg.sayroam.room.presentation;
+package com.daebangg.sayroam.room.presentation.controller;
 
 import com.daebangg.sayroam.auth.domain.AuthenticatedAccount;
-import com.daebangg.sayroam.room.application.RoomService;
+import com.daebangg.sayroam.room.application.service.RoomService;
+import com.daebangg.sayroam.room.presentation.api.RoomApi;
 import com.daebangg.sayroam.room.presentation.dto.CreateRoomInvitationResponse;
 import com.daebangg.sayroam.room.presentation.dto.CreateRoomRequest;
 import com.daebangg.sayroam.room.presentation.dto.CreateRoomResponse;

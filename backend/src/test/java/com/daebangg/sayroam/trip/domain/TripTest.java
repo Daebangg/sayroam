@@ -2,6 +2,7 @@ package com.daebangg.sayroam.trip.domain;
 
 import com.daebangg.sayroam.common.domain.TravelPeriod;
 import com.daebangg.sayroam.global.exception.BusinessException;
+import com.daebangg.sayroam.trip.domain.error.TripErrorCode;
 import org.junit.jupiter.api.Test;
 
 import java.time.LocalDate;

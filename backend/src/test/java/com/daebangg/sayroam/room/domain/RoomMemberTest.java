@@ -1,6 +1,7 @@
 package com.daebangg.sayroam.room.domain;
 
 import com.daebangg.sayroam.global.exception.BusinessException;
+import com.daebangg.sayroam.room.domain.error.RoomErrorCode;
 import org.junit.jupiter.api.Test;
 
 import java.time.LocalDateTime;

@@ -1,4 +1,4 @@
-package com.daebangg.sayroam.trip.presentation;
+package com.daebangg.sayroam.trip.presentation.api;
 
 import com.daebangg.sayroam.auth.domain.AuthenticatedAccount;
 import com.daebangg.sayroam.trip.presentation.dto.CreateTripRequest;

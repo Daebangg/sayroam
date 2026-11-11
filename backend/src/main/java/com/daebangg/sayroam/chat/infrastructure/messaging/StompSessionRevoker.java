@@ -1,9 +1,10 @@
-package com.daebangg.sayroam.chat.presentation.stomp;
+package com.daebangg.sayroam.chat.infrastructure.messaging;
 
 import com.daebangg.sayroam.auth.domain.event.LoginsInvalidated;
+import com.daebangg.sayroam.chat.application.port.out.ChatConnectionCloser;
 import com.daebangg.sayroam.global.exception.CommonErrorCode;
 import com.daebangg.sayroam.global.exception.ErrorCode;
-import com.daebangg.sayroam.room.domain.RoomErrorCode;
+import com.daebangg.sayroam.room.domain.error.RoomErrorCode;
 import com.daebangg.sayroam.room.domain.event.RoomMemberLeft;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.messaging.simp.user.SimpSession;
@@ -20,9 +21,9 @@ import java.util.function.Predicate;
 @Component
 public class StompSessionRevoker {
     private final SimpUserRegistry userRegistry;
-    private final StompSessionCloser sessionCloser;
+    private final ChatConnectionCloser sessionCloser;
 
-    public StompSessionRevoker(SimpUserRegistry userRegistry, StompSessionCloser sessionCloser) {
+    public StompSessionRevoker(SimpUserRegistry userRegistry, ChatConnectionCloser sessionCloser) {
         this.userRegistry = userRegistry;
         this.sessionCloser = sessionCloser;
     }
@@ -37,7 +38,7 @@ public class StompSessionRevoker {
     public void onRoomMemberLeft(RoomMemberLeft event) {
         String roomTopic = "/topic/rooms/" + event.roomId();
         closeSessions(event.userId(), session -> session.getSubscriptions().stream()
-                .anyMatch(subscription -> subscription.getDestination().equals(roomTopic)),
+                        .anyMatch(subscription -> subscription.getDestination().equals(roomTopic)),
                 RoomErrorCode.ROOM_ACCESS_DENIED);
     }
 

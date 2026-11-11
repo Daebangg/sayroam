@@ -1,5 +1,6 @@
 package com.daebangg.sayroam.chat.presentation.stomp;
 
+import com.daebangg.sayroam.chat.application.port.out.ChatConnectionCloser;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.messaging.Message;
@@ -25,7 +26,7 @@ class StompSessionExpirySchedulerTest {
     private static final Instant EXPIRES_AT = Instant.parse("2026-11-07T10:00:00Z");
 
     private final TaskScheduler taskScheduler = mock(TaskScheduler.class);
-    private final StompSessionCloser sessionCloser = mock(StompSessionCloser.class);
+    private final ChatConnectionCloser sessionCloser = mock(ChatConnectionCloser.class);
     private final StompSessionExpiryScheduler scheduler =
             new StompSessionExpiryScheduler(taskScheduler, sessionCloser);
 
