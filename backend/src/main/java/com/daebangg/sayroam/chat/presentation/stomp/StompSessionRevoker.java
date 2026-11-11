@@ -3,7 +3,7 @@ package com.daebangg.sayroam.chat.presentation.stomp;
 import com.daebangg.sayroam.auth.domain.event.LoginsInvalidated;
 import com.daebangg.sayroam.global.exception.CommonErrorCode;
 import com.daebangg.sayroam.global.exception.ErrorCode;
-import com.daebangg.sayroam.room.domain.RoomErrorCode;
+import com.daebangg.sayroam.room.domain.error.RoomErrorCode;
 import com.daebangg.sayroam.room.domain.event.RoomMemberLeft;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.messaging.simp.user.SimpSession;
@@ -37,7 +37,7 @@ public class StompSessionRevoker {
     public void onRoomMemberLeft(RoomMemberLeft event) {
         String roomTopic = "/topic/rooms/" + event.roomId();
         closeSessions(event.userId(), session -> session.getSubscriptions().stream()
-                .anyMatch(subscription -> subscription.getDestination().equals(roomTopic)),
+                        .anyMatch(subscription -> subscription.getDestination().equals(roomTopic)),
                 RoomErrorCode.ROOM_ACCESS_DENIED);
     }
 

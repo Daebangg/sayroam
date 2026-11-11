@@ -3,14 +3,13 @@ package com.daebangg.sayroam.chat.infrastructure;
 import com.daebangg.sayroam.chat.application.ChatMessageService;
 import com.daebangg.sayroam.chat.domain.ChatMessageRepository;
 import com.daebangg.sayroam.chat.domain.event.ChatMessageSent;
-import com.daebangg.sayroam.room.application.RoomService;
-import com.daebangg.sayroam.room.domain.RoomMemberRepository;
-import com.daebangg.sayroam.room.domain.RoomRepository;
+import com.daebangg.sayroam.room.application.service.RoomService;
+import com.daebangg.sayroam.room.infrastructure.persistence.RoomJpaRepository;
+import com.daebangg.sayroam.room.infrastructure.persistence.RoomMemberJpaRepository;
 import com.daebangg.sayroam.support.DatabaseIntegrationTest;
-import com.daebangg.sayroam.user.domain.type.Role;
 import com.daebangg.sayroam.user.domain.entity.User;
-import jakarta.persistence.EntityManager;
-import jakarta.persistence.EntityManagerFactory;
+import com.daebangg.sayroam.user.domain.repository.UserRepository;
+import com.daebangg.sayroam.user.domain.type.Role;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -39,27 +38,23 @@ class ChatMessageBroadcasterTest extends DatabaseIntegrationTest {
     RoomService roomService;
 
     @Autowired
-    RoomRepository roomRepository;
+    RoomJpaRepository roomRepository;
 
     @Autowired
-    RoomMemberRepository roomMemberRepository;
+    RoomMemberJpaRepository roomMemberRepository;
+
+    @Autowired
+    UserRepository userRepository;
 
     @Autowired
     TransactionTemplate transactionTemplate;
-
-    @Autowired
-    EntityManager entityManager;
-
-    @Autowired
-    EntityManagerFactory entityManagerFactory;
 
     @AfterEach
     void cleanUp() {
         chatMessageRepository.deleteAllInBatch();
         roomMemberRepository.deleteAllInBatch();
         roomRepository.deleteAllInBatch();
-        transactionTemplate.executeWithoutResult(status ->
-                entityManager.createQuery("DELETE FROM User").executeUpdate());
+        userRepository.deleteAllInBatch();
     }
 
     @Test
@@ -95,10 +90,7 @@ class ChatMessageBroadcasterTest extends DatabaseIntegrationTest {
     }
 
     private Long saveUser() {
-        return transactionTemplate.execute(status -> {
-            User user = User.builder().nickname("방장").role(Role.USER).build();
-            entityManager.persist(user);
-            return (Long) entityManagerFactory.getPersistenceUnitUtil().getIdentifier(user);
-        });
+        User user = User.builder().nickname("방장").role(Role.USER).build();
+        return userRepository.save(user).getId();
     }
 }

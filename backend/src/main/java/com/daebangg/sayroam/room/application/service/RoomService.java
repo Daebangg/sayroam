@@ -1,14 +1,14 @@
-package com.daebangg.sayroam.room.application;
+package com.daebangg.sayroam.room.application.service;
 
 import com.daebangg.sayroam.global.exception.BusinessException;
 import com.daebangg.sayroam.room.domain.Room;
-import com.daebangg.sayroam.room.domain.RoomErrorCode;
 import com.daebangg.sayroam.room.domain.RoomInvitation;
-import com.daebangg.sayroam.room.domain.RoomInvitationRepository;
 import com.daebangg.sayroam.room.domain.RoomMember;
+import com.daebangg.sayroam.room.domain.error.RoomErrorCode;
+import com.daebangg.sayroam.room.domain.event.RoomMemberLeft;
+import com.daebangg.sayroam.room.domain.RoomInvitationRepository;
 import com.daebangg.sayroam.room.domain.RoomMemberRepository;
 import com.daebangg.sayroam.room.domain.RoomRepository;
-import com.daebangg.sayroam.room.domain.event.RoomMemberLeft;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;

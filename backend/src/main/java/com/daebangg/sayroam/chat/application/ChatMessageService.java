@@ -4,7 +4,7 @@ import com.daebangg.sayroam.chat.application.dto.ChatMessageResult;
 import com.daebangg.sayroam.chat.domain.ChatMessage;
 import com.daebangg.sayroam.chat.domain.ChatMessageRepository;
 import com.daebangg.sayroam.chat.domain.event.ChatMessageSent;
-import com.daebangg.sayroam.room.application.RoomService;
+import com.daebangg.sayroam.room.application.service.RoomService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Limit;

@@ -1,4 +1,4 @@
-package com.daebangg.sayroam.room.domain;
+package com.daebangg.sayroam.room.domain.error;
 
 import com.daebangg.sayroam.global.exception.ErrorCode;
 import com.daebangg.sayroam.global.exception.ErrorType;

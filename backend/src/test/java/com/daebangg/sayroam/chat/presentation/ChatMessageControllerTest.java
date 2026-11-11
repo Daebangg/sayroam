@@ -8,7 +8,7 @@ import com.daebangg.sayroam.chat.application.dto.ChatMessageResult;
 import com.daebangg.sayroam.global.exception.BusinessException;
 import com.daebangg.sayroam.global.security.ActiveAccountJwtConverter;
 import com.daebangg.sayroam.global.security.SecurityConfig;
-import com.daebangg.sayroam.room.domain.RoomErrorCode;
+import com.daebangg.sayroam.room.domain.error.RoomErrorCode;
 import com.daebangg.sayroam.user.domain.type.Role;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;

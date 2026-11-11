@@ -2,7 +2,7 @@ package com.daebangg.sayroam.chat.presentation.stomp;
 
 import com.daebangg.sayroam.auth.application.service.AccountAuthenticationService;
 import com.daebangg.sayroam.global.security.ActiveAccountJwtConverter;
-import com.daebangg.sayroam.room.application.RoomService;
+import com.daebangg.sayroam.room.application.service.RoomService;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.springframework.messaging.Message;

@@ -2,6 +2,7 @@ package com.daebangg.sayroam.room.domain;
 
 import com.daebangg.sayroam.global.entity.BaseTimeEntity;
 import com.daebangg.sayroam.global.exception.BusinessException;
+import com.daebangg.sayroam.room.domain.error.RoomErrorCode;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;

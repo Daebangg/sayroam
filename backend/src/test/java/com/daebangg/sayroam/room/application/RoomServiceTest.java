@@ -1,17 +1,18 @@
 package com.daebangg.sayroam.room.application;
 
 import com.daebangg.sayroam.global.exception.BusinessException;
-import com.daebangg.sayroam.room.domain.RoomErrorCode;
-import com.daebangg.sayroam.room.domain.RoomInvitationRepository;
+import com.daebangg.sayroam.room.application.service.RoomService;
 import com.daebangg.sayroam.room.domain.RoomMember;
-import com.daebangg.sayroam.room.domain.RoomMemberRepository;
-import com.daebangg.sayroam.room.domain.RoomRepository;
+import com.daebangg.sayroam.room.domain.error.RoomErrorCode;
 import com.daebangg.sayroam.room.domain.event.RoomMemberLeft;
+import com.daebangg.sayroam.room.infrastructure.persistence.RoomInvitationJpaRepository;
+import com.daebangg.sayroam.room.infrastructure.persistence.RoomJpaRepository;
+import com.daebangg.sayroam.room.infrastructure.persistence.RoomMemberJpaRepository;
 import com.daebangg.sayroam.support.DatabaseIntegrationTest;
 import com.daebangg.sayroam.user.domain.entity.User;
+import com.daebangg.sayroam.user.domain.repository.UserRepository;
 import com.daebangg.sayroam.user.domain.type.Role;
 import jakarta.persistence.EntityManager;
-import jakarta.persistence.EntityManagerFactory;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -37,20 +38,19 @@ class RoomServiceTest extends DatabaseIntegrationTest {
     ApplicationEvents events;
 
     @Autowired
-    RoomRepository roomRepository;
+    RoomJpaRepository roomRepository;
 
     @Autowired
-    RoomMemberRepository roomMemberRepository;
+    RoomMemberJpaRepository roomMemberRepository;
 
     @Autowired
-    RoomInvitationRepository invitationRepository;
+    RoomInvitationJpaRepository invitationRepository;
 
-    // TODO: UserRepository 머지 후 회원 저장·정리를 userRepository로 교체
+    @Autowired
+    UserRepository userRepository;
+
     @Autowired
     EntityManager entityManager;
-
-    @Autowired
-    EntityManagerFactory entityManagerFactory;
 
     @Autowired
     TransactionTemplate transactionTemplate;
@@ -60,8 +60,7 @@ class RoomServiceTest extends DatabaseIntegrationTest {
         invitationRepository.deleteAllInBatch();
         roomMemberRepository.deleteAllInBatch();
         roomRepository.deleteAllInBatch();
-        transactionTemplate.executeWithoutResult(status ->
-                entityManager.createQuery("DELETE FROM User").executeUpdate());
+        userRepository.deleteAllInBatch();
     }
 
     @Test
@@ -306,11 +305,8 @@ class RoomServiceTest extends DatabaseIntegrationTest {
     }
 
     private Long saveUser() {
-        return transactionTemplate.execute(status -> {
-            User user = User.builder().nickname("방장").role(Role.USER).build();
-            entityManager.persist(user);
-            return (Long) entityManagerFactory.getPersistenceUnitUtil().getIdentifier(user);
-        });
+        User user = User.builder().nickname("방장").role(Role.USER).build();
+        return userRepository.save(user).getId();
     }
 
     private void expireInvitation(String code) {

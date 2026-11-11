@@ -5,16 +5,15 @@ import com.daebangg.sayroam.chat.domain.ChatMessage;
 import com.daebangg.sayroam.chat.domain.ChatMessageRepository;
 import com.daebangg.sayroam.chat.domain.event.ChatMessageSent;
 import com.daebangg.sayroam.global.exception.BusinessException;
-import com.daebangg.sayroam.room.application.RoomService;
-import com.daebangg.sayroam.room.domain.RoomErrorCode;
-import com.daebangg.sayroam.room.domain.RoomInvitationRepository;
-import com.daebangg.sayroam.room.domain.RoomMemberRepository;
-import com.daebangg.sayroam.room.domain.RoomRepository;
+import com.daebangg.sayroam.room.application.service.RoomService;
+import com.daebangg.sayroam.room.domain.error.RoomErrorCode;
+import com.daebangg.sayroam.room.infrastructure.persistence.RoomInvitationJpaRepository;
+import com.daebangg.sayroam.room.infrastructure.persistence.RoomJpaRepository;
+import com.daebangg.sayroam.room.infrastructure.persistence.RoomMemberJpaRepository;
 import com.daebangg.sayroam.support.DatabaseIntegrationTest;
-import com.daebangg.sayroam.user.domain.type.Role;
 import com.daebangg.sayroam.user.domain.entity.User;
-import jakarta.persistence.EntityManager;
-import jakarta.persistence.EntityManagerFactory;
+import com.daebangg.sayroam.user.domain.repository.UserRepository;
+import com.daebangg.sayroam.user.domain.type.Role;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -47,19 +46,16 @@ class ChatMessageServiceTest extends DatabaseIntegrationTest {
     TransactionTemplate transactionTemplate;
 
     @Autowired
-    EntityManagerFactory entityManagerFactory;
+    UserRepository userRepository;
 
     @Autowired
-    EntityManager entityManager;
+    private RoomMemberJpaRepository roomMemberRepository;
 
     @Autowired
-    private RoomMemberRepository roomMemberRepository;
+    private RoomJpaRepository roomRepository;
 
     @Autowired
-    private RoomRepository roomRepository;
-
-    @Autowired
-    private RoomInvitationRepository roomInvitationRepository;
+    private RoomInvitationJpaRepository roomInvitationRepository;
 
     @Autowired
     ApplicationEvents events;
@@ -70,8 +66,7 @@ class ChatMessageServiceTest extends DatabaseIntegrationTest {
         roomInvitationRepository.deleteAllInBatch();
         roomMemberRepository.deleteAllInBatch();
         roomRepository.deleteAllInBatch();
-        transactionTemplate.executeWithoutResult(status ->
-                entityManager.createQuery("DELETE FROM User").executeUpdate());
+        userRepository.deleteAllInBatch();
     }
 
 
@@ -311,10 +306,7 @@ class ChatMessageServiceTest extends DatabaseIntegrationTest {
     }
 
     private Long saveUser() {
-        return transactionTemplate.execute(status -> {
-            User user = User.builder().nickname("방장").role(Role.USER).build();
-            entityManager.persist(user);
-            return (Long) entityManagerFactory.getPersistenceUnitUtil().getIdentifier(user);
-        });
+        User user = User.builder().nickname("방장").role(Role.USER).build();
+        return userRepository.save(user).getId();
     }
 }
