@@ -76,8 +76,8 @@ public class UserService {
     }
 
     public UserProfileResult uploadProfileImage(long userId, long expectedAuthVersion, String dataUrl) {
-        User user = requireCurrentUser(userRepository.findActiveByIdForUpdate(userId), expectedAuthVersion);
         byte[] content = imageProcessor.process(dataUrl);
+        User user = requireCurrentUser(userRepository.findActiveByIdForUpdate(userId), expectedAuthVersion);
         UserProfileImage image = profileImages.findById(userId).orElse(null);
         if (image == null) image = profileImages.save(new UserProfileImage(userId, content));
         else image.replace(content);
