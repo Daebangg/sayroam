@@ -185,19 +185,20 @@ Swagger 애너테이션(`io.swagger.v3.oas.annotations.*`)은 `presentation/api`
 
 ### 이름 규칙
 
-- 포트: `기능 + Port` (예: `PaymentPort`, `OrderCachePort`, `NotificationPort`)
-- 어댑터: `기술/업체 + 기능 + Adapter` (예: `TossPaymentAdapter`, `RedisOrderCacheAdapter`)
+- 포트는 맡은 역할로 이름 짓습니다. 예: `RefreshTokenStore`, `PasswordHasher`, `VerificationEmailSender`.
+- 구현 클래스는 포트 이름 앞에 기술이나 업체 이름을 붙입니다. 예: `RedisRefreshTokenStore`, `SmtpVerificationEmailSender`.
+- `Port`, `Adapter` 접미사는 붙이지 않습니다.
 - 포트 메서드의 파라미터와 반환값에는 외부 기술 타입(업체 SDK 객체, `ResponseEntity` 등)을 쓰지 않고 도메인 타입이나 application 전용 DTO를 씁니다.
 
 ```java
 // application/port/out
-public interface PaymentPort {
+public interface PaymentGateway {
     PaymentResult pay(PaymentRequest request);
 }
 
 // infrastructure/payment
 @Component
-class TossPaymentAdapter implements PaymentPort {
+class TossPaymentGateway implements PaymentGateway {
     public PaymentResult pay(PaymentRequest request) {
         // 업체 API 호출 및 응답 변환
     }
@@ -293,7 +294,7 @@ interface TripJpaRepository extends JpaRepository<Trip, Long> {
 
 @Repository
 @RequiredArgsConstructor
-class TripRepositoryAdapter implements TripRepository {
+class DelegatingTripRepository implements TripRepository {
     private final TripJpaRepository jpa;
     private final TripMapper mapper;
 
