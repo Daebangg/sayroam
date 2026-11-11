@@ -224,9 +224,12 @@ public interface OrderJpaRepository extends OrderRepository, JpaRepository<Order
 ```
 
 - `save`, `findById`처럼 `JpaRepository`와 시그니처가 같은 메서드는 Spring Data 기본 구현이 연결됩니다. `save`는 `JpaRepository`와 같은 제네릭 형태(`<S extends T> S save(S)`)로 선언합니다.
+- infrastructure 타입(`OrderJpaRepository`)으로 `save`를 호출하는 곳이 있으면 그 인터페이스에서 `save`를 `@Override`로 다시 선언합니다. domain의 `save(Order)`와 `CrudRepository`의 `save(Object)`는 erasure가 달라 두 메서드가 합쳐지지 않으므로, 다시 선언하지 않으면 호출부에서 `reference to save is ambiguous` 컴파일 오류가 납니다.
 - `findBy...` 쿼리 메서드는 domain 인터페이스에 선언해도 메서드 이름으로 쿼리가 생성됩니다.
 - `@Query`만 필요한 메서드는 infrastructure 인터페이스에서 같은 메서드를 `@Override`로 다시 선언하고 거기에 `@Query`를 붙입니다. 스프링 애너테이션을 domain에 두지 않기 위해서입니다.
-- `Pageable`·`Limit` 같은 Spring Data 타입이 필요하거나 직접 작성한 구현이 필요한 메서드는 아래 "일부 메서드를 직접 구현할 때"를 따릅니다. domain 인터페이스의 시그니처에는 Spring 타입을 쓰지 않습니다(예: `Limit` 대신 `int size`).
+- domain 인터페이스의 시그니처에는 Spring 타입을 쓰지 않습니다(예: `Limit` 대신 `int size`).
+- `@Query`나 쿼리 메서드는 그대로 쓰고 `Pageable`·`Limit` 같은 Spring Data 타입으로 바꾸기만 하면 되는 메서드는, infrastructure 인터페이스에 Spring 타입을 받는 메서드를 선언하고 domain 메서드를 `default` 메서드로 구현해 위임합니다. 쿼리 실행 방식이 바뀌지 않고 추가 클래스가 필요 없습니다.
+- 쿼리 메서드 이름이나 `@Query`만으로 만들 수 없는 메서드는 아래 "일부 메서드를 직접 구현할 때"를 따릅니다.
 - domain 인터페이스에는 application이 실제로 쓰는 메서드만 선언합니다. 테스트 정리(`deleteAllInBatch` 등)처럼 그 밖의 연산이 필요한 테스트는 infrastructure 타입(`OrderJpaRepository`)을 주입받습니다.
 - 리포지토리에 메서드를 추가하면 `DatabaseIntegrationTest` 기반 통합 테스트로 실제 쿼리가 동작하는지 확인합니다.
 
@@ -238,7 +241,7 @@ public interface OrderJpaRepository extends OrderRepository, JpaRepository<Order
 
 ### 일부 메서드를 직접 구현할 때
 
-쿼리 메서드 이름이나 `@Query` 선언만으로 만들 수 없는 메서드에 적용합니다. Spring Data 타입으로 변환해야 하거나, `EntityManager`·QueryDSL·MyBatis처럼 다른 방식으로 구현해야 하는 경우입니다. 간단한 메서드는 선언만 해서 Spring Data 구현을 쓰고, 이런 메서드만 직접 구현합니다. 아래 예시는 MyBatis를 썼지만 구현 방식과 무관하게 같은 구조를 씁니다.
+쿼리 메서드 이름이나 `@Query` 선언만으로 만들 수 없는 메서드에 적용합니다. `EntityManager`·QueryDSL·MyBatis처럼 다른 방식으로 구현해야 하는 경우입니다. 간단한 메서드는 선언만 해서 Spring Data 구현을 쓰고, 이런 메서드만 직접 구현합니다. 아래 예시는 MyBatis를 썼지만 구현 방식과 무관하게 같은 구조를 씁니다.
 
 서비스가 `TripRepository` 타입으로 주입받는 한 그 타입의 빈은 **하나만** 있어야 합니다. 같은 인터페이스의 구현을 둘 이상 빈으로 등록하면(예: JPA 구현과 MyBatis 구현) `NoUniqueBeanDefinitionException`이 발생합니다. 메서드 일부만 직접 구현해야 하면 아래 중 하나를 씁니다.
 
