@@ -47,11 +47,7 @@ domain은 어떤 계층도 참조하지 않습니다. infrastructure는 applicat
 
 ```text
 <domain>/
-  domain/
-    entity/        JPA 엔티티
-    vo/            생성자에서 검증하는 불변 값 객체
-    type/          enum
-    repository/    리포지토리 인터페이스
+  domain/          JPA 엔티티, enum, 값 객체, 리포지토리 인터페이스
     error/         ErrorCode 구현
     event/         도메인 이벤트
   application/
@@ -69,7 +65,9 @@ domain은 어떤 계층도 참조하지 않습니다. infrastructure는 applicat
 ### 하위 패키지
 
 - 위 목록에 없는 하위 패키지를 추가하지 않습니다. 필요하면 이 문서를 먼저 수정합니다.
-- 계층 안의 파일이 적으면 하위 패키지 없이 계층 바로 아래에 둘 수 있습니다. 나눌 때는 위 목록의 이름을 사용합니다.
+- `domain`은 엔티티, enum, 값 객체, 리포지토리 인터페이스를 종류별로 나누지 않고 `domain` 바로 아래에 둡니다. 함께 바뀌는 엔티티와 enum을 한 패키지에 모으고, 엔티티끼리 package-private으로 협력할 수 있게 하기 위해서입니다.
+- `domain`의 하위 패키지는 다른 계층과 도메인에 공개하는 계약인 `error/`(API 응답으로 나가는 에러 코드)와 `event/`(다른 도메인이 구독하는 이벤트)만 둡니다.
+- `application`, `presentation`, `infrastructure`는 계층 안의 파일이 적으면 하위 패키지 없이 계층 바로 아래에 둘 수 있습니다. 나눌 때는 위 목록의 이름을 사용합니다.
 - `infrastructure`의 하위 패키지는 역할로 나누고, 구현 기술은 클래스 이름의 접두사로 드러냅니다. 예: `persistence/RedisRefreshTokenStore`, `persistence/JpaAccountLookup`. `redis`, `jpa`, `smtp` 같은 기술 이름으로 패키지를 만들지 않습니다.
 - 저장 외의 역할(메일 발송, 결제 등)을 구현할 때는 역할 이름의 하위 패키지를 위 목록에 먼저 추가합니다.
 - 여러 도메인이 쓰는 값 객체는 `common/domain`, 전역 설정·예외·범용 헬퍼는 `global`에 둡니다.
