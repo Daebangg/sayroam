@@ -311,3 +311,9 @@ class DelegatingTripRepository implements TripRepository {
 
 - `TripJpaRepository`가 `TripRepository`를 상속하면 `TripRepository` 타입 빈이 두 개가 되므로 상속하지 않습니다.
 - 모든 메서드에 위임 코드를 써야 하므로 A로 해결되지 않을 때만 씁니다.
+
+#### JPA를 거치지 않고 조회한 객체
+
+- MyBatis나 네이티브 SQL 매핑처럼 JPA를 거치지 않고 만든 객체는 영속성 컨텍스트가 관리하지 않습니다. 상태를 바꿔도 변경 감지가 동작하지 않아 DB에 반영되지 않습니다.
+- 이렇게 조회한 결과는 읽기 전용으로만 씁니다. 수정이 필요하면 JPA(`findById` 등)로 엔티티를 다시 조회해 변경합니다.
+- `Impl`에서 `EntityManager`의 JPQL이나 QueryDSL로 조회한 엔티티는 JPA가 관리하므로 해당하지 않습니다.
