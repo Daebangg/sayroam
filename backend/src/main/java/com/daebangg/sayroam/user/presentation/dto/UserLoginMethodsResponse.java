@@ -1,7 +1,7 @@
 package com.daebangg.sayroam.user.presentation.dto;
 
-import com.daebangg.sayroam.user.application.result.UserLoginMethodsResult;
-import com.daebangg.sayroam.user.domain.type.SocialProvider;
+import com.daebangg.sayroam.user.application.dto.UserLoginMethodsResult;
+import com.daebangg.sayroam.user.domain.SocialProvider;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.util.List;
 

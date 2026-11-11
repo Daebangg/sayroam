@@ -1,6 +1,6 @@
 package com.daebangg.sayroam.auth.application.model;
 
-import com.daebangg.sayroam.user.domain.type.SocialProvider;
+import com.daebangg.sayroam.user.domain.SocialProvider;
 
 import java.util.Objects;
 

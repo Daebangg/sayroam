@@ -4,7 +4,7 @@ import com.daebangg.sayroam.auth.application.error.AuthErrorCode;
 import com.daebangg.sayroam.auth.application.error.AuthException;
 import com.daebangg.sayroam.auth.application.port.out.AccountLookup;
 import com.daebangg.sayroam.auth.domain.AuthenticatedAccount;
-import com.daebangg.sayroam.user.domain.type.Role;
+import com.daebangg.sayroam.user.domain.Role;
 import org.junit.jupiter.api.Test;
 
 import java.util.Optional;

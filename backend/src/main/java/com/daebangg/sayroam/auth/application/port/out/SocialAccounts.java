@@ -1,7 +1,7 @@
 package com.daebangg.sayroam.auth.application.port.out;
 
 import com.daebangg.sayroam.auth.application.model.SocialIdentity;
-import com.daebangg.sayroam.user.domain.type.SocialProvider;
+import com.daebangg.sayroam.user.domain.SocialProvider;
 
 import java.time.Instant;
 import java.util.Optional;

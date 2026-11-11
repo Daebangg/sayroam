@@ -1,7 +1,7 @@
 package com.daebangg.sayroam.auth.infrastructure.oauth;
 
 import com.daebangg.sayroam.auth.application.port.out.SocialIdentityProvider;
-import com.daebangg.sayroam.user.domain.type.SocialProvider;
+import com.daebangg.sayroam.user.domain.SocialProvider;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;

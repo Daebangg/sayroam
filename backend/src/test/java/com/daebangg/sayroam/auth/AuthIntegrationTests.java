@@ -12,9 +12,12 @@ import com.daebangg.sayroam.auth.domain.VerificationDigests;
 import com.daebangg.sayroam.auth.presentation.cookie.OAuthBrowserCookie;
 import com.daebangg.sayroam.global.config.SwaggerAuthIndexTransformer;
 import com.daebangg.sayroam.support.DatabaseIntegrationTest;
+import com.daebangg.sayroam.user.domain.User;
 import com.daebangg.sayroam.user.domain.error.UserErrorCode;
-import com.daebangg.sayroam.user.domain.type.SocialProvider;
+import com.daebangg.sayroam.user.domain.UserRepository;
+import com.daebangg.sayroam.user.domain.SocialProvider;
 import com.github.dockerjava.api.DockerClient;
+import jakarta.persistence.EntityManagerFactory;
 import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -81,6 +84,8 @@ class AuthIntegrationTests extends DatabaseIntegrationTest {
     @Autowired PasswordEncoder passwords;
     @Autowired MailCapture mail;
     @Autowired JwtEncoder encoder;
+    @Autowired UserRepository users;
+    @Autowired EntityManagerFactory entityManagerFactory;
     @Autowired SocialAuthTicketStore socialTickets;
     @Autowired OAuthBrowserCookie oauthBrowserCookie;
     @Autowired org.springframework.data.redis.core.StringRedisTemplate redis;
@@ -346,6 +351,9 @@ class AuthIntegrationTests extends DatabaseIntegrationTest {
         assertStatus(uploaded, 200);
         String firstUrl = json(uploaded).path("profileImageUrl").asText();
         assertThat(firstUrl).startsWith("/images/profiles/").endsWith(".jpg");
+        Long userId = json(uploaded).path("userId").asLong();
+        User member = users.findByIdAndDeletedAtIsNull(userId).orElseThrow();
+        assertThat(entityManagerFactory.getPersistenceUnitUtil().isLoaded(member, "profileImage")).isFalse();
         assertThat(json(call(HttpMethod.GET, "/api/users/me", null, login.access()))
                 .path("profileImageUrl").asText()).isEqualTo(firstUrl);
         MvcResult photo = call(HttpMethod.GET, firstUrl, null, null);
@@ -459,9 +467,15 @@ class AuthIntegrationTests extends DatabaseIntegrationTest {
         assertThat(json(call(HttpMethod.GET, "/api/users/me", null, login.access()))).isEqualTo(birthday);
         for (Object invalid : List.of(Map.of("birthDate", "2001-02-29"), Map.of("birthDate", "2000-02-30"),
                 Map.of("birthDate", "2000-2-2"), Map.of("birthDate", 2000),
-                Map.of("birthDate", java.time.LocalDate.now().plusDays(1).toString()),
-                Map.of("birthDate", "0000-01-01"), Map.of("birthDate", "2000-02-29", "birthYear", 2000))) {
+                Map.of("birthDate", "2000-02-29", "birthYear", 2000))) {
             assertStatus(call(HttpMethod.PATCH, "/api/users/me", invalid, login.access()), 400);
+            assertThat(json(call(HttpMethod.GET, "/api/users/me", null, login.access()))).isEqualTo(birthday);
+        }
+        for (String invalidDate : List.of("0000-01-01", java.time.LocalDate.now().plusDays(1).toString())) {
+            MvcResult invalid = call(HttpMethod.PATCH, "/api/users/me",
+                    Map.of("birthDate", invalidDate), login.access());
+            assertStatus(invalid, 400);
+            assertThat(json(invalid).path("code").asText()).isEqualTo("USER_BIRTH_DATE_INVALID");
             assertThat(json(call(HttpMethod.GET, "/api/users/me", null, login.access()))).isEqualTo(birthday);
         }
         MvcResult cleared = call(HttpMethod.PATCH, "/api/users/me", profileField("birthDate", null), login.access());
@@ -524,15 +538,28 @@ class AuthIntegrationTests extends DatabaseIntegrationTest {
     @Test
     void profileOpenApiIncludesNullableFieldsSecurityAndUserErrors() throws Exception {
         JsonNode spec = json(mvc.perform(get("/v3/api-docs")).andExpect(status().isOk()).andReturn());
-        JsonNode operations = spec.path("paths").path("/api/users/me");
-        for (String method : new String[]{"get", "patch"}) {
-            JsonNode security = operations.path(method).path("security");
+        JsonNode paths = spec.path("paths");
+        JsonNode operations = paths.path("/api/users/me");
+        JsonNode upload = paths.path("/api/users/me/profile-image").path("post");
+        Map<String, JsonNode> profileOperations = Map.of(
+                "me", operations.path("get"),
+                "updateProfile", operations.path("patch"),
+                "loginMethods", paths.path("/api/users/me/login-methods").path("get"),
+                "uploadProfileImage", upload);
+        for (Map.Entry<String, JsonNode> entry : profileOperations.entrySet()) {
+            JsonNode operation = entry.getValue();
+            assertThat(operation.path("operationId").asText()).isEqualTo(entry.getKey());
+            assertThat(operation.has("parameters")).isFalse();
+            JsonNode security = operation.path("security");
             assertThat(security.size()).isEqualTo(1);
             assertThat(security.get(0).has("bearerAuth")).isTrue();
             assertThat(security.get(0).has("csrfToken")).isFalse();
-            assertThat(operations.path(method).path("responses").path("200")
+            assertThat(operation.path("responses").path("200")
                     .path("content").has("application/json")).isTrue();
         }
+        assertThat(operations.path("patch").path("requestBody").path("required").asBoolean()).isTrue();
+        assertThat(upload.path("requestBody").path("required").asBoolean()).isTrue();
+        assertThat(paths.propertyNames()).noneMatch(path -> path.startsWith("/images/profiles/"));
         assertThat(operations.path("patch").path("responses").path("400").path("$ref").asText())
                 .isEqualTo("#/components/responses/UserProfileBadRequest");
         JsonNode schemas = spec.path("components").path("schemas");
@@ -713,6 +740,10 @@ class AuthIntegrationTests extends DatabaseIntegrationTest {
         Login login = login(email, PASSWORD);
         long id = jdbc.queryForObject("SELECT id FROM users WHERE email = ?", Long.class, email);
         seedDeletionData(id);
+        MvcResult upload = call(HttpMethod.POST, "/api/users/me/profile-image",
+                Map.of("dataUrl", photoDataUrl()), login.access());
+        assertStatus(upload, 200);
+        String photoUrl = json(upload).path("profileImageUrl").asText();
         String proof = accountProof(login, email, "ACCOUNT_DELETION");
         jdbc.execute("""
                 CREATE TRIGGER test_fail_user_update BEFORE UPDATE ON users FOR EACH ROW
@@ -722,9 +753,11 @@ class AuthIntegrationTests extends DatabaseIntegrationTest {
         assertStatus(failed, 503);
         assertThat(json(failed).path("code").asText()).isEqualTo("ACCOUNT_DELETION_UNAVAILABLE");
         jdbc.execute("DROP TRIGGER test_fail_user_update");
-        for (String table : new String[]{"user_credential", "user_social_account", "user_travel_style", "notification"}) {
+        for (String table : new String[]{"user_credential", "user_social_account", "user_travel_style",
+                "notification", "user_profile_image"}) {
             assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM " + table, Integer.class)).isEqualTo(1);
         }
+        assertStatus(call(HttpMethod.GET, photoUrl, null, null), 200);
         assertThat(jdbc.queryForObject("SELECT deleted_at IS NULL AND auth_version = 0 FROM users WHERE id = ?", Boolean.class, id)).isTrue();
         assertStatus(call(HttpMethod.POST, "/api/auth/account-deletion", Map.of("accountProof", proof), login.access()), 409);
     }

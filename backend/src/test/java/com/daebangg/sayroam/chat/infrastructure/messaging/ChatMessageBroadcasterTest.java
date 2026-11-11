@@ -7,9 +7,9 @@ import com.daebangg.sayroam.room.application.service.RoomService;
 import com.daebangg.sayroam.room.infrastructure.persistence.RoomJpaRepository;
 import com.daebangg.sayroam.room.infrastructure.persistence.RoomMemberJpaRepository;
 import com.daebangg.sayroam.support.DatabaseIntegrationTest;
-import com.daebangg.sayroam.user.domain.entity.User;
-import com.daebangg.sayroam.user.domain.repository.UserRepository;
-import com.daebangg.sayroam.user.domain.type.Role;
+import com.daebangg.sayroam.user.domain.Role;
+import com.daebangg.sayroam.user.domain.User;
+import com.daebangg.sayroam.user.infrastructure.persistence.UserJpaRepository;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -44,7 +44,7 @@ class ChatMessageBroadcasterTest extends DatabaseIntegrationTest {
     RoomMemberJpaRepository roomMemberRepository;
 
     @Autowired
-    UserRepository userRepository;
+    UserJpaRepository userRepository;
 
     @Autowired
     TransactionTemplate transactionTemplate;

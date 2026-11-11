@@ -1,7 +1,7 @@
 package com.daebangg.sayroam.auth.infrastructure.redis;
 
 import com.daebangg.sayroam.auth.application.port.out.OAuthTransactionStore;
-import com.daebangg.sayroam.user.domain.type.SocialProvider;
+import com.daebangg.sayroam.user.domain.SocialProvider;
 import org.springframework.stereotype.Repository;
 
 import java.time.Duration;

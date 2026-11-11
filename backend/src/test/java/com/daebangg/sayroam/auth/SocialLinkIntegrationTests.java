@@ -6,7 +6,7 @@ import com.daebangg.sayroam.auth.application.port.out.SocialAccounts;
 import com.daebangg.sayroam.auth.application.port.out.SocialIdentityProvider;
 import com.daebangg.sayroam.auth.domain.OAuthSecrets;
 import com.daebangg.sayroam.support.DatabaseIntegrationTest;
-import com.daebangg.sayroam.user.domain.type.SocialProvider;
+import com.daebangg.sayroam.user.domain.SocialProvider;
 import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.AfterEach;

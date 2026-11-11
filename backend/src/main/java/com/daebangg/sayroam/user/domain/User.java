@@ -1,16 +1,18 @@
-package com.daebangg.sayroam.user.domain.entity;
+package com.daebangg.sayroam.user.domain;
 
 import com.daebangg.sayroam.global.entity.BaseTimeEntity;
-import com.daebangg.sayroam.user.domain.policy.UserProfilePolicy;
-import com.daebangg.sayroam.user.domain.type.Gender;
-import com.daebangg.sayroam.user.domain.type.Role;
+import com.daebangg.sayroam.global.exception.BusinessException;
+import com.daebangg.sayroam.user.domain.error.UserErrorCode;
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import lombok.AccessLevel;
@@ -18,8 +20,8 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
-import java.time.LocalDateTime;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.Objects;
 
 // 테이블명 user는 예약어라 users를 쓴다
@@ -44,12 +46,15 @@ public class User extends BaseTimeEntity {
     private LocalDateTime emailVerifiedAt;
 
     @Getter
-    @Column(nullable = false, length = UserProfilePolicy.MAX_NICKNAME_LENGTH)
+    @Column(nullable = false, length = Nickname.MAX_LENGTH)
     private String nickname;
 
     @Getter
-    @Column(length = UserProfilePolicy.MAX_PROFILE_IMAGE_URL_LENGTH)
+    @Column(length = ProfileImageUrl.MAX_LENGTH)
     private String profileImageUrl;
+
+    @OneToOne(mappedBy = "user", fetch = FetchType.LAZY, cascade = CascadeType.PERSIST, orphanRemoval = true)
+    private UserProfileImage profileImage;
 
     @Getter
     @Enumerated(EnumType.STRING)
@@ -74,9 +79,20 @@ public class User extends BaseTimeEntity {
     @Column(nullable = false)
     private long authVersion;
 
+    @Builder
+    private User(String email, String nickname, String profileImageUrl, Gender gender,
+                 Integer birthYear, Role role, LocalDate today) {
+        this.email = email;
+        changeNickname(nickname);
+        this.profileImageUrl = profileImageUrl == null ? null : new ProfileImageUrl(profileImageUrl).value();
+        this.gender = gender;
+        changeBirthYear(birthYear, today);
+        this.role = role;
+    }
+
     public static User verifiedEmailMember(String email, String nickname, LocalDateTime emailVerifiedAt) {
         User user = new User(Objects.requireNonNull(email), nickname,
-                null, null, null, Role.USER);
+                null, null, null, Role.USER, null);
         user.emailVerifiedAt = Objects.requireNonNull(emailVerifiedAt);
         return user;
     }
@@ -85,14 +101,19 @@ public class User extends BaseTimeEntity {
                                             LocalDateTime emailVerifiedAt) {
         User user = verifiedEmailMember(email, nickname, emailVerifiedAt);
         // 공급자의 빈 사진 값은 이미지 미제공을 의미한다.
-        user.changeProfileImageUrl(profileImageUrl == null || profileImageUrl.isBlank()
-                ? null : profileImageUrl);
+        if (profileImageUrl != null && !profileImageUrl.isBlank()) {
+            user.profileImageUrl = new ProfileImageUrl(profileImageUrl).value();
+        }
         return user;
     }
 
     public boolean allowsAccountChange(String verifiedEmail, long expectedAuthVersion) {
-        return deletedAt == null && emailVerifiedAt != null && email != null
-                && email.equals(verifiedEmail) && authVersion == expectedAuthVersion;
+        return isActiveWithAuthVersion(expectedAuthVersion) && emailVerifiedAt != null && email != null
+                && email.equals(verifiedEmail);
+    }
+
+    public boolean isActiveWithAuthVersion(long expectedAuthVersion) {
+        return deletedAt == null && authVersion == expectedAuthVersion;
     }
 
     /**
@@ -115,6 +136,7 @@ public class User extends BaseTimeEntity {
         email = null;
         emailVerifiedAt = null;
         nickname = "탈퇴한 회원";
+        removeProfileImage();
         profileImageUrl = null;
         gender = null;
         birthYear = null;
@@ -123,35 +145,57 @@ public class User extends BaseTimeEntity {
     }
 
     public void changeNickname(String nickname) {
-        this.nickname = UserProfilePolicy.normalizeNickname(nickname);
+        this.nickname = new Nickname(nickname).value();
     }
 
     public void changeProfileImageUrl(String profileImageUrl) {
-        this.profileImageUrl = UserProfilePolicy.normalizeProfileImageUrl(profileImageUrl);
+        String requestedUrl = profileImageUrl == null ? null : profileImageUrl.strip();
+        if (requestedUrl != null && requestedUrl.startsWith(ProfileImageUrl.UPLOAD_PATH_PREFIX)
+                && !requestedUrl.equals(this.profileImageUrl)) {
+            throw new BusinessException(UserErrorCode.USER_PROFILE_IMAGE_URL_INVALID);
+        }
+        String nextUrl = requestedUrl == null ? null : new ProfileImageUrl(requestedUrl).value();
+        if (!Objects.equals(this.profileImageUrl, nextUrl)) {
+            removeProfileImage();
+            this.profileImageUrl = nextUrl;
+        }
+    }
+
+    public void uploadProfileImage(byte[] content) {
+        if (profileImage == null) {
+            profileImage = new UserProfileImage(this, content);
+        } else {
+            profileImage.replace(content);
+        }
+        profileImageUrl = profileImage.url();
     }
 
     public void changeGender(Gender gender) {
         this.gender = gender;
     }
 
-    public void changeBirthYear(Integer birthYear) {
-        this.birthYear = UserProfilePolicy.validateBirthYear(birthYear);
-        if (birthDate != null && (birthYear == null || birthDate.getYear() != birthYear)) birthDate = null;
+    public void changeBirthYear(Integer birthYear, LocalDate today) {
+        if (birthYear != null && (birthYear <= 0 || birthYear > today.getYear())) {
+            throw new BusinessException(UserErrorCode.USER_BIRTH_YEAR_INVALID);
+        }
+        this.birthYear = birthYear;
+        if (birthDate != null && (birthYear == null || birthDate.getYear() != birthYear)) {
+            birthDate = null;
+        }
     }
 
-    public void changeBirthDate(LocalDate birthDate) {
-        this.birthDate = UserProfilePolicy.validateBirthDate(birthDate);
+    public void changeBirthDate(LocalDate birthDate, LocalDate today) {
+        if (birthDate != null && (birthDate.getYear() < 1 || birthDate.isAfter(today))) {
+            throw new BusinessException(UserErrorCode.USER_BIRTH_DATE_INVALID);
+        }
+        this.birthDate = birthDate;
         this.birthYear = birthDate == null ? null : birthDate.getYear();
     }
 
-    @Builder
-    private User(String email, String nickname, String profileImageUrl, Gender gender, Integer birthYear, Role role) {
-        this.email = email;
-        this.nickname = UserProfilePolicy.normalizeNickname(nickname);
-        this.profileImageUrl = UserProfilePolicy.normalizeProfileImageUrl(profileImageUrl);
-        this.gender = gender;
-        this.birthYear = UserProfilePolicy.validateBirthYear(birthYear);
-        this.role = role;
+    private void removeProfileImage() {
+        // 지연 로딩된 기존 사진을 확인해야 JPA가 고아 엔티티 삭제를 감지한다.
+        if (profileImage != null) {
+            profileImage = null;
+        }
     }
-
 }

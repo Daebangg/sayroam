@@ -1,8 +1,8 @@
-package com.daebangg.sayroam.user.application.result;
+package com.daebangg.sayroam.user.application.dto;
 
-import com.daebangg.sayroam.user.domain.type.Gender;
-import com.daebangg.sayroam.user.domain.type.Role;
-import com.daebangg.sayroam.user.domain.entity.User;
+import com.daebangg.sayroam.user.domain.Gender;
+import com.daebangg.sayroam.user.domain.Role;
+import com.daebangg.sayroam.user.domain.User;
 import java.time.LocalDateTime;
 import java.time.LocalDate;
 

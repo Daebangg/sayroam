@@ -1,7 +1,7 @@
 package com.daebangg.sayroam.user.presentation.controller;
 
 import com.daebangg.sayroam.auth.domain.AuthenticatedAccount;
-import com.daebangg.sayroam.user.application.result.UserProfileResult;
+import com.daebangg.sayroam.user.application.dto.UserProfileResult;
 import com.daebangg.sayroam.user.application.service.UserService;
 import com.daebangg.sayroam.user.presentation.api.UserApi;
 import com.daebangg.sayroam.user.presentation.dto.CurrentUserResponse;
@@ -15,13 +15,14 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequiredArgsConstructor
-public class CurrentUserController implements UserApi {
+public class UserController implements UserApi {
     private final UserService userService;
 
     @Override
@@ -61,5 +62,14 @@ public class CurrentUserController implements UserApi {
         return ResponseEntity.ok().cacheControl(CacheControl.noStore())
                 .body(CurrentUserResponse.from(userService.uploadProfileImage(
                         account.userId(), account.authVersion(), request.dataUrl())));
+    }
+
+    @Override
+    @GetMapping(value = "/images/profiles/{imageId}.jpg", produces = MediaType.IMAGE_JPEG_VALUE)
+    public ResponseEntity<byte[]> profileImage(@PathVariable String imageId) {
+        return userService.getProfileImage(imageId)
+                .map(image -> ResponseEntity.ok().cacheControl(CacheControl.noStore())
+                        .contentType(MediaType.IMAGE_JPEG).body(image))
+                .orElseGet(() -> ResponseEntity.notFound().build());
     }
 }

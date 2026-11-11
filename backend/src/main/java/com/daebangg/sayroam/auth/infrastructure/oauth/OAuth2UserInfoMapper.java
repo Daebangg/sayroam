@@ -3,7 +3,7 @@ package com.daebangg.sayroam.auth.infrastructure.oauth;
 import com.daebangg.sayroam.auth.application.error.AuthErrorCode;
 import com.daebangg.sayroam.auth.application.error.AuthException;
 import com.daebangg.sayroam.auth.application.model.SocialIdentity;
-import com.daebangg.sayroam.user.domain.type.SocialProvider;
+import com.daebangg.sayroam.user.domain.SocialProvider;
 import org.springframework.stereotype.Component;
 
 import java.util.Locale;

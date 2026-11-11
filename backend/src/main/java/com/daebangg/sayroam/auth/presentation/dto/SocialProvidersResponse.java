@@ -1,6 +1,6 @@
 package com.daebangg.sayroam.auth.presentation.dto;
 
-import com.daebangg.sayroam.user.domain.type.SocialProvider;
+import com.daebangg.sayroam.user.domain.SocialProvider;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.util.List;
 

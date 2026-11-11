@@ -1,4 +1,4 @@
-package com.daebangg.sayroam.user.domain.entity;
+package com.daebangg.sayroam.user.domain;
 
 import com.daebangg.sayroam.global.entity.BaseTimeEntity;
 import jakarta.persistence.Column;
@@ -35,15 +35,14 @@ public class UserCredential extends BaseTimeEntity {
 
     private LocalDateTime passwordChangedAt;
 
-    public void changePassword(String passwordHash, LocalDateTime changedAt) {
-        this.passwordHash = Objects.requireNonNull(passwordHash);
-        this.passwordChangedAt = Objects.requireNonNull(changedAt);
-    }
-
     @Builder
     private UserCredential(User user, String passwordHash) {
         this.user = user;
         this.passwordHash = passwordHash;
     }
 
+    public void changePassword(String passwordHash, LocalDateTime changedAt) {
+        this.passwordHash = Objects.requireNonNull(passwordHash);
+        this.passwordChangedAt = Objects.requireNonNull(changedAt);
+    }
 }

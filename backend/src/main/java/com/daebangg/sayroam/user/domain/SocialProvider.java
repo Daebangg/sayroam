@@ -1,4 +1,4 @@
-package com.daebangg.sayroam.user.domain.type;
+package com.daebangg.sayroam.user.domain;
 
 public enum SocialProvider {
     KAKAO,

@@ -1,7 +1,7 @@
 package com.daebangg.sayroam.auth.domain;
 
 import com.daebangg.sayroam.auth.presentation.dto.*;
-import com.daebangg.sayroam.user.domain.policy.UserProfilePolicy;
+import com.daebangg.sayroam.user.domain.Nickname;
 import jakarta.validation.Validation;
 import jakarta.validation.Validator;
 import jakarta.validation.ValidatorFactory;
@@ -45,10 +45,10 @@ class InputPolicyTests {
 
     @Test
     void nicknamesKeepVisibleUnicodeAndInternalSpacesWithin50Characters() {
-        assertThat(UserProfilePolicy.normalizeNickname("\u00a0제주 여행자😀\uFEFF")).isEqualTo("제주 여행자😀");
-        assertThat(UserProfilePolicy.normalizeNickname("가".repeat(50))).hasSize(50);
+        assertThat(new Nickname("\u00a0제주 여행자😀\uFEFF").value()).isEqualTo("제주 여행자😀");
+        assertThat(new Nickname("가".repeat(50)).value()).hasSize(50);
         for (String nickname : List.of("가".repeat(51), "name\u0085", "name\u200b", "name\u2028next", "name\u0000")) {
-            assertThatThrownBy(() -> UserProfilePolicy.normalizeNickname(nickname)).isInstanceOf(RuntimeException.class);
+            assertThatThrownBy(() -> new Nickname(nickname)).isInstanceOf(RuntimeException.class);
         }
     }
 }

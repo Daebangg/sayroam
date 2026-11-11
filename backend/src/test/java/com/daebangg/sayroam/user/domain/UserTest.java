@@ -1,9 +1,7 @@
-package com.daebangg.sayroam.user.domain.entity;
+package com.daebangg.sayroam.user.domain;
 
 import com.daebangg.sayroam.global.exception.BusinessException;
 import com.daebangg.sayroam.user.domain.error.UserErrorCode;
-import com.daebangg.sayroam.user.domain.type.Gender;
-import com.daebangg.sayroam.user.domain.type.Role;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -13,26 +11,26 @@ import org.junit.jupiter.params.provider.ValueSource;
 
 import java.time.LocalDateTime;
 import java.time.LocalDate;
-import java.time.Year;
 import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class UserTest {
+    private static final LocalDate TODAY = LocalDate.of(2026, 11, 11);
     private static final String EMAIL = "user@example.com";
     private static final LocalDateTime VERIFIED_AT = LocalDateTime.of(2026, 11, 7, 10, 0);
 
     @Test
     void 생일을_저장하면_출생연도도_맞추고_미래_날짜는_기존_값을_보존한다() {
         User user = member();
-        user.changeBirthYear(1996);
+        user.changeBirthYear(1996, TODAY);
         assertThat(user.getBirthDate()).isNull();
-        user.changeBirthDate(LocalDate.of(2000, 2, 29));
+        user.changeBirthDate(LocalDate.of(2000, 2, 29), TODAY);
         assertThat(user.getBirthYear()).isEqualTo(2000);
-        assertThatThrownBy(() -> user.changeBirthDate(LocalDate.now().plusDays(1))).isInstanceOf(BusinessException.class);
+        assertThatThrownBy(() -> user.changeBirthDate(TODAY.plusDays(1), TODAY)).isInstanceOf(BusinessException.class);
         assertThat(user.getBirthDate()).isEqualTo(LocalDate.of(2000, 2, 29));
-        user.changeBirthDate(null);
+        user.changeBirthDate(null, TODAY);
         assertThat(user.getBirthYear()).isNull();
         assertThat(user.getBirthDate()).isNull();
     }
@@ -191,7 +189,7 @@ class UserTest {
     void 선택_프로필은_설정하고_변경하고_null로_제거할_수_있다() {
         User user = User.builder().nickname("여행자").role(Role.USER)
                 .profileImageUrl("  https://example.com/first.png  ")
-                .gender(Gender.MALE).birthYear(2000).build();
+                .gender(Gender.MALE).birthYear(2000).today(TODAY).build();
 
         assertThat(user.getProfileImageUrl()).isEqualTo("https://example.com/first.png");
         assertThat(user.getGender()).isEqualTo(Gender.MALE);
@@ -199,7 +197,7 @@ class UserTest {
 
         user.changeProfileImageUrl("https://example.com/second.png");
         user.changeGender(Gender.FEMALE);
-        user.changeBirthYear(1999);
+        user.changeBirthYear(1999, TODAY);
 
         assertThat(user.getProfileImageUrl()).isEqualTo("https://example.com/second.png");
         assertThat(user.getGender()).isEqualTo(Gender.FEMALE);
@@ -207,7 +205,7 @@ class UserTest {
 
         user.changeProfileImageUrl(null);
         user.changeGender(null);
-        user.changeBirthYear(null);
+        user.changeBirthYear(null, TODAY);
 
         assertThat(user.getProfileImageUrl()).isNull();
         assertThat(user.getGender()).isNull();
@@ -225,10 +223,10 @@ class UserTest {
 
     @Test
     void 미래_출생연도는_거절하고_현재_연도까지_허용한다() {
-        int currentYear = Year.now().getValue();
+        int currentYear = TODAY.getYear();
         User user = member();
 
-        user.changeBirthYear(currentYear);
+        user.changeBirthYear(currentYear, TODAY);
         assertThat(user.getBirthYear()).isEqualTo(currentYear);
 
         assertInvalidBirthYear(currentYear + 1);
@@ -239,7 +237,7 @@ class UserTest {
         User user = User.verifiedSocialMember(EMAIL, "여행자",
                 "https://example.com/profile.png", VERIFIED_AT);
         user.changeGender(Gender.FEMALE);
-        user.changeBirthYear(2000);
+        user.changeBirthYear(2000, TODAY);
         LocalDateTime withdrawnAt = VERIFIED_AT.plusDays(1);
         assertThat(user.allowsAccountChange(EMAIL, 0)).isTrue();
 
@@ -258,16 +256,16 @@ class UserTest {
 
     private static void assertInvalidBirthYear(int birthYear) {
         User user = member();
-        user.changeBirthYear(2000);
+        user.changeBirthYear(2000, TODAY);
 
-        assertThatThrownBy(() -> user.changeBirthYear(birthYear))
+        assertThatThrownBy(() -> user.changeBirthYear(birthYear, TODAY))
                 .isInstanceOfSatisfying(BusinessException.class,
                         exception -> assertThat(exception.getErrorCode())
                                 .isSameAs(UserErrorCode.USER_BIRTH_YEAR_INVALID));
         assertThat(user.getBirthYear()).isEqualTo(2000);
 
         assertThatThrownBy(() -> User.builder().nickname("여행자")
-                .birthYear(birthYear).role(Role.USER).build())
+                .birthYear(birthYear).today(TODAY).role(Role.USER).build())
                 .isInstanceOfSatisfying(BusinessException.class,
                         exception -> assertThat(exception.getErrorCode())
                                 .isSameAs(UserErrorCode.USER_BIRTH_YEAR_INVALID));

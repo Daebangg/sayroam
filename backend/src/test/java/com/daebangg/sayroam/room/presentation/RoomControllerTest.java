@@ -9,7 +9,7 @@ import com.daebangg.sayroam.global.security.SecurityConfig;
 import com.daebangg.sayroam.room.application.service.RoomService;
 import com.daebangg.sayroam.room.domain.error.RoomErrorCode;
 import com.daebangg.sayroam.room.presentation.controller.RoomController;
-import com.daebangg.sayroam.user.domain.type.Role;
+import com.daebangg.sayroam.user.domain.Role;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;

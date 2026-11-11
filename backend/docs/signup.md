@@ -125,7 +125,7 @@ DB 실패 응답에 Retry-After를 제공하지 않습니다. 일정 시간 기�
 | auth/infrastructure/security/SpringPasswordHasher | Spring PasswordEncoder 호출 |
 | auth/infrastructure/persistence/JpaAccountRegistration | JPA 저장·DB 트랜잭션·이메일 충돌 및 알려진 장애 변환 |
 | global/config/PasswordConfig | 공통 비밀번호 인코더 설정. 후속 로그인에서 재사용 |
-| user/domain/entity/User, UserCredential | 영속 회원과 비밀번호 해시. 일반 회원 생성 시 인증 시각 기록 |
+| user/domain/User, UserCredential | 영속 회원과 비밀번호 해시. 일반 회원 생성 시 인증 시각 기록 |
 | auth/presentation/controller/SignupController | 요청 검증과 201 응답, Swagger 명세 |
 | auth/application/error/AuthErrorCode, AuthException | 공통 오류 계약에 따른 인증 실패 종류·공개 문구와 예외·추가 정보 |
 | global/exception/ApiProblems, GlobalExceptionHandler | 공통 HTTP 변환과 MVC 오류 응답·인증 전용 헤더·쿠키 처리 |

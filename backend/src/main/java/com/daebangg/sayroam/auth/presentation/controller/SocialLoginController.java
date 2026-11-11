@@ -8,7 +8,7 @@ import com.daebangg.sayroam.auth.application.service.SocialSignupService;
 import com.daebangg.sayroam.auth.presentation.cookie.OAuthBrowserCookie;
 import com.daebangg.sayroam.auth.presentation.cookie.RefreshTokenCookie;
 import com.daebangg.sayroam.auth.presentation.dto.*;
-import com.daebangg.sayroam.user.domain.type.SocialProvider;
+import com.daebangg.sayroam.user.domain.SocialProvider;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.headers.Header;
 import io.swagger.v3.oas.annotations.media.Schema;

@@ -1,7 +1,6 @@
-package com.daebangg.sayroam.user.domain.entity;
+package com.daebangg.sayroam.user.domain;
 
 import com.daebangg.sayroam.global.entity.BaseTimeEntity;
-import com.daebangg.sayroam.user.domain.type.SocialProvider;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;

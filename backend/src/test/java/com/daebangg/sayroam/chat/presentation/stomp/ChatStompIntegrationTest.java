@@ -13,10 +13,10 @@ import com.daebangg.sayroam.room.domain.error.RoomErrorCode;
 import com.daebangg.sayroam.room.infrastructure.persistence.RoomJpaRepository;
 import com.daebangg.sayroam.room.infrastructure.persistence.RoomMemberJpaRepository;
 import com.daebangg.sayroam.support.DatabaseIntegrationTest;
-import com.daebangg.sayroam.user.domain.entity.User;
-import com.daebangg.sayroam.user.domain.entity.UserCredential;
-import com.daebangg.sayroam.user.domain.repository.UserRepository;
-import com.daebangg.sayroam.user.domain.type.Role;
+import com.daebangg.sayroam.user.domain.Role;
+import com.daebangg.sayroam.user.domain.User;
+import com.daebangg.sayroam.user.domain.UserCredential;
+import com.daebangg.sayroam.user.infrastructure.persistence.UserJpaRepository;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -99,7 +99,7 @@ class ChatStompIntegrationTest extends DatabaseIntegrationTest {
     ChatMessageJpaRepository chatMessageRepository;
 
     @Autowired
-    UserRepository userRepository;
+    UserJpaRepository userRepository;
 
     @Autowired
     TransactionTemplate transactionTemplate;

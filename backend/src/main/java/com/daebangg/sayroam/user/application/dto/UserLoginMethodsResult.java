@@ -1,6 +1,6 @@
-package com.daebangg.sayroam.user.application.result;
+package com.daebangg.sayroam.user.application.dto;
 
-import com.daebangg.sayroam.user.domain.type.SocialProvider;
+import com.daebangg.sayroam.user.domain.SocialProvider;
 import java.util.List;
 
 public record UserLoginMethodsResult(boolean passwordEnabled, List<SocialProvider> socialProviders) {
