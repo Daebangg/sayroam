@@ -85,15 +85,19 @@ com.daebangg.sayroam.order
 
 - 서비스는 흐름 조정(조회, 호출 순서, 트랜잭션)만 담당합니다. application에서 쓰는 스프링 기능은 `@Service`, `@Transactional`, 이벤트 발행처럼 특정 기술 구현에 묶이지 않는 것으로 한정합니다.
 - 서비스 간 호출은 허용합니다. 순환 참조가 생기면 공통 로직을 도메인이나 별도 서비스로 분리합니다.
-- 컨트롤러는 인증 주체를 받기 위해 `auth.domain.AuthenticatedAccount`를 참조할 수 있습니다. presentation이 application 밖을 참조하는 예외는 이것뿐입니다.
+- presentation이 application 밖을 참조할 수 있는 예외는 두 가지입니다.
+  - 컨트롤러가 인증 주체로 받는 `auth.domain.AuthenticatedAccount`
+  - 요청 DTO의 검증 애너테이션이 참조하는 domain의 규칙 상수(아래 "규칙 상수")
 
 ## 도메인 규칙의 위치
 
 다른 객체가 어떤 객체의 내부를 알게 되면 결합도가 높아져 변경이 어려워집니다. 그래서 **도메인 규칙은 그 규칙에 필요한 데이터를 가진 객체에게 맡깁니다.**
 
-- 값을 getter로 꺼내 서비스나 다른 객체에서 계산·판단하지 않습니다. 객체에게 일을 시킵니다.
+### 규칙을 가진 객체에게 맡기기
+
+- 엔티티는 생성자와 변경 메서드에서 자신의 불변식을 직접 검증합니다. 위반하면 `ErrorCode`를 담은 `BusinessException`을 던집니다.
+- 서비스와 컨트롤러는 엔티티의 값을 꺼내 비교하거나 문자열 형식을 검사해 도메인 규칙을 판단하지 않습니다. 객체에게 일을 시킵니다.
 - 서비스에 `if (x.getStatus() == ...)` 같은 분기나 `a.getB().getC()` 체인이 생기면 그 책임을 해당 객체로 옮깁니다.
-- 불변식은 생성자와 상태 변경 메서드에서 검증하고, 위반하면 `ErrorCode`를 가진 `BusinessException`을 던집니다.
 - getter는 협력에 필요한 것만 엽니다. 작성 방식은 [백엔드 지침의 엔티티 getter](../AGENTS.md#엔티티-getter)를 따릅니다.
 
 ```java
@@ -106,6 +110,43 @@ order.changeStatus(OrderStatus.CANCELED);
 // 좋은 예: 취소 규칙을 가진 Order에게 맡긴다
 order.cancel();
 ```
+
+### 검증의 위치와 값 객체
+
+- 한 엔티티만 사용하는 단순 검증은 그 엔티티의 private 메서드로 둡니다. 검증만을 위한 별도 클래스를 만들지 않습니다.
+- 다음 중 하나에 해당하는 값은 값 객체로 만듭니다.
+  - 검증 외의 동작이 있습니다. 예: 종류 판별, 외부 입력을 보정해 생성.
+  - 다른 도메인이나 계층에서 그 값의 규칙을 사용합니다.
+  - 여러 엔티티나 메서드 시그니처에 같은 개념이 반복됩니다. 예: `Money`, `TravelPeriod`.
+- 값 객체는 불변으로 만들고 생성자에서 검증합니다. 위반하면 `ErrorCode`를 담은 `BusinessException`을 던집니다. 한 도메인 전용이면 `<domain>/domain`, 여러 도메인이 쓰면 `common/domain`에 둡니다.
+- 거절하지 않고 보정해서 만드는 경로는 생성자와 구분되는 정적 팩터리 메서드로 둡니다. 예: `Nickname.fromDisplayName(name)`.
+
+### 규칙 상수
+
+- 길이·패턴 같은 규칙 상수는 그 규칙을 가진 객체에 `public static final`로 선언합니다.
+- 요청 DTO의 검증 애너테이션과 `@Column`은 이 상수를 참조하고, 같은 값이나 정규식을 다시 적지 않습니다.
+
+```java
+// domain
+public final class Nickname {
+    public static final int MAX_LENGTH = 20;
+}
+
+// presentation/dto
+public record UpdateNicknameRequest(@Size(max = Nickname.MAX_LENGTH) String nickname) {
+}
+```
+
+### 현재 시각
+
+- 도메인 객체는 `LocalDateTime.now()`, `Year.now()`처럼 현재 시각을 직접 구하지 않고 파라미터로 받습니다. 테스트에서 시각을 고정할 수 있고, 한 유스케이스 안의 모든 판단이 같은 시각을 기준으로 하게 됩니다.
+- 현재 시각은 서비스가 구해 도메인 메서드에 넘깁니다. 예: `member.leave(now)`.
+- 생성·수정 시각처럼 JPA Auditing이 채우는 감사 필드(`BaseTimeEntity`)는 이 규칙의 대상이 아닙니다.
+
+### static 규칙 모음 금지
+
+- `XxxPolicy`·`XxxUtils` 같은 static 메서드 모음에 도메인 규칙을 두지 않습니다. 규칙은 엔티티나 값 객체로 옮깁니다. `Policy`는 교체 가능한 전략 객체에만 사용합니다.
+- 도메인 지식이 없는 범용 헬퍼만 `global`에 둡니다. 만들기 전에 JDK와 Spring에 같은 기능이 있는지 확인합니다.
 
 ## Swagger 분리
 
