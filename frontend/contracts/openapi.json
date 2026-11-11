@@ -436,6 +436,14 @@
                 },
                 "description": "404: TRIP_NOT_FOUND. 없는 여행이거나 다른 회원의 여행. 둘을 구분하지 않음"
             },
+            "TripRoomAlreadyLinked": {
+                "content": {
+                    "application/problem+json": {
+                        "schema": { "$ref": "#/components/schemas/ApiProblem" }
+                    }
+                },
+                "description": "409: TRIP_ROOM_ALREADY_LINKED. 이미 방이 연결된 여행. 여행을 다시 조회해 roomId로 초대 링크 발급"
+            },
             "Unauthorized": {
                 "content": {
                     "application/problem+json": {
@@ -601,6 +609,7 @@
                     "TRAVEL_PERIOD_END_BEFORE_START",
                     "TRIP_NOT_FOUND",
                     "TRIP_PERIOD_REQUIRED",
+                    "TRIP_ROOM_ALREADY_LINKED",
                     "UNAUTHENTICATED",
                     "USER_BIRTH_DATE_INVALID",
                     "USER_BIRTH_YEAR_INVALID",
@@ -758,6 +767,29 @@
                     }
                 },
                 "required": ["tripId"],
+                "type": "object"
+            },
+            "CreateTripRoomRequest": {
+                "properties": {
+                    "name": {
+                        "description": "방 이름. 선택값이며 앞뒤 공백 제거 후 20자 이내. 공백뿐이면 이름 없는 방으로 저장",
+                        "example": "제주 3박 4일",
+                        "maxLength": 20,
+                        "type": ["string", "null"]
+                    }
+                },
+                "type": "object"
+            },
+            "CreateTripRoomResponse": {
+                "properties": {
+                    "roomId": {
+                        "description": "생성해 여행에 연결한 방 ID",
+                        "example": 7,
+                        "format": "int64",
+                        "type": "integer"
+                    }
+                },
+                "required": ["roomId"],
                 "type": "object"
             },
             "CurrentUserResponse": {
@@ -2322,6 +2354,49 @@
                 },
                 "security": [{ "bearerAuth": [] }],
                 "summary": "여행 조회",
+                "tags": ["Trip"]
+            }
+        },
+        "/api/trips/{tripId}/room": {
+            "post": {
+                "description": "방이 없는 여행에 채팅방을 만들고, 요청한 회원을 방장으로 등록한 뒤 여행에 연결합니다. 여행을 만든 회원만 사용할 수 있습니다. 이미 방이 연결된 여행은 여행 조회 응답의 roomId로 초대 링크를 발급합니다.",
+                "operationId": "createTripRoom",
+                "parameters": [
+                    {
+                        "description": "여행 ID",
+                        "example": 12,
+                        "in": "path",
+                        "name": "tripId",
+                        "required": true,
+                        "schema": { "format": "int64", "type": "integer" }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": { "$ref": "#/components/schemas/CreateTripRoomRequest" }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "201": {
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/CreateTripRoomResponse" }
+                            }
+                        },
+                        "description": "방 생성, 방장 등록, 여행 연결 완료"
+                    },
+                    "400": { "$ref": "#/components/responses/RoomBadRequest" },
+                    "401": { "$ref": "#/components/responses/Unauthorized" },
+                    "404": { "$ref": "#/components/responses/TripNotFound" },
+                    "409": { "$ref": "#/components/responses/TripRoomAlreadyLinked" },
+                    "500": { "$ref": "#/components/responses/InternalServerError" },
+                    "503": { "$ref": "#/components/responses/AuthenticationUnavailable" }
+                },
+                "security": [{ "bearerAuth": [] }],
+                "summary": "여행에 채팅방 만들어 연결",
                 "tags": ["Trip"]
             }
         },
