@@ -91,6 +91,7 @@ domain은 어떤 계층도 참조하지 않습니다. infrastructure는 applicat
 | domain | `@Entity` 도메인 모델과 비즈니스 로직, 값 객체, 도메인 예외·에러 코드, 리포지토리 순수 인터페이스 | Spring 빈 애너테이션(`@Service`, `@Component`), `org.springframework` import, 다른 계층 참조 | 없음(JPA 애너테이션 `jakarta.persistence`만 허용) |
 | infrastructure | Spring Data JPA 인터페이스, QueryDSL, MyBatis Mapper, 외부 연동 어댑터, 기술 설정(Config) | 비즈니스 규칙 판단 | domain, application(포트 구현용) |
 
+- 외부에서 들어오는 요청·메시지를 받는 코드는 `presentation`, 외부로 나가는 저장·발송·호출 구현은 `infrastructure`에 둡니다. 같은 기술이라도 방향에 따라 계층이 달라집니다. 예: STOMP 메시지를 받는 컨트롤러는 `presentation`, 구독자에게 메시지를 내보내는 구현은 `infrastructure`.
 - 서비스는 흐름 조정(조회, 호출 순서, 트랜잭션)만 담당합니다. application에서 쓰는 스프링 기능은 `@Service`, `@Transactional`, 이벤트 발행처럼 특정 기술 구현에 묶이지 않는 것으로 한정합니다.
 - 서비스 간 호출은 허용합니다. 순환 참조가 생기면 공통 로직을 도메인이나 별도 서비스로 분리합니다.
 - presentation이 application 밖을 참조할 수 있는 예외는 두 가지입니다.
