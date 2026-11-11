@@ -33,14 +33,6 @@ public class RoomService {
         return room.getId();
     }
 
-    public void ensureJoined(Long roomId, Long userId) {
-        getJoinedMember(roomId, userId);
-    }
-
-    public LocalDateTime getJoinedAt(Long roomId, Long userId) {
-        return getJoinedMember(roomId, userId).getJoinedAt();
-    }
-
     @Transactional
     public String createInvitation(Long roomId, Long userId) {
         RoomMember member = getJoinedMember(roomId, userId);
@@ -66,6 +58,14 @@ public class RoomService {
         RoomMember member = getMember(roomId, userId);
         member.leave(LocalDateTime.now(ZoneOffset.UTC));
         eventPublisher.publishEvent(new RoomMemberLeft(roomId, userId));
+    }
+
+    public void ensureJoined(Long roomId, Long userId) {
+        getJoinedMember(roomId, userId);
+    }
+
+    public LocalDateTime getJoinedAt(Long roomId, Long userId) {
+        return getJoinedMember(roomId, userId).getJoinedAt();
     }
 
     private RoomMember getMember(Long roomId, Long userId) {

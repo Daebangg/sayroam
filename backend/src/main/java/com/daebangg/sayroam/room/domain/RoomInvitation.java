@@ -41,6 +41,7 @@ public class RoomInvitation extends BaseTimeEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Getter(AccessLevel.PACKAGE)
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "room_id", nullable = false)
     private Room room;
@@ -94,10 +95,6 @@ public class RoomInvitation extends BaseTimeEntity {
         if (now.isAfter(expiresAt)) {
             throw new BusinessException(RoomErrorCode.ROOM_INVITATION_EXPIRED);
         }
-    }
-
-    Room getRoom() {
-        return room;
     }
 
     public Long getRoomId() {

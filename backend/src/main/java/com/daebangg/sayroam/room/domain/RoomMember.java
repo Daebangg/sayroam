@@ -96,14 +96,14 @@ public class RoomMember extends BaseTimeEntity {
         this.leftAt = leftAt;
     }
 
+    public RoomInvitation createShareInvitation(LocalDateTime issuedAt) {
+        return RoomInvitation.byShare(room, userId, issuedAt);
+    }
+
     public void ensureJoined() {
         if (status != RoomMemberStatus.JOINED) {
             throw new BusinessException(RoomErrorCode.ROOM_ACCESS_DENIED);
         }
-    }
-
-    public RoomInvitation createShareInvitation(LocalDateTime issuedAt) {
-        return RoomInvitation.byShare(room, userId, issuedAt);
     }
 
     public boolean isOwner() {
