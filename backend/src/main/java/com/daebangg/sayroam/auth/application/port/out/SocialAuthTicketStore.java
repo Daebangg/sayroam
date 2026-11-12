@@ -1,7 +1,8 @@
 package com.daebangg.sayroam.auth.application.port.out;
 
-import com.daebangg.sayroam.auth.application.error.AuthErrorCode;
-import com.daebangg.sayroam.auth.application.model.SocialIdentity;
+import com.daebangg.sayroam.auth.application.dto.SocialAccountResult;
+import com.daebangg.sayroam.auth.application.dto.SocialIdentity;
+import com.daebangg.sayroam.auth.domain.error.AuthErrorCode;
 
 import java.time.Duration;
 import java.util.Optional;
@@ -15,7 +16,7 @@ public interface SocialAuthTicketStore {
 
     enum Status { LOGIN_READY, AUTO_LINK_READY, SIGNUP_REQUIRED, FAILED }
 
-    record Result(Status status, SocialIdentity identity, SocialAccounts.Account account, AuthErrorCode error) {
+    record Result(Status status, SocialIdentity identity, SocialAccountResult account, AuthErrorCode error) {
         @Override
         public String toString() { return "SocialAuthResult[redacted]"; }
     }

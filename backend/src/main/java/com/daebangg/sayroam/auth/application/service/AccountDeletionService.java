@@ -1,15 +1,14 @@
 package com.daebangg.sayroam.auth.application.service;
 
-import com.daebangg.sayroam.auth.application.port.out.AccountDeletion;
 import com.daebangg.sayroam.auth.domain.AccountVerificationPurpose;
 import org.springframework.stereotype.Service;
 
 @Service
 public class AccountDeletionService {
     private final AccountVerificationService verification;
-    private final AccountDeletion accountDeletion;
+    private final AccountWriteService accountDeletion;
 
-    public AccountDeletionService(AccountVerificationService verification, AccountDeletion accountDeletion) {
+    public AccountDeletionService(AccountVerificationService verification, AccountWriteService accountDeletion) {
         this.verification = verification;
         this.accountDeletion = accountDeletion;
     }

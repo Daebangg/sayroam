@@ -1,7 +1,7 @@
 package com.daebangg.sayroam.trip.presentation;
 
 import com.daebangg.sayroam.auth.domain.AuthenticatedAccount;
-import com.daebangg.sayroam.auth.presentation.config.RefreshCookieProperties;
+import com.daebangg.sayroam.auth.presentation.cookie.RefreshCookieProperties;
 import com.daebangg.sayroam.auth.presentation.cookie.RefreshTokenCookie;
 import com.daebangg.sayroam.common.domain.TravelPeriod;
 import com.daebangg.sayroam.common.domain.error.TravelPeriodErrorCode;

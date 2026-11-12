@@ -1,13 +1,13 @@
 package com.daebangg.sayroam.auth.application.service;
 
-import com.daebangg.sayroam.auth.application.error.AuthErrorCode;
-import com.daebangg.sayroam.auth.application.error.AuthException;
-import com.daebangg.sayroam.auth.application.model.TokenPair;
+import com.daebangg.sayroam.auth.application.dto.TokenPairResult;
 import com.daebangg.sayroam.auth.application.port.out.AccessTokenIssuer;
 import com.daebangg.sayroam.auth.application.port.out.AccountLookup;
 import com.daebangg.sayroam.auth.application.port.out.RefreshTokenStore;
 import com.daebangg.sayroam.auth.domain.AuthenticatedAccount;
 import com.daebangg.sayroam.auth.domain.RefreshToken;
+import com.daebangg.sayroam.auth.domain.error.AuthErrorCode;
+import com.daebangg.sayroam.auth.domain.error.AuthException;
 import org.springframework.stereotype.Service;
 
 import java.util.Optional;
@@ -24,7 +24,7 @@ public class RefreshTokenService {
         this.accessTokens = accessTokens;
     }
 
-    public TokenPair refresh(String rawToken) {
+    public TokenPairResult refresh(String rawToken) {
         RefreshToken current = RefreshToken.parse(rawToken)
                 .orElseThrow(() -> new AuthException(AuthErrorCode.REFRESH_TOKEN_INVALID));
         String digest = current.digest();
@@ -43,7 +43,7 @@ public class RefreshTokenService {
                 || rotated.rememberMe() != inspected.rememberMe()) {
             throw new IllegalStateException("Refresh session account changed");
         }
-        return new TokenPair(access, next.value(), rotated.expiresIn(), rotated.rememberMe());
+        return new TokenPairResult(access, next.value(), rotated.expiresIn(), rotated.rememberMe());
     }
 
     private RefreshTokenStore.SessionResult requireActive(RefreshTokenStore.SessionResult result) {

@@ -1,22 +1,23 @@
 package com.daebangg.sayroam.auth;
 
-import com.daebangg.sayroam.auth.application.model.SocialIdentity;
-import com.daebangg.sayroam.auth.application.port.out.AccountRegistration;
-import com.daebangg.sayroam.auth.application.port.out.SocialAccounts;
+import com.daebangg.sayroam.auth.application.dto.SocialIdentity;
 import com.daebangg.sayroam.auth.application.port.out.SocialIdentityProvider;
+import com.daebangg.sayroam.auth.application.service.AccountWriteService;
 import com.daebangg.sayroam.auth.domain.OAuthSecrets;
+import com.daebangg.sayroam.auth.domain.error.AuthErrorCode;
+import com.daebangg.sayroam.auth.domain.error.AuthException;
+import com.daebangg.sayroam.auth.infrastructure.identity.OAuth2UserInfoMapper;
 import com.daebangg.sayroam.support.DatabaseIntegrationTest;
 import com.daebangg.sayroam.user.domain.SocialProvider;
 import jakarta.servlet.http.Cookie;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.NullSource;
-import org.junit.jupiter.params.provider.NullAndEmptySource;
-import org.junit.jupiter.params.provider.ValueSource;
 import org.junit.jupiter.params.provider.EnumSource;
-import com.daebangg.sayroam.auth.infrastructure.oauth.OAuth2UserInfoMapper;
+import org.junit.jupiter.params.provider.NullAndEmptySource;
+import org.junit.jupiter.params.provider.NullSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -34,13 +35,14 @@ import java.time.Instant;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
@@ -55,8 +57,7 @@ class SocialLinkIntegrationTests extends DatabaseIntegrationTest {
     @Autowired JsonMapper json;
     @Autowired JdbcTemplate jdbc;
     @Autowired PasswordEncoder passwords;
-    @Autowired AccountRegistration registrations;
-    @Autowired SocialAccounts accounts;
+    @Autowired AccountWriteService accountWrites;
     @Autowired OAuth2UserInfoMapper userInfos;
     @MockitoBean SocialIdentityProvider identities;
     private Cookie csrf;
@@ -125,11 +126,26 @@ class SocialLinkIntegrationTests extends DatabaseIntegrationTest {
     }
 
     @Test void aDifferentIdentityForAnAlreadyConnectedProviderIsNotReplaced() throws Exception {
-        accounts.register(identity("original-subject", EMAIL, true), EMAIL, "기존 여행자", Instant.now());
+        accountWrites.registerSocial(identity("original-subject", EMAIL, true), EMAIL, "기존 여행자", Instant.now());
         MvcResult response = exchange(returned());
         assertThat(response.getResponse().getStatus()).isEqualTo(409);
         assertThat(jdbc.queryForObject("select provider_user_id from user_social_account", String.class)).isEqualTo("original-subject");
         assertThat(countLinks()).isEqualTo(1);
+    }
+
+    @Test
+    void duplicateProviderIdentityRollsBackTheNewMember() {
+        String subject = "shared-subject";
+        String anotherEmail = "another@example.test";
+        accountWrites.registerSocial(identity(subject, EMAIL, true), EMAIL, "기존 여행자", Instant.now());
+
+        assertThatThrownBy(() -> accountWrites.registerSocial(
+                identity(subject, anotherEmail, true), anotherEmail, "신규 여행자", Instant.now()))
+                .isInstanceOfSatisfying(AuthException.class,
+                        exception -> assertThat(exception.getErrorCode()).isEqualTo(AuthErrorCode.SOCIAL_ACCOUNT_CONFLICT));
+
+        assertThat(countLinks()).isEqualTo(1);
+        assertThat(jdbc.queryForObject("select count(*) from users where email = ?", Long.class, anotherEmail)).isZero();
     }
 
     @Test void concurrentVerifiedLoginsLinkOnceAndAuthenticateAsTheSameMember() throws Exception {
@@ -224,7 +240,7 @@ class SocialLinkIntegrationTests extends DatabaseIntegrationTest {
         assertThat(jdbc.queryForObject("select count(*) from user_credential", Long.class)).isZero();
     }
 
-    private long register() { return registrations.register(EMAIL, "기존 여행자", passwords.encode(PASSWORD), Instant.now()); }
+    private long register() { return accountWrites.register(EMAIL, "기존 여행자", passwords.encode(PASSWORD), Instant.now()); }
     private long countLinks() { return jdbc.queryForObject("select count(*) from user_social_account", Long.class); }
     private SocialIdentity identity(String subject, String email, boolean verified) { return new SocialIdentity(SocialProvider.GOOGLE, subject, email, verified, "소셜 이름", null); }
     private void assertAuthenticatedAs(MvcResult result, long id) throws Exception {

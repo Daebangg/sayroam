@@ -1,12 +1,12 @@
 package com.daebangg.sayroam.auth.application.service;
 
-import com.daebangg.sayroam.auth.application.error.AuthErrorCode;
-import com.daebangg.sayroam.auth.application.error.AuthException;
-import com.daebangg.sayroam.auth.application.model.TokenPair;
+import com.daebangg.sayroam.auth.application.dto.TokenPairResult;
 import com.daebangg.sayroam.auth.application.port.out.AccountLookup;
-import com.daebangg.sayroam.auth.application.port.out.PasswordHasher;
 import com.daebangg.sayroam.auth.application.port.out.LoginAttemptStore;
+import com.daebangg.sayroam.auth.application.port.out.PasswordHasher;
 import com.daebangg.sayroam.auth.domain.EmailAddress;
+import com.daebangg.sayroam.auth.domain.error.AuthErrorCode;
+import com.daebangg.sayroam.auth.domain.error.AuthException;
 import org.springframework.stereotype.Service;
 
 import java.util.Optional;
@@ -25,7 +25,7 @@ public class LoginService {
         this.attempts = attempts;
     }
 
-    public TokenPair login(String email, String password, String remoteAddress, boolean rememberMe) {
+    public TokenPairResult login(String email, String password, String remoteAddress, boolean rememberMe) {
         String normalized = EmailAddress.normalize(email);
         requireAllowed(normalized, remoteAddress, LoginAttemptStore.Outcome.CHECK);
         Optional<AccountLookup.Credentials> account = accounts.findActiveCredentials(normalized);

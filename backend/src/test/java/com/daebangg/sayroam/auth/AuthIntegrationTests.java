@@ -1,21 +1,22 @@
 package com.daebangg.sayroam.auth;
 
-import com.daebangg.sayroam.global.mail.EmailLanguage;
-import com.daebangg.sayroam.auth.application.error.AuthErrorCode;
-import com.daebangg.sayroam.auth.application.error.AuthException;
-import com.daebangg.sayroam.auth.application.model.SocialIdentity;
+import com.daebangg.sayroam.auth.application.dto.SocialIdentity;
 import com.daebangg.sayroam.auth.application.port.out.SocialAuthTicketStore;
 import com.daebangg.sayroam.auth.application.port.out.VerificationEmailSender;
+import com.daebangg.sayroam.auth.application.service.AccountWriteService;
 import com.daebangg.sayroam.auth.domain.AccountVerificationPurpose;
 import com.daebangg.sayroam.auth.domain.OAuthSecrets;
 import com.daebangg.sayroam.auth.domain.VerificationDigests;
+import com.daebangg.sayroam.auth.domain.error.AuthErrorCode;
+import com.daebangg.sayroam.auth.domain.error.AuthException;
 import com.daebangg.sayroam.auth.presentation.cookie.OAuthBrowserCookie;
 import com.daebangg.sayroam.global.config.SwaggerAuthIndexTransformer;
+import com.daebangg.sayroam.global.mail.EmailLanguage;
 import com.daebangg.sayroam.support.DatabaseIntegrationTest;
-import com.daebangg.sayroam.user.domain.User;
-import com.daebangg.sayroam.user.domain.error.UserErrorCode;
-import com.daebangg.sayroam.user.domain.UserRepository;
 import com.daebangg.sayroam.user.domain.SocialProvider;
+import com.daebangg.sayroam.user.domain.User;
+import com.daebangg.sayroam.user.domain.UserRepository;
+import com.daebangg.sayroam.user.domain.error.UserErrorCode;
 import com.github.dockerjava.api.DockerClient;
 import jakarta.persistence.EntityManagerFactory;
 import jakarta.servlet.http.Cookie;
@@ -34,10 +35,10 @@ import org.springframework.http.HttpMethod;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
+import org.springframework.security.oauth2.jwt.JwsHeader;
 import org.springframework.security.oauth2.jwt.JwtClaimsSet;
 import org.springframework.security.oauth2.jwt.JwtEncoder;
 import org.springframework.security.oauth2.jwt.JwtEncoderParameters;
-import org.springframework.security.oauth2.jwt.JwsHeader;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
@@ -45,14 +46,14 @@ import org.testcontainers.containers.Container;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.LinkedHashMap;
-import java.util.Map;
-import java.util.UUID;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.Year;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
@@ -89,7 +90,7 @@ class AuthIntegrationTests extends DatabaseIntegrationTest {
     @Autowired SocialAuthTicketStore socialTickets;
     @Autowired OAuthBrowserCookie oauthBrowserCookie;
     @Autowired org.springframework.data.redis.core.StringRedisTemplate redis;
-    @Autowired com.daebangg.sayroam.auth.application.port.out.AccountRegistration registrations;
+    @Autowired AccountWriteService accountWrites;
     private Cookie csrf;
 
     @BeforeEach
@@ -1151,7 +1152,7 @@ class AuthIntegrationTests extends DatabaseIntegrationTest {
     void databaseUniquenessStillProtectsSignupAfterTheEmailAvailabilityCheck() throws Exception {
         String email = email();
         String proof = signupProof(email);
-        registrations.register(email, "동시 가입", passwords.encode(PASSWORD), Instant.now());
+        accountWrites.register(email, "동시 가입", passwords.encode(PASSWORD), Instant.now());
         MvcResult conflict = call(HttpMethod.POST, "/api/auth/signup", Map.of("email", email, "nickname", "후속 가입", "password", PASSWORD, "signupProof", proof), null);
         assertStatus(conflict, 409);
         assertThat(json(conflict).path("code").asText()).isEqualTo("EMAIL_ALREADY_REGISTERED");

@@ -1,9 +1,8 @@
 package com.daebangg.sayroam.chat.presentation.stomp;
 
 import com.daebangg.sayroam.auth.application.port.out.AccessTokenIssuer;
-import com.daebangg.sayroam.auth.application.port.out.AccountDeletion;
-import com.daebangg.sayroam.auth.application.port.out.PasswordChange;
-import com.daebangg.sayroam.auth.infrastructure.config.AccessTokenProperties;
+import com.daebangg.sayroam.auth.application.service.AccountWriteService;
+import com.daebangg.sayroam.auth.infrastructure.security.AccessTokenProperties;
 import com.daebangg.sayroam.chat.infrastructure.persistence.ChatMessageJpaRepository;
 import com.daebangg.sayroam.global.exception.CommonErrorCode;
 import com.daebangg.sayroam.room.application.service.RoomService;
@@ -81,10 +80,7 @@ class ChatStompIntegrationTest extends DatabaseIntegrationTest {
     JwtEncoder jwtEncoder;
 
     @Autowired
-    PasswordChange passwordChange;
-
-    @Autowired
-    AccountDeletion accountDeletion;
+    AccountWriteService accountWrites;
 
     @Autowired
     RoomService roomService;
@@ -432,7 +428,7 @@ class ChatStompIntegrationTest extends DatabaseIntegrationTest {
         subscribeRoom(session, roomId);
 
         // when
-        passwordChange.change(userId, EMAIL, 0L, "new-hash");
+        accountWrites.change(userId, EMAIL, 0L, "new-hash");
 
         // then
         StompHeaders error = events.errorFrame.get(5, TimeUnit.SECONDS);
@@ -450,7 +446,7 @@ class ChatStompIntegrationTest extends DatabaseIntegrationTest {
         subscribeRoom(session, roomId);
 
         // when
-        accountDeletion.delete(userId, EMAIL, 0L);
+        accountWrites.delete(userId, EMAIL, 0L);
 
         // then
         StompHeaders error = events.errorFrame.get(5, TimeUnit.SECONDS);

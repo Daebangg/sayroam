@@ -1,5 +1,6 @@
 package com.daebangg.sayroam.auth.domain;
 
+import com.daebangg.sayroam.auth.domain.error.AuthException;
 import com.daebangg.sayroam.auth.presentation.dto.*;
 import com.daebangg.sayroam.user.domain.Nickname;
 import jakarta.validation.Validation;
@@ -34,12 +35,21 @@ class InputPolicyTests {
             String proof = "a".repeat(43);
             for (String password : List.of("Aa1!aaaa", "Aa1!" + "a".repeat(20), "lowercase1!", "Uppercase!",
                     "Uppercase1", "Aa1! aaab", "Aa1!\u200baaa", "Aa1!" + "a".repeat(21))) {
-                boolean valid = PasswordPolicy.isValid(password);
+                boolean valid = acceptsPassword(password);
                 assertThat(validator.validate(new SignupRequest("member@example.test", password, "여행자", proof)).isEmpty()).isEqualTo(valid);
                 assertThat(validator.validate(new PasswordChangeRequest(proof, password)).isEmpty()).isEqualTo(valid);
                 assertThat(validator.validate(new PasswordResetRequest("member@example.test", proof, password)).isEmpty()).isEqualTo(valid);
             }
             assertThat(validator.validate(new LoginRequest("member@example.test", "x".repeat(128), false))).isEmpty();
+        }
+    }
+
+    private boolean acceptsPassword(String password) {
+        try {
+            new Password(password);
+            return true;
+        } catch (AuthException exception) {
+            return false;
         }
     }
 

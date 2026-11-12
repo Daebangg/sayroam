@@ -111,7 +111,7 @@ User.deletedAt과 UserCredential.passwordChangedAt 필드가 있다는 사실만
 | auth/presentation/cookie/RefreshTokenCookie | 원문 쿠키 추출·중복 거절·동일 속성 쿠키 삭제 |
 | auth/application/service/LogoutService | 토큰 형식 확인과 저장소 폐기 포트 호출 |
 | auth/application/port/out/RefreshTokenStore | 소유를 확인한 로그인 폐기 계약 |
-| auth/infrastructure/redis/RedisRefreshTokenStore·redis/refresh-token-use.lua | 기존 원자적 폐기와 일시적 저장소 장애 변환 |
+| auth/infrastructure/persistence/RedisRefreshTokenStore·redis/refresh-token-use.lua | 기존 원자적 폐기와 일시적 저장소 장애 변환 |
 | global/security/SecurityConfig | Access Token 없이 로그아웃 허용, Bearer 제외, auth CSRF 검사 유지 |
 
 Application은 Redis·JPA·JWT·Servlet·HTTP 또는 Infrastructure/Presentation에 직접 의존하지 않습니다.

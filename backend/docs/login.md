@@ -180,9 +180,9 @@ CSRF 쿠키·헤더를 준비합니다. Swagger의 인증 입력은 CSRF 헤더�
 | auth/application/port/out/AccountLookup·PasswordHasher·AccessTokenIssuer·RefreshTokenStore | 외부 조회·검증·발급·갱신 상태 계약 |
 | auth/infrastructure/persistence/JpaAccountLookup | 읽기 트랜잭션·필요한 필드 조회·알려진 DB 장애 변환 |
 | auth/infrastructure/security/SpringPasswordHasher·JwtAccessTokenIssuer | 기존 인코더의 검증과 JWT 서명 |
-| auth/infrastructure/config/AccessTokenConfig·AccessTokenProperties | 외부 키 검증·JWT 검증 정책 |
-| auth/infrastructure/redis/RedisRefreshTokenStore·redis/refresh-token-*.lua | 로그인별 상태·절대 만료·교체·재사용 탐지 |
-| auth/presentation/RefreshTokenController·cookie/RefreshTokenCookie·config/RefreshCookieProperties | 갱신 HTTP·쿠키·브라우저 전달 정책 |
+| auth/infrastructure/security/AccessTokenConfig·AccessTokenProperties | 외부 키 검증·JWT 검증 정책 |
+| auth/infrastructure/persistence/RedisRefreshTokenStore·redis/refresh-token-*.lua | 로그인별 상태·절대 만료·교체·재사용 탐지 |
+| auth/presentation/controller/RefreshTokenController·cookie/RefreshTokenCookie·cookie/RefreshCookieProperties | 갱신 HTTP·쿠키·브라우저 전달 정책 |
 | global/security/SecurityConfig·ActiveAccountJwtConverter·SecurityProblemHandler | 필터 연결·활성 회원 및 권한 연결·공통 오류 |
 | user/presentation/controller/UserController·user/presentation/dto/CurrentUserResponse | 인증 때 조회한 현재 회원 정보 응답 |
 

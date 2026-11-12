@@ -1,14 +1,14 @@
 package com.daebangg.sayroam.auth.application.service;
 
-import com.daebangg.sayroam.global.mail.EmailLanguage;
-import com.daebangg.sayroam.auth.application.error.AuthErrorCode;
-import com.daebangg.sayroam.auth.application.error.AuthException;
 import com.daebangg.sayroam.auth.application.port.out.AccountLookup;
 import com.daebangg.sayroam.auth.application.port.out.AccountVerificationStore;
 import com.daebangg.sayroam.auth.application.port.out.VerificationEmailSender;
 import com.daebangg.sayroam.auth.domain.AccountVerificationPurpose;
 import com.daebangg.sayroam.auth.domain.EmailAddress;
 import com.daebangg.sayroam.auth.domain.VerificationDigests;
+import com.daebangg.sayroam.auth.domain.error.AuthErrorCode;
+import com.daebangg.sayroam.auth.domain.error.AuthException;
+import com.daebangg.sayroam.global.mail.EmailLanguage;
 import org.springframework.stereotype.Service;
 
 import java.security.SecureRandom;

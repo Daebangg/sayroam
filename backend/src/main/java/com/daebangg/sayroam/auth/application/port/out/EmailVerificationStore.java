@@ -7,7 +7,7 @@ import java.util.Optional;
 public interface EmailVerificationStore {
     /**
      * 제한 확인·횟수 증가·기존 코드 교체를 원자 처리한다. 허용되면 ZERO, 제한이면 남은 대기시간.
-     * @throws com.daebangg.sayroam.auth.application.error.AuthException 저장소 기술 오류가 발생한 경우
+     * @throws com.daebangg.sayroam.auth.domain.error.AuthException 저장소 기술 오류가 발생한 경우
      */
     Duration reserve(String email, String remoteAddress, String requestId, String codeDigest);
 

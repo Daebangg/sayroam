@@ -1,9 +1,9 @@
 package com.daebangg.sayroam.global.exception;
 
-import com.daebangg.sayroam.auth.application.error.AuthErrorCode;
-import com.daebangg.sayroam.auth.application.error.AuthException;
+import com.daebangg.sayroam.auth.domain.error.AuthErrorCode;
+import com.daebangg.sayroam.auth.domain.error.AuthException;
 import com.daebangg.sayroam.auth.application.service.LoginService;
-import com.daebangg.sayroam.auth.presentation.config.RefreshCookieProperties;
+import com.daebangg.sayroam.auth.presentation.cookie.RefreshCookieProperties;
 import com.daebangg.sayroam.auth.presentation.controller.LoginController;
 import com.daebangg.sayroam.auth.presentation.cookie.RefreshTokenCookie;
 import org.junit.jupiter.api.BeforeEach;

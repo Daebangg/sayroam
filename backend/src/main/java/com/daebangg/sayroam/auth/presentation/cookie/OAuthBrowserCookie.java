@@ -1,9 +1,8 @@
 package com.daebangg.sayroam.auth.presentation.cookie;
 
-import com.daebangg.sayroam.auth.application.error.AuthErrorCode;
-import com.daebangg.sayroam.auth.application.error.AuthException;
 import com.daebangg.sayroam.auth.domain.OAuthSecrets;
-import com.daebangg.sayroam.auth.presentation.config.OAuthBrowserCookieProperties;
+import com.daebangg.sayroam.auth.domain.error.AuthErrorCode;
+import com.daebangg.sayroam.auth.domain.error.AuthException;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.ResponseCookie;

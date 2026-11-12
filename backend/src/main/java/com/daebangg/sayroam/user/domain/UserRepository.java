@@ -1,6 +1,5 @@
 package com.daebangg.sayroam.user.domain;
 
-
 import java.util.List;
 import java.util.Optional;
 
@@ -16,5 +15,29 @@ public interface UserRepository {
 
     Optional<byte[]> findActiveProfileImageContent(String imageId);
 
+    Optional<UserCredential> findCredentialForUpdate(long userId);
+
+    Optional<String> findSocialSubject(long userId, SocialProvider provider);
+
+    void addUser(User user);
+
+    void addCredential(UserCredential credential);
+
+    void addSocialAccount(UserSocialAccount account);
+
     void deleteLoginMethods(long userId);
+
+    void flush();
+
+    class DuplicateEmail extends RuntimeException {
+        public DuplicateEmail(Throwable cause) {
+            super(cause);
+        }
+    }
+
+    class DuplicateSocialAccount extends RuntimeException {
+        public DuplicateSocialAccount(Throwable cause) {
+            super(cause);
+        }
+    }
 }

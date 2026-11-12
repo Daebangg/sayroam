@@ -1,10 +1,10 @@
 package com.daebangg.sayroam.global.mail;
 
 import com.daebangg.sayroam.auth.domain.AccountVerificationPurpose;
-import com.daebangg.sayroam.auth.infrastructure.config.AccountVerificationProperties;
-import com.daebangg.sayroam.auth.infrastructure.config.EmailVerificationProperties;
-import com.daebangg.sayroam.auth.infrastructure.config.PasswordResetProperties;
-import com.daebangg.sayroam.auth.infrastructure.smtp.VerificationEmailTemplates;
+import com.daebangg.sayroam.auth.infrastructure.persistence.AccountVerificationProperties;
+import com.daebangg.sayroam.auth.infrastructure.persistence.EmailVerificationProperties;
+import com.daebangg.sayroam.auth.infrastructure.persistence.PasswordResetProperties;
+import com.daebangg.sayroam.auth.infrastructure.messaging.VerificationEmailTemplates;
 
 import java.io.InputStream;
 import java.net.URI;
