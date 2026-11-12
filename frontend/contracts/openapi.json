@@ -434,7 +434,7 @@
                         "schema": { "$ref": "#/components/schemas/ApiProblem" }
                     }
                 },
-                "description": "404: TRIP_NOT_FOUND. 없는 여행이거나 다른 회원의 여행. 둘을 구분하지 않음"
+                "description": "404: TRIP_NOT_FOUND. 없는 여행이거나 접근할 수 없는 여행. 둘을 구분하지 않음"
             },
             "TripRoomAlreadyLinked": {
                 "content": {
@@ -1256,7 +1256,7 @@
             "TripListResponse": {
                 "properties": {
                     "trips": {
-                        "description": "내가 만든 여행. 나중에 만든 여행부터 정렬",
+                        "description": "볼 수 있는 여행. 나중에 만든 여행부터 정렬",
                         "items": { "$ref": "#/components/schemas/TripSummaryResponse" },
                         "type": "array"
                     }
@@ -2275,7 +2275,7 @@
         },
         "/api/trips": {
             "get": {
-                "description": "로그인한 회원이 만든 여행을 나중에 만든 여행부터 조회합니다. 지난 여행도 포함합니다.",
+                "description": "로그인한 회원이 볼 수 있는 여행을 나중에 만든 여행부터 조회합니다. 채팅방이 없는 여행은 만든 회원이, 채팅방이 연결된 여행은 그 방에 참여 중인 멤버가 볼 수 있습니다. 지난 여행도 포함합니다.",
                 "operationId": "listMyTrips",
                 "responses": {
                     "200": {
@@ -2284,7 +2284,7 @@
                                 "schema": { "$ref": "#/components/schemas/TripListResponse" }
                             }
                         },
-                        "description": "여행 목록. 만든 여행이 없으면 빈 배열"
+                        "description": "여행 목록. 볼 수 있는 여행이 없으면 빈 배열"
                     },
                     "401": { "$ref": "#/components/responses/Unauthorized" },
                     "500": { "$ref": "#/components/responses/InternalServerError" },
@@ -2326,7 +2326,7 @@
         },
         "/api/trips/{tripId}": {
             "get": {
-                "description": "로그인한 회원이 만든 여행 하나를 조회합니다. 다른 회원의 여행은 없는 여행과 같이 404로 응답합니다.",
+                "description": "로그인한 회원이 볼 수 있는 여행 하나를 조회합니다. 채팅방이 없는 여행은 만든 회원이, 채팅방이 연결된 여행은 그 방에 참여 중인 멤버가 볼 수 있습니다. 볼 수 없는 여행은 없는 여행과 같이 404로 응답합니다.",
                 "operationId": "getTrip",
                 "parameters": [
                     {
