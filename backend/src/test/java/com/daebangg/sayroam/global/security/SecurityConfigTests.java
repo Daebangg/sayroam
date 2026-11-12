@@ -2,7 +2,7 @@ package com.daebangg.sayroam.global.security;
 
 import com.daebangg.sayroam.auth.presentation.controller.AuthCsrfController;
 import com.daebangg.sayroam.auth.presentation.cookie.RefreshTokenCookie;
-import com.daebangg.sayroam.auth.presentation.config.RefreshCookieProperties;
+import com.daebangg.sayroam.auth.presentation.cookie.RefreshCookieProperties;
 import jakarta.servlet.DispatcherType;
 import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.Test;

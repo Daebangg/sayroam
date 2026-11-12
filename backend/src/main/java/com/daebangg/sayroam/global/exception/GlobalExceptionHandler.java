@@ -1,7 +1,7 @@
 package com.daebangg.sayroam.global.exception;
 
-import com.daebangg.sayroam.auth.application.error.AuthErrorCode;
-import com.daebangg.sayroam.auth.application.error.AuthException;
+import com.daebangg.sayroam.auth.domain.error.AuthErrorCode;
+import com.daebangg.sayroam.auth.domain.error.AuthException;
 import com.daebangg.sayroam.auth.presentation.cookie.RefreshTokenCookie;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.*;

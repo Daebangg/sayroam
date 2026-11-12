@@ -1,11 +1,10 @@
 package com.daebangg.sayroam.auth.application.service;
 
-import com.daebangg.sayroam.auth.application.error.AuthErrorCode;
-import com.daebangg.sayroam.auth.application.error.AuthException;
 import com.daebangg.sayroam.auth.application.port.out.AccountLookup;
-import com.daebangg.sayroam.auth.application.port.out.PasswordChange;
 import com.daebangg.sayroam.auth.application.port.out.PasswordHasher;
 import com.daebangg.sayroam.auth.domain.AccountVerificationPurpose;
+import com.daebangg.sayroam.auth.domain.error.AuthErrorCode;
+import com.daebangg.sayroam.auth.domain.error.AuthException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -25,7 +24,7 @@ class PasswordChangeServiceTests {
     private final AccountLookup accounts = mock(AccountLookup.class);
     private final PasswordHasher passwords = mock(PasswordHasher.class);
     private final AccountVerificationService verification = mock(AccountVerificationService.class);
-    private final PasswordChange changes = mock(PasswordChange.class);
+    private final AccountWriteService changes = mock(AccountWriteService.class);
     private final PasswordChangeService service = new PasswordChangeService(accounts, passwords, verification, changes);
 
     @ParameterizedTest

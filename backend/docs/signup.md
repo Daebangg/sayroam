@@ -54,11 +54,11 @@ Cookie: XSRF-TOKEN=<동일한 값>
 ## 증명 소비와 DB 저장
 
 1. Presentation에서 입력을 검증합니다. 형식 오류·CSRF 실패는 증명을 소비하지 않습니다.
-2. Application이 공통 도메인 `PasswordPolicy`로 비밀번호를 먼저 검사한 뒤 이메일을 정규화하고 증명 원문의 SHA-256 다이제스트를 만듭니다.
+2. Application이 도메인 값 객체 `Password`를 만들어 비밀번호를 먼저 검사한 뒤 이메일을 정규화하고 증명 원문의 SHA-256 다이제스트를 만듭니다.
 3. Redis Lua에서 해당 이메일 키의 TTL·purpose=signup·다이제스트·available 상태·인증 시각을 확인합니다.
 4. 같은 Lua에서 상태를 consumed로 바꾸고 기존 TTL은 유지합니다. 동일 증명을 동시에 소비하는 요청 중 하나만 통과합니다.
 5. 통과한 요청만 비밀번호를 해시합니다. 입력 비밀번호·증명 원문은 Redis나 MySQL에 저장하지 않습니다.
-6. DB 트랜잭션에서 User와 UserCredential을 함께 저장하고 커밋합니다.
+6. DB 트랜잭션에서 비밀번호 자격 정보를 가진 `User`를 한 번 저장합니다. JPA가 `UserCredential` 저장을 전파하고 함께 커밋합니다.
 
 `users.email`의 기존 `uk_users_email` UNIQUE 제약이 최종 중복 판단 기준입니다. 사전 exists 조회만으로
 동시 가입을 제어하지 않습니다. 서로 다른 증명을 얻은 요청끼리 경쟁해도 같은 이메일의 계정은 하나만 저장됩니다.
@@ -116,18 +116,19 @@ DB 실패 응답에 Retry-After를 제공하지 않습니다. 일정 시간 기�
 
 | 위치 | 책임 |
 | --- | --- |
-| auth/application/service/SignupService | 비밀번호 정책 확인 → 증명 결과 판단 → 비밀번호 해시 → 계정 생성 포트 호출 |
-| auth/domain/PasswordPolicy | 가입·비밀번호 변경 공통 정책. 원문을 정규화하거나 보관하지 않음 |
+| auth/application/service/SignupService | 비밀번호 정책 확인 → 증명 결과 판단 → 비밀번호 해시 → 계정 쓰기 서비스 호출 |
+| auth/domain/Password | 가입·비밀번호 변경·재설정의 새 비밀번호 검증. 입력 원문을 해싱에 사용 |
 | auth/application/port/out/EmailVerificationStore | 이메일 인증 상태와 가입 증명 소비 계약 |
 | auth/application/port/out/PasswordHasher | 외부 인코더와 독립적인 비밀번호 해시 계약 |
-| auth/application/port/out/AccountRegistration | 일반 회원·비밀번호를 함께 커밋하는 계약 |
-| auth/infrastructure/redis/RedisEmailVerificationStore | Lua 기반 원자적 증명 소비 |
+| user/domain/UserRepository | 회원과 비밀번호 자격 정보를 저장하는 순수 리포지토리 |
+| auth/infrastructure/persistence/RedisEmailVerificationStore | Lua 기반 원자적 증명 소비 |
 | auth/infrastructure/security/SpringPasswordHasher | Spring PasswordEncoder 호출 |
-| auth/infrastructure/persistence/JpaAccountRegistration | JPA 저장·DB 트랜잭션·이메일 충돌 및 알려진 장애 변환 |
+| auth/application/service/AccountWriteService | 회원·비밀번호 자격 정보 저장을 같은 트랜잭션에서 실행하고 충돌과 알려진 장애를 변환 |
 | global/config/PasswordConfig | 공통 비밀번호 인코더 설정. 후속 로그인에서 재사용 |
-| user/domain/entity/User, UserCredential | 영속 회원과 비밀번호 해시. 일반 회원 생성 시 인증 시각 기록 |
-| auth/presentation/controller/SignupController | 요청 검증과 201 응답, Swagger 명세 |
-| auth/application/error/AuthErrorCode, AuthException | 공통 오류 계약에 따른 인증 실패 종류·공개 문구와 예외·추가 정보 |
+| user/domain/User, UserCredential | 영속 회원과 비밀번호 해시. 일반 회원 생성 시 인증 시각 기록 |
+| auth/presentation/controller/SignupController | 요청 검증과 201 응답 |
+| auth/presentation/api/SignupApi | Swagger 명세 |
+| auth/domain/error/AuthErrorCode, AuthException | 공통 오류 계약에 따른 인증 실패 종류·공개 문구와 예외·추가 정보 |
 | global/exception/ApiProblems, GlobalExceptionHandler | 공통 HTTP 변환과 MVC 오류 응답·인증 전용 헤더·쿠키 처리 |
 
 Application은 JPA·Redis·SMTP·Spring Security 인코더를 직접 참조하지 않습니다.

@@ -1,9 +1,10 @@
 package com.daebangg.sayroam.user.presentation.dto;
 
-import com.daebangg.sayroam.user.application.command.UpdateUserProfileCommand;
-import com.daebangg.sayroam.user.application.command.UpdateUserProfileCommand.FieldUpdate;
-import com.daebangg.sayroam.user.domain.policy.UserProfilePolicy;
-import com.daebangg.sayroam.user.domain.type.Gender;
+import com.daebangg.sayroam.user.application.dto.UpdateUserProfileCommand;
+import com.daebangg.sayroam.user.application.dto.UpdateUserProfileCommand.FieldUpdate;
+import com.daebangg.sayroam.user.domain.Gender;
+import com.daebangg.sayroam.user.domain.Nickname;
+import com.daebangg.sayroam.user.domain.ProfileImageUrl;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -24,12 +25,12 @@ public final class UpdateUserProfileRequest {
             Set.of("nickname", "profileImageUrl", "gender", "birthYear", "birthDate");
 
     @Schema(description = "앞뒤 공백 제거 후 1~50자. 제어·숨김 문자와 null 불가",
-            example = "제주 여행자", minLength = 1, maxLength = UserProfilePolicy.MAX_NICKNAME_LENGTH, pattern = UserProfilePolicy.NICKNAME_PATTERN,
+            example = "제주 여행자", minLength = 1, maxLength = Nickname.MAX_LENGTH, pattern = Nickname.PATTERN,
             requiredMode = Schema.RequiredMode.NOT_REQUIRED)
     private final String nickname;
 
     @Schema(description = "HTTP(S) 이미지 URL 또는 기본 아바타 경로(/brand/avatars/{preset}.svg). null이면 제거",
-            types = {"string", "null"}, maxLength = UserProfilePolicy.MAX_PROFILE_IMAGE_URL_LENGTH,
+            types = {"string", "null"}, maxLength = ProfileImageUrl.MAX_LENGTH,
             requiredMode = Schema.RequiredMode.NOT_REQUIRED)
     private final String profileImageUrl;
 
@@ -71,6 +72,39 @@ public final class UpdateUserProfileRequest {
         if (providedFields.contains("birthYear") && providedFields.contains("birthDate")) throw new IllegalArgumentException("Specify birthDate or birthYear, not both");
     }
 
+    private static Gender nullableGender(JsonNode node) {
+        String value = nullableString(node, "gender");
+        if (value == null) {
+            return null;
+        }
+        return switch (value) {
+            case "MALE" -> Gender.MALE;
+            case "FEMALE" -> Gender.FEMALE;
+            default -> throw new IllegalArgumentException("gender must be MALE, FEMALE or null");
+        };
+    }
+
+    private static Integer nullableBirthYear(JsonNode node) {
+        if (node == null || node.isNull()) {
+            return null;
+        }
+        if (!node.isIntegralNumber() || !node.canConvertToInt()) {
+            throw new IllegalArgumentException("birthYear must be a 32-bit integer or null");
+        }
+        return node.intValue();
+    }
+
+    private static LocalDate nullableBirthDate(JsonNode node) {
+        String value = nullableString(node, "birthDate");
+        if (value == null) return null;
+        if (!value.matches("[0-9]{4}-[0-9]{2}-[0-9]{2}")) throw new IllegalArgumentException("birthDate must be YYYY-MM-DD");
+        try {
+            return LocalDate.parse(value);
+        } catch (DateTimeParseException exception) {
+            throw new IllegalArgumentException("birthDate must be a valid calendar date", exception);
+        }
+    }
+
     public UpdateUserProfileCommand toCommand() {
         return new UpdateUserProfileCommand(
                 fieldUpdate("nickname", nickname),
@@ -92,38 +126,5 @@ public final class UpdateUserProfileRequest {
             throw new IllegalArgumentException(field + " must be a string or null");
         }
         return node.stringValue();
-    }
-
-    private static Gender nullableGender(JsonNode node) {
-        String value = nullableString(node, "gender");
-        if (value == null) {
-            return null;
-        }
-        return switch (value) {
-            case "MALE" -> Gender.MALE;
-            case "FEMALE" -> Gender.FEMALE;
-            default -> throw new IllegalArgumentException("gender must be MALE, FEMALE or null");
-        };
-    }
-
-    private static LocalDate nullableBirthDate(JsonNode node) {
-        String value = nullableString(node, "birthDate");
-        if (value == null) return null;
-        if (!value.matches("[0-9]{4}-[0-9]{2}-[0-9]{2}")) throw new IllegalArgumentException("birthDate must be YYYY-MM-DD");
-        try {
-            return LocalDate.parse(value);
-        } catch (DateTimeParseException exception) {
-            throw new IllegalArgumentException("birthDate must be a valid calendar date", exception);
-        }
-    }
-
-    private static Integer nullableBirthYear(JsonNode node) {
-        if (node == null || node.isNull()) {
-            return null;
-        }
-        if (!node.isIntegralNumber() || !node.canConvertToInt()) {
-            throw new IllegalArgumentException("birthYear must be a 32-bit integer or null");
-        }
-        return node.intValue();
     }
 }

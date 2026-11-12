@@ -8,9 +8,9 @@ import com.daebangg.sayroam.trip.application.dto.TripSummaryResult;
 import com.daebangg.sayroam.trip.application.service.TripService;
 import com.daebangg.sayroam.trip.domain.error.TripErrorCode;
 import com.daebangg.sayroam.trip.infrastructure.persistence.TripJpaRepository;
-import com.daebangg.sayroam.user.domain.entity.User;
-import com.daebangg.sayroam.user.domain.repository.UserRepository;
-import com.daebangg.sayroam.user.domain.type.Role;
+import com.daebangg.sayroam.user.domain.Role;
+import com.daebangg.sayroam.user.domain.User;
+import com.daebangg.sayroam.user.infrastructure.persistence.UserJpaRepository;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -33,7 +33,7 @@ class TripServiceTest extends DatabaseIntegrationTest {
     TripJpaRepository tripJpaRepository;
 
     @Autowired
-    UserRepository userRepository;
+    UserJpaRepository userRepository;
 
     @AfterEach
     void cleanUp() {

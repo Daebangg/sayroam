@@ -1,8 +1,8 @@
 package com.daebangg.sayroam.user.presentation.dto;
 
-import com.daebangg.sayroam.user.application.result.UserProfileResult;
-import com.daebangg.sayroam.user.domain.type.Gender;
-import com.daebangg.sayroam.user.domain.type.Role;
+import com.daebangg.sayroam.user.application.dto.UserProfileResult;
+import com.daebangg.sayroam.user.domain.Gender;
+import com.daebangg.sayroam.user.domain.Role;
 import io.swagger.v3.oas.annotations.media.Schema;
 import org.jspecify.annotations.Nullable;
 import java.time.Instant;

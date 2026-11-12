@@ -43,21 +43,19 @@ XSRF-TOKEN 쿠키는 유지하며 새로운 로그인 토큰이나 탈퇴 계정
 2. `AccountDeletionController`가 principal의 회원 ID·인증 버전과 검증한 본문을 서비스로 전달합니다.
 3. `AccountDeletionService`가 `AccountVerificationService.consumeProof`에 서버 상수
    `ACCOUNT_DELETION`을 전달합니다. Redis Lua가 현재 회원·이메일·목적·인증 버전·TTL·다이제스트를 확인해 한 번만 소비합니다.
-4. `JpaAccountDeletion`이 새 DB 트랜잭션에서 회원 행에 쓰기 잠금을 잡고
+4. `AccountWriteService`가 새 DB 트랜잭션에서 회원 행에 쓰기 잠금을 잡고
    활성/이메일 인증 상태·현재 이메일·예상 인증 버전을 다시 확인합니다.
-5. `AccountDeletionCleanup` 포트로 Application의 정리 작업을 호출해 로그인 수단·개인 여행 성향·수신 알림을 삭제하고,
-   `User.withdraw`로 프로필을 익명화하며
-   UTC 탈퇴 시각과 증가한 인증 버전을 저장합니다. **모두 같은 MySQL 트랜잭션으로 커밋**합니다.
+5. `AccountWriteService`가 같은 트랜잭션에서 개인 여행 성향과 수신 알림을 삭제합니다.
+   `User.withdraw`가 프로필을 익명화하고 로그인 수단과 프로필 사진의 연결을 끊습니다.
+   JPA가 끊어진 자격 정보·소셜 계정·사진을 삭제하며, UTC 탈퇴 시각과 증가한 인증 버전도
+   **같은 MySQL 트랜잭션으로 커밋**합니다.
 6. 커밋 확인 후에만 204와 Refresh 쿠키 만료를 반환합니다. 커밋 뒤 Redis·SMTP·외부 공급자 호출은 없습니다.
 
-Application은 본인 확인 서비스와 삭제 포트에 의존하며 JPA·Redis·HTTP 타입을 직접 참조하지 않습니다.
-Infrastructure가 DB 정리를 담당하고 Presentation이 principal·본문·쿠키·상태 코드를 처리합니다.
+Application은 본인 확인과 DB 트랜잭션을 조정합니다. Infrastructure는 삭제 쿼리를 실행하고,
+Presentation은 principal·본문·쿠키·상태 코드를 처리합니다.
 기존 V1/V2 컬럼을 사용하며 이번 작업에 새 마이그레이션은 없습니다.
 
-정리 범위·순서는 `AccountDeletionCleanupService`가 회원·여행 성향·알림 소유의 포트로 정의합니다.
-각 도메인의 JPA 어댑터만 자기 데이터의 삭제 쿼리를 알고, `JpaAccountDeletion`은 다른 도메인의 쿼리를 직접 실행하지 않습니다.
-세 정리 어댑터는 `MANDATORY` 전파를 사용해 현재 탈퇴 트랜잭션에만 참여합니다. 트랜잭션이 없으면 실행을 거절하며,
-별도 트랜잭션으로 일부 데이터만 먼저 커밋하지 않습니다. 실패는 바깥 탈퇴 트랜잭션까지 전파해 함께 롤백합니다.
+여행 성향과 알림의 저장 구현은 `MANDATORY` 전파로 현재 탈퇴 트랜잭션에 참여합니다. 실패는 바깥 탈퇴 트랜잭션까지 전파해 함께 롤백합니다.
 
 ## 정리·보존 범위
 

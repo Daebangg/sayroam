@@ -1,6 +1,6 @@
 package com.daebangg.sayroam.global.config;
 
-import com.daebangg.sayroam.auth.application.error.AuthErrorCode;
+import com.daebangg.sayroam.auth.domain.error.AuthErrorCode;
 import com.daebangg.sayroam.common.domain.error.TravelPeriodErrorCode;
 import com.daebangg.sayroam.global.exception.CommonErrorCode;
 import com.daebangg.sayroam.global.exception.ErrorCode;

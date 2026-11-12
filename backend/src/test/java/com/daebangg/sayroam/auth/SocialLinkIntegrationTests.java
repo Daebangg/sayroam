@@ -1,27 +1,32 @@
 package com.daebangg.sayroam.auth;
 
-import com.daebangg.sayroam.auth.application.model.SocialIdentity;
-import com.daebangg.sayroam.auth.application.port.out.AccountRegistration;
-import com.daebangg.sayroam.auth.application.port.out.SocialAccounts;
+import com.daebangg.sayroam.auth.application.dto.SocialIdentity;
 import com.daebangg.sayroam.auth.application.port.out.SocialIdentityProvider;
+import com.daebangg.sayroam.auth.application.port.out.VerificationEmailSender;
+import com.daebangg.sayroam.auth.application.service.AccountWriteService;
 import com.daebangg.sayroam.auth.domain.OAuthSecrets;
+import com.daebangg.sayroam.auth.domain.error.AuthErrorCode;
+import com.daebangg.sayroam.auth.domain.error.AuthException;
+import com.daebangg.sayroam.auth.infrastructure.identity.OAuth2UserInfoMapper;
+import com.daebangg.sayroam.auth.infrastructure.persistence.AccountLookupJpaRepository;
 import com.daebangg.sayroam.support.DatabaseIntegrationTest;
-import com.daebangg.sayroam.user.domain.type.SocialProvider;
+import com.daebangg.sayroam.user.domain.SocialProvider;
 import jakarta.servlet.http.Cookie;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.NullSource;
-import org.junit.jupiter.params.provider.NullAndEmptySource;
-import org.junit.jupiter.params.provider.ValueSource;
 import org.junit.jupiter.params.provider.EnumSource;
-import com.daebangg.sayroam.auth.infrastructure.oauth.OAuth2UserInfoMapper;
+import org.junit.jupiter.params.provider.NullAndEmptySource;
+import org.junit.jupiter.params.provider.NullSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.dao.DataAccessResourceFailureException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
@@ -34,19 +39,22 @@ import java.time.Instant;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-/** 실제 보안 필터·Redis 결과 소비·MySQL UNIQUE를 통과하고 외부 공급자만 대체한다. */
+/** 실제 보안 필터·Redis·MySQL을 사용하고 외부 공급자와 메일 발송은 대체한다. */
 @AutoConfigureMockMvc
 class SocialLinkIntegrationTests extends DatabaseIntegrationTest {
     private static final String EMAIL = "member@example.test";
@@ -55,10 +63,11 @@ class SocialLinkIntegrationTests extends DatabaseIntegrationTest {
     @Autowired JsonMapper json;
     @Autowired JdbcTemplate jdbc;
     @Autowired PasswordEncoder passwords;
-    @Autowired AccountRegistration registrations;
-    @Autowired SocialAccounts accounts;
+    @Autowired AccountWriteService accountWrites;
     @Autowired OAuth2UserInfoMapper userInfos;
     @MockitoBean SocialIdentityProvider identities;
+    @MockitoBean VerificationEmailSender mailSender;
+    @MockitoSpyBean AccountLookupJpaRepository accountQueries;
     private Cookie csrf;
 
     @BeforeEach void prepare() throws Exception {
@@ -121,15 +130,128 @@ class SocialLinkIntegrationTests extends DatabaseIntegrationTest {
         jdbc.update("update users set email_verified_at = NULL where id = ?", id);
         MvcResult response = exchange(returned());
         assertThat(response.getResponse().getStatus()).isEqualTo(409);
+        assertThat(json.readTree(response.getResponse().getContentAsByteArray()).path("code").asText())
+                .isEqualTo("EMAIL_ALREADY_REGISTERED");
         assertThat(countLinks()).isZero();
     }
 
     @Test void aDifferentIdentityForAnAlreadyConnectedProviderIsNotReplaced() throws Exception {
-        accounts.register(identity("original-subject", EMAIL, true), EMAIL, "기존 여행자", Instant.now());
+        accountWrites.registerSocial(identity("original-subject", EMAIL, true), EMAIL, "기존 여행자", Instant.now());
         MvcResult response = exchange(returned());
         assertThat(response.getResponse().getStatus()).isEqualTo(409);
+        assertThat(json.readTree(response.getResponse().getContentAsByteArray()).path("code").asText())
+                .isEqualTo("SOCIAL_ACCOUNT_CONFLICT");
         assertThat(jdbc.queryForObject("select provider_user_id from user_social_account", String.class)).isEqualTo("original-subject");
         assertThat(countLinks()).isEqualTo(1);
+    }
+
+    @Test
+    void emailVerificationReportsAuthenticationUnavailableWhenEmailLookupFails() throws Exception {
+        doThrow(new DataAccessResourceFailureException("database unavailable"))
+                .when(accountQueries).existsByEmail(EMAIL);
+
+        MvcResult result = postJson("/api/auth/email-verifications", Map.of("email", EMAIL));
+
+        assertThat(result.getResponse().getStatus()).isEqualTo(503);
+        assertThat(json.readTree(result.getResponse().getContentAsByteArray()).path("code").asText())
+                .isEqualTo("AUTHENTICATION_UNAVAILABLE");
+        verifyNoInteractions(mailSender);
+    }
+
+    @Test
+    void bearerAccountLookupFailureKeepsHttp503Response() throws Exception {
+        long userId = register();
+        MvcResult login = exchange(returned());
+        assertThat(login.getResponse().getStatus()).isEqualTo(200);
+        String access = json.readTree(login.getResponse().getContentAsByteArray()).path("login").path("accessToken").asText();
+        doThrow(new DataAccessResourceFailureException("database unavailable"))
+                .when(accountQueries).findActiveAccount(userId);
+
+        MvcResult response = mvc.perform(get("/api/users/me").servletPath("/api/users/me")
+                        .header("Authorization", "Bearer " + access))
+                .andExpect(status().isServiceUnavailable()).andReturn();
+
+        assertThat(json.readTree(response.getResponse().getContentAsByteArray()).path("code").asText())
+                .isEqualTo("AUTHENTICATION_UNAVAILABLE");
+        assertThat(response.getResponse().getHeader("WWW-Authenticate")).isNull();
+    }
+
+    @Test
+    void socialExchangeReportsSocialAuthUnavailableWhenSharedEmailLookupFails() throws Exception {
+        doThrow(new DataAccessResourceFailureException("database unavailable"))
+                .when(accountQueries).existsByEmail(EMAIL);
+
+        MvcResult result = exchange(returned());
+
+        assertThat(result.getResponse().getStatus()).isEqualTo(503);
+        assertThat(json.readTree(result.getResponse().getContentAsByteArray()).path("code").asText())
+                .isEqualTo("SOCIAL_AUTH_UNAVAILABLE");
+        assertThat(result.getResponse().getCookie("sayroam_refresh")).isNull();
+    }
+
+    @Test
+    void socialExchangeReportsSocialAuthUnavailableWhenProviderLookupFails() throws Exception {
+        doThrow(new DataAccessResourceFailureException("database unavailable"))
+                .when(accountQueries).findActiveSocialAccount(SocialProvider.GOOGLE, "subject");
+
+        MvcResult result = exchange(returned());
+
+        assertThat(result.getResponse().getStatus()).isEqualTo(503);
+        assertThat(json.readTree(result.getResponse().getContentAsByteArray()).path("code").asText())
+                .isEqualTo("SOCIAL_AUTH_UNAVAILABLE");
+        assertThat(result.getResponse().getCookie("sayroam_refresh")).isNull();
+    }
+
+    @Test
+    void duplicateProviderIdentityRollsBackTheNewMember() {
+        String subject = "shared-subject";
+        String anotherEmail = "another@example.test";
+        accountWrites.registerSocial(identity(subject, EMAIL, true), EMAIL, "기존 여행자", Instant.now());
+
+        assertThatThrownBy(() -> accountWrites.registerSocial(
+                identity(subject, anotherEmail, true), anotherEmail, "신규 여행자", Instant.now()))
+                .isInstanceOfSatisfying(AuthException.class,
+                        exception -> assertThat(exception.getErrorCode()).isEqualTo(AuthErrorCode.SOCIAL_ACCOUNT_CONFLICT));
+
+        assertThat(countLinks()).isEqualTo(1);
+        assertThat(jdbc.queryForObject("select count(*) from users where email = ?", Long.class, anotherEmail)).isZero();
+    }
+
+    @Test
+    void databaseFailureWhileLoadingExistingSocialAccountsReturns503() throws Exception {
+        long userId = register();
+        Returned pending = returned();
+        jdbc.update("""
+                INSERT INTO user_social_account (user_id, provider, provider_user_id, created_at, updated_at)
+                VALUES (?, 'KAKAO', 'other-provider-subject', UTC_TIMESTAMP(), UTC_TIMESTAMP())
+                """, userId);
+
+        MvcResult response = SocialAccountReadFailure.during(jdbc, () -> exchange(pending));
+
+        assertThat(response.getResponse().getStatus()).isEqualTo(503);
+        assertThat(json.readTree(response.getResponse().getContentAsByteArray()).path("code").asText())
+                .isEqualTo("SOCIAL_AUTH_UNAVAILABLE");
+        assertThat(response.getResponse().getCookie("sayroam_refresh")).isNull();
+        assertThat(countLinks()).isEqualTo(1);
+    }
+
+    @Test
+    void identityClaimedAfterCallbackCannotBeLinkedToAnotherMember() throws Exception {
+        long originalMemberId = register();
+        Returned pending = returned();
+        String anotherEmail = "another@example.test";
+        long linkedMemberId = accountWrites.registerSocial(
+                identity("subject", anotherEmail, true), anotherEmail, "다른 여행자", Instant.now()).userId();
+
+        MvcResult response = exchange(pending);
+
+        assertThat(response.getResponse().getStatus()).isEqualTo(409);
+        assertThat(json.readTree(response.getResponse().getContentAsByteArray()).path("code").asText())
+                .isEqualTo("SOCIAL_ACCOUNT_CONFLICT");
+        assertThat(response.getResponse().getCookie("sayroam_refresh")).isNull();
+        assertThat(countLinks()).isEqualTo(1);
+        assertThat(jdbc.queryForObject("select user_id from user_social_account where provider_user_id = ?",
+                Long.class, "subject")).isEqualTo(linkedMemberId).isNotEqualTo(originalMemberId);
     }
 
     @Test void concurrentVerifiedLoginsLinkOnceAndAuthenticateAsTheSameMember() throws Exception {
@@ -224,7 +346,7 @@ class SocialLinkIntegrationTests extends DatabaseIntegrationTest {
         assertThat(jdbc.queryForObject("select count(*) from user_credential", Long.class)).isZero();
     }
 
-    private long register() { return registrations.register(EMAIL, "기존 여행자", passwords.encode(PASSWORD), Instant.now()); }
+    private long register() { return accountWrites.register(EMAIL, "기존 여행자", passwords.encode(PASSWORD), Instant.now()); }
     private long countLinks() { return jdbc.queryForObject("select count(*) from user_social_account", Long.class); }
     private SocialIdentity identity(String subject, String email, boolean verified) { return new SocialIdentity(SocialProvider.GOOGLE, subject, email, verified, "소셜 이름", null); }
     private void assertAuthenticatedAs(MvcResult result, long id) throws Exception {

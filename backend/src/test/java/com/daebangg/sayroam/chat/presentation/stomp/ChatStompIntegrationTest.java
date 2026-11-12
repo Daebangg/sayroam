@@ -1,9 +1,8 @@
 package com.daebangg.sayroam.chat.presentation.stomp;
 
 import com.daebangg.sayroam.auth.application.port.out.AccessTokenIssuer;
-import com.daebangg.sayroam.auth.application.port.out.AccountDeletion;
-import com.daebangg.sayroam.auth.application.port.out.PasswordChange;
-import com.daebangg.sayroam.auth.infrastructure.config.AccessTokenProperties;
+import com.daebangg.sayroam.auth.application.service.AccountWriteService;
+import com.daebangg.sayroam.auth.infrastructure.security.AccessTokenProperties;
 import com.daebangg.sayroam.chat.infrastructure.persistence.ChatMessageJpaRepository;
 import com.daebangg.sayroam.global.exception.CommonErrorCode;
 import com.daebangg.sayroam.room.application.service.RoomService;
@@ -13,10 +12,9 @@ import com.daebangg.sayroam.room.domain.error.RoomErrorCode;
 import com.daebangg.sayroam.room.infrastructure.persistence.RoomJpaRepository;
 import com.daebangg.sayroam.room.infrastructure.persistence.RoomMemberJpaRepository;
 import com.daebangg.sayroam.support.DatabaseIntegrationTest;
-import com.daebangg.sayroam.user.domain.entity.User;
-import com.daebangg.sayroam.user.domain.entity.UserCredential;
-import com.daebangg.sayroam.user.domain.repository.UserRepository;
-import com.daebangg.sayroam.user.domain.type.Role;
+import com.daebangg.sayroam.user.domain.Role;
+import com.daebangg.sayroam.user.domain.User;
+import com.daebangg.sayroam.user.infrastructure.persistence.UserJpaRepository;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -81,10 +79,7 @@ class ChatStompIntegrationTest extends DatabaseIntegrationTest {
     JwtEncoder jwtEncoder;
 
     @Autowired
-    PasswordChange passwordChange;
-
-    @Autowired
-    AccountDeletion accountDeletion;
+    AccountWriteService accountWrites;
 
     @Autowired
     RoomService roomService;
@@ -99,7 +94,7 @@ class ChatStompIntegrationTest extends DatabaseIntegrationTest {
     ChatMessageJpaRepository chatMessageRepository;
 
     @Autowired
-    UserRepository userRepository;
+    UserJpaRepository userRepository;
 
     @Autowired
     TransactionTemplate transactionTemplate;
@@ -432,7 +427,7 @@ class ChatStompIntegrationTest extends DatabaseIntegrationTest {
         subscribeRoom(session, roomId);
 
         // when
-        passwordChange.change(userId, EMAIL, 0L, "new-hash");
+        accountWrites.change(userId, EMAIL, 0L, "new-hash");
 
         // then
         StompHeaders error = events.errorFrame.get(5, TimeUnit.SECONDS);
@@ -450,7 +445,7 @@ class ChatStompIntegrationTest extends DatabaseIntegrationTest {
         subscribeRoom(session, roomId);
 
         // when
-        accountDeletion.delete(userId, EMAIL, 0L);
+        accountWrites.delete(userId, EMAIL, 0L);
 
         // then
         StompHeaders error = events.errorFrame.get(5, TimeUnit.SECONDS);
@@ -615,9 +610,8 @@ class ChatStompIntegrationTest extends DatabaseIntegrationTest {
 
     private Long saveVerifiedUser() {
         return transactionTemplate.execute(status -> {
-            User user = User.verifiedEmailMember(EMAIL, "회원", LocalDateTime.now(ZoneOffset.UTC));
+            User user = User.verifiedEmailMember(EMAIL, "회원", LocalDateTime.now(ZoneOffset.UTC), "old-hash");
             entityManager.persist(user);
-            entityManager.persist(UserCredential.builder().user(user).passwordHash("old-hash").build());
             return user.getId();
         });
     }

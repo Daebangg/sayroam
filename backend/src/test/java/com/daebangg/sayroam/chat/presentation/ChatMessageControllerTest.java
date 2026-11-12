@@ -1,7 +1,7 @@
 package com.daebangg.sayroam.chat.presentation;
 
 import com.daebangg.sayroam.auth.domain.AuthenticatedAccount;
-import com.daebangg.sayroam.auth.presentation.config.RefreshCookieProperties;
+import com.daebangg.sayroam.auth.presentation.cookie.RefreshCookieProperties;
 import com.daebangg.sayroam.auth.presentation.cookie.RefreshTokenCookie;
 import com.daebangg.sayroam.chat.application.dto.ChatMessageResult;
 import com.daebangg.sayroam.chat.application.service.ChatMessageService;
@@ -10,7 +10,7 @@ import com.daebangg.sayroam.global.exception.BusinessException;
 import com.daebangg.sayroam.global.security.ActiveAccountJwtConverter;
 import com.daebangg.sayroam.global.security.SecurityConfig;
 import com.daebangg.sayroam.room.domain.error.RoomErrorCode;
-import com.daebangg.sayroam.user.domain.type.Role;
+import com.daebangg.sayroam.user.domain.Role;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;

@@ -1,7 +1,7 @@
 package com.daebangg.sayroam.trip.presentation;
 
 import com.daebangg.sayroam.auth.domain.AuthenticatedAccount;
-import com.daebangg.sayroam.auth.presentation.config.RefreshCookieProperties;
+import com.daebangg.sayroam.auth.presentation.cookie.RefreshCookieProperties;
 import com.daebangg.sayroam.auth.presentation.cookie.RefreshTokenCookie;
 import com.daebangg.sayroam.common.domain.TravelPeriod;
 import com.daebangg.sayroam.common.domain.error.TravelPeriodErrorCode;
@@ -12,7 +12,7 @@ import com.daebangg.sayroam.trip.application.dto.TripSummaryResult;
 import com.daebangg.sayroam.trip.application.service.TripService;
 import com.daebangg.sayroam.trip.domain.error.TripErrorCode;
 import com.daebangg.sayroam.trip.presentation.controller.TripController;
-import com.daebangg.sayroam.user.domain.type.Role;
+import com.daebangg.sayroam.user.domain.Role;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;

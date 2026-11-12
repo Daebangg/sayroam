@@ -1,84 +1,61 @@
 package com.daebangg.sayroam.auth.infrastructure.persistence;
 
-import com.daebangg.sayroam.auth.application.error.AuthErrorCode;
-import com.daebangg.sayroam.auth.application.error.AuthException;
+import com.daebangg.sayroam.auth.application.dto.SocialAccountResult;
 import com.daebangg.sayroam.auth.application.port.out.AccountLookup;
 import com.daebangg.sayroam.auth.domain.AuthenticatedAccount;
-import jakarta.persistence.EntityManager;
-import org.springframework.dao.DataAccessException;
-import org.springframework.dao.DataAccessResourceFailureException;
-import org.springframework.dao.RecoverableDataAccessException;
-import org.springframework.dao.TransientDataAccessException;
-import org.springframework.orm.jpa.vendor.HibernateJpaDialect;
+import com.daebangg.sayroam.auth.domain.error.AuthErrorCode;
+import com.daebangg.sayroam.auth.domain.error.AuthException;
+import com.daebangg.sayroam.user.domain.SocialProvider;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
-import org.springframework.transaction.CannotCreateTransactionException;
-import org.springframework.transaction.PlatformTransactionManager;
-import org.springframework.transaction.TransactionSystemException;
-import org.springframework.transaction.support.TransactionTemplate;
 
-import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Supplier;
 
 @Repository
+@RequiredArgsConstructor
 public class JpaAccountLookup implements AccountLookup {
-    private static final HibernateJpaDialect JPA_DIALECT = new HibernateJpaDialect();
-    private final EntityManager entityManager;
-    private final TransactionTemplate transaction;
-
-    public JpaAccountLookup(EntityManager entityManager, PlatformTransactionManager transactionManager) {
-        this.entityManager = entityManager;
-        this.transaction = new TransactionTemplate(transactionManager);
-        this.transaction.setReadOnly(true);
-    }
+    private final AccountLookupJpaRepository queries;
+    private final JpaAccountPersistenceFailures failures;
 
     @Override
     public boolean emailExists(String normalizedEmail) {
-        return read(() -> entityManager.createQuery("select count(u) from User u where u.email = :email", Long.class)
-                .setParameter("email", normalizedEmail).getSingleResult() > 0);
+        // 기존 이메일 동등 비교는 NULL을 찾지 않는다. 파생 쿼리는 NULL 입력을 IS NULL로 바꾼다.
+        return normalizedEmail != null
+                && read(() -> queries.existsByEmail(normalizedEmail), AuthErrorCode.AUTHENTICATION_UNAVAILABLE);
     }
 
     @Override
     public Optional<Credentials> findActiveCredentials(String normalizedEmail) {
-        return read(() -> entityManager.createQuery("""
-                select new com.daebangg.sayroam.auth.application.port.out.AccountLookup$Credentials(
-                    u.id, c.passwordHash, u.authVersion)
-                from UserCredential c join c.user u
-                where u.email = :email and u.deletedAt is null and u.emailVerifiedAt is not null
-                """, Credentials.class).setParameter("email", normalizedEmail).getResultList().stream().findFirst());
+        return read(() -> queries.findActiveCredentials(normalizedEmail), AuthErrorCode.AUTHENTICATION_UNAVAILABLE);
     }
 
     @Override
     public Optional<AuthenticatedAccount> findActiveAccount(long userId) {
-        return read(() -> entityManager.createQuery("""
-                select new com.daebangg.sayroam.auth.domain.AuthenticatedAccount(
-                    u.id, u.email, u.nickname, u.profileImageUrl, u.role, u.authVersion)
-                from User u where u.id = :id and u.deletedAt is null
-                """, AuthenticatedAccount.class).setParameter("id", userId).getResultList().stream().findFirst());
+        return read(() -> queries.findActiveAccount(userId), AuthErrorCode.AUTHENTICATION_UNAVAILABLE);
     }
 
     @Override
     public Optional<VerifiedAccount> findActiveVerifiedAccount(long userId) {
-        return read(() -> entityManager.createQuery("""
-                select new com.daebangg.sayroam.auth.application.port.out.AccountLookup$VerifiedAccount(
-                    u.email, u.authVersion) from User u
-                where u.id = :id and u.deletedAt is null
-                    and u.emailVerifiedAt is not null and u.email is not null
-                """, VerifiedAccount.class).setParameter("id", userId).getResultList().stream().findFirst());
+        return read(() -> queries.findActiveVerifiedAccount(userId), AuthErrorCode.AUTHENTICATION_UNAVAILABLE);
     }
 
-    private <T> T read(Supplier<T> query) {
+    @Override
+    public Optional<SocialAccountResult> findActiveSocialAccount(SocialProvider provider, String providerUserId) {
+        return read(() -> queries.findActiveSocialAccount(provider, providerUserId), AuthErrorCode.SOCIAL_AUTH_UNAVAILABLE);
+    }
+
+    @Override
+    public Optional<SocialAccountResult> findActiveSocialAccountByEmail(String normalizedEmail) {
+        return read(() -> queries.findActiveSocialAccountByEmail(normalizedEmail), AuthErrorCode.SOCIAL_AUTH_UNAVAILABLE);
+    }
+
+    private <T> T read(Supplier<T> query, AuthErrorCode unavailable) {
         try {
-            return Objects.requireNonNull(transaction.execute(status -> query.get()));
+            return query.get();
         } catch (RuntimeException exception) {
-            DataAccessException translated = exception instanceof DataAccessException dataAccess
-                    ? dataAccess : JPA_DIALECT.translateExceptionIfPossible(exception);
-            if (translated instanceof DataAccessResourceFailureException
-                    || translated instanceof TransientDataAccessException
-                    || translated instanceof RecoverableDataAccessException
-                    || exception instanceof CannotCreateTransactionException
-                    || exception instanceof TransactionSystemException) {
-                throw new AuthException(AuthErrorCode.AUTHENTICATION_UNAVAILABLE, exception);
+            if (failures.isUnavailable(exception)) {
+                throw new AuthException(unavailable, exception);
             }
             throw exception;
         }

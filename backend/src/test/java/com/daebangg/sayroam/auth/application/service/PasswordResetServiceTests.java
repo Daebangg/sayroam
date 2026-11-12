@@ -1,9 +1,9 @@
 package com.daebangg.sayroam.auth.application.service;
 
-import com.daebangg.sayroam.global.mail.EmailLanguage;
-import com.daebangg.sayroam.auth.application.error.AuthErrorCode;
-import com.daebangg.sayroam.auth.application.error.AuthException;
 import com.daebangg.sayroam.auth.application.port.out.*;
+import com.daebangg.sayroam.auth.domain.error.AuthErrorCode;
+import com.daebangg.sayroam.auth.domain.error.AuthException;
+import com.daebangg.sayroam.global.mail.EmailLanguage;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -23,7 +23,7 @@ class PasswordResetServiceTests {
     private final PasswordResetStore store = mock(PasswordResetStore.class);
     private final VerificationEmailSender mail = mock(VerificationEmailSender.class);
     private final PasswordHasher passwords = mock(PasswordHasher.class);
-    private final PasswordChange changes = mock(PasswordChange.class);
+    private final AccountWriteService changes = mock(AccountWriteService.class);
     private final PasswordResetService service = new PasswordResetService(accounts, store, Optional.of(mail), passwords, changes);
     private static final String EMAIL = "member@example.test";
     private static final String PROOF = "p".repeat(43);

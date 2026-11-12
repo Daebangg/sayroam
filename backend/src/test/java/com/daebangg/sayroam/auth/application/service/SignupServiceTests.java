@@ -1,11 +1,10 @@
 package com.daebangg.sayroam.auth.application.service;
 
-import com.daebangg.sayroam.auth.application.error.AuthErrorCode;
-import com.daebangg.sayroam.auth.application.error.AuthException;
-import com.daebangg.sayroam.auth.application.port.out.AccountRegistration;
 import com.daebangg.sayroam.auth.application.port.out.EmailVerificationStore;
 import com.daebangg.sayroam.auth.application.port.out.PasswordHasher;
 import com.daebangg.sayroam.auth.domain.VerificationDigests;
+import com.daebangg.sayroam.auth.domain.error.AuthErrorCode;
+import com.daebangg.sayroam.auth.domain.error.AuthException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -23,7 +22,7 @@ import static org.mockito.Mockito.when;
 class SignupServiceTests {
     private final EmailVerificationStore verification = mock(EmailVerificationStore.class);
     private final PasswordHasher passwords = mock(PasswordHasher.class);
-    private final AccountRegistration accounts = mock(AccountRegistration.class);
+    private final AccountWriteService accounts = mock(AccountWriteService.class);
     private final SignupService service = new SignupService(verification, passwords, accounts);
 
     @ParameterizedTest

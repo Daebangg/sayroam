@@ -13,6 +13,7 @@ plugins {
     id 'org.springframework.boot' version '4.1.2'
     id 'io.spring.dependency-management' version '1.1.7'
     id 'org.flywaydb.flyway' version '12.4.0'
+    id 'org.hibernate.orm' version '7.4.15.Final'
 }
 
 group = 'com.daebangg'
@@ -24,6 +25,14 @@ java {
         languageVersion = JavaLanguageVersion.of(21)
     }
 }
+
+hibernate {
+    // 선택적인 프로필 사진을 회원 조회 시 지연 로딩한다.
+    enhancement {}
+}
+
+// Hibernate enhancer와 실행 시 ORM 버전을 맞춘다.
+ext['hibernate.version'] = '7.4.15.Final'
 
 repositories {
     mavenCentral()

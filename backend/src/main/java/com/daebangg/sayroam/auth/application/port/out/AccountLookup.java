@@ -1,6 +1,8 @@
 package com.daebangg.sayroam.auth.application.port.out;
 
+import com.daebangg.sayroam.auth.application.dto.SocialAccountResult;
 import com.daebangg.sayroam.auth.domain.AuthenticatedAccount;
+import com.daebangg.sayroam.user.domain.SocialProvider;
 
 import java.util.Optional;
 
@@ -14,6 +16,10 @@ public interface AccountLookup {
 
     /** 민감 작업은 활성 회원의 현재 인증된 대표 이메일로만 진행한다. */
     Optional<VerifiedAccount> findActiveVerifiedAccount(long userId);
+
+    Optional<SocialAccountResult> findActiveSocialAccount(SocialProvider provider, String providerUserId);
+
+    Optional<SocialAccountResult> findActiveSocialAccountByEmail(String normalizedEmail);
 
     record VerifiedAccount(String email, long authVersion) {
         @Override

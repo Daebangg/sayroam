@@ -58,9 +58,12 @@ domain은 어떤 계층도 참조하지 않습니다. infrastructure는 applicat
     controller/    REST 컨트롤러
     api/           OpenAPI 애너테이션을 분리한 인터페이스
     dto/           요청·응답 객체
+    cookie/        HTTP 쿠키 발급·조회와 해당 설정
   infrastructure/
     persistence/   리포지토리·저장 포트의 구현
-    messaging/     클라이언트·외부로 메시지를 내보내는 구현(구독자 전송, 연결 종료 등)
+    messaging/     클라이언트·외부로 메시지를 내보내는 구현(메일 발송, 구독자 전송, 연결 종료 등)
+    identity/      외부 신원 공급자 연동과 설정
+    security/      토큰 서명·비밀번호 해싱과 설정
 ```
 
 ### 하위 패키지

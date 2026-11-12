@@ -1,6 +1,6 @@
 package com.daebangg.sayroam.global.web;
 
-import com.daebangg.sayroam.auth.presentation.config.RefreshCookieProperties;
+import com.daebangg.sayroam.auth.presentation.cookie.RefreshCookieProperties;
 import com.daebangg.sayroam.auth.presentation.controller.AuthCsrfController;
 import com.daebangg.sayroam.auth.presentation.cookie.RefreshTokenCookie;
 import com.daebangg.sayroam.global.security.ActiveAccountJwtConverter;

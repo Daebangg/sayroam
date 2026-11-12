@@ -1,12 +1,12 @@
 package com.daebangg.sayroam.auth.application.service;
 
-import com.daebangg.sayroam.global.mail.EmailLanguage;
-import com.daebangg.sayroam.auth.application.error.AuthErrorCode;
-import com.daebangg.sayroam.auth.application.error.AuthException;
 import com.daebangg.sayroam.auth.application.port.out.*;
 import com.daebangg.sayroam.auth.domain.EmailAddress;
-import com.daebangg.sayroam.auth.domain.PasswordPolicy;
+import com.daebangg.sayroam.auth.domain.Password;
 import com.daebangg.sayroam.auth.domain.VerificationDigests;
+import com.daebangg.sayroam.auth.domain.error.AuthErrorCode;
+import com.daebangg.sayroam.auth.domain.error.AuthException;
+import com.daebangg.sayroam.global.mail.EmailLanguage;
 import org.springframework.stereotype.Service;
 
 import java.security.SecureRandom;
@@ -22,12 +22,12 @@ public class PasswordResetService {
     private final PasswordResetStore store;
     private final Optional<VerificationEmailSender> mailSender;
     private final PasswordHasher passwords;
-    private final PasswordChange passwordChange;
+    private final AccountWriteService passwordChange;
     private final SecureRandom random = new SecureRandom();
 
     public PasswordResetService(AccountLookup accounts, PasswordResetStore store,
                                 Optional<VerificationEmailSender> mailSender, PasswordHasher passwords,
-                                PasswordChange passwordChange) {
+                                AccountWriteService passwordChange) {
         this.accounts = accounts;
         this.store = store;
         this.mailSender = mailSender;
@@ -75,11 +75,11 @@ public class PasswordResetService {
     }
 
     public void reset(String rawEmail, String resetProof, String newPassword) {
-        if (!PasswordPolicy.isValid(newPassword)) throw new AuthException(AuthErrorCode.PASSWORD_POLICY_VIOLATION);
+        Password validatedPassword = new Password(newPassword);
         if (resetProof == null || !resetProof.matches("^[A-Za-z0-9_-]{43}$")) throw new AuthException(AuthErrorCode.PASSWORD_RESET_PROOF_INVALID);
         PasswordResetStore.Subject subject = subject(rawEmail);
         // 해시 실패로 증명이 소비되지 않게 하며 비밀번호 미등록 계정도 같은 해싱 경로를 거친다.
-        String hash = passwords.hash(newPassword);
+        String hash = passwords.hash(validatedPassword.value());
         switch (store.consumeProof(subject, VerificationDigests.sha256(resetProof))) {
             case EXPIRED -> throw new AuthException(AuthErrorCode.PASSWORD_RESET_PROOF_EXPIRED);
             case INVALID -> throw new AuthException(AuthErrorCode.PASSWORD_RESET_PROOF_INVALID);

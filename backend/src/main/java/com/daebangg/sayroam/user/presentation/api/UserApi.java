@@ -12,8 +12,6 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.web.bind.annotation.RequestBody;
 
 @Tag(name = "Users")
 public interface UserApi {
@@ -27,7 +25,7 @@ public interface UserApi {
             @ApiResponse(responseCode = "500", ref = "#/components/responses/InternalServerError")
     })
     ResponseEntity<UserLoginMethodsResponse> loginMethods(
-            @Parameter(hidden = true) @AuthenticationPrincipal AuthenticatedAccount account);
+            @Parameter(hidden = true) AuthenticatedAccount account);
 
     @Operation(summary = "내 회원 정보 조회",
             description = "현재 로그인한 회원의 정보를 조회합니다. 가입 시각은 UTC로 반환하고 성별·생일·출생연도·프로필 이미지가 미설정이면 null을 반환합니다.")
@@ -39,7 +37,7 @@ public interface UserApi {
             @ApiResponse(responseCode = "500", ref = "#/components/responses/InternalServerError")
     })
     ResponseEntity<CurrentUserResponse> me(
-            @Parameter(hidden = true) @AuthenticationPrincipal AuthenticatedAccount account);
+            @Parameter(hidden = true) AuthenticatedAccount account);
 
     @Operation(summary = "내 프로필 부분 수정",
             description = "닉네임·프로필 이미지·성별·생일·출생연도만 변경할 수 있습니다. 생략한 필드는 유지하고, "
@@ -54,8 +52,7 @@ public interface UserApi {
             @ApiResponse(responseCode = "500", ref = "#/components/responses/InternalServerError")
     })
     ResponseEntity<CurrentUserResponse> updateProfile(
-            @Parameter(hidden = true) @AuthenticationPrincipal AuthenticatedAccount account,
-            @RequestBody UpdateUserProfileRequest request);
+            @Parameter(hidden = true) AuthenticatedAccount account, UpdateUserProfileRequest request);
 
     @Operation(summary = "내 프로필 사진 업로드", description = "JPEG·PNG를 512px 정사각형 JPEG로 변환해 저장하고 변경된 회원 정보를 반환합니다. 이전 업로드 사진은 교체합니다.")
     @SecurityRequirement(name = "bearerAuth")
@@ -66,6 +63,8 @@ public interface UserApi {
             @ApiResponse(responseCode = "500", ref = "#/components/responses/InternalServerError")
     })
     ResponseEntity<CurrentUserResponse> uploadProfileImage(
-            @Parameter(hidden = true) @AuthenticationPrincipal AuthenticatedAccount account,
-            @RequestBody UploadProfileImageRequest request);
+            @Parameter(hidden = true) AuthenticatedAccount account, UploadProfileImageRequest request);
+
+    @Operation(hidden = true)
+    ResponseEntity<byte[]> profileImage(String imageId);
 }

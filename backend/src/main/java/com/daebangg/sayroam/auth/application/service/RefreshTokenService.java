@@ -1,13 +1,13 @@
 package com.daebangg.sayroam.auth.application.service;
 
-import com.daebangg.sayroam.auth.application.error.AuthErrorCode;
-import com.daebangg.sayroam.auth.application.error.AuthException;
-import com.daebangg.sayroam.auth.application.model.TokenPair;
+import com.daebangg.sayroam.auth.application.dto.TokenPairResult;
 import com.daebangg.sayroam.auth.application.port.out.AccessTokenIssuer;
 import com.daebangg.sayroam.auth.application.port.out.AccountLookup;
 import com.daebangg.sayroam.auth.application.port.out.RefreshTokenStore;
 import com.daebangg.sayroam.auth.domain.AuthenticatedAccount;
 import com.daebangg.sayroam.auth.domain.RefreshToken;
+import com.daebangg.sayroam.auth.domain.error.AuthErrorCode;
+import com.daebangg.sayroam.auth.domain.error.AuthException;
 import org.springframework.stereotype.Service;
 
 import java.util.Optional;
@@ -24,7 +24,13 @@ public class RefreshTokenService {
         this.accessTokens = accessTokens;
     }
 
-    public TokenPair refresh(String rawToken) {
+    public void logout(String rawToken) {
+        // 쿠키가 없거나 형식이 잘못돼도 브라우저 정리는 허용한다.
+        // 정상 형식이면 현재/이전 토큰의 소유 확인과 폐기를 저장소가 원자적으로 수행한다.
+        RefreshToken.parse(rawToken).ifPresent(token -> sessions.revoke(token.sessionId(), token.digest()));
+    }
+
+    public TokenPairResult refresh(String rawToken) {
         RefreshToken current = RefreshToken.parse(rawToken)
                 .orElseThrow(() -> new AuthException(AuthErrorCode.REFRESH_TOKEN_INVALID));
         String digest = current.digest();
@@ -43,7 +49,7 @@ public class RefreshTokenService {
                 || rotated.rememberMe() != inspected.rememberMe()) {
             throw new IllegalStateException("Refresh session account changed");
         }
-        return new TokenPair(access, next.value(), rotated.expiresIn(), rotated.rememberMe());
+        return new TokenPairResult(access, next.value(), rotated.expiresIn(), rotated.rememberMe());
     }
 
     private RefreshTokenStore.SessionResult requireActive(RefreshTokenStore.SessionResult result) {

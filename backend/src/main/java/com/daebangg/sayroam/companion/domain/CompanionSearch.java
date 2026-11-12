@@ -2,7 +2,7 @@ package com.daebangg.sayroam.companion.domain;
 
 import com.daebangg.sayroam.common.domain.TravelPeriod;
 import com.daebangg.sayroam.global.entity.BaseTimeEntity;
-import com.daebangg.sayroam.user.domain.type.Gender;
+import com.daebangg.sayroam.user.domain.Gender;
 import jakarta.persistence.AttributeOverride;
 import jakarta.persistence.Column;
 import jakarta.persistence.Embedded;

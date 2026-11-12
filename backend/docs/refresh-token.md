@@ -137,10 +137,10 @@ Redis 교체 실행·응답 유실, HTTP 성공 응답 유실에서는 이전 �
 | auth/domain/RefreshToken | 난수·형식·다이제스트. JDK와 순수 도메인 코드만 사용 |
 | auth/application/LoginService·RefreshTokenService | 로그인 저장·갱신 상태 확인·회원 조회·서명·교체 흐름 |
 | auth/application/port/out/RefreshTokenStore | 저장·확인·원자적 교체·소유 확인 후 폐기 계약 |
-| auth/application/model/TokenPair | 쿠키·HTTP 타입이 없는 결과 |
-| auth/infrastructure/redis/RedisRefreshTokenStore | StringRedisTemplate·Lua 실행·저장소 장애 변환 |
-| auth/infrastructure/config/RefreshTokenProperties | TTL·교체 한도 바인딩 |
-| auth/presentation/RefreshTokenController·cookie/RefreshTokenCookie·config/RefreshCookieProperties | 쿠키 추출·발급·삭제·HTTP와 브라우저 정책 |
+| auth/application/dto/TokenPairResult | 쿠키·HTTP 타입이 없는 결과 |
+| auth/infrastructure/persistence/RedisRefreshTokenStore | StringRedisTemplate·Lua 실행·저장소 장애 변환 |
+| auth/infrastructure/persistence/RefreshTokenProperties | TTL·교체 한도 바인딩 |
+| auth/presentation/controller/RefreshTokenController·cookie/RefreshTokenCookie·cookie/RefreshCookieProperties | 쿠키 추출·발급·삭제·HTTP와 브라우저 정책 |
 | global/security/SecurityConfig | 갱신의 Access Token 제외와 기존 auth CSRF 검사 유지 |
 
 Application은 Redis·JPA·JWT·Spring Security·Servlet·HTTP 타입이나 Infrastructure/Presentation을 참조하지 않습니다.

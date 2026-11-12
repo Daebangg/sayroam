@@ -1,16 +1,15 @@
 package com.daebangg.sayroam.auth.application.service;
 
-import com.daebangg.sayroam.auth.application.error.AuthErrorCode;
-import com.daebangg.sayroam.auth.application.error.AuthException;
 import com.daebangg.sayroam.auth.application.port.out.AccountLookup;
 import com.daebangg.sayroam.auth.domain.AuthenticatedAccount;
-import com.daebangg.sayroam.user.domain.type.Role;
+import com.daebangg.sayroam.auth.domain.error.AuthErrorCode;
+import com.daebangg.sayroam.auth.domain.error.AuthException;
+import com.daebangg.sayroam.user.domain.Role;
 import org.junit.jupiter.api.Test;
 
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
@@ -25,11 +24,11 @@ class AccountAuthenticationServiceTest {
     @Test
     void 활성_회원의_인증_버전이_같으면_통과한다() {
         // given
-        given(accounts.findActiveAccount(USER_ID)).willReturn(Optional.of(account(AUTH_VERSION)));
+        AuthenticatedAccount active = account(AUTH_VERSION);
+        given(accounts.findActiveAccount(USER_ID)).willReturn(Optional.of(active));
 
         // when & then
-        assertThatCode(() -> service.ensureActive(USER_ID, AUTH_VERSION))
-                .doesNotThrowAnyException();
+        assertThat(service.ensureActive(USER_ID, AUTH_VERSION)).isSameAs(active);
     }
 
     @Test
