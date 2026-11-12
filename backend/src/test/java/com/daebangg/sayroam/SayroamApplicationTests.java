@@ -8,12 +8,15 @@ import com.daebangg.sayroam.user.domain.Role;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityManagerFactory;
 import jakarta.persistence.PersistenceContext;
+import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.env.Environment;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import org.springframework.transaction.annotation.Transactional;
+import org.testcontainers.mysql.MySQLContainer;
 
 import java.time.LocalDate;
 
@@ -43,11 +46,48 @@ class SayroamApplicationTests extends DatabaseIntegrationTest {
                 SELECT COUNT(*) FROM information_schema.tables
                 WHERE table_schema = DATABASE() AND table_type = 'BASE TABLE'
                 """, Integer.class)).isEqualTo(19);
-        assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("8");
+        assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("9");
         flyway.validate();
         assertThat(flyway.migrate().migrationsExecuted).isZero();
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM flyway_schema_history WHERE success = 1",
-                Integer.class)).isEqualTo(8);
+                Integer.class)).isEqualTo(9);
+    }
+
+    @Test
+    void travelStyleMigrationPreservesQuestionsAndAnswersFromVersionEight() {
+        try (MySQLContainer mysql = new MySQLContainer("mysql:8.4")
+                .withCommand("--log-bin-trust-function-creators=1")) {
+            mysql.start();
+            DriverManagerDataSource dataSource = new DriverManagerDataSource(
+                    mysql.getJdbcUrl(), mysql.getUsername(), mysql.getPassword());
+            Flyway.configure().dataSource(dataSource).target("8").load().migrate();
+            JdbcTemplate legacy = new JdbcTemplate(dataSource);
+            legacy.update("""
+                    INSERT INTO users (id, nickname, role, created_at, updated_at)
+                    VALUES (10, '기존 회원', 'USER', NOW(), NOW())
+                    """);
+            legacy.update("""
+                    INSERT INTO travel_style_item (id, name, min_label, max_label, sort_order, is_active, created_at, updated_at)
+                    VALUES (20, '기존 질문', '낮음', '높음', 10, 0, NOW(), NOW())
+                    """);
+            legacy.update("""
+                    INSERT INTO user_travel_style (user_id, item_id, score, created_at, updated_at)
+                    VALUES (10, 20, 3, NOW(), NOW())
+                    """);
+
+            assertThat(Flyway.configure().dataSource(dataSource).load().migrate().migrationsExecuted).isEqualTo(1);
+            assertThat(legacy.queryForObject("SELECT code FROM travel_style_item WHERE id = 20", String.class))
+                    .isEqualTo("legacy-20");
+            assertThat(legacy.queryForObject("SELECT score FROM user_travel_style WHERE user_id = 10 AND item_id = 20",
+                    Integer.class)).isEqualTo(3);
+            assertThat(legacy.queryForList("SELECT code FROM travel_style_item WHERE is_active = 1 ORDER BY sort_order",
+                    String.class)).containsExactly("planning", "daily-pace", "time-together", "spending");
+            assertThat(legacy.queryForObject("""
+                    SELECT COUNT(*) FROM information_schema.columns
+                    WHERE table_schema = DATABASE() AND table_name = 'travel_style_item'
+                        AND column_name IN ('name', 'min_label', 'max_label')
+                    """, Integer.class)).isZero();
+        }
     }
 
     @Test

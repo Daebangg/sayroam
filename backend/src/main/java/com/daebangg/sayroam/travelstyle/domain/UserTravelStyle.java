@@ -1,6 +1,8 @@
 package com.daebangg.sayroam.travelstyle.domain;
 
 import com.daebangg.sayroam.global.entity.BaseTimeEntity;
+import com.daebangg.sayroam.global.exception.BusinessException;
+import com.daebangg.sayroam.global.exception.CommonErrorCode;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -12,7 +14,7 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import lombok.AccessLevel;
-import lombok.Builder;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 @Entity
@@ -22,6 +24,8 @@ import lombok.NoArgsConstructor;
 )
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class UserTravelStyle extends BaseTimeEntity {
+    public static final int MIN_SCORE = 1;
+    public static final int MAX_SCORE = 5;
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -35,13 +39,23 @@ public class UserTravelStyle extends BaseTimeEntity {
     private TravelStyleItem item;
 
     @Column(nullable = false)
+    @Getter
     private int score;
 
-    @Builder
-    private UserTravelStyle(Long userId, TravelStyleItem item, int score) {
+    public UserTravelStyle(Long userId, TravelStyleItem item, int score) {
         this.userId = userId;
         this.item = item;
-        this.score = score;
+        changeScore(score);
     }
 
+    public Long getItemId() {
+        return item.getId();
+    }
+
+    public void changeScore(int score) {
+        if (score < MIN_SCORE || score > MAX_SCORE) {
+            throw new BusinessException(CommonErrorCode.INVALID_INPUT);
+        }
+        this.score = score;
+    }
 }

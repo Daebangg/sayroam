@@ -81,7 +81,7 @@ class SocialLinkIntegrationTests extends DatabaseIntegrationTest {
 
     @AfterEach void clean() throws Exception {
         for (String table : List.of("expense_share", "expense", "trip_place", "trip", "companion_request", "companion_search",
-                "room_invitation", "room_member", "chat_message", "room", "place", "user_travel_style", "travel_style_item",
+                "room_invitation", "room_member", "chat_message", "room", "place", "user_travel_style",
                 "notification", "user_social_account", "user_credential", "users")) jdbc.update("DELETE FROM " + table);
         assertThat(REDIS.execInContainer("redis-cli", "FLUSHDB").getExitCode()).isZero();
     }
