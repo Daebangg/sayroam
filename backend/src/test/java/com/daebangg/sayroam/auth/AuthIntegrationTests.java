@@ -73,9 +73,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class AuthIntegrationTests extends DatabaseIntegrationTest {
     private static final String PASSWORD = "Test-password-123";
     private static final String REFRESH = "sayroam_refresh";
+    private static final String TRAVEL_STYLE = "/api/users/me/travel-style";
     private static final String[] TABLES = {"expense_share", "expense", "trip_place", "trip",
             "companion_request", "companion_search", "room_invitation", "room_member", "chat_message",
-            "room", "place", "user_travel_style", "travel_style_item", "notification",
+            "room", "place", "user_travel_style", "notification",
             "user_social_account", "user_credential", "user_profile_image", "users"};
 
     @Autowired MockMvc mvc;
@@ -449,6 +450,119 @@ class AuthIntegrationTests extends DatabaseIntegrationTest {
             }
             assertThat(json(call(HttpMethod.GET, "/api/users/me", null, login.access())))
                     .as("unchanged after %s", input.body()).isEqualTo(before);
+        }
+    }
+
+    @Test
+    void travelStyleKeepsUnansweredDistinctFromMiddleAndIsPrivateToEachMember() throws Exception {
+        Login member = login(register(), PASSWORD);
+        Login other = login(register(), PASSWORD);
+        assertStatus(call(HttpMethod.GET, TRAVEL_STYLE, null, null), 401);
+        MvcResult initial = call(HttpMethod.GET, TRAVEL_STYLE, null, member.access());
+        assertStatus(initial, 200);
+        assertThat(initial.getResponse().getHeader("Cache-Control")).contains("no-store");
+        JsonNode empty = json(initial).path("items");
+        assertThat(empty).hasSize(4);
+        assertThat(empty).extracting(item -> item.path("code").asText())
+                .containsExactly("planning", "daily-pace", "time-together", "spending");
+        assertThat(empty).allSatisfy(item -> assertThat(item.path("score").isNull()).isTrue());
+        assertThat(empty).allSatisfy(item -> assertThat(item.propertyNames()).containsExactlyInAnyOrder("code", "score"));
+
+        MvcResult saved = call(HttpMethod.PATCH, TRAVEL_STYLE, Map.of("answers", List.of(
+                Map.of("code", "planning", "score", 3), Map.of("code", "daily-pace", "score", 5))), member.access());
+        assertStatus(saved, 200);
+        assertThat(json(saved).at("/items/0/score").asInt()).isEqualTo(3);
+        assertThat(json(saved).at("/items/2/score").isNull()).isTrue();
+        assertThat(json(call(HttpMethod.GET, TRAVEL_STYLE, null, other.access())).path("items")).isEqualTo(empty);
+
+        assertStatus(call(HttpMethod.PATCH, TRAVEL_STYLE,
+                Map.of("answers", List.of(Map.of("code", "planning", "score", 1))), member.access()), 200);
+        JsonNode clear = mapper.readTree("""
+                {"answers":[{"code":"daily-pace","score":null}]}
+                """);
+        for (int attempt = 0; attempt < 2; attempt++) {
+            assertStatus(call(HttpMethod.PATCH, TRAVEL_STYLE, clear, member.access()), 200);
+        }
+        JsonNode reloaded = json(call(HttpMethod.GET, TRAVEL_STYLE, null, member.access()));
+        assertThat(reloaded.at("/items/0/score").asInt()).isEqualTo(1);
+        assertThat(reloaded.at("/items/1/score").isNull()).isTrue();
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM user_travel_style", Integer.class)).isEqualTo(1);
+    }
+
+    @Test
+    void invalidTravelStyleUpdatesRollBackTheWholePatch() throws Exception {
+        Login member = login(register(), PASSWORD);
+        jdbc.update("""
+                INSERT INTO travel_style_item (code, sort_order, is_active, created_at, updated_at)
+                VALUES ('test-retired', 5, 0, UTC_TIMESTAMP(6), UTC_TIMESTAMP(6))
+                """);
+        try {
+            JsonNode before = json(call(HttpMethod.GET, TRAVEL_STYLE, null, member.access()));
+            for (String invalid : List.of(
+                    """
+                    {"code":"daily-pace","score":0}
+                    """,
+                    """
+                    {"code":"daily-pace","score":6}
+                    """,
+                    """
+                    {"code":"daily-pace","score":2.0}
+                    """,
+                    """
+                    {"code":"daily-pace","score":"2"}
+                    """,
+                    """
+                    {"code":"daily-pace"}
+                    """,
+                    """
+                    {"code":"unknown","score":1}
+                    """,
+                    """
+                    {"code":"test-retired","score":null}
+                    """,
+                    """
+                    {"code":"planning","score":4}
+                    """)) {
+                JsonNode update = mapper.readTree(
+                        "{\"answers\":[{\"code\":\"planning\",\"score\":3}," + invalid + "]}");
+                assertStatus(call(HttpMethod.PATCH, TRAVEL_STYLE, update, member.access()), 400);
+                assertThat(json(call(HttpMethod.GET, TRAVEL_STYLE, null, member.access()))).isEqualTo(before);
+            }
+            assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM user_travel_style", Integer.class)).isZero();
+        } finally {
+            jdbc.update("DELETE FROM travel_style_item WHERE code = 'test-retired'");
+        }
+    }
+
+    @Test
+    void concurrentFirstTravelStyleWritesKeepOneAnswerPerQuestion() throws Exception {
+        Login member = login(register(), PASSWORD);
+        Object update = Map.of("answers", List.of(Map.of("code", "spending", "score", 5)));
+        for (MvcResult result : concurrent(() -> call(HttpMethod.PATCH, TRAVEL_STYLE, update, member.access()))) {
+            assertStatus(result, 200);
+            assertThat(json(result).at("/items/3/score").asInt()).isEqualTo(5);
+        }
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM user_travel_style", Integer.class)).isEqualTo(1);
+    }
+
+    @Test
+    void travelStyleOpenApiDeclaresAuthenticatedPartialUpdatesAndNullableScores() throws Exception {
+        MvcResult docs = call(HttpMethod.GET, "/v3/api-docs", null, null);
+        assertStatus(docs, 200);
+        JsonNode spec = json(docs);
+        JsonNode operations = spec.path("paths").path(TRAVEL_STYLE);
+        assertThat(operations.at("/get/operationId").asText()).isEqualTo("getMyTravelStyle");
+        assertThat(operations.at("/patch/operationId").asText()).isEqualTo("updateMyTravelStyle");
+        assertThat(operations.at("/get/security/0/bearerAuth").isArray()).isTrue();
+        assertThat(operations.at("/patch/security/0/bearerAuth").isArray()).isTrue();
+        JsonNode schemas = spec.at("/components/schemas");
+        for (String owner : List.of("TravelStyleResponse", "UpdateTravelStyleRequest")) {
+            String property = owner.equals("TravelStyleResponse") ? "items" : "answers";
+            String itemRef = schemas.path(owner).at("/properties/" + property + "/items/$ref").asText();
+            assertThat(itemRef).startsWith("#/components/schemas/");
+            JsonNode score = schemas.path(itemRef.substring(itemRef.lastIndexOf('/') + 1))
+                    .at("/properties/score");
+            assertThat(score.path("type")).extracting(JsonNode::asText).containsExactlyInAnyOrder("integer", "null");
         }
     }
 
@@ -1379,8 +1493,7 @@ class AuthIntegrationTests extends DatabaseIntegrationTest {
 
     private void seedDeletionData(long id) {
         jdbc.update("INSERT INTO user_social_account (user_id, provider, provider_user_id, created_at, updated_at) VALUES (?, 'GOOGLE', 'test-provider-id', NOW(), NOW())", id);
-        jdbc.update("INSERT INTO travel_style_item (name, min_label, max_label, sort_order, is_active, created_at, updated_at) VALUES ('item','min','max',1,1,NOW(),NOW())");
-        long item = jdbc.queryForObject("SELECT id FROM travel_style_item", Long.class);
+        long item = jdbc.queryForObject("SELECT id FROM travel_style_item WHERE code = 'planning'", Long.class);
         jdbc.update("INSERT INTO user_travel_style (user_id,item_id,score,created_at,updated_at) VALUES (?,?,3,NOW(),NOW())", id, item);
         jdbc.update("INSERT INTO notification (receiver_id,type,content,created_at,updated_at) VALUES (?,'TRIP_INVITE','private',NOW(),NOW())", id);
         jdbc.update("INSERT INTO room (created_at,updated_at) VALUES (NOW(),NOW())");
