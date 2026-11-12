@@ -200,6 +200,24 @@ class SocialLinkIntegrationTests extends DatabaseIntegrationTest {
     }
 
     @Test
+    void databaseFailureWhileLoadingExistingSocialAccountsReturns503() throws Exception {
+        long userId = register();
+        Returned pending = returned();
+        jdbc.update("""
+                INSERT INTO user_social_account (user_id, provider, provider_user_id, created_at, updated_at)
+                VALUES (?, 'KAKAO', 'other-provider-subject', UTC_TIMESTAMP(), UTC_TIMESTAMP())
+                """, userId);
+
+        MvcResult response = SocialAccountReadFailure.during(jdbc, () -> exchange(pending));
+
+        assertThat(response.getResponse().getStatus()).isEqualTo(503);
+        assertThat(json.readTree(response.getResponse().getContentAsByteArray()).path("code").asText())
+                .isEqualTo("SOCIAL_AUTH_UNAVAILABLE");
+        assertThat(response.getResponse().getCookie("sayroam_refresh")).isNull();
+        assertThat(countLinks()).isEqualTo(1);
+    }
+
+    @Test
     void identityClaimedAfterCallbackCannotBeLinkedToAnotherMember() throws Exception {
         long originalMemberId = register();
         Returned pending = returned();

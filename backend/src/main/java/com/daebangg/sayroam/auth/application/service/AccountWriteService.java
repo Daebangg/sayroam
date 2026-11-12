@@ -2,6 +2,7 @@ package com.daebangg.sayroam.auth.application.service;
 
 import com.daebangg.sayroam.auth.application.dto.SocialAccountResult;
 import com.daebangg.sayroam.auth.application.dto.SocialIdentity;
+import com.daebangg.sayroam.auth.application.port.out.AccountWriteFailures;
 import com.daebangg.sayroam.auth.domain.EmailAddress;
 import com.daebangg.sayroam.auth.domain.error.AuthErrorCode;
 import com.daebangg.sayroam.auth.domain.error.AuthException;
@@ -11,14 +12,9 @@ import com.daebangg.sayroam.user.domain.UserCredential;
 import com.daebangg.sayroam.user.domain.UserRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.dao.DataAccessResourceFailureException;
-import org.springframework.dao.RecoverableDataAccessException;
-import org.springframework.dao.TransientDataAccessException;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.CannotCreateTransactionException;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
-import org.springframework.transaction.TransactionSystemException;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.Instant;
@@ -32,13 +28,16 @@ public class AccountWriteService {
     private final UserRepository users;
     private final AccountDeletionCleanupService cleanup;
     private final ApplicationEventPublisher events;
+    private final AccountWriteFailures failures;
     private final TransactionTemplate transaction;
 
     public AccountWriteService(UserRepository users, AccountDeletionCleanupService cleanup,
-                               ApplicationEventPublisher events, PlatformTransactionManager manager) {
+                               ApplicationEventPublisher events, AccountWriteFailures failures,
+                               PlatformTransactionManager manager) {
         this.users = users;
         this.cleanup = cleanup;
         this.events = events;
+        this.failures = failures;
         this.transaction = new TransactionTemplate(manager);
         this.transaction.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
     }
@@ -129,8 +128,10 @@ public class AccountWriteService {
             throw new AuthException(AuthErrorCode.EMAIL_ALREADY_REGISTERED, exception);
         } catch (UserRepository.DuplicateSocialAccount exception) {
             throw new AuthException(AuthErrorCode.SOCIAL_ACCOUNT_CONFLICT, exception);
-        } catch (DataAccessResourceFailureException | TransientDataAccessException | RecoverableDataAccessException
-                 | CannotCreateTransactionException | TransactionSystemException exception) {
+        } catch (RuntimeException exception) {
+            if (!failures.isUnavailable(exception)) {
+                throw exception;
+            }
             log.warn("Account write failed with {}: {}", unavailable, exception.getClass().getSimpleName());
             throw new AuthException(unavailable, exception);
         }

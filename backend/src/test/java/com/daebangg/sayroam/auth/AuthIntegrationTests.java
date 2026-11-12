@@ -764,6 +764,28 @@ class AuthIntegrationTests extends DatabaseIntegrationTest {
     }
 
     @Test
+    void databaseFailureWhileLoadingLoginMethodsRollsBackDeletionAndClearsRefreshCookie() throws Exception {
+        String email = register();
+        Login login = login(email, PASSWORD);
+        long userId = jdbc.queryForObject("SELECT id FROM users WHERE email = ?", Long.class, email);
+        seedDeletionData(userId);
+        String proof = accountProof(login, email, "ACCOUNT_DELETION");
+
+        MvcResult failed = SocialAccountReadFailure.during(jdbc, () -> call(HttpMethod.POST,
+                "/api/auth/account-deletion", Map.of("accountProof", proof), login.access()));
+
+        assertStatus(failed, 503);
+        assertThat(json(failed).path("code").asText()).isEqualTo("ACCOUNT_DELETION_UNAVAILABLE");
+        assertThat(failed.getResponse().getCookie(REFRESH)).isNotNull();
+        assertThat(failed.getResponse().getCookie(REFRESH).getMaxAge()).isZero();
+        for (String table : List.of("user_credential", "user_social_account", "user_travel_style", "notification")) {
+            assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM " + table, Integer.class)).isEqualTo(1);
+        }
+        assertStatus(call(HttpMethod.GET, "/api/users/me", null, login.access()), 200);
+        assertStatus(call(HttpMethod.POST, "/api/auth/account-deletion", Map.of("accountProof", proof), login.access()), 409);
+    }
+
+    @Test
     void codeAttemptLimitAndSmtpFailureCannotIssueSignupProof() throws Exception {
         String email = email();
         MvcResult issued = call(HttpMethod.POST, "/api/auth/email-verifications", Map.of("email", email), null);
