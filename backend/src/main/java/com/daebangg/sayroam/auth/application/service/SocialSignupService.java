@@ -3,7 +3,7 @@ package com.daebangg.sayroam.auth.application.service;
 import com.daebangg.sayroam.auth.application.dto.SocialAccountResult;
 import com.daebangg.sayroam.auth.application.dto.SocialIdentity;
 import com.daebangg.sayroam.auth.application.dto.TokenPairResult;
-import com.daebangg.sayroam.auth.application.port.out.SocialAccountLookup;
+import com.daebangg.sayroam.auth.application.port.out.AccountLookup;
 import com.daebangg.sayroam.auth.application.port.out.SocialAuthTicketStore;
 import com.daebangg.sayroam.auth.domain.EmailAddress;
 import com.daebangg.sayroam.auth.domain.OAuthSecrets;
@@ -19,12 +19,12 @@ import java.util.Optional;
 @Service
 public class SocialSignupService {
     private final SocialAuthTicketStore tickets;
-    private final SocialAccountLookup accounts;
+    private final AccountLookup accounts;
     private final AccountWriteService accountWrites;
     private final LoginTokenService tokens;
 
     public SocialSignupService(SocialAuthTicketStore tickets,
-                               SocialAccountLookup accounts, AccountWriteService accountWrites, LoginTokenService tokens) {
+                               AccountLookup accounts, AccountWriteService accountWrites, LoginTokenService tokens) {
         this.tickets = tickets;
         this.accounts = accounts;
         this.accountWrites = accountWrites;
@@ -49,7 +49,7 @@ public class SocialSignupService {
             throw new AuthException(AuthErrorCode.SOCIAL_EMAIL_REQUIRED);
         }
         String email = EmailAddress.normalize(identity.email());
-        Optional<SocialAccountResult> existing = accounts.findActiveByEmail(email);
+        Optional<SocialAccountResult> existing = accounts.findActiveSocialAccountByEmail(email);
         SocialAccountResult account = existing.isPresent() ? accountWrites.linkVerifiedEmail(existing.orElseThrow(), identity)
                 : accountWrites.registerSocial(identity, email, Nickname.fromDisplayName(identity.displayName()).value(), Instant.now());
         // 가입 커밋 후 토큰 발급 실패로 회원 생성을 되돌리지 않는다. 새 소셜 로그인으로 확인한다.

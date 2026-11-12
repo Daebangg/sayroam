@@ -3,8 +3,8 @@ package com.daebangg.sayroam.auth.application.service;
 import com.daebangg.sayroam.auth.application.dto.SocialAccountResult;
 import com.daebangg.sayroam.auth.application.dto.SocialIdentity;
 import com.daebangg.sayroam.auth.application.dto.TokenPairResult;
+import com.daebangg.sayroam.auth.application.port.out.AccountLookup;
 import com.daebangg.sayroam.auth.application.port.out.OAuthTransactionStore;
-import com.daebangg.sayroam.auth.application.port.out.SocialAccountLookup;
 import com.daebangg.sayroam.auth.application.port.out.SocialAuthTicketStore;
 import com.daebangg.sayroam.auth.application.port.out.SocialIdentityProvider;
 import com.daebangg.sayroam.auth.domain.EmailAddress;
@@ -26,14 +26,14 @@ public class SocialLoginService {
     private final SocialIdentityProvider identities;
     private final OAuthTransactionStore transactions;
     private final SocialAuthTicketStore tickets;
-    private final SocialAccountLookup accounts;
+    private final AccountLookup accounts;
     private final AccountWriteService accountWrites;
     private final LoginTokenService tokens;
     private final SocialAuthSettings settings;
     private final SocialSignupService signup;
 
     public SocialLoginService(SocialIdentityProvider identities, OAuthTransactionStore transactions,
-                              SocialAuthTicketStore tickets, SocialAccountLookup accounts, AccountWriteService accountWrites,
+                              SocialAuthTicketStore tickets, AccountLookup accounts, AccountWriteService accountWrites,
                               LoginTokenService tokens, SocialAuthSettings settings, SocialSignupService signup) {
         this.identities = identities;
         this.transactions = transactions;
@@ -94,18 +94,18 @@ public class SocialLoginService {
             if (identity.provider() != provider) {
                 throw new AuthException(AuthErrorCode.SOCIAL_AUTH_FAILED);
             }
-            Optional<SocialAccountResult> account = accounts.findActive(provider, identity.providerUserId());
+            Optional<SocialAccountResult> account = accounts.findActiveSocialAccount(provider, identity.providerUserId());
             if (account.isPresent()) {
                 result = new SocialAuthTicketStore.Result(SocialAuthTicketStore.Status.LOGIN_READY, identity, account.orElseThrow(), null);
             } else {
                 if (!identity.emailVerified() || !EmailAddress.isValid(identity.email())) {
                     throw new AuthException(AuthErrorCode.SOCIAL_EMAIL_REQUIRED);
                 }
-                Optional<SocialAccountResult> existing = identity.emailVerified() ? accounts.findActiveByEmail(EmailAddress.normalize(identity.email()))
-                        : Optional.empty();
+                String email = EmailAddress.normalize(identity.email());
+                Optional<SocialAccountResult> existing = accounts.findActiveSocialAccountByEmail(email);
                 if (existing.isPresent()) {
                     result = new SocialAuthTicketStore.Result(SocialAuthTicketStore.Status.AUTO_LINK_READY, identity, existing.orElseThrow(), null);
-                } else if (identity.emailVerified() && accounts.emailExists(EmailAddress.normalize(identity.email()))) {
+                } else if (socialEmailExists(email)) {
                     throw new AuthException(AuthErrorCode.EMAIL_ALREADY_REGISTERED);
                 } else {
                     result = new SocialAuthTicketStore.Result(SocialAuthTicketStore.Status.SIGNUP_REQUIRED, identity, null, null);
@@ -123,6 +123,18 @@ public class SocialLoginService {
         return settings.frontendOrigin() == null ? location : settings.frontendOrigin().resolve(location);
     }
 
+    private boolean socialEmailExists(String email) {
+        try {
+            return accounts.emailExists(email);
+        } catch (AuthException exception) {
+            // 공통 이메일 조회가 실패해도 소셜 콜백은 기존 소셜 오류 코드로 결과를 저장한다.
+            if (exception.getErrorCode() == AuthErrorCode.AUTHENTICATION_UNAVAILABLE) {
+                throw new AuthException(AuthErrorCode.SOCIAL_AUTH_UNAVAILABLE, exception);
+            }
+            throw exception;
+        }
+    }
+
     public Exchanged exchange(String resultCode, String browserBinding) {
         requireSecret(resultCode);
         requireSecret(browserBinding);
@@ -136,7 +148,7 @@ public class SocialLoginService {
             }
             case LOGIN_READY -> {
                 // 콜백 이후 탈퇴·연결 해제·인증 버전 변경도 다시 검사한다.
-                SocialAccountResult current = accounts.findActive(result.identity().provider(), result.identity().providerUserId())
+                SocialAccountResult current = accounts.findActiveSocialAccount(result.identity().provider(), result.identity().providerUserId())
                         .filter(account -> account.equals(result.account()))
                         .orElseThrow(() -> new AuthException(AuthErrorCode.AUTHENTICATION_REVOKED));
                 yield new Exchanged(tokens.issue(current.userId(), current.authVersion()), null, false);

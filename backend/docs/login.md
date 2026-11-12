@@ -178,7 +178,8 @@ CSRF 쿠키·헤더를 준비합니다. Swagger의 인증 입력은 CSRF 헤더�
 | auth/application/RefreshTokenService·model/TokenPair | 갱신 확인·회원 상태 조회·서명·원자적 교체, 전송 방식과 독립적인 결과 |
 | auth/application/LogoutService·auth/presentation/LogoutController | 현재 로그인 폐기 포트 호출과 HTTP 204·쿠키 만료 |
 | auth/application/port/out/AccountLookup·PasswordHasher·AccessTokenIssuer·RefreshTokenStore | 외부 조회·검증·발급·갱신 상태 계약 |
-| auth/infrastructure/persistence/JpaAccountLookup | 읽기 트랜잭션·필요한 필드 조회·알려진 DB 장애 변환 |
+| auth/infrastructure/persistence/AccountLookupJpaRepository | 이메일 존재 확인과 인증에 필요한 필드 조회, 읽기 트랜잭션 |
+| auth/infrastructure/persistence/JpaAccountLookup | 일반·소셜 인증 조회 연결과 알려진 DB 장애 변환 |
 | auth/infrastructure/security/SpringPasswordHasher·JwtAccessTokenIssuer | 기존 인코더의 검증과 JWT 서명 |
 | auth/infrastructure/security/AccessTokenConfig·AccessTokenProperties | 외부 키 검증·JWT 검증 정책 |
 | auth/infrastructure/persistence/RedisRefreshTokenStore·redis/refresh-token-*.lua | 로그인별 상태·절대 만료·교체·재사용 탐지 |

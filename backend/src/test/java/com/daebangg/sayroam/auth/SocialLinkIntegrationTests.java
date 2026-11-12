@@ -2,11 +2,13 @@ package com.daebangg.sayroam.auth;
 
 import com.daebangg.sayroam.auth.application.dto.SocialIdentity;
 import com.daebangg.sayroam.auth.application.port.out.SocialIdentityProvider;
+import com.daebangg.sayroam.auth.application.port.out.VerificationEmailSender;
 import com.daebangg.sayroam.auth.application.service.AccountWriteService;
 import com.daebangg.sayroam.auth.domain.OAuthSecrets;
 import com.daebangg.sayroam.auth.domain.error.AuthErrorCode;
 import com.daebangg.sayroam.auth.domain.error.AuthException;
 import com.daebangg.sayroam.auth.infrastructure.identity.OAuth2UserInfoMapper;
+import com.daebangg.sayroam.auth.infrastructure.persistence.AccountLookupJpaRepository;
 import com.daebangg.sayroam.support.DatabaseIntegrationTest;
 import com.daebangg.sayroam.user.domain.SocialProvider;
 import jakarta.servlet.http.Cookie;
@@ -20,9 +22,11 @@ import org.junit.jupiter.params.provider.NullSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.dao.DataAccessResourceFailureException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
@@ -44,11 +48,13 @@ import java.util.concurrent.TimeUnit;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-/** 실제 보안 필터·Redis 결과 소비·MySQL UNIQUE를 통과하고 외부 공급자만 대체한다. */
+/** 실제 보안 필터·Redis·MySQL을 사용하고 외부 공급자와 메일 발송은 대체한다. */
 @AutoConfigureMockMvc
 class SocialLinkIntegrationTests extends DatabaseIntegrationTest {
     private static final String EMAIL = "member@example.test";
@@ -60,6 +66,8 @@ class SocialLinkIntegrationTests extends DatabaseIntegrationTest {
     @Autowired AccountWriteService accountWrites;
     @Autowired OAuth2UserInfoMapper userInfos;
     @MockitoBean SocialIdentityProvider identities;
+    @MockitoBean VerificationEmailSender mailSender;
+    @MockitoSpyBean AccountLookupJpaRepository accountQueries;
     private Cookie csrf;
 
     @BeforeEach void prepare() throws Exception {
@@ -122,6 +130,8 @@ class SocialLinkIntegrationTests extends DatabaseIntegrationTest {
         jdbc.update("update users set email_verified_at = NULL where id = ?", id);
         MvcResult response = exchange(returned());
         assertThat(response.getResponse().getStatus()).isEqualTo(409);
+        assertThat(json.readTree(response.getResponse().getContentAsByteArray()).path("code").asText())
+                .isEqualTo("EMAIL_ALREADY_REGISTERED");
         assertThat(countLinks()).isZero();
     }
 
@@ -131,6 +141,45 @@ class SocialLinkIntegrationTests extends DatabaseIntegrationTest {
         assertThat(response.getResponse().getStatus()).isEqualTo(409);
         assertThat(jdbc.queryForObject("select provider_user_id from user_social_account", String.class)).isEqualTo("original-subject");
         assertThat(countLinks()).isEqualTo(1);
+    }
+
+    @Test
+    void emailVerificationReportsAuthenticationUnavailableWhenEmailLookupFails() throws Exception {
+        doThrow(new DataAccessResourceFailureException("database unavailable"))
+                .when(accountQueries).existsByEmail(EMAIL);
+
+        MvcResult result = postJson("/api/auth/email-verifications", Map.of("email", EMAIL));
+
+        assertThat(result.getResponse().getStatus()).isEqualTo(503);
+        assertThat(json.readTree(result.getResponse().getContentAsByteArray()).path("code").asText())
+                .isEqualTo("AUTHENTICATION_UNAVAILABLE");
+        verifyNoInteractions(mailSender);
+    }
+
+    @Test
+    void socialExchangeReportsSocialAuthUnavailableWhenSharedEmailLookupFails() throws Exception {
+        doThrow(new DataAccessResourceFailureException("database unavailable"))
+                .when(accountQueries).existsByEmail(EMAIL);
+
+        MvcResult result = exchange(returned());
+
+        assertThat(result.getResponse().getStatus()).isEqualTo(503);
+        assertThat(json.readTree(result.getResponse().getContentAsByteArray()).path("code").asText())
+                .isEqualTo("SOCIAL_AUTH_UNAVAILABLE");
+        assertThat(result.getResponse().getCookie("sayroam_refresh")).isNull();
+    }
+
+    @Test
+    void socialExchangeReportsSocialAuthUnavailableWhenProviderLookupFails() throws Exception {
+        doThrow(new DataAccessResourceFailureException("database unavailable"))
+                .when(accountQueries).findActiveSocialAccount(SocialProvider.GOOGLE, "subject");
+
+        MvcResult result = exchange(returned());
+
+        assertThat(result.getResponse().getStatus()).isEqualTo(503);
+        assertThat(json.readTree(result.getResponse().getContentAsByteArray()).path("code").asText())
+                .isEqualTo("SOCIAL_AUTH_UNAVAILABLE");
+        assertThat(result.getResponse().getCookie("sayroam_refresh")).isNull();
     }
 
     @Test
