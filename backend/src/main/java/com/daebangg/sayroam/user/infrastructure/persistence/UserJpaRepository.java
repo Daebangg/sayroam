@@ -5,16 +5,16 @@ import com.daebangg.sayroam.user.domain.User;
 import com.daebangg.sayroam.user.domain.UserCredential;
 import com.daebangg.sayroam.user.domain.UserRepository;
 import jakarta.persistence.LockModeType;
+import org.hibernate.exception.ConstraintViolationException;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
-import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 import java.util.Optional;
 
-public interface UserJpaRepository extends UserRepository, UserRegistration, JpaRepository<User, Long> {
+public interface UserJpaRepository extends UserRepository, JpaRepository<User, Long> {
     @Override
     @Query("select count(c) > 0 from UserCredential c where c.user.id = :userId")
     boolean hasPassword(@Param("userId") long userId);
@@ -44,22 +44,38 @@ public interface UserJpaRepository extends UserRepository, UserRegistration, Jpa
     Optional<UserCredential> findCredentialForUpdate(@Param("userId") long userId);
 
     @Override
-    @Query("select a.providerUserId from UserSocialAccount a where a.user.id = :userId and a.provider = :provider")
-    Optional<String> findSocialSubject(@Param("userId") long userId, @Param("provider") SocialProvider provider);
-
-    @Override
-    default void deleteLoginMethods(long userId) {
-        deleteCredential(userId);
-        deleteSocialAccounts(userId);
+    default User saveNewAccount(User user) {
+        try {
+            return saveAndFlush(user);
+        } catch (RuntimeException exception) {
+            throw translateAccountConstraint(exception);
+        }
     }
 
-    @Modifying
-    @Query("delete from UserCredential c where c.user.id = :userId")
-    void deleteCredential(@Param("userId") long userId);
+    @Override
+    default void flushSocialAccount() {
+        try {
+            flush();
+        } catch (RuntimeException exception) {
+            throw translateAccountConstraint(exception);
+        }
+    }
 
-    @Modifying
-    @Query("delete from UserSocialAccount a where a.user.id = :userId")
-    void deleteSocialAccounts(@Param("userId") long userId);
+    private static RuntimeException translateAccountConstraint(RuntimeException exception) {
+        for (Throwable cause = exception; cause != null; cause = cause.getCause()) {
+            if (cause instanceof ConstraintViolationException violation && violation.getConstraintName() != null) {
+                String name = violation.getConstraintName();
+                String constraint = name.substring(name.lastIndexOf('.') + 1);
+                return switch (constraint) {
+                    case "uk_users_email" -> new UserRepository.DuplicateEmail(exception);
+                    case "uk_user_social_account_provider_user", "uk_user_social_account_user_provider" ->
+                            new UserRepository.DuplicateSocialAccount(exception);
+                    default -> exception;
+                };
+            }
+        }
+        return exception;
+    }
 
     record ProfileImageContent(byte[] profileImageContent) {}
 }

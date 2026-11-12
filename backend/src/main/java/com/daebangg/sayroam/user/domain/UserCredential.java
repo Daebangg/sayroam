@@ -11,7 +11,6 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
-import lombok.Builder;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
@@ -35,10 +34,9 @@ public class UserCredential extends BaseTimeEntity {
 
     private LocalDateTime passwordChangedAt;
 
-    @Builder
-    private UserCredential(User user, String passwordHash) {
+    UserCredential(User user, String passwordHash) {
         this.user = user;
-        this.passwordHash = passwordHash;
+        this.passwordHash = Objects.requireNonNull(passwordHash);
     }
 
     public void changePassword(String passwordHash, LocalDateTime changedAt) {

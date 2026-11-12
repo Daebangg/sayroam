@@ -17,15 +17,9 @@ public interface UserRepository {
 
     Optional<UserCredential> findCredentialForUpdate(long userId);
 
-    Optional<String> findSocialSubject(long userId, SocialProvider provider);
+    User saveNewAccount(User user);
 
-    void addUser(User user);
-
-    void addCredential(UserCredential credential);
-
-    void addSocialAccount(UserSocialAccount account);
-
-    void deleteLoginMethods(long userId);
+    void flushSocialAccount();
 
     void flush();
 

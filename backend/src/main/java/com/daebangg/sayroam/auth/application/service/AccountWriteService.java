@@ -9,7 +9,6 @@ import com.daebangg.sayroam.auth.domain.event.LoginsInvalidated;
 import com.daebangg.sayroam.user.domain.User;
 import com.daebangg.sayroam.user.domain.UserCredential;
 import com.daebangg.sayroam.user.domain.UserRepository;
-import com.daebangg.sayroam.user.domain.UserSocialAccount;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataAccessResourceFailureException;
@@ -25,7 +24,6 @@ import org.springframework.transaction.support.TransactionTemplate;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
-import java.util.Optional;
 import java.util.function.Supplier;
 
 @Slf4j
@@ -47,11 +45,9 @@ public class AccountWriteService {
 
     public long register(String email, String nickname, String passwordHash, Instant emailVerifiedAt) {
         return write(AuthErrorCode.SIGNUP_UNAVAILABLE, () -> {
-            User user = User.verifiedEmailMember(email, nickname, LocalDateTime.ofInstant(emailVerifiedAt, ZoneOffset.UTC));
-            users.addUser(user);
-            users.addCredential(UserCredential.builder().user(user).passwordHash(passwordHash).build());
-            users.flush();
-            return user.getId();
+            User user = User.verifiedEmailMember(email, nickname, LocalDateTime.ofInstant(emailVerifiedAt, ZoneOffset.UTC),
+                    passwordHash);
+            return users.saveNewAccount(user).getId();
         });
     }
 
@@ -59,9 +55,9 @@ public class AccountWriteService {
         return write(AuthErrorCode.SOCIAL_AUTH_UNAVAILABLE, () -> {
             User user = User.verifiedSocialMember(email, nickname, identity.profileImageUrl(),
                     LocalDateTime.ofInstant(verifiedAt, ZoneOffset.UTC));
-            users.addUser(user);
-            addSocialAccount(user, identity);
-            return new SocialAccountResult(user.getId(), user.getAuthVersion());
+            user.linkSocialAccount(identity.provider(), identity.providerUserId(), identity.email());
+            User saved = users.saveNewAccount(user);
+            return new SocialAccountResult(saved.getId(), saved.getAuthVersion());
         });
     }
 
@@ -75,22 +71,13 @@ public class AccountWriteService {
                 throw new AuthException(AuthErrorCode.SOCIAL_AUTH_INVALID);
             }
             // 회원별 공급자 중복은 회원 잠금으로 직렬화하고, 다른 회원의 동일 소셜 ID는 DB에서 막는다.
-            Optional<String> subject = users.findSocialSubject(account.userId(), identity.provider());
-            if (subject.isPresent()) {
-                if (subject.orElseThrow().equals(identity.providerUserId())) {
-                    return account;
-                }
-                throw new AuthException(AuthErrorCode.SOCIAL_ACCOUNT_CONFLICT);
+            switch (user.linkSocialAccount(identity.provider(), identity.providerUserId(), identity.email())) {
+                case LINKED -> users.flushSocialAccount();
+                case ALREADY_LINKED -> { }
+                case PROVIDER_CONFLICT -> throw new AuthException(AuthErrorCode.SOCIAL_ACCOUNT_CONFLICT);
             }
-            addSocialAccount(user, identity);
             return account;
         });
-    }
-
-    private void addSocialAccount(User user, SocialIdentity identity) {
-        users.addSocialAccount(UserSocialAccount.builder().user(user).provider(identity.provider())
-                .providerUserId(identity.providerUserId()).email(identity.email()).build());
-        users.flush();
     }
 
     public void change(long userId, String verifiedEmail, long expectedAuthVersion, String passwordHash) {

@@ -14,7 +14,6 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import lombok.AccessLevel;
-import lombok.Builder;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
@@ -50,12 +49,18 @@ public class UserSocialAccount extends BaseTimeEntity {
 
     private LocalDateTime lastLoginAt;
 
-    @Builder
-    private UserSocialAccount(User user, SocialProvider provider, String providerUserId, String email) {
+    UserSocialAccount(User user, SocialProvider provider, String providerUserId, String email) {
         this.user = user;
         this.provider = provider;
         this.providerUserId = providerUserId;
         this.email = email;
     }
 
+    boolean hasProvider(SocialProvider provider) {
+        return this.provider == provider;
+    }
+
+    boolean hasSubject(String providerUserId) {
+        return this.providerUserId.equals(providerUserId);
+    }
 }

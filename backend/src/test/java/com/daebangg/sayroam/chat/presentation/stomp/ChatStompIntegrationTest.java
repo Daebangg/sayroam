@@ -14,7 +14,6 @@ import com.daebangg.sayroam.room.infrastructure.persistence.RoomMemberJpaReposit
 import com.daebangg.sayroam.support.DatabaseIntegrationTest;
 import com.daebangg.sayroam.user.domain.Role;
 import com.daebangg.sayroam.user.domain.User;
-import com.daebangg.sayroam.user.domain.UserCredential;
 import com.daebangg.sayroam.user.infrastructure.persistence.UserJpaRepository;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.AfterEach;
@@ -611,9 +610,8 @@ class ChatStompIntegrationTest extends DatabaseIntegrationTest {
 
     private Long saveVerifiedUser() {
         return transactionTemplate.execute(status -> {
-            User user = User.verifiedEmailMember(EMAIL, "회원", LocalDateTime.now(ZoneOffset.UTC));
+            User user = User.verifiedEmailMember(EMAIL, "회원", LocalDateTime.now(ZoneOffset.UTC), "old-hash");
             entityManager.persist(user);
-            entityManager.persist(UserCredential.builder().user(user).passwordHash("old-hash").build());
             return user.getId();
         });
     }

@@ -12,6 +12,7 @@ import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.OneToMany;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
@@ -22,6 +23,8 @@ import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 
 // 테이블명 user는 예약어라 users를 쓴다
@@ -55,6 +58,12 @@ public class User extends BaseTimeEntity {
 
     @OneToOne(mappedBy = "user", fetch = FetchType.LAZY, cascade = CascadeType.PERSIST, orphanRemoval = true)
     private UserProfileImage profileImage;
+
+    @OneToOne(mappedBy = "user", fetch = FetchType.LAZY, cascade = CascadeType.PERSIST, orphanRemoval = true)
+    private UserCredential credential;
+
+    @OneToMany(mappedBy = "user", cascade = CascadeType.PERSIST, orphanRemoval = true)
+    private List<UserSocialAccount> socialAccounts = new ArrayList<>();
 
     @Getter
     @Enumerated(EnumType.STRING)
@@ -97,6 +106,13 @@ public class User extends BaseTimeEntity {
         return user;
     }
 
+    public static User verifiedEmailMember(String email, String nickname, LocalDateTime emailVerifiedAt,
+                                           String passwordHash) {
+        User user = verifiedEmailMember(email, nickname, emailVerifiedAt);
+        user.credential = new UserCredential(user, passwordHash);
+        return user;
+    }
+
     public static User verifiedSocialMember(String email, String nickname, String profileImageUrl,
                                             LocalDateTime emailVerifiedAt) {
         User user = verifiedEmailMember(email, nickname, emailVerifiedAt);
@@ -105,6 +121,20 @@ public class User extends BaseTimeEntity {
             user.profileImageUrl = new ProfileImageUrl(profileImageUrl).value();
         }
         return user;
+    }
+
+    /** 같은 공급자·계정으로 다시 연결하면 기존 연결을 유지한다. */
+    public SocialAccountLinkResult linkSocialAccount(SocialProvider provider, String providerUserId, String providerEmail) {
+        for (UserSocialAccount account : socialAccounts) {
+            if (account.hasProvider(provider)) {
+                if (account.hasSubject(providerUserId)) {
+                    return SocialAccountLinkResult.ALREADY_LINKED;
+                }
+                return SocialAccountLinkResult.PROVIDER_CONFLICT;
+            }
+        }
+        socialAccounts.add(new UserSocialAccount(this, provider, providerUserId, providerEmail));
+        return SocialAccountLinkResult.LINKED;
     }
 
     public boolean allowsAccountChange(String verifiedEmail, long expectedAuthVersion) {
@@ -136,12 +166,21 @@ public class User extends BaseTimeEntity {
         email = null;
         emailVerifiedAt = null;
         nickname = "탈퇴한 회원";
+        removeLoginMethods();
         removeProfileImage();
         profileImageUrl = null;
         gender = null;
         birthYear = null;
         birthDate = null;
         role = Role.USER;
+    }
+
+    private void removeLoginMethods() {
+        // 지연 로딩된 자격 정보를 확인해야 JPA가 고아 엔티티 삭제를 감지한다.
+        if (credential != null) {
+            credential = null;
+        }
+        socialAccounts.clear();
     }
 
     public void changeNickname(String nickname) {

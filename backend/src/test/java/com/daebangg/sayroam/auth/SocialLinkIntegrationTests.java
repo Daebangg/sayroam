@@ -139,6 +139,8 @@ class SocialLinkIntegrationTests extends DatabaseIntegrationTest {
         accountWrites.registerSocial(identity("original-subject", EMAIL, true), EMAIL, "기존 여행자", Instant.now());
         MvcResult response = exchange(returned());
         assertThat(response.getResponse().getStatus()).isEqualTo(409);
+        assertThat(json.readTree(response.getResponse().getContentAsByteArray()).path("code").asText())
+                .isEqualTo("SOCIAL_ACCOUNT_CONFLICT");
         assertThat(jdbc.queryForObject("select provider_user_id from user_social_account", String.class)).isEqualTo("original-subject");
         assertThat(countLinks()).isEqualTo(1);
     }
@@ -195,6 +197,25 @@ class SocialLinkIntegrationTests extends DatabaseIntegrationTest {
 
         assertThat(countLinks()).isEqualTo(1);
         assertThat(jdbc.queryForObject("select count(*) from users where email = ?", Long.class, anotherEmail)).isZero();
+    }
+
+    @Test
+    void identityClaimedAfterCallbackCannotBeLinkedToAnotherMember() throws Exception {
+        long originalMemberId = register();
+        Returned pending = returned();
+        String anotherEmail = "another@example.test";
+        long linkedMemberId = accountWrites.registerSocial(
+                identity("subject", anotherEmail, true), anotherEmail, "다른 여행자", Instant.now()).userId();
+
+        MvcResult response = exchange(pending);
+
+        assertThat(response.getResponse().getStatus()).isEqualTo(409);
+        assertThat(json.readTree(response.getResponse().getContentAsByteArray()).path("code").asText())
+                .isEqualTo("SOCIAL_ACCOUNT_CONFLICT");
+        assertThat(response.getResponse().getCookie("sayroam_refresh")).isNull();
+        assertThat(countLinks()).isEqualTo(1);
+        assertThat(jdbc.queryForObject("select user_id from user_social_account where provider_user_id = ?",
+                Long.class, "subject")).isEqualTo(linkedMemberId).isNotEqualTo(originalMemberId);
     }
 
     @Test void concurrentVerifiedLoginsLinkOnceAndAuthenticateAsTheSameMember() throws Exception {

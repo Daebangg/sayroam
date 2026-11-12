@@ -4,7 +4,6 @@ import com.daebangg.sayroam.auth.domain.error.AuthException;
 import com.daebangg.sayroam.auth.domain.event.LoginsInvalidated;
 import com.daebangg.sayroam.support.DatabaseIntegrationTest;
 import com.daebangg.sayroam.user.domain.User;
-import com.daebangg.sayroam.user.domain.UserCredential;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -71,9 +70,8 @@ class PasswordChangeTransactionTest extends DatabaseIntegrationTest {
 
     private Long saveUserWithPassword() {
         return transactionTemplate.execute(status -> {
-            User user = User.verifiedEmailMember(EMAIL, "회원", LocalDateTime.now(ZoneOffset.UTC));
+            User user = User.verifiedEmailMember(EMAIL, "회원", LocalDateTime.now(ZoneOffset.UTC), "old-hash");
             entityManager.persist(user);
-            entityManager.persist(UserCredential.builder().user(user).passwordHash("old-hash").build());
             return user.getId();
         });
     }

@@ -58,7 +58,7 @@ Cookie: XSRF-TOKEN=<동일한 값>
 3. Redis Lua에서 해당 이메일 키의 TTL·purpose=signup·다이제스트·available 상태·인증 시각을 확인합니다.
 4. 같은 Lua에서 상태를 consumed로 바꾸고 기존 TTL은 유지합니다. 동일 증명을 동시에 소비하는 요청 중 하나만 통과합니다.
 5. 통과한 요청만 비밀번호를 해시합니다. 입력 비밀번호·증명 원문은 Redis나 MySQL에 저장하지 않습니다.
-6. DB 트랜잭션에서 User와 UserCredential을 함께 저장하고 커밋합니다.
+6. DB 트랜잭션에서 비밀번호 자격 정보를 가진 `User`를 한 번 저장합니다. JPA가 `UserCredential` 저장을 전파하고 함께 커밋합니다.
 
 `users.email`의 기존 `uk_users_email` UNIQUE 제약이 최종 중복 판단 기준입니다. 사전 exists 조회만으로
 동시 가입을 제어하지 않습니다. 서로 다른 증명을 얻은 요청끼리 경쟁해도 같은 이메일의 계정은 하나만 저장됩니다.
