@@ -2,7 +2,6 @@ package com.daebangg.sayroam.auth.presentation.controller;
 
 import com.daebangg.sayroam.auth.application.dto.TokenPairResult;
 import com.daebangg.sayroam.auth.application.service.SocialLoginService;
-import com.daebangg.sayroam.auth.application.service.SocialSignupService;
 import com.daebangg.sayroam.auth.presentation.api.SocialLoginApi;
 import com.daebangg.sayroam.auth.presentation.cookie.OAuthBrowserCookie;
 import com.daebangg.sayroam.auth.presentation.cookie.RefreshTokenCookie;
@@ -33,14 +32,12 @@ import java.net.URI;
 @RequestMapping("/api/auth/social")
 public class SocialLoginController implements SocialLoginApi {
     private final SocialLoginService login;
-    private final SocialSignupService signup;
     private final OAuthBrowserCookie browserCookie;
     private final RefreshTokenCookie refreshCookie;
 
-    public SocialLoginController(SocialLoginService login, SocialSignupService signup,
+    public SocialLoginController(SocialLoginService login,
                                  OAuthBrowserCookie browserCookie, RefreshTokenCookie refreshCookie) {
         this.login = login;
-        this.signup = signup;
         this.browserCookie = browserCookie;
         this.refreshCookie = refreshCookie;
     }
@@ -92,7 +89,7 @@ public class SocialLoginController implements SocialLoginApi {
     @Override
     @PostMapping(value = "/signup", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<LoginResponse> signup(@Valid @RequestBody SocialSignupRequest request, HttpServletRequest http) {
-        TokenPairResult tokens = signup.signup(request.signupTicket(), browserCookie.require(http));
+        TokenPairResult tokens = login.signup(request.signupTicket(), browserCookie.require(http));
         return ResponseEntity.ok().cacheControl(CacheControl.noStore())
                 .header(HttpHeaders.SET_COOKIE, refreshCookie.issue(tokens.refreshToken(), tokens.refreshExpiresIn()).toString())
                 .body(loginResponse(tokens));

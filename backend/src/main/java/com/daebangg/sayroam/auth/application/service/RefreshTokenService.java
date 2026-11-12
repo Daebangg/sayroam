@@ -24,6 +24,12 @@ public class RefreshTokenService {
         this.accessTokens = accessTokens;
     }
 
+    public void logout(String rawToken) {
+        // 쿠키가 없거나 형식이 잘못돼도 브라우저 정리는 허용한다.
+        // 정상 형식이면 현재/이전 토큰의 소유 확인과 폐기를 저장소가 원자적으로 수행한다.
+        RefreshToken.parse(rawToken).ifPresent(token -> sessions.revoke(token.sessionId(), token.digest()));
+    }
+
     public TokenPairResult refresh(String rawToken) {
         RefreshToken current = RefreshToken.parse(rawToken)
                 .orElseThrow(() -> new AuthException(AuthErrorCode.REFRESH_TOKEN_INVALID));

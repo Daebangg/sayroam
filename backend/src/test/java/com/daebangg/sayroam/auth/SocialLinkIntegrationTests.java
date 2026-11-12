@@ -159,6 +159,24 @@ class SocialLinkIntegrationTests extends DatabaseIntegrationTest {
     }
 
     @Test
+    void bearerAccountLookupFailureKeepsHttp503Response() throws Exception {
+        long userId = register();
+        MvcResult login = exchange(returned());
+        assertThat(login.getResponse().getStatus()).isEqualTo(200);
+        String access = json.readTree(login.getResponse().getContentAsByteArray()).path("login").path("accessToken").asText();
+        doThrow(new DataAccessResourceFailureException("database unavailable"))
+                .when(accountQueries).findActiveAccount(userId);
+
+        MvcResult response = mvc.perform(get("/api/users/me").servletPath("/api/users/me")
+                        .header("Authorization", "Bearer " + access))
+                .andExpect(status().isServiceUnavailable()).andReturn();
+
+        assertThat(json.readTree(response.getResponse().getContentAsByteArray()).path("code").asText())
+                .isEqualTo("AUTHENTICATION_UNAVAILABLE");
+        assertThat(response.getResponse().getHeader("WWW-Authenticate")).isNull();
+    }
+
+    @Test
     void socialExchangeReportsSocialAuthUnavailableWhenSharedEmailLookupFails() throws Exception {
         doThrow(new DataAccessResourceFailureException("database unavailable"))
                 .when(accountQueries).existsByEmail(EMAIL);

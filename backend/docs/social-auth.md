@@ -11,7 +11,7 @@ UserInfo API에서 사용자를 확인합니다. 서비스의 Access JWT·Refres
 
 ```text
 SocialLoginController
-  → SocialLoginService / SocialSignupService
+  → SocialLoginService
     → SocialIdentityProvider (외부 인증 포트)
       → SpringOAuth2IdentityProvider (단일 구현)
         → Spring 코드 교환 + DefaultOAuth2UserService

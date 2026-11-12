@@ -1,7 +1,6 @@
 package com.daebangg.sayroam.auth;
 
 import com.daebangg.sayroam.auth.application.dto.SocialIdentity;
-import com.daebangg.sayroam.auth.application.port.out.SocialAuthTicketStore;
 import com.daebangg.sayroam.auth.application.port.out.VerificationEmailSender;
 import com.daebangg.sayroam.auth.application.service.AccountWriteService;
 import com.daebangg.sayroam.auth.domain.AccountVerificationPurpose;
@@ -87,7 +86,6 @@ class AuthIntegrationTests extends DatabaseIntegrationTest {
     @Autowired JwtEncoder encoder;
     @Autowired UserRepository users;
     @Autowired EntityManagerFactory entityManagerFactory;
-    @Autowired SocialAuthTicketStore socialTickets;
     @Autowired OAuthBrowserCookie oauthBrowserCookie;
     @Autowired org.springframework.data.redis.core.StringRedisTemplate redis;
     @Autowired AccountWriteService accountWrites;
@@ -229,8 +227,11 @@ class AuthIntegrationTests extends DatabaseIntegrationTest {
         String browserBinding = OAuthSecrets.create();
         SocialIdentity identity = new SocialIdentity(SocialProvider.NAVER, "profile-user", email,
                 true, "공급자 닉네임", imageUrl);
-        assertThat(socialTickets.saveSignup(VerificationDigests.sha256(ticket),
-                VerificationDigests.sha256(browserBinding), identity, Duration.ofMinutes(5))).isTrue();
+        // 배포 전 발급된 티켓의 Redis 형식으로 테스트 데이터를 준비한다.
+        String key = "sayroam:auth:oauth:signup:{" + VerificationDigests.sha256(ticket) + "}";
+        redis.opsForHash().putAll(key, Map.of("provider", "", "browser", VerificationDigests.sha256(browserBinding),
+                "payload", mapper.writeValueAsString(identity)));
+        assertThat(redis.expire(key, Duration.ofMinutes(5))).isTrue();
         Cookie browser = new Cookie(oauthBrowserCookie.issue(browserBinding).getName(), browserBinding);
         Map<String, String> body = Map.of("signupTicket", ticket);
 
@@ -833,6 +834,7 @@ class AuthIntegrationTests extends DatabaseIntegrationTest {
         }
         MvcResult rejected = call(HttpMethod.GET, "/api/users/me", null, token);
         assertStatus(rejected, 401);
+        assertThat(json(rejected).path("code").asText()).isEqualTo("UNAUTHENTICATED");
         assertThat(rejected.getResponse().getHeader("WWW-Authenticate")).isEqualTo("Bearer");
     }
 

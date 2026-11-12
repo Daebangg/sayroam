@@ -1,6 +1,6 @@
 package com.daebangg.sayroam.auth.presentation.controller;
 
-import com.daebangg.sayroam.auth.application.service.LogoutService;
+import com.daebangg.sayroam.auth.application.service.RefreshTokenService;
 import com.daebangg.sayroam.auth.presentation.api.LogoutApi;
 import com.daebangg.sayroam.auth.presentation.cookie.RefreshTokenCookie;
 import jakarta.servlet.http.HttpServletRequest;
@@ -12,10 +12,10 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 public class LogoutController implements LogoutApi {
-    private final LogoutService service;
+    private final RefreshTokenService service;
     private final RefreshTokenCookie refreshCookie;
 
-    public LogoutController(LogoutService service, RefreshTokenCookie refreshCookie) {
+    public LogoutController(RefreshTokenService service, RefreshTokenCookie refreshCookie) {
         this.service = service;
         this.refreshCookie = refreshCookie;
     }

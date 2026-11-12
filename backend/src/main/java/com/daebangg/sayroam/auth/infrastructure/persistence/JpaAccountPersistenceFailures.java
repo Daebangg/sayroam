@@ -1,6 +1,6 @@
 package com.daebangg.sayroam.auth.infrastructure.persistence;
 
-import com.daebangg.sayroam.auth.application.port.out.AccountWriteFailures;
+import com.daebangg.sayroam.auth.application.port.out.AccountPersistenceFailures;
 import org.springframework.dao.DataAccessException;
 import org.springframework.dao.DataAccessResourceFailureException;
 import org.springframework.dao.RecoverableDataAccessException;
@@ -11,7 +11,7 @@ import org.springframework.transaction.CannotCreateTransactionException;
 import org.springframework.transaction.TransactionSystemException;
 
 @Component
-public class JpaAccountWriteFailures implements AccountWriteFailures {
+public class JpaAccountPersistenceFailures implements AccountPersistenceFailures {
     private final HibernateJpaDialect dialect = new HibernateJpaDialect();
 
     @Override

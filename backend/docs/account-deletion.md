@@ -45,7 +45,7 @@ XSRF-TOKEN 쿠키는 유지하며 새로운 로그인 토큰이나 탈퇴 계정
    `ACCOUNT_DELETION`을 전달합니다. Redis Lua가 현재 회원·이메일·목적·인증 버전·TTL·다이제스트를 확인해 한 번만 소비합니다.
 4. `AccountWriteService`가 새 DB 트랜잭션에서 회원 행에 쓰기 잠금을 잡고
    활성/이메일 인증 상태·현재 이메일·예상 인증 버전을 다시 확인합니다.
-5. `AccountDeletionCleanupService`가 개인 여행 성향과 수신 알림을 삭제합니다.
+5. `AccountWriteService`가 같은 트랜잭션에서 개인 여행 성향과 수신 알림을 삭제합니다.
    `User.withdraw`가 프로필을 익명화하고 로그인 수단과 프로필 사진의 연결을 끊습니다.
    JPA가 끊어진 자격 정보·소셜 계정·사진을 삭제하며, UTC 탈퇴 시각과 증가한 인증 버전도
    **같은 MySQL 트랜잭션으로 커밋**합니다.
@@ -55,8 +55,7 @@ Application은 본인 확인과 DB 트랜잭션을 조정합니다. Infrastructu
 Presentation은 principal·본문·쿠키·상태 코드를 처리합니다.
 기존 V1/V2 컬럼을 사용하며 이번 작업에 새 마이그레이션은 없습니다.
 
-여행 성향과 알림은 `AccountDeletionCleanupService`가 순서대로 각 저장 구현에 삭제를 요청합니다.
-정리 서비스는 `MANDATORY` 전파로 현재 탈퇴 트랜잭션에 참여합니다. 실패는 바깥 탈퇴 트랜잭션까지 전파해 함께 롤백합니다.
+여행 성향과 알림의 저장 구현은 `MANDATORY` 전파로 현재 탈퇴 트랜잭션에 참여합니다. 실패는 바깥 탈퇴 트랜잭션까지 전파해 함께 롤백합니다.
 
 ## 정리·보존 범위
 

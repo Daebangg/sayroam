@@ -7,12 +7,7 @@ import com.daebangg.sayroam.auth.domain.error.AuthErrorCode;
 import com.daebangg.sayroam.auth.domain.error.AuthException;
 import com.daebangg.sayroam.user.domain.SocialProvider;
 import lombok.RequiredArgsConstructor;
-import org.springframework.dao.DataAccessResourceFailureException;
-import org.springframework.dao.RecoverableDataAccessException;
-import org.springframework.dao.TransientDataAccessException;
 import org.springframework.stereotype.Repository;
-import org.springframework.transaction.CannotCreateTransactionException;
-import org.springframework.transaction.TransactionSystemException;
 
 import java.util.Optional;
 import java.util.function.Supplier;
@@ -21,6 +16,7 @@ import java.util.function.Supplier;
 @RequiredArgsConstructor
 public class JpaAccountLookup implements AccountLookup {
     private final AccountLookupJpaRepository queries;
+    private final JpaAccountPersistenceFailures failures;
 
     @Override
     public boolean emailExists(String normalizedEmail) {
@@ -57,9 +53,11 @@ public class JpaAccountLookup implements AccountLookup {
     private <T> T read(Supplier<T> query, AuthErrorCode unavailable) {
         try {
             return query.get();
-        } catch (DataAccessResourceFailureException | TransientDataAccessException | RecoverableDataAccessException
-                 | CannotCreateTransactionException | TransactionSystemException exception) {
-            throw new AuthException(unavailable, exception);
+        } catch (RuntimeException exception) {
+            if (failures.isUnavailable(exception)) {
+                throw new AuthException(unavailable, exception);
+            }
+            throw exception;
         }
     }
 }

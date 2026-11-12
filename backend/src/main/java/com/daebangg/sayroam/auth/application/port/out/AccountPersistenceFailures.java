@@ -1,5 +1,5 @@
 package com.daebangg.sayroam.auth.application.port.out;
 
-public interface AccountWriteFailures {
+public interface AccountPersistenceFailures {
     boolean isUnavailable(RuntimeException failure);
 }

@@ -12,11 +12,12 @@ import org.springframework.stereotype.Service;
 public class AccountAuthenticationService {
     private final AccountLookup accounts;
 
-    public void ensureActive(long userId, long authVersion) {
+    public AuthenticatedAccount ensureActive(long userId, long authVersion) {
         AuthenticatedAccount account = accounts.findActiveAccount(userId)
                 .orElseThrow(() -> new AuthException(AuthErrorCode.AUTHENTICATION_REVOKED));
-        if (account.authVersion() != authVersion) {
+        if (authVersion < 0 || account.authVersion() != authVersion) {
             throw new AuthException(AuthErrorCode.AUTHENTICATION_REVOKED);
         }
+        return account;
     }
 }

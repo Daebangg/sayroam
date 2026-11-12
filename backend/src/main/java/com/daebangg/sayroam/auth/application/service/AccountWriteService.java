@@ -2,11 +2,13 @@ package com.daebangg.sayroam.auth.application.service;
 
 import com.daebangg.sayroam.auth.application.dto.SocialAccountResult;
 import com.daebangg.sayroam.auth.application.dto.SocialIdentity;
-import com.daebangg.sayroam.auth.application.port.out.AccountWriteFailures;
+import com.daebangg.sayroam.auth.application.port.out.AccountPersistenceFailures;
 import com.daebangg.sayroam.auth.domain.EmailAddress;
 import com.daebangg.sayroam.auth.domain.error.AuthErrorCode;
 import com.daebangg.sayroam.auth.domain.error.AuthException;
 import com.daebangg.sayroam.auth.domain.event.LoginsInvalidated;
+import com.daebangg.sayroam.notification.application.port.out.NotificationDeletion;
+import com.daebangg.sayroam.travelstyle.application.port.out.TravelStyleDeletion;
 import com.daebangg.sayroam.user.domain.User;
 import com.daebangg.sayroam.user.domain.UserCredential;
 import com.daebangg.sayroam.user.domain.UserRepository;
@@ -26,16 +28,18 @@ import java.util.function.Supplier;
 @Service
 public class AccountWriteService {
     private final UserRepository users;
-    private final AccountDeletionCleanupService cleanup;
+    private final TravelStyleDeletion travelStyles;
+    private final NotificationDeletion notifications;
     private final ApplicationEventPublisher events;
-    private final AccountWriteFailures failures;
+    private final AccountPersistenceFailures failures;
     private final TransactionTemplate transaction;
 
-    public AccountWriteService(UserRepository users, AccountDeletionCleanupService cleanup,
-                               ApplicationEventPublisher events, AccountWriteFailures failures,
-                               PlatformTransactionManager manager) {
+    public AccountWriteService(UserRepository users, TravelStyleDeletion travelStyles,
+                               NotificationDeletion notifications, ApplicationEventPublisher events,
+                               AccountPersistenceFailures failures, PlatformTransactionManager manager) {
         this.users = users;
-        this.cleanup = cleanup;
+        this.travelStyles = travelStyles;
+        this.notifications = notifications;
         this.events = events;
         this.failures = failures;
         this.transaction = new TransactionTemplate(manager);
@@ -95,7 +99,8 @@ public class AccountWriteService {
     public void delete(long userId, String verifiedEmail, long expectedAuthVersion) {
         write(AuthErrorCode.ACCOUNT_DELETION_UNAVAILABLE, () -> {
             User user = lockVerifiedUser(userId, verifiedEmail, expectedAuthVersion, AuthErrorCode.ACCOUNT_DELETION_CONFLICT);
-            cleanup.deleteOwnedData(userId);
+            travelStyles.deleteForUser(userId);
+            notifications.deleteForUser(userId);
             user.withdraw(LocalDateTime.now(ZoneOffset.UTC));
             publishInvalidation(userId);
             return null;
