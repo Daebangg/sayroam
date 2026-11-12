@@ -4,6 +4,7 @@ import com.daebangg.sayroam.common.domain.TravelPeriod;
 import com.daebangg.sayroam.global.exception.BusinessException;
 import com.daebangg.sayroam.room.application.service.RoomService;
 import com.daebangg.sayroam.trip.application.dto.TripSummaryResult;
+import com.daebangg.sayroam.trip.application.port.out.TripQueryRepository;
 import com.daebangg.sayroam.trip.domain.Trip;
 import com.daebangg.sayroam.trip.domain.TripRepository;
 import com.daebangg.sayroam.trip.domain.error.TripErrorCode;
@@ -19,6 +20,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class TripService {
     private final TripRepository tripRepository;
+    private final TripQueryRepository tripQueryRepository;
     private final RoomService roomService;
 
     @Transactional
@@ -40,15 +42,11 @@ public class TripService {
     }
 
     public List<TripSummaryResult> findMine(Long userId) {
-        return tripRepository.findAllByCreatedByIdOrderByIdDesc(userId).stream()
-                .map(TripSummaryResult::from)
-                .toList();
+        return tripQueryRepository.findAllReadable(userId);
     }
 
     public TripSummaryResult find(Long userId, Long tripId) {
-        return tripRepository.findById(tripId)
-                .filter(trip -> trip.isCreatedBy(userId))
-                .map(TripSummaryResult::from)
+        return tripQueryRepository.findReadable(userId, tripId)
                 .orElseThrow(() -> new BusinessException(TripErrorCode.TRIP_NOT_FOUND));
     }
 }

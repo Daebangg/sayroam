@@ -490,7 +490,7 @@ export interface paths {
         };
         /**
          * 내 여행 목록 조회
-         * @description 로그인한 회원이 만든 여행을 나중에 만든 여행부터 조회합니다. 지난 여행도 포함합니다.
+         * @description 로그인한 회원이 볼 수 있는 여행을 나중에 만든 여행부터 조회합니다. 채팅방이 없는 여행은 만든 회원이, 채팅방이 연결된 여행은 그 방에 참여 중인 멤버가 볼 수 있습니다. 지난 여행도 포함합니다.
          */
         get: operations["listMyTrips"];
         put?: never;
@@ -514,7 +514,7 @@ export interface paths {
         };
         /**
          * 여행 조회
-         * @description 로그인한 회원이 만든 여행 하나를 조회합니다. 다른 회원의 여행은 없는 여행과 같이 404로 응답합니다.
+         * @description 로그인한 회원이 볼 수 있는 여행 하나를 조회합니다. 채팅방이 없는 여행은 만든 회원이, 채팅방이 연결된 여행은 그 방에 참여 중인 멤버가 볼 수 있습니다. 볼 수 없는 여행은 없는 여행과 같이 404로 응답합니다.
          */
         get: operations["getTrip"];
         put?: never;
@@ -1139,7 +1139,7 @@ export interface components {
             signupTicket: string;
         };
         TripListResponse: {
-            /** @description 내가 만든 여행. 나중에 만든 여행부터 정렬 */
+            /** @description 볼 수 있는 여행. 나중에 만든 여행부터 정렬 */
             trips: components["schemas"]["TripSummaryResponse"][];
         };
         TripSummaryResponse: {
@@ -1653,7 +1653,7 @@ export interface components {
                 "application/problem+json": components["schemas"]["ApiProblem"];
             };
         };
-        /** @description 404: TRIP_NOT_FOUND. 없는 여행이거나 다른 회원의 여행. 둘을 구분하지 않음 */
+        /** @description 404: TRIP_NOT_FOUND. 없는 여행이거나 접근할 수 없는 여행. 둘을 구분하지 않음 */
         TripNotFound: {
             headers: {
                 [name: string]: unknown;
@@ -2464,7 +2464,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description 여행 목록. 만든 여행이 없으면 빈 배열 */
+            /** @description 여행 목록. 볼 수 있는 여행이 없으면 빈 배열 */
             200: {
                 headers: {
                     [name: string]: unknown;

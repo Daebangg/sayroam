@@ -201,7 +201,7 @@ public class OpenApiConfig {
                 .addResponses("RoomAccessDenied", problemResponse("403: ROOM_ACCESS_DENIED. 없는 방이거나 현재 참여 중인 멤버가 아님"))
                 .addResponses("RoomBadRequest", problemResponse("400: ROOM_NAME_TOO_LONG 또는 Spring 요청 오류. 이름을 20자 이내로 수정 후 재요청"))
                 .addResponses("TripBadRequest", problemResponse("400: INVALID_INPUT(시작일·종료일 누락, errors 포함), TRAVEL_PERIOD_END_BEFORE_START(종료일이 시작일보다 앞섬) 또는 Spring 요청 오류(날짜 형식 오류). 날짜는 yyyy-MM-dd"))
-                .addResponses("TripNotFound", problemResponse("404: TRIP_NOT_FOUND. 없는 여행이거나 다른 회원의 여행. 둘을 구분하지 않음"))
+                .addResponses("TripNotFound", problemResponse("404: TRIP_NOT_FOUND. 없는 여행이거나 접근할 수 없는 여행. 둘을 구분하지 않음"))
                 .addResponses("TripRoomAlreadyLinked", problemResponse("409: TRIP_ROOM_ALREADY_LINKED. 이미 방이 연결된 여행. 여행을 다시 조회해 roomId로 초대 링크 발급"));
         return new OpenAPI().components(components).servers(List.of(new Server().url("/")))
                 .info(new Info().title("Sayroam API").version(buildProperties.map(BuildProperties::getVersion).orElse("dev")));

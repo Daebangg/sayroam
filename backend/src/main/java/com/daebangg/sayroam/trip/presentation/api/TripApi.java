@@ -50,10 +50,11 @@ public interface TripApi {
                                                       @RequestBody CreateTripRoomRequest request);
 
     @Operation(operationId = "listMyTrips", summary = "내 여행 목록 조회",
-            description = "로그인한 회원이 만든 여행을 나중에 만든 여행부터 조회합니다. 지난 여행도 포함합니다.",
+            description = "로그인한 회원이 볼 수 있는 여행을 나중에 만든 여행부터 조회합니다. "
+                    + "채팅방이 없는 여행은 만든 회원이, 채팅방이 연결된 여행은 그 방에 참여 중인 멤버가 볼 수 있습니다. 지난 여행도 포함합니다.",
             security = @SecurityRequirement(name = "bearerAuth"))
     @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "여행 목록. 만든 여행이 없으면 빈 배열"),
+            @ApiResponse(responseCode = "200", description = "여행 목록. 볼 수 있는 여행이 없으면 빈 배열"),
             @ApiResponse(responseCode = "401", ref = "#/components/responses/Unauthorized"),
             @ApiResponse(responseCode = "503", ref = "#/components/responses/AuthenticationUnavailable"),
             @ApiResponse(responseCode = "500", ref = "#/components/responses/InternalServerError")
@@ -61,7 +62,9 @@ public interface TripApi {
     ResponseEntity<TripListResponse> findMine(@Parameter(hidden = true) @AuthenticationPrincipal AuthenticatedAccount account);
 
     @Operation(operationId = "getTrip", summary = "여행 조회",
-            description = "로그인한 회원이 만든 여행 하나를 조회합니다. 다른 회원의 여행은 없는 여행과 같이 404로 응답합니다.",
+            description = "로그인한 회원이 볼 수 있는 여행 하나를 조회합니다. "
+                    + "채팅방이 없는 여행은 만든 회원이, 채팅방이 연결된 여행은 그 방에 참여 중인 멤버가 볼 수 있습니다. "
+                    + "볼 수 없는 여행은 없는 여행과 같이 404로 응답합니다.",
             security = @SecurityRequirement(name = "bearerAuth"))
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "여행 조회 완료"),
