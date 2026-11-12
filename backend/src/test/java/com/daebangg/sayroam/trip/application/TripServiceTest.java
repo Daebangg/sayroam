@@ -289,6 +289,24 @@ class TripServiceTest extends DatabaseIntegrationTest {
     }
 
     @Test
+    void 다른_채팅방에만_참여한_회원의_목록에는_그_여행이_나오지_않는다() {
+        // given
+        Long ownerId = saveUser();
+        Long memberId = saveUser("멤버");
+        Long joinedTripId = tripService.create(ownerId, START_DATE, END_DATE);
+        Long joinedRoomId = tripService.createRoom(ownerId, joinedTripId, ROOM_NAME);
+        Long otherTripId = tripService.create(ownerId, START_DATE, END_DATE);
+        tripService.createRoom(ownerId, otherTripId, ROOM_NAME);
+        joinRoom(joinedRoomId, ownerId, memberId);
+
+        // when
+        List<TripSummaryResult> trips = tripService.findMine(memberId);
+
+        // then
+        assertThat(trips).extracting(TripSummaryResult::tripId).containsExactly(joinedTripId);
+    }
+
+    @Test
     void 참여_중인_채팅방에_연결된_여행을_조회할_수_있다() {
         // given
         Long ownerId = saveUser();
@@ -331,6 +349,23 @@ class TripServiceTest extends DatabaseIntegrationTest {
 
         // when & then
         assertThatThrownBy(() -> tripService.find(ownerId, tripId))
+                .isInstanceOfSatisfying(BusinessException.class,
+                        e -> assertThat(e.getErrorCode()).isEqualTo(TripErrorCode.TRIP_NOT_FOUND));
+    }
+
+    @Test
+    void 다른_채팅방에만_참여한_회원은_그_여행을_조회할_수_없다() {
+        // given
+        Long ownerId = saveUser();
+        Long memberId = saveUser("멤버");
+        Long joinedTripId = tripService.create(ownerId, START_DATE, END_DATE);
+        Long joinedRoomId = tripService.createRoom(ownerId, joinedTripId, ROOM_NAME);
+        Long otherTripId = tripService.create(ownerId, START_DATE, END_DATE);
+        tripService.createRoom(ownerId, otherTripId, ROOM_NAME);
+        joinRoom(joinedRoomId, ownerId, memberId);
+
+        // when & then
+        assertThatThrownBy(() -> tripService.find(memberId, otherTripId))
                 .isInstanceOfSatisfying(BusinessException.class,
                         e -> assertThat(e.getErrorCode()).isEqualTo(TripErrorCode.TRIP_NOT_FOUND));
     }
