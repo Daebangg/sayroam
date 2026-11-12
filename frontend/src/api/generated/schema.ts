@@ -525,6 +525,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/trips/{tripId}/room": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 여행에 채팅방 만들어 연결
+         * @description 방이 없는 여행에 채팅방을 만들고, 요청한 회원을 방장으로 등록한 뒤 여행에 연결합니다. 여행을 만든 회원만 사용할 수 있습니다. 이미 방이 연결된 여행은 여행 조회 응답의 roomId로 초대 링크를 발급합니다.
+         */
+        post: operations["createTripRoom"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/users/me": {
         parameters: {
             query?: never;
@@ -711,6 +731,7 @@ export interface components {
             | "TRAVEL_PERIOD_END_BEFORE_START"
             | "TRIP_NOT_FOUND"
             | "TRIP_PERIOD_REQUIRED"
+            | "TRIP_ROOM_ALREADY_LINKED"
             | "UNAUTHENTICATED"
             | "USER_BIRTH_DATE_INVALID"
             | "USER_BIRTH_YEAR_INVALID"
@@ -834,6 +855,21 @@ export interface components {
              * @example 12
              */
             tripId: number;
+        };
+        CreateTripRoomRequest: {
+            /**
+             * @description 방 이름. 선택값이며 앞뒤 공백 제거 후 20자 이내. 공백뿐이면 이름 없는 방으로 저장
+             * @example 제주 3박 4일
+             */
+            name?: string | null;
+        };
+        CreateTripRoomResponse: {
+            /**
+             * Format: int64
+             * @description 생성해 여행에 연결한 방 ID
+             * @example 7
+             */
+            roomId: number;
         };
         CurrentUserResponse: {
             /**
@@ -1619,6 +1655,15 @@ export interface components {
         };
         /** @description 404: TRIP_NOT_FOUND. 없는 여행이거나 다른 회원의 여행. 둘을 구분하지 않음 */
         TripNotFound: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/problem+json": components["schemas"]["ApiProblem"];
+            };
+        };
+        /** @description 409: TRIP_ROOM_ALREADY_LINKED. 이미 방이 연결된 여행. 여행을 다시 조회해 roomId로 초대 링크 발급 */
+        TripRoomAlreadyLinked: {
             headers: {
                 [name: string]: unknown;
             };
@@ -2491,6 +2536,42 @@ export interface operations {
             503: components["responses"]["AuthenticationUnavailable"];
         };
     };
+    createTripRoom: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /**
+                 * @description 여행 ID
+                 * @example 12
+                 */
+                tripId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateTripRoomRequest"];
+            };
+        };
+        responses: {
+            /** @description 방 생성, 방장 등록, 여행 연결 완료 */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CreateTripRoomResponse"];
+                };
+            };
+            400: components["responses"]["RoomBadRequest"];
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["TripNotFound"];
+            409: components["responses"]["TripRoomAlreadyLinked"];
+            500: components["responses"]["InternalServerError"];
+            503: components["responses"]["AuthenticationUnavailable"];
+        };
+    };
     me: {
         parameters: {
             query?: never;
@@ -2648,6 +2729,13 @@ export const apiRoutes = {
     createTrip: {
         method: "post",
         path: "/api/trips",
+        auth: "required",
+        csrf: false,
+        responses: { "201": true },
+    },
+    createTripRoom: {
+        method: "post",
+        path: "/api/trips/{tripId}/room",
         auth: "required",
         csrf: false,
         responses: { "201": true },
