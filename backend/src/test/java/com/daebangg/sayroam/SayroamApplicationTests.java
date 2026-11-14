@@ -41,20 +41,20 @@ class SayroamApplicationTests extends DatabaseIntegrationTest {
     void schemaMatchesEntitiesAndRepeatedMigrationDoesNotReapply() {
         assertThat(environment.getProperty("spring.flyway.enabled")).isEqualTo("false");
         assertThat(environment.getProperty("spring.jpa.hibernate.ddl-auto")).isEqualTo("validate");
-        assertThat(entityManagerFactory.getMetamodel().getEntities()).hasSize(18);
+        assertThat(entityManagerFactory.getMetamodel().getEntities()).hasSize(19);
         assertThat(jdbc.queryForObject("""
                 SELECT COUNT(*) FROM information_schema.tables
                 WHERE table_schema = DATABASE() AND table_type = 'BASE TABLE'
-                """, Integer.class)).isEqualTo(19);
-        assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("9");
+                """, Integer.class)).isEqualTo(20);
+        assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("10");
         flyway.validate();
         assertThat(flyway.migrate().migrationsExecuted).isZero();
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM flyway_schema_history WHERE success = 1",
-                Integer.class)).isEqualTo(9);
+                Integer.class)).isEqualTo(10);
     }
 
     @Test
-    void travelStyleMigrationPreservesQuestionsAndAnswersFromVersionEight() {
+    void upgradesVersionEightWithExistingAnswersAndSeedsDestinations() {
         try (MySQLContainer mysql = new MySQLContainer("mysql:8.4")
                 .withCommand("--log-bin-trust-function-creators=1")) {
             mysql.start();
@@ -75,7 +75,8 @@ class SayroamApplicationTests extends DatabaseIntegrationTest {
                     VALUES (10, 20, 3, NOW(), NOW())
                     """);
 
-            assertThat(Flyway.configure().dataSource(dataSource).load().migrate().migrationsExecuted).isEqualTo(1);
+            assertThat(Flyway.configure().dataSource(dataSource).target("9").load().migrate().migrationsExecuted)
+                    .isEqualTo(1);
             assertThat(legacy.queryForObject("SELECT code FROM travel_style_item WHERE id = 20", String.class))
                     .isEqualTo("legacy-20");
             assertThat(legacy.queryForObject("SELECT score FROM user_travel_style WHERE user_id = 10 AND item_id = 20",
@@ -87,6 +88,10 @@ class SayroamApplicationTests extends DatabaseIntegrationTest {
                     WHERE table_schema = DATABASE() AND table_name = 'travel_style_item'
                         AND column_name IN ('name', 'min_label', 'max_label')
                     """, Integer.class)).isZero();
+            assertThat(Flyway.configure().dataSource(dataSource).load().migrate().migrationsExecuted).isEqualTo(1);
+            assertThat(legacy.queryForObject("SELECT COUNT(*) FROM destination", Integer.class)).isEqualTo(160);
+            assertThat(legacy.queryForObject("SELECT score FROM user_travel_style WHERE user_id = 10 AND item_id = 20",
+                    Integer.class)).isEqualTo(3);
         }
     }
 
