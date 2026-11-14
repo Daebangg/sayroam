@@ -25,6 +25,7 @@
 *.nar
 *.ear
 *.zip
+!/backend/data/legal-regions/mois-legal-codes-2026-10-01.zip
 *.tar.gz
 *.rar
 
