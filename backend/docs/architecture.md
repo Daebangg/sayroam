@@ -64,6 +64,7 @@ domain은 어떤 계층도 참조하지 않습니다. infrastructure는 applicat
     messaging/     클라이언트·외부로 메시지를 내보내는 구현(메일 발송, 구독자 전송, 연결 종료 등)
     identity/      외부 신원 공급자 연동과 설정
     security/      토큰 서명·비밀번호 해싱과 설정
+    client/        외부 API 호출 구현과 설정(예: TourAPI 장소 검색)
 ```
 
 ### 하위 패키지
