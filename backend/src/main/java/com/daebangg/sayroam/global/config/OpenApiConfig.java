@@ -202,7 +202,10 @@ public class OpenApiConfig {
                 .addResponses("RoomBadRequest", problemResponse("400: ROOM_NAME_TOO_LONG 또는 Spring 요청 오류. 이름을 20자 이내로 수정 후 재요청"))
                 .addResponses("TripBadRequest", problemResponse("400: INVALID_INPUT(시작일·종료일 누락, errors 포함), TRAVEL_PERIOD_END_BEFORE_START(종료일이 시작일보다 앞섬) 또는 Spring 요청 오류(날짜 형식 오류). 날짜는 yyyy-MM-dd"))
                 .addResponses("TripNotFound", problemResponse("404: TRIP_NOT_FOUND. 없는 여행이거나 접근할 수 없는 여행. 둘을 구분하지 않음"))
-                .addResponses("TripRoomAlreadyLinked", problemResponse("409: TRIP_ROOM_ALREADY_LINKED. 이미 방이 연결된 여행. 여행을 다시 조회해 roomId로 초대 링크 발급"));
+                .addResponses("TripRoomAlreadyLinked", problemResponse("409: TRIP_ROOM_ALREADY_LINKED. 이미 방이 연결된 여행. 여행을 다시 조회해 roomId로 초대 링크 발급"))
+                .addResponses("PlaceSearchBadRequest", problemResponse("400: INVALID_INPUT(검색어 누락·100자 초과, 없는 분류, 1~50 밖의 페이지, errors 포함)"))
+                .addResponses("PlaceSearchFailed", problemResponse("502: PLACE_SEARCH_FAILED. TourAPI 오류·호출 한도 초과·시간 초과 또는 해석할 수 없는 응답. 잠시 후 재요청"))
+                .addResponses("PlaceSearchUnavailable", problemResponse("503: PLACE_SEARCH_DISABLED(서버에 TourAPI가 설정되지 않음) 또는 AUTHENTICATION_UNAVAILABLE"));
         return new OpenAPI().components(components).servers(List.of(new Server().url("/")))
                 .info(new Info().title("Sayroam API").version(buildProperties.map(BuildProperties::getVersion).orElse("dev")));
     }
