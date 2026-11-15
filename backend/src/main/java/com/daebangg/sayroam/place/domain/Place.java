@@ -12,14 +12,14 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import lombok.AccessLevel;
-import lombok.Builder;
 import lombok.NoArgsConstructor;
 
-// 외부 지도 API 장소 캐시. updatedAt이 외부 정보를 마지막으로 받아온 시각이다
+// 회원이 여행에 담은 외부 장소. 출처(source)와 원본 ID(sourceId)로 같은 장소를 한 번만 저장하고,
+// 원본 분류 코드를 남겨 서비스 분류를 바꿀 때 다시 분류할 수 있게 한다.
 @Entity
 @Table(
         name = "place",
-        uniqueConstraints = @UniqueConstraint(name = "uk_place_provider_external_id", columnNames = {"provider", "external_id"})
+        uniqueConstraints = @UniqueConstraint(name = "uk_place_source", columnNames = {"source", "source_id"})
 )
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Place extends BaseTimeEntity {
@@ -30,37 +30,24 @@ public class Place extends BaseTimeEntity {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
-    private PlaceProvider provider;
+    private PlaceSource source;
 
-    @Column(nullable = false, length = 100)
-    private String externalId;
+    @Column(name = "source_id", nullable = false, length = 40)
+    private String sourceId;
 
-    @Column(nullable = false, length = 100)
-    private String name;
+    @Embedded
+    private PlaceName name;
 
-    @Column(length = 10)
-    private String categoryCode;
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    private PlaceCategory category;
 
-    private String categoryName;
-
-    private String roadAddress;
+    @Column(name = "source_category_code", nullable = false, length = 20)
+    private String sourceCategoryCode;
 
     private String address;
 
     @Embedded
     private Coordinate coordinate;
-
-    @Builder
-    private Place(PlaceProvider provider, String externalId, String name, String categoryCode, String categoryName,
-                  String roadAddress, String address, Coordinate coordinate) {
-        this.provider = provider;
-        this.externalId = externalId;
-        this.name = name;
-        this.categoryCode = categoryCode;
-        this.categoryName = categoryName;
-        this.roadAddress = roadAddress;
-        this.address = address;
-        this.coordinate = coordinate;
-    }
 
 }

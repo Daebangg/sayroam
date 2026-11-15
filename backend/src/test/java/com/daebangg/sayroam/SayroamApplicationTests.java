@@ -46,11 +46,11 @@ class SayroamApplicationTests extends DatabaseIntegrationTest {
                 SELECT COUNT(*) FROM information_schema.tables
                 WHERE table_schema = DATABASE() AND table_type = 'BASE TABLE'
                 """, Integer.class)).isEqualTo(19);
-        assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("9");
+        assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("10");
         flyway.validate();
         assertThat(flyway.migrate().migrationsExecuted).isZero();
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM flyway_schema_history WHERE success = 1",
-                Integer.class)).isEqualTo(9);
+                Integer.class)).isEqualTo(10);
     }
 
     @Test
@@ -75,7 +75,8 @@ class SayroamApplicationTests extends DatabaseIntegrationTest {
                     VALUES (10, 20, 3, NOW(), NOW())
                     """);
 
-            assertThat(Flyway.configure().dataSource(dataSource).load().migrate().migrationsExecuted).isEqualTo(1);
+            assertThat(Flyway.configure().dataSource(dataSource).target("9").load().migrate().migrationsExecuted)
+                    .isEqualTo(1);
             assertThat(legacy.queryForObject("SELECT code FROM travel_style_item WHERE id = 20", String.class))
                     .isEqualTo("legacy-20");
             assertThat(legacy.queryForObject("SELECT score FROM user_travel_style WHERE user_id = 10 AND item_id = 20",
