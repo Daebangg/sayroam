@@ -8,5 +8,7 @@ public interface CompanionSearchRepository {
 
     List<CompanionSearch> findByUserIdOrderByIdDesc(Long userId);
 
+    Optional<CompanionSearch> findByIdAndUserId(Long id, Long userId);
+
     Optional<CompanionSearch> findForUpdateByIdAndUserId(Long id, Long userId);
 }

@@ -4,6 +4,7 @@ import com.daebangg.sayroam.auth.domain.AuthenticatedAccount;
 import com.daebangg.sayroam.companion.application.service.CompanionSearchService;
 import com.daebangg.sayroam.companion.presentation.api.CompanionSearchApi;
 import com.daebangg.sayroam.companion.presentation.dto.ChangeCompanionSearchStatusRequest;
+import com.daebangg.sayroam.companion.presentation.dto.CompanionCandidateListResponse;
 import com.daebangg.sayroam.companion.presentation.dto.CompanionSearchListResponse;
 import com.daebangg.sayroam.companion.presentation.dto.CompanionSearchResponse;
 import com.daebangg.sayroam.companion.presentation.dto.SaveCompanionSearchRequest;
@@ -20,6 +21,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -41,6 +43,15 @@ public class CompanionSearchController implements CompanionSearchApi {
     public ResponseEntity<CompanionSearchListResponse> findMine(@AuthenticationPrincipal AuthenticatedAccount account) {
         return ResponseEntity.ok(new CompanionSearchListResponse(service.findMine(account.userId()).stream()
                 .map(CompanionSearchResponse::from).toList()));
+    }
+
+    @Override
+    @GetMapping("/{searchId}/candidates")
+    public ResponseEntity<CompanionCandidateListResponse> findCandidates(
+            @AuthenticationPrincipal AuthenticatedAccount account, @PathVariable long searchId,
+            @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "20") int size) {
+        return ResponseEntity.ok(CompanionCandidateListResponse.from(
+                service.findCandidates(account.userId(), searchId, page, size)));
     }
 
     @Override

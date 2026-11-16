@@ -205,6 +205,8 @@ public class OpenApiConfig {
                 .addResponses("TripNotFound", problemResponse("404: TRIP_NOT_FOUND. 없는 여행이거나 접근할 수 없는 여행. 둘을 구분하지 않음"))
                 .addResponses("CompanionSearchNotFound", problemResponse("404: COMPANION_SEARCH_NOT_FOUND. 등록이 없거나 다른 회원의 등록"))
                 .addResponses("CompanionSearchClosed", problemResponse("409: COMPANION_SEARCH_CLOSED. 종료된 등록은 수정할 수 없음"))
+                .addResponses("CompanionCandidateSearchUnavailable", problemResponse(
+                        "409: COMPANION_SEARCH_CLOSED(종료), COMPANION_SEARCH_DESTINATION_REQUIRED(기준 여행지 선택 필요)"))
                 .addResponses("TripRoomAlreadyLinked", problemResponse("409: TRIP_ROOM_ALREADY_LINKED. 이미 방이 연결된 여행. 여행을 다시 조회해 roomId로 초대 링크 발급"))
                 .addResponses("PlaceSearchBadRequest", problemResponse("400: INVALID_INPUT(검색어 누락·100자 초과, 없는 분류, 1보다 작은 페이지, errors 포함)"))
                 .addResponses("PlaceSearchFailed", problemResponse("502: PLACE_SEARCH_FAILED. TourAPI 오류·호출 한도 초과·시간 초과 또는 해석할 수 없는 응답. 잠시 후 재요청"))
