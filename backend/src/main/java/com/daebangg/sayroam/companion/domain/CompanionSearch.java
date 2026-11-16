@@ -99,6 +99,15 @@ public class CompanionSearch extends BaseTimeEntity {
         this.status = status;
     }
 
+    public void validateCandidateSearch() {
+        if (status == CompanionSearchStatus.CLOSED) {
+            throw new BusinessException(CompanionSearchErrorCode.COMPANION_SEARCH_CLOSED);
+        }
+        if (destinationId == null) {
+            throw new BusinessException(CompanionSearchErrorCode.COMPANION_SEARCH_DESTINATION_REQUIRED);
+        }
+    }
+
     public CompanionRequest requestBy(Long senderId, String message) {
         return new CompanionRequest(senderId, userId, this, message);
     }

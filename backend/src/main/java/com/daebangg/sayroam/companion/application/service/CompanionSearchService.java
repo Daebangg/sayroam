@@ -1,8 +1,10 @@
 package com.daebangg.sayroam.companion.application.service;
 
 import com.daebangg.sayroam.common.domain.TravelPeriod;
+import com.daebangg.sayroam.companion.application.dto.CompanionCandidateResult;
 import com.daebangg.sayroam.companion.application.dto.CompanionSearchResult;
 import com.daebangg.sayroam.companion.application.dto.SaveCompanionSearchCommand;
+import com.daebangg.sayroam.companion.application.port.out.CompanionCandidateQueryRepository;
 import com.daebangg.sayroam.companion.domain.AgeRange;
 import com.daebangg.sayroam.companion.domain.CompanionSearch;
 import com.daebangg.sayroam.companion.domain.CompanionSearchRepository;
@@ -10,17 +12,24 @@ import com.daebangg.sayroam.companion.domain.CompanionSearchStatus;
 import com.daebangg.sayroam.companion.domain.error.CompanionSearchErrorCode;
 import com.daebangg.sayroam.destination.domain.DestinationRepository;
 import com.daebangg.sayroam.global.exception.BusinessException;
+import com.daebangg.sayroam.global.exception.CommonErrorCode;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.List;
 
 @Service
 @RequiredArgsConstructor
 public class CompanionSearchService {
+    public static final int MAX_CANDIDATE_PAGE_SIZE = 100;
+    private static final ZoneId KOREA_ZONE = ZoneId.of("Asia/Seoul");
+
     private final CompanionSearchRepository searches;
     private final DestinationRepository destinations;
+    private final CompanionCandidateQueryRepository candidates;
 
     @Transactional
     public CompanionSearchResult create(long userId, SaveCompanionSearchCommand command) {
@@ -38,6 +47,23 @@ public class CompanionSearchService {
     @Transactional(readOnly = true)
     public List<CompanionSearchResult> findMine(long userId) {
         return searches.findByUserIdOrderByIdDesc(userId).stream().map(CompanionSearchResult::from).toList();
+    }
+
+    @Transactional(readOnly = true)
+    public CompanionCandidateResult.Page findCandidates(long userId, long searchId, int page, int size) {
+        if (page < 0 || size < 1 || size > MAX_CANDIDATE_PAGE_SIZE) {
+            throw new BusinessException(CommonErrorCode.INVALID_INPUT);
+        }
+        CompanionSearch search = searches.findByIdAndUserId(searchId, userId)
+                .orElseThrow(() -> new BusinessException(CompanionSearchErrorCode.COMPANION_SEARCH_NOT_FOUND));
+        search.validateCandidateSearch();
+        LocalDate ageReferenceDate = LocalDate.now(KOREA_ZONE);
+
+        CompanionCandidateQueryRepository.CandidateQuery query = new CompanionCandidateQueryRepository.CandidateQuery(
+                userId, searchId, ageReferenceDate, (long) page * size, size + 1);
+        List<CompanionCandidateResult> results = candidates.findCandidates(query);
+        boolean hasNext = results.size() > size;
+        return new CompanionCandidateResult.Page(hasNext ? results.subList(0, size) : results, hasNext);
     }
 
     @Transactional

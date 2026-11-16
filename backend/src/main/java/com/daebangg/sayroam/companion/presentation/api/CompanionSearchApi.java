@@ -1,12 +1,15 @@
 package com.daebangg.sayroam.companion.presentation.api;
 
 import com.daebangg.sayroam.auth.domain.AuthenticatedAccount;
+import com.daebangg.sayroam.companion.application.service.CompanionSearchService;
 import com.daebangg.sayroam.companion.presentation.dto.ChangeCompanionSearchStatusRequest;
+import com.daebangg.sayroam.companion.presentation.dto.CompanionCandidateListResponse;
 import com.daebangg.sayroam.companion.presentation.dto.CompanionSearchListResponse;
 import com.daebangg.sayroam.companion.presentation.dto.CompanionSearchResponse;
 import com.daebangg.sayroam.companion.presentation.dto.SaveCompanionSearchRequest;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -16,7 +19,7 @@ import org.springframework.http.ResponseEntity;
 @SecurityRequirement(name = "bearerAuth")
 public interface CompanionSearchApi {
     @Operation(operationId = "createCompanionSearch", summary = "동행 매칭 등록",
-            description = "활성 여행지와 여행 기간을 저장합니다. 여행 스타일은 기존 프로필 응답을 사용합니다.")
+            description = "활성 여행지와 여행 기간, 선택한 상대 조건을 저장합니다.")
     @ApiResponse(responseCode = "201", description = "등록 완료")
     @ApiResponse(responseCode = "400", ref = "#/components/responses/BadRequest")
     @ApiResponse(responseCode = "401", ref = "#/components/responses/Unauthorized")
@@ -28,6 +31,23 @@ public interface CompanionSearchApi {
     @ApiResponse(responseCode = "200", description = "본인 등록 목록")
     @ApiResponse(responseCode = "401", ref = "#/components/responses/Unauthorized")
     ResponseEntity<CompanionSearchListResponse> findMine(@Parameter(hidden = true) AuthenticatedAccount account);
+
+    @Operation(operationId = "listCompanionCandidates", summary = "동행 매칭 후보 조회",
+            description = "등록한 두 여행 기간이 하루 이상 겹치고 양쪽의 희망 나이·성별 조건을 충족하는 후보를 조회합니다. "
+                    + "여행 기간의 시작일과 종료일을 포함해 겹치는 일수가 많은 순으로, 회원별 한 건을 반환합니다.")
+    @ApiResponse(responseCode = "200", description = "후보 목록. 조건에 맞는 후보가 없으면 빈 배열")
+    @ApiResponse(responseCode = "400", ref = "#/components/responses/BadRequest")
+    @ApiResponse(responseCode = "401", ref = "#/components/responses/Unauthorized")
+    @ApiResponse(responseCode = "404", ref = "#/components/responses/CompanionSearchNotFound")
+    @ApiResponse(responseCode = "409", ref = "#/components/responses/CompanionCandidateSearchUnavailable")
+    ResponseEntity<CompanionCandidateListResponse> findCandidates(
+            @Parameter(hidden = true) AuthenticatedAccount account,
+            long searchId,
+            @Parameter(description = "0부터 시작하는 페이지",
+                    schema = @Schema(type = "integer", format = "int32", minimum = "0", defaultValue = "0")) int page,
+            @Parameter(description = "페이지당 후보 수",
+                    schema = @Schema(type = "integer", format = "int32", minimum = "1", defaultValue = "20",
+                            maximum = "" + CompanionSearchService.MAX_CANDIDATE_PAGE_SIZE)) int size);
 
     @Operation(operationId = "updateCompanionSearch", summary = "동행 매칭 조건 수정",
             description = "활성 등록의 조건을 교체합니다. 생략한 희망 성별과 나이 조건은 해제합니다.")

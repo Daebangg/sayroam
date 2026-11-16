@@ -391,7 +391,7 @@ export interface paths {
         put?: never;
         /**
          * 동행 매칭 등록
-         * @description 활성 여행지와 여행 기간을 저장합니다. 여행 스타일은 기존 프로필 응답을 사용합니다.
+         * @description 활성 여행지와 여행 기간, 선택한 상대 조건을 저장합니다.
          */
         post: operations["createCompanionSearch"];
         delete?: never;
@@ -422,6 +422,26 @@ export interface paths {
          * @description 상태를 CLOSED로 변경합니다. 이미 종료한 등록에도 같은 요청을 보낼 수 있습니다.
          */
         patch: operations["closeCompanionSearch"];
+        trace?: never;
+    };
+    "/api/companion-searches/{searchId}/candidates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 동행 매칭 후보 조회
+         * @description 등록한 두 여행 기간이 하루 이상 겹치고 양쪽의 희망 나이·성별 조건을 충족하는 후보를 조회합니다. 여행 기간의 시작일과 종료일을 포함해 겹치는 일수가 많은 순으로, 회원별 한 건을 반환합니다.
+         */
+        get: operations["listCompanionCandidates"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/companion-searches/me": {
@@ -819,6 +839,7 @@ export interface components {
             | "AUTHENTICATION_REVOKED"
             | "AUTHENTICATION_UNAVAILABLE"
             | "COMPANION_SEARCH_CLOSED"
+            | "COMPANION_SEARCH_DESTINATION_REQUIRED"
             | "COMPANION_SEARCH_NOT_FOUND"
             | "DESTINATION_UNAVAILABLE"
             | "EMAIL_ALREADY_REGISTERED"
@@ -913,6 +934,22 @@ export interface components {
              */
             type?: string;
         };
+        Candidate: {
+            /** Format: date */
+            endDate: string;
+            nickname: string;
+            /** Format: int32 */
+            overlapDays: number;
+            /** Format: date */
+            overlapEndDate: string;
+            /** Format: date */
+            overlapStartDate: string;
+            profileImageUrl: string | null;
+            /** Format: int64 */
+            searchId: number;
+            /** Format: date */
+            startDate: string;
+        };
         ChangeCompanionSearchStatusRequest: {
             /** @enum {string} */
             status: "CLOSED";
@@ -952,6 +989,10 @@ export interface components {
              * @example 1
              */
             senderId?: number;
+        };
+        CompanionCandidateListResponse: {
+            candidates: components["schemas"]["Candidate"][];
+            hasNext: boolean;
         };
         CompanionSearchListResponse: {
             searches: components["schemas"]["CompanionSearchResponse"][];
@@ -1543,6 +1584,15 @@ export interface components {
         };
         /** @description 400: INVALID_INPUT 또는 Spring 요청 오류. 검증 실패 시 errors 포함 */
         BadRequest: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/problem+json": components["schemas"]["ApiProblem"];
+            };
+        };
+        /** @description 409: COMPANION_SEARCH_CLOSED(종료), COMPANION_SEARCH_DESTINATION_REQUIRED(기준 여행지 선택 필요) */
+        CompanionCandidateSearchUnavailable: {
             headers: {
                 [name: string]: unknown;
             };
@@ -2660,6 +2710,37 @@ export interface operations {
             404: components["responses"]["CompanionSearchNotFound"];
         };
     };
+    listCompanionCandidates: {
+        parameters: {
+            query?: {
+                /** @description 0부터 시작하는 페이지 */
+                page?: number;
+                /** @description 페이지당 후보 수 */
+                size?: number;
+            };
+            header?: never;
+            path: {
+                searchId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 후보 목록. 조건에 맞는 후보가 없으면 빈 배열 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CompanionCandidateListResponse"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["CompanionSearchNotFound"];
+            409: components["responses"]["CompanionCandidateSearchUnavailable"];
+        };
+    };
     listMyCompanionSearches: {
         parameters: {
             query?: never;
@@ -3340,6 +3421,13 @@ export const apiRoutes = {
         auth: "required",
         csrf: false,
         responses: { "204": false },
+    },
+    listCompanionCandidates: {
+        method: "get",
+        path: "/api/companion-searches/{searchId}/candidates",
+        auth: "required",
+        csrf: false,
+        responses: { "200": true },
     },
     listDestinations: {
         method: "get",
