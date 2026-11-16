@@ -8,6 +8,8 @@ import com.daebangg.sayroam.place.domain.PlaceCategory;
 import com.daebangg.sayroam.place.domain.error.PlaceErrorCode;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.client.MockRestServiceServer;
@@ -18,6 +20,9 @@ import java.math.BigDecimal;
 import java.net.SocketTimeoutException;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -105,7 +110,7 @@ class TourApiPlaceCatalogTest {
     }
 
     @Test
-    void 결과가_없으면_빈_목록을_준다() {
+    void 결과가_없어_numOfRows가_0이어도_빈_목록을_준다() {
         // given
         respondWith(emptyResponse());
 
@@ -211,6 +216,30 @@ class TourApiPlaceCatalogTest {
 
         // then
         assertThat(result.hasNext()).isFalse();
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"pageNo", "numOfRows", "totalCount"})
+    void 페이지_정보가_없으면_검색_실패로_거부한다(String missingField) {
+        // given
+        Map<String, String> pageInfo = pageInfo();
+        pageInfo.remove(missingField);
+        respondWith(bodyWith(pageInfo));
+
+        // when & then
+        assertSearchFails(PlaceErrorCode.PLACE_SEARCH_FAILED);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"pageNo", "numOfRows", "totalCount"})
+    void 페이지_정보가_숫자가_아니면_검색_실패로_거부한다(String invalidField) {
+        // given
+        Map<String, String> pageInfo = pageInfo();
+        pageInfo.put(invalidField, "\"abc\"");
+        respondWith(bodyWith(pageInfo));
+
+        // when & then
+        assertSearchFails(PlaceErrorCode.PLACE_SEARCH_FAILED);
     }
 
     @Test
@@ -322,6 +351,25 @@ class TourApiPlaceCatalogTest {
                 {"response":{"header":{"resultCode":"0000","resultMsg":"OK"},
                 "body":{"items":"","numOfRows":0,"pageNo":1,"totalCount":0}}}
                 """;
+    }
+
+    private static Map<String, String> pageInfo() {
+        Map<String, String> pageInfo = new LinkedHashMap<>();
+        pageInfo.put("numOfRows", "20");
+        pageInfo.put("pageNo", "1");
+        pageInfo.put("totalCount", "1");
+        return pageInfo;
+    }
+
+    // 값은 JSON 리터럴 그대로 넣는다. 예: "20"은 숫자, "\"abc\""는 문자열.
+    private static String bodyWith(Map<String, String> pageInfo) {
+        String fields = pageInfo.entrySet().stream()
+                .map(field -> "\"%s\":%s".formatted(field.getKey(), field.getValue()))
+                .collect(Collectors.joining(","));
+        String items = "\"items\":{\"item\":[" + item("1", "12", "송정해수욕장", "부산", "129.1997", "35.1786") + "]}";
+        return """
+                {"response":{"header":{"resultCode":"0000","resultMsg":"OK"},"body":{%s}}}
+                """.formatted(fields.isEmpty() ? items : items + "," + fields);
     }
 
     private static String searchResponse(int pageNo, int totalCount, String... items) {

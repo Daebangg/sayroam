@@ -139,10 +139,18 @@ public class TourApiPlaceCatalog implements PlaceCatalog {
         }
     }
 
+    // 페이지 정보가 없거나 숫자가 아니면 0으로 보지 않고 실패로 처리한다. 결과가 없을 때 numOfRows는 0이다.
     private boolean hasNext(JsonNode body) {
         // 큰 페이지 번호에서 곱셈이 int 범위를 넘지 않도록 long으로 계산한다.
-        long shown = (long) body.path("pageNo").asInt() * body.path("numOfRows").asInt();
-        return shown < body.path("totalCount").asLong();
+        long shown = number(body.path("pageNo")) * number(body.path("numOfRows"));
+        return shown < number(body.path("totalCount"));
+    }
+
+    private long number(JsonNode node) {
+        if (!node.isIntegralNumber() || !node.canConvertToLong()) {
+            throw searchFailed();
+        }
+        return node.asLong();
     }
 
     private BusinessException searchFailed() {
