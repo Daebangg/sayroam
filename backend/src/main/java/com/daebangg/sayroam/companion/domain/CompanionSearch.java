@@ -25,6 +25,7 @@ import lombok.NoArgsConstructor;
 @Table(name = "companion_search")
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class CompanionSearch extends BaseTimeEntity {
+    public static final int MAX_TITLE_LENGTH = 80;
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -61,6 +62,10 @@ public class CompanionSearch extends BaseTimeEntity {
     @AttributeOverride(name = "maxAge", column = @Column(name = "preferred_max_age"))
     private AgeRange preferredAgeRange;
 
+    @Getter
+    @Column(length = MAX_TITLE_LENGTH)
+    private String title;
+
     @Column(columnDefinition = "TEXT")
     private String introduction;
 
@@ -71,25 +76,38 @@ public class CompanionSearch extends BaseTimeEntity {
 
     @Builder
     private CompanionSearch(Long userId, Long destinationId, TravelPeriod period, Gender preferredGender,
-                          AgeRange preferredAgeRange, String introduction) {
+                          AgeRange preferredAgeRange, String introduction, String title) {
         this.userId = userId;
         this.introduction = introduction;
         this.status = CompanionSearchStatus.ACTIVE;
-        update(destinationId, period, preferredGender, preferredAgeRange);
+        update(destinationId, period, preferredGender, preferredAgeRange, title);
     }
 
-    public void update(Long destinationId, TravelPeriod period, Gender preferredGender, AgeRange preferredAgeRange) {
+    public void update(Long destinationId, TravelPeriod period, Gender preferredGender, AgeRange preferredAgeRange,
+                       String title) {
         if (status == CompanionSearchStatus.CLOSED) {
             throw new BusinessException(CompanionSearchErrorCode.COMPANION_SEARCH_CLOSED);
         }
         if (destinationId == null || period == null) {
             throw new BusinessException(CommonErrorCode.INVALID_INPUT);
         }
+        this.title = normalizeTitle(title);
         this.destinationId = destinationId;
         this.region = null;
         this.period = period;
         this.preferredGender = preferredGender;
         this.preferredAgeRange = preferredAgeRange;
+    }
+
+    private String normalizeTitle(String title) {
+        if (title == null || title.isBlank()) {
+            return null;
+        }
+        String normalized = title.strip();
+        if (normalized.codePointCount(0, normalized.length()) > MAX_TITLE_LENGTH) {
+            throw new BusinessException(CommonErrorCode.INVALID_INPUT);
+        }
+        return normalized;
     }
 
     public void changeStatus(CompanionSearchStatus status) {

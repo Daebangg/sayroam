@@ -741,7 +741,8 @@
                     "overlapStartDate": { "format": "date", "type": "string" },
                     "profileImageUrl": { "type": ["string", "null"] },
                     "searchId": { "format": "int64", "type": "integer" },
-                    "startDate": { "format": "date", "type": "string" }
+                    "startDate": { "format": "date", "type": "string" },
+                    "title": { "type": ["string", "null"] }
                 },
                 "required": [
                     "endDate",
@@ -751,7 +752,8 @@
                     "overlapStartDate",
                     "profileImageUrl",
                     "searchId",
-                    "startDate"
+                    "startDate",
+                    "title"
                 ],
                 "type": "object"
             },
@@ -839,7 +841,8 @@
                     "preferredMaxAge": { "format": "int32", "type": ["integer", "null"] },
                     "preferredMinAge": { "format": "int32", "type": ["integer", "null"] },
                     "startDate": { "format": "date", "type": "string" },
-                    "status": { "enum": ["ACTIVE", "CLOSED"], "type": "string" }
+                    "status": { "enum": ["ACTIVE", "CLOSED"], "type": "string" },
+                    "title": { "type": ["string", "null"] }
                 },
                 "required": [
                     "destinationId",
@@ -850,7 +853,8 @@
                     "preferredMaxAge",
                     "preferredMinAge",
                     "startDate",
-                    "status"
+                    "status",
+                    "title"
                 ],
                 "type": "object"
             },
@@ -1353,7 +1357,12 @@
                         "minimum": 0,
                         "type": ["integer", "null"]
                     },
-                    "startDate": { "format": "date", "type": "string" }
+                    "startDate": { "format": "date", "type": "string" },
+                    "title": {
+                        "description": "동행 제목. 앞뒤 공백 제거 후 최대 80자. 생략하거나 비어 있으면 제목 없음",
+                        "maxLength": 80,
+                        "type": ["string", "null"]
+                    }
                 },
                 "required": ["destinationId", "endDate", "startDate"],
                 "type": "object"
@@ -2362,7 +2371,7 @@
         },
         "/api/companion-searches": {
             "post": {
-                "description": "활성 여행지와 여행 기간, 선택한 상대 조건을 저장합니다.",
+                "description": "활성 여행지와 여행 기간, 선택한 상대 조건과 제목을 저장합니다.",
                 "operationId": "createCompanionSearch",
                 "requestBody": {
                     "content": {
@@ -2451,7 +2460,7 @@
                 "tags": ["CompanionSearch"]
             },
             "put": {
-                "description": "활성 등록의 조건을 교체합니다. 생략한 희망 성별과 나이 조건은 해제합니다.",
+                "description": "활성 등록의 조건을 교체합니다. 희망 성별과 나이 조건, 제목은 생략하면 해제합니다.",
                 "operationId": "updateCompanionSearch",
                 "parameters": [
                     {

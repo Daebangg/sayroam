@@ -16,7 +16,8 @@ public record CompanionSearchResult(
         Gender preferredGender,
         Integer preferredMinAge,
         Integer preferredMaxAge,
-        CompanionSearchStatus status
+        CompanionSearchStatus status,
+        String title
 ) {
 
     public static CompanionSearchResult from(CompanionSearch search) {
@@ -24,6 +25,6 @@ public record CompanionSearchResult(
         return new CompanionSearchResult(search.getId(), search.getDestinationId(), search.getRegion(),
                 search.getPeriod().startDate(), search.getPeriod().endDate(), search.getPreferredGender(),
                 ageRange == null ? null : ageRange.minAge(), ageRange == null ? null : ageRange.maxAge(),
-                search.getStatus());
+                search.getStatus(), search.getTitle());
     }
 }

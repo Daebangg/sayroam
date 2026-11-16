@@ -51,13 +51,14 @@ class CompanionSearchApiIntegrationTest extends DatabaseIntegrationTest {
     void registersListsUpdatesAndClosesOnlyTheOwnersSearch() throws Exception {
         String conditions = conditions(seoulId, "2030-04-21", "2030-04-23",
                 """
-                , "preferredGender": "FEMALE", "preferredMinAge": 25
+                , "preferredGender": "FEMALE", "preferredMinAge": 25, "title": "  카페 투어  "
                 """);
         mvc.perform(post(PATH).servletPath(PATH).contentType(MediaType.APPLICATION_JSON).content(conditions))
                 .andExpect(status().isUnauthorized());
 
         submit(post(PATH), PATH, authorization, conditions).andExpect(status().isCreated())
                 .andExpect(jsonPath("$.destinationId").value(seoulId))
+                .andExpect(jsonPath("$.title").value("카페 투어"))
                 .andExpect(jsonPath("$.preferredGender").value("FEMALE"))
                 .andExpect(jsonPath("$.preferredMinAge").value(25))
                 .andExpect(jsonPath("$.preferredMaxAge").value(nullValue()))
@@ -68,6 +69,7 @@ class CompanionSearchApiIntegrationTest extends DatabaseIntegrationTest {
         mvc.perform(get(MINE).servletPath(MINE).header("Authorization", authorization))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.searches.length()").value(1))
+                .andExpect(jsonPath("$.searches[0].title").value("카페 투어"))
                 .andExpect(jsonPath("$.searches[0].id").value(id));
         String other = createAuthorization("다른 회원");
         mvc.perform(get(MINE).servletPath(MINE).header("Authorization", other))
@@ -78,11 +80,15 @@ class CompanionSearchApiIntegrationTest extends DatabaseIntegrationTest {
         submit(patch(resource), resource, other, "{\"status\":\"CLOSED\"}").andExpect(status().isNotFound());
 
         long busanId = destinationId("부산");
-        String updated = conditions(busanId, "2030-04-24", "2030-04-24", "");
+        String updated = conditions(busanId, "2030-04-24", "2030-04-24", ", \"title\": \"해변 산책\"");
         submit(put(resource), resource, authorization, updated).andExpect(status().isOk())
                 .andExpect(jsonPath("$.destinationId").value(busanId))
+                .andExpect(jsonPath("$.title").value("해변 산책"))
                 .andExpect(jsonPath("$.preferredGender").value(nullValue()))
                 .andExpect(jsonPath("$.preferredMinAge").value(nullValue()));
+        submit(put(resource), resource, authorization, conditions(busanId, "2030-04-24", "2030-04-24",
+                ", \"title\": \"   \"")).andExpect(status().isOk())
+                .andExpect(jsonPath("$.title").value(nullValue()));
         entityManager.flush();
         entityManager.clear();
 
@@ -95,13 +101,26 @@ class CompanionSearchApiIntegrationTest extends DatabaseIntegrationTest {
                 .andExpect(jsonPath("$.code").value("COMPANION_SEARCH_CLOSED"));
 
         entityManager.flush();
-        assertThat(jdbc.queryForMap("SELECT destination_id, status FROM companion_search WHERE id = ?", id))
+        assertThat(jdbc.queryForMap("SELECT destination_id, status, title FROM companion_search WHERE id = ?", id))
                 .containsEntry("destination_id", busanId)
-                .containsEntry("status", "CLOSED");
+                .containsEntry("status", "CLOSED")
+                .containsEntry("title", null);
+    }
+
+    @Test
+    void countsUnicodeCodePointsInTitle() throws Exception {
+        String title = "😀".repeat(80);
+        submit(post(PATH), PATH, authorization, conditions(seoulId, "2030-04-21", "2030-04-23",
+                ", \"title\": \"  " + title + "  \"")).andExpect(status().isCreated())
+                .andExpect(jsonPath("$.title").value(title));
+        submit(post(PATH), PATH, authorization, conditions(seoulId, "2030-04-21", "2030-04-23",
+                ", \"title\": \"" + title + "😀\"")).andExpect(status().isBadRequest());
     }
 
     @Test
     void rejectsInvalidDatesAgesAndUnavailableDestinations() throws Exception {
+        submit(post(PATH), PATH, authorization, conditions(seoulId, "2030-04-21", "2030-04-23",
+                ", \"title\": \"" + "가".repeat(81) + "\"")).andExpect(status().isBadRequest());
         submit(post(PATH), PATH, authorization, conditions(seoulId, "2030-04-21", "2030-04-20", ""))
                 .andExpect(status().isBadRequest());
         submit(post(PATH), PATH, authorization, conditions(seoulId, "2030-04-21", "2030-04-23",

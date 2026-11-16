@@ -51,6 +51,7 @@ class CompanionCandidateApiIntegrationTest extends DatabaseIntegrationTest {
         long traveler = member("여행자", null, null);
         search(traveler, 4, 6);
         long first = search(traveler, -1, 2);
+        jdbc.update("UPDATE companion_search SET title = ? WHERE id = ?", "카페 투어", first);
         long second = search(member("두 번째", null, null), 1, 3);
         long third = search(member("세 번째", null, null), 1, 3);
         long boundary = search(member("마지막 날", null, null), 4, 7);
@@ -74,7 +75,9 @@ class CompanionCandidateApiIntegrationTest extends DatabaseIntegrationTest {
                 .andExpect(jsonPath("$.candidates[*].searchId").value(contains((int) first, (int) pastOverlap, (int) second)))
                 .andExpect(jsonPath("$.candidates[0].overlapStartDate").value(today.minusDays(1).toString()))
                 .andExpect(jsonPath("$.candidates[0].overlapDays").value(4))
+                .andExpect(jsonPath("$.candidates[0].title").value("카페 투어"))
                 .andExpect(jsonPath("$.candidates[1].overlapDays").value(3))
+                .andExpect(jsonPath("$.candidates[1].title").value(nullValue()))
                 .andExpect(jsonPath("$.candidates[0].profileImageUrl").value(nullValue()))
                 .andExpect(jsonPath("$.candidates[0].birthDate").doesNotExist())
                 .andExpect(jsonPath("$.hasNext").value(true));

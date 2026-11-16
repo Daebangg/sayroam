@@ -10,6 +10,7 @@ public record SaveCompanionSearchCommand(
         LocalDate endDate,
         Gender preferredGender,
         Integer preferredMinAge,
-        Integer preferredMaxAge
+        Integer preferredMaxAge,
+        String title
 ) {
 }
