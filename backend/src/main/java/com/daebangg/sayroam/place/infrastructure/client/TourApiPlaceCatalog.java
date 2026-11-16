@@ -133,7 +133,9 @@ public class TourApiPlaceCatalog implements PlaceCatalog {
     }
 
     private boolean hasNext(JsonNode body) {
-        return body.path("pageNo").asInt() * body.path("numOfRows").asInt() < body.path("totalCount").asInt();
+        // 큰 페이지 번호에서 곱셈이 int 범위를 넘지 않도록 long으로 계산한다.
+        long shown = (long) body.path("pageNo").asInt() * body.path("numOfRows").asInt();
+        return shown < body.path("totalCount").asLong();
     }
 
     private BusinessException searchFailed() {

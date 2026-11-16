@@ -128,6 +128,20 @@ class PlaceControllerTest {
     }
 
     @Test
+    void 앞뒤_공백을_지운_검색어로_길이를_검사한다() throws Exception {
+        // given
+        String query = "가".repeat(100);
+        given(placeService.search(new PlaceSearchQuery(query, null, 1)))
+                .willReturn(new PlaceSearchResult(List.of(), false));
+
+        // when & then
+        mvc.perform(searchRequest().param("query", "  " + query + "  ").with(login()))
+                .andExpect(status().isOk());
+
+        then(placeService).should().search(new PlaceSearchQuery(query, null, 1));
+    }
+
+    @Test
     void 없는_분류면_400을_응답하고_검색하지_않는다() throws Exception {
         // when & then
         mvc.perform(searchRequest().param("query", "해운대").param("category", "PARK").with(login()))
@@ -139,14 +153,26 @@ class PlaceControllerTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"0", "51"})
-    void 페이지가_1에서_50_사이가_아니면_400을_응답하고_검색하지_않는다(String page) throws Exception {
+    @ValueSource(strings = {"0", "-1"})
+    void 페이지가_1보다_작으면_400을_응답하고_검색하지_않는다(String page) throws Exception {
         // when & then
         mvc.perform(searchRequest().param("query", "해운대").param("page", page).with(login()))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.errors[0].field").value("page"));
 
         then(placeService).shouldHaveNoInteractions();
+    }
+
+    @Test
+    void 페이지_상한_없이_요청한_페이지를_검색한다() throws Exception {
+        // given
+        given(placeService.search(new PlaceSearchQuery("해운대", null, 51)))
+                .willReturn(new PlaceSearchResult(List.of(), false));
+
+        // when & then
+        mvc.perform(searchRequest().param("query", "해운대").param("page", "51").with(login()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.hasNext").value(false));
     }
 
     @Test

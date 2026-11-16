@@ -187,6 +187,18 @@ class TourApiPlaceCatalogTest {
     }
 
     @Test
+    void 페이지_번호가_커도_다음_페이지_여부를_올바르게_계산한다() {
+        // given
+        respondWith(searchResponse(200_000_000, 30));
+
+        // when
+        PlaceSearchResult result = catalog.search(new PlaceSearchQuery("송정", null, 200_000_000));
+
+        // then
+        assertThat(result.hasNext()).isFalse();
+    }
+
+    @Test
     void 결과_코드가_정상이_아니면_검색_실패로_거부한다() {
         // given
         respondWith("""
