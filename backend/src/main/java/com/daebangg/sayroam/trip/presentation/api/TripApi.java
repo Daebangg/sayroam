@@ -1,6 +1,8 @@
 package com.daebangg.sayroam.trip.presentation.api;
 
 import com.daebangg.sayroam.auth.domain.AuthenticatedAccount;
+import com.daebangg.sayroam.trip.presentation.dto.AddTripPlaceRequest;
+import com.daebangg.sayroam.trip.presentation.dto.AddTripPlaceResponse;
 import com.daebangg.sayroam.trip.presentation.dto.CreateTripRequest;
 import com.daebangg.sayroam.trip.presentation.dto.CreateTripResponse;
 import com.daebangg.sayroam.trip.presentation.dto.CreateTripRoomRequest;
@@ -48,6 +50,24 @@ public interface TripApi {
     ResponseEntity<CreateTripRoomResponse> createRoom(@Parameter(hidden = true) @AuthenticationPrincipal AuthenticatedAccount account,
                                                       @Parameter(description = "여행 ID", example = "12") Long tripId,
                                                       @RequestBody CreateTripRoomRequest request);
+
+    @Operation(operationId = "addTripPlace", summary = "여행에 장소 추가",
+            description = "장소 검색에서 고른 장소를 여행에 추가합니다. 장소 ID만 받고, 이름·분류·주소·좌표는 서버가 TourAPI에서 받아 저장합니다. "
+                    + "이미 저장된 장소는 TourAPI를 다시 조회하지 않습니다. 같은 장소를 한 여행에 여러 번 추가할 수 있습니다. "
+                    + "채팅방이 없는 여행은 만든 회원이, 채팅방이 연결된 여행은 그 방에 참여 중인 멤버가 추가할 수 있습니다.",
+            security = @SecurityRequirement(name = "bearerAuth"))
+    @ApiResponses({
+            @ApiResponse(responseCode = "201", description = "여행 장소 추가 완료"),
+            @ApiResponse(responseCode = "400", ref = "#/components/responses/TripPlaceBadRequest"),
+            @ApiResponse(responseCode = "401", ref = "#/components/responses/Unauthorized"),
+            @ApiResponse(responseCode = "404", ref = "#/components/responses/TripPlaceNotFound"),
+            @ApiResponse(responseCode = "502", ref = "#/components/responses/PlaceSearchFailed"),
+            @ApiResponse(responseCode = "503", ref = "#/components/responses/PlaceSearchUnavailable"),
+            @ApiResponse(responseCode = "500", ref = "#/components/responses/InternalServerError")
+    })
+    ResponseEntity<AddTripPlaceResponse> addPlace(@Parameter(hidden = true) @AuthenticationPrincipal AuthenticatedAccount account,
+                                                  @Parameter(description = "여행 ID", example = "12") Long tripId,
+                                                  @RequestBody AddTripPlaceRequest request);
 
     @Operation(operationId = "listMyTrips", summary = "내 여행 목록 조회",
             description = "로그인한 회원이 볼 수 있는 여행을 나중에 만든 여행부터 조회합니다. "

@@ -8,7 +8,9 @@ import com.daebangg.sayroam.common.domain.error.TravelPeriodErrorCode;
 import com.daebangg.sayroam.global.exception.BusinessException;
 import com.daebangg.sayroam.global.security.ActiveAccountJwtConverter;
 import com.daebangg.sayroam.global.security.SecurityConfig;
+import com.daebangg.sayroam.place.domain.error.PlaceErrorCode;
 import com.daebangg.sayroam.room.domain.error.RoomErrorCode;
+import com.daebangg.sayroam.trip.application.dto.AddTripPlaceCommand;
 import com.daebangg.sayroam.trip.application.dto.TripSummaryResult;
 import com.daebangg.sayroam.trip.application.service.TripService;
 import com.daebangg.sayroam.trip.domain.error.TripErrorCode;
@@ -48,6 +50,8 @@ class TripControllerTest {
     private static final LocalDate END_DATE = LocalDate.of(2026, 12, 4);
     private static final Long OTHER_TRIP_ID = 13L;
     private static final Long ROOM_ID = 7L;
+    private static final String SOURCE_ID = "126081";
+    private static final Long TRIP_PLACE_ID = 31L;
     private static final TravelPeriod PERIOD = new TravelPeriod(START_DATE, END_DATE);
 
     @Autowired
@@ -199,6 +203,140 @@ class TripControllerTest {
     }
 
     @Test
+    void 여행에_장소를_추가하면_201과_여행_장소_ID를_응답한다() throws Exception {
+        // given
+        given(tripService.addPlace(USER_ID, TRIP_ID, new AddTripPlaceCommand(SOURCE_ID, 2, "오전에 가기")))
+                .willReturn(TRIP_PLACE_ID);
+
+        // when & then
+        mvc.perform(addTripPlaceRequest(TRIP_ID, """
+                        {"sourceId": "126081", "day": 2, "memo": "오전에 가기"}
+                        """).with(login()))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.tripPlaceId").value(TRIP_PLACE_ID));
+    }
+
+    @Test
+    void 일차와_메모_없이_장소_ID만_보내도_장소를_추가한다() throws Exception {
+        // given
+        given(tripService.addPlace(USER_ID, TRIP_ID, new AddTripPlaceCommand(SOURCE_ID, null, null)))
+                .willReturn(TRIP_PLACE_ID);
+
+        // when & then
+        mvc.perform(addTripPlaceRequest(TRIP_ID, """
+                        {"sourceId": "126081"}
+                        """).with(login()))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.tripPlaceId").value(TRIP_PLACE_ID));
+    }
+
+    @Test
+    void 장소_ID가_없으면_400과_에러_코드를_응답하고_장소를_추가하지_않는다() throws Exception {
+        // when & then
+        mvc.perform(addTripPlaceRequest(TRIP_ID, """
+                        {"day": 2}
+                        """).with(login()))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("INVALID_INPUT"))
+                .andExpect(jsonPath("$.errors[0].field").value("sourceId"));
+
+        then(tripService).shouldHaveNoInteractions();
+    }
+
+    @Test
+    void 일차가_1보다_작으면_400과_에러_코드를_응답하고_장소를_추가하지_않는다() throws Exception {
+        // when & then
+        mvc.perform(addTripPlaceRequest(TRIP_ID, """
+                        {"sourceId": "126081", "day": 0}
+                        """).with(login()))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("INVALID_INPUT"))
+                .andExpect(jsonPath("$.errors[0].field").value("day"));
+
+        then(tripService).shouldHaveNoInteractions();
+    }
+
+    @Test
+    void 메모가_255자를_넘으면_400과_에러_코드를_응답하고_장소를_추가하지_않는다() throws Exception {
+        // when & then
+        mvc.perform(addTripPlaceRequest(TRIP_ID, """
+                        {"sourceId": "126081", "memo": "%s"}
+                        """.formatted("가".repeat(256))).with(login()))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("INVALID_INPUT"))
+                .andExpect(jsonPath("$.errors[0].field").value("memo"));
+
+        then(tripService).shouldHaveNoInteractions();
+    }
+
+    @Test
+    void 일차가_여행_기간을_벗어나면_400과_에러_코드를_응답한다() throws Exception {
+        // given
+        given(tripService.addPlace(USER_ID, TRIP_ID, new AddTripPlaceCommand(SOURCE_ID, 5, null)))
+                .willThrow(new BusinessException(TripErrorCode.TRIP_DAY_OUT_OF_RANGE));
+
+        // when & then
+        mvc.perform(addTripPlaceRequest(TRIP_ID, """
+                        {"sourceId": "126081", "day": 5}
+                        """).with(login()))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("TRIP_DAY_OUT_OF_RANGE"));
+    }
+
+    @Test
+    void 장소를_추가할_수_없는_여행이면_404와_에러_코드를_응답한다() throws Exception {
+        // given
+        given(tripService.addPlace(USER_ID, TRIP_ID, new AddTripPlaceCommand(SOURCE_ID, null, null)))
+                .willThrow(new BusinessException(TripErrorCode.TRIP_NOT_FOUND));
+
+        // when & then
+        mvc.perform(addTripPlaceRequest(TRIP_ID, """
+                        {"sourceId": "126081"}
+                        """).with(login()))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("TRIP_NOT_FOUND"));
+    }
+
+    @Test
+    void TourAPI에서_찾을_수_없는_장소면_404와_에러_코드를_응답한다() throws Exception {
+        // given
+        given(tripService.addPlace(USER_ID, TRIP_ID, new AddTripPlaceCommand(SOURCE_ID, null, null)))
+                .willThrow(new BusinessException(PlaceErrorCode.PLACE_NOT_FOUND));
+
+        // when & then
+        mvc.perform(addTripPlaceRequest(TRIP_ID, """
+                        {"sourceId": "126081"}
+                        """).with(login()))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("PLACE_NOT_FOUND"));
+    }
+
+    @Test
+    void TourAPI_조회에_실패하면_502와_에러_코드를_응답한다() throws Exception {
+        // given
+        given(tripService.addPlace(USER_ID, TRIP_ID, new AddTripPlaceCommand(SOURCE_ID, null, null)))
+                .willThrow(new BusinessException(PlaceErrorCode.PLACE_SEARCH_FAILED));
+
+        // when & then
+        mvc.perform(addTripPlaceRequest(TRIP_ID, """
+                        {"sourceId": "126081"}
+                        """).with(login()))
+                .andExpect(status().isBadGateway())
+                .andExpect(jsonPath("$.code").value("PLACE_SEARCH_FAILED"));
+    }
+
+    @Test
+    void 로그인하지_않으면_401을_응답하고_장소를_추가하지_않는다() throws Exception {
+        // when & then
+        mvc.perform(addTripPlaceRequest(TRIP_ID, """
+                        {"sourceId": "126081"}
+                        """))
+                .andExpect(status().isUnauthorized());
+
+        then(tripService).shouldHaveNoInteractions();
+    }
+
+    @Test
     void 내_여행_목록을_조회하면_200과_여행_목록을_응답한다() throws Exception {
         // given
         given(tripService.findMine(USER_ID)).willReturn(List.of(
@@ -269,6 +407,12 @@ class TripControllerTest {
 
     private MockHttpServletRequestBuilder createTripRoomRequest(Long tripId, String body) {
         return post("/api/trips/{tripId}/room", tripId)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(body);
+    }
+
+    private MockHttpServletRequestBuilder addTripPlaceRequest(Long tripId, String body) {
+        return post("/api/trips/{tripId}/places", tripId)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(body);
     }

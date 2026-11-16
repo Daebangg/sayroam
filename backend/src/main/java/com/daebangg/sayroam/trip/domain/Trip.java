@@ -55,6 +55,12 @@ public class Trip extends BaseTimeEntity {
         return createdById.equals(userId);
     }
 
+    public void ensurePlaceAddable(Integer day) {
+        if (day != null && !period.containsDay(day)) {
+            throw new BusinessException(TripErrorCode.TRIP_DAY_OUT_OF_RANGE);
+        }
+    }
+
     public void ensureRoomLinkable() {
         if (roomId != null) {
             throw new BusinessException(TripErrorCode.TRIP_ROOM_ALREADY_LINKED);

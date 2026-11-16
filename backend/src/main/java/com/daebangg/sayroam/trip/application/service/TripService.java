@@ -2,10 +2,14 @@ package com.daebangg.sayroam.trip.application.service;
 
 import com.daebangg.sayroam.common.domain.TravelPeriod;
 import com.daebangg.sayroam.global.exception.BusinessException;
+import com.daebangg.sayroam.place.application.service.PlaceService;
 import com.daebangg.sayroam.room.application.service.RoomService;
+import com.daebangg.sayroam.trip.application.dto.AddTripPlaceCommand;
 import com.daebangg.sayroam.trip.application.dto.TripSummaryResult;
 import com.daebangg.sayroam.trip.application.port.out.TripQueryRepository;
 import com.daebangg.sayroam.trip.domain.Trip;
+import com.daebangg.sayroam.trip.domain.TripPlace;
+import com.daebangg.sayroam.trip.domain.TripPlaceRepository;
 import com.daebangg.sayroam.trip.domain.TripRepository;
 import com.daebangg.sayroam.trip.domain.error.TripErrorCode;
 import lombok.RequiredArgsConstructor;
@@ -21,6 +25,8 @@ import java.util.List;
 public class TripService {
     private final TripRepository tripRepository;
     private final TripQueryRepository tripQueryRepository;
+    private final TripPlaceRepository tripPlaceRepository;
+    private final PlaceService placeService;
     private final RoomService roomService;
 
     @Transactional
@@ -39,6 +45,16 @@ public class TripService {
         Long roomId = roomService.create(userId, roomName);
         trip.linkRoom(roomId);
         return roomId;
+    }
+
+    @Transactional
+    public Long addPlace(Long userId, Long tripId, AddTripPlaceCommand command) {
+        Trip trip = tripRepository.findAccessible(userId, tripId)
+                .orElseThrow(() -> new BusinessException(TripErrorCode.TRIP_NOT_FOUND));
+        trip.ensurePlaceAddable(command.day());
+        Long placeId = placeService.register(command.sourceId());
+        TripPlace tripPlace = new TripPlace(trip, placeId, userId, command.day(), command.memo());
+        return tripPlaceRepository.save(tripPlace).getId();
     }
 
     public List<TripSummaryResult> findMine(Long userId) {

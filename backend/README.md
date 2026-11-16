@@ -286,10 +286,13 @@ SMTP 계정이 없는 환경의 **실제 메일 발송·수신은 미확인**입
 설정 근거: [Spring Boot Redis 연결](https://docs.spring.io/spring-boot/reference/data/nosql.html#data.nosql.redis.connecting),
 [메일 자동 설정과 timeout](https://docs.spring.io/spring-boot/reference/io/email.html).
 
-## TourAPI 장소 검색
+## TourAPI 장소 검색·여행 장소 추가
 
 장소 검색은 한국관광공사 TourAPI(data.go.kr "한국관광공사_국문 관광정보 서비스_GW")를 요청마다 호출하며 결과를 저장하지 않습니다.
-기본값은 비활성화이고, 꺼져 있으면 검색 API가 `PLACE_SEARCH_DISABLED`(503)로 응답합니다.
+여행에 장소를 추가하면 처음 담는 장소만 TourAPI 공통정보조회(`detailCommon2`)로 상세 정보를 받아 `place`에 저장하고,
+이후에는 저장된 장소를 다시 조회하지 않고 재사용합니다. 클라이언트는 장소 ID(`sourceId`)만 보냅니다.
+기본값은 비활성화이고, 꺼져 있으면 검색·추가 API가 `PLACE_SEARCH_DISABLED`(503)로 응답합니다.
+이미 저장된 장소만 추가할 때는 TourAPI를 호출하지 않으므로 비활성화 상태에서도 추가됩니다.
 활용 신청 후 받은 일반 인증키(Decoding)를 개인 파일에 넣고 활성화합니다.
 
 ```properties

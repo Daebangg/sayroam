@@ -484,6 +484,22 @@
                 },
                 "description": "404: TRIP_NOT_FOUND. 없는 여행이거나 접근할 수 없는 여행. 둘을 구분하지 않음"
             },
+            "TripPlaceBadRequest": {
+                "content": {
+                    "application/problem+json": {
+                        "schema": { "$ref": "#/components/schemas/ApiProblem" }
+                    }
+                },
+                "description": "400: INVALID_INPUT(장소 ID 누락, 1보다 작은 일차, 255자 초과 메모, errors 포함), TRIP_DAY_OUT_OF_RANGE(여행 기간을 벗어난 일차) 또는 Spring 요청 오류"
+            },
+            "TripPlaceNotFound": {
+                "content": {
+                    "application/problem+json": {
+                        "schema": { "$ref": "#/components/schemas/ApiProblem" }
+                    }
+                },
+                "description": "404: TRIP_NOT_FOUND(없는 여행이거나 장소를 추가할 수 없는 여행. 둘을 구분하지 않음) 또는 PLACE_NOT_FOUND(TourAPI에 없거나 여행에 담을 수 없는 장소)"
+            },
             "TripRoomAlreadyLinked": {
                 "content": {
                     "application/problem+json": {
@@ -598,6 +614,44 @@
                 "required": ["expiresInSeconds", "purpose", "resendAfterSeconds", "verificationId"],
                 "type": "object"
             },
+            "AddTripPlaceRequest": {
+                "properties": {
+                    "day": {
+                        "description": "일차. 1부터 여행의 마지막 날까지. 생략하면 일차 미정",
+                        "example": 2,
+                        "format": "int32",
+                        "minimum": 1,
+                        "type": ["integer", "null"]
+                    },
+                    "memo": {
+                        "description": "메모. 선택값이며 255자 이내",
+                        "example": "오전에 가기",
+                        "maxLength": 255,
+                        "minLength": 0,
+                        "type": ["string", "null"]
+                    },
+                    "sourceId": {
+                        "description": "TourAPI 장소 ID. 장소 검색 응답의 sourceId를 그대로 보냄",
+                        "example": "126081",
+                        "minLength": 1,
+                        "type": "string"
+                    }
+                },
+                "required": ["sourceId"],
+                "type": "object"
+            },
+            "AddTripPlaceResponse": {
+                "properties": {
+                    "tripPlaceId": {
+                        "description": "추가된 여행 장소 ID",
+                        "example": 31,
+                        "format": "int64",
+                        "type": "integer"
+                    }
+                },
+                "required": ["tripPlaceId"],
+                "type": "object"
+            },
             "Answer": {
                 "additionalProperties": false,
                 "properties": {
@@ -653,6 +707,11 @@
                     "PASSWORD_RESET_PROOF_EXPIRED",
                     "PASSWORD_RESET_PROOF_INVALID",
                     "PASSWORD_RESET_UNAVAILABLE",
+                    "PLACE_NAME_REQUIRED",
+                    "PLACE_NAME_TOO_LONG",
+                    "PLACE_NOT_FOUND",
+                    "PLACE_SEARCH_DISABLED",
+                    "PLACE_SEARCH_FAILED",
                     "REFRESH_TOKEN_INVALID",
                     "REFRESH_TOKEN_REUSED",
                     "ROOM_ACCESS_DENIED",
@@ -673,8 +732,10 @@
                     "SOCIAL_RETURN_PATH_INVALID",
                     "SOCIAL_SIGNUP_INVALID",
                     "TRAVEL_PERIOD_END_BEFORE_START",
+                    "TRIP_DAY_OUT_OF_RANGE",
                     "TRIP_NOT_FOUND",
                     "TRIP_PERIOD_REQUIRED",
+                    "TRIP_PLACE_MEMO_TOO_LONG",
                     "TRIP_ROOM_ALREADY_LINKED",
                     "UNAUTHENTICATED",
                     "USER_BIRTH_DATE_INVALID",
@@ -3046,6 +3107,49 @@
                 },
                 "security": [{ "bearerAuth": [] }],
                 "summary": "여행 조회",
+                "tags": ["Trip"]
+            }
+        },
+        "/api/trips/{tripId}/places": {
+            "post": {
+                "description": "장소 검색에서 고른 장소를 여행에 추가합니다. 장소 ID만 받고, 이름·분류·주소·좌표는 서버가 TourAPI에서 받아 저장합니다. 이미 저장된 장소는 TourAPI를 다시 조회하지 않습니다. 같은 장소를 한 여행에 여러 번 추가할 수 있습니다. 채팅방이 없는 여행은 만든 회원이, 채팅방이 연결된 여행은 그 방에 참여 중인 멤버가 추가할 수 있습니다.",
+                "operationId": "addTripPlace",
+                "parameters": [
+                    {
+                        "description": "여행 ID",
+                        "example": 12,
+                        "in": "path",
+                        "name": "tripId",
+                        "required": true,
+                        "schema": { "format": "int64", "type": "integer" }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": { "$ref": "#/components/schemas/AddTripPlaceRequest" }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "201": {
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/AddTripPlaceResponse" }
+                            }
+                        },
+                        "description": "여행 장소 추가 완료"
+                    },
+                    "400": { "$ref": "#/components/responses/TripPlaceBadRequest" },
+                    "401": { "$ref": "#/components/responses/Unauthorized" },
+                    "404": { "$ref": "#/components/responses/TripPlaceNotFound" },
+                    "500": { "$ref": "#/components/responses/InternalServerError" },
+                    "502": { "$ref": "#/components/responses/PlaceSearchFailed" },
+                    "503": { "$ref": "#/components/responses/PlaceSearchUnavailable" }
+                },
+                "security": [{ "bearerAuth": [] }],
+                "summary": "여행에 장소 추가",
                 "tags": ["Trip"]
             }
         },

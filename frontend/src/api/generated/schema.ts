@@ -669,6 +669,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/trips/{tripId}/places": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 여행에 장소 추가
+         * @description 장소 검색에서 고른 장소를 여행에 추가합니다. 장소 ID만 받고, 이름·분류·주소·좌표는 서버가 TourAPI에서 받아 저장합니다. 이미 저장된 장소는 TourAPI를 다시 조회하지 않습니다. 같은 장소를 한 여행에 여러 번 추가할 수 있습니다. 채팅방이 없는 여행은 만든 회원이, 채팅방이 연결된 여행은 그 방에 참여 중인 멤버가 추가할 수 있습니다.
+         */
+        post: operations["addTripPlace"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/trips/{tripId}/room": {
         parameters: {
             query?: never;
@@ -838,6 +858,32 @@ export interface components {
             /** @description 확인 요청을 식별하는 UUID */
             verificationId: string;
         };
+        AddTripPlaceRequest: {
+            /**
+             * Format: int32
+             * @description 일차. 1부터 여행의 마지막 날까지. 생략하면 일차 미정
+             * @example 2
+             */
+            day?: number | null;
+            /**
+             * @description 메모. 선택값이며 255자 이내
+             * @example 오전에 가기
+             */
+            memo?: string | null;
+            /**
+             * @description TourAPI 장소 ID. 장소 검색 응답의 sourceId를 그대로 보냄
+             * @example 126081
+             */
+            sourceId: string;
+        };
+        AddTripPlaceResponse: {
+            /**
+             * Format: int64
+             * @description 추가된 여행 장소 ID
+             * @example 31
+             */
+            tripPlaceId: number;
+        };
         Answer: {
             /** @example planning */
             code: string;
@@ -887,6 +933,11 @@ export interface components {
             | "PASSWORD_RESET_PROOF_EXPIRED"
             | "PASSWORD_RESET_PROOF_INVALID"
             | "PASSWORD_RESET_UNAVAILABLE"
+            | "PLACE_NAME_REQUIRED"
+            | "PLACE_NAME_TOO_LONG"
+            | "PLACE_NOT_FOUND"
+            | "PLACE_SEARCH_DISABLED"
+            | "PLACE_SEARCH_FAILED"
             | "REFRESH_TOKEN_INVALID"
             | "REFRESH_TOKEN_REUSED"
             | "ROOM_ACCESS_DENIED"
@@ -907,8 +958,10 @@ export interface components {
             | "SOCIAL_RETURN_PATH_INVALID"
             | "SOCIAL_SIGNUP_INVALID"
             | "TRAVEL_PERIOD_END_BEFORE_START"
+            | "TRIP_DAY_OUT_OF_RANGE"
             | "TRIP_NOT_FOUND"
             | "TRIP_PERIOD_REQUIRED"
+            | "TRIP_PLACE_MEMO_TOO_LONG"
             | "TRIP_ROOM_ALREADY_LINKED"
             | "UNAUTHENTICATED"
             | "USER_BIRTH_DATE_INVALID"
@@ -2025,6 +2078,24 @@ export interface components {
         };
         /** @description 404: TRIP_NOT_FOUND. 없는 여행이거나 접근할 수 없는 여행. 둘을 구분하지 않음 */
         TripNotFound: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/problem+json": components["schemas"]["ApiProblem"];
+            };
+        };
+        /** @description 400: INVALID_INPUT(장소 ID 누락, 1보다 작은 일차, 255자 초과 메모, errors 포함), TRIP_DAY_OUT_OF_RANGE(여행 기간을 벗어난 일차) 또는 Spring 요청 오류 */
+        TripPlaceBadRequest: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/problem+json": components["schemas"]["ApiProblem"];
+            };
+        };
+        /** @description 404: TRIP_NOT_FOUND(없는 여행이거나 장소를 추가할 수 없는 여행. 둘을 구분하지 않음) 또는 PLACE_NOT_FOUND(TourAPI에 없거나 여행에 담을 수 없는 장소) */
+        TripPlaceNotFound: {
             headers: {
                 [name: string]: unknown;
             };
@@ -3158,6 +3229,42 @@ export interface operations {
             503: components["responses"]["AuthenticationUnavailable"];
         };
     };
+    addTripPlace: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /**
+                 * @description 여행 ID
+                 * @example 12
+                 */
+                tripId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AddTripPlaceRequest"];
+            };
+        };
+        responses: {
+            /** @description 여행 장소 추가 완료 */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AddTripPlaceResponse"];
+                };
+            };
+            400: components["responses"]["TripPlaceBadRequest"];
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["TripPlaceNotFound"];
+            500: components["responses"]["InternalServerError"];
+            502: components["responses"]["PlaceSearchFailed"];
+            503: components["responses"]["PlaceSearchUnavailable"];
+        };
+    };
     createTripRoom: {
         parameters: {
             query?: never;
@@ -3350,6 +3457,13 @@ export interface operations {
 
 /** operationId별 공통 실행 정보. 브라우저 이동용 콜백은 제외합니다. 직접 수정하지 않습니다. */
 export const apiRoutes = {
+    addTripPlace: {
+        method: "post",
+        path: "/api/trips/{tripId}/places",
+        auth: "required",
+        csrf: false,
+        responses: { "201": true },
+    },
     change: {
         method: "patch",
         path: "/api/auth/password",
