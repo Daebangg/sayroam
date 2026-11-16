@@ -380,6 +380,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/companion-candidates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 동행 등록 전 후보 조회
+         * @description 여행지와 기간, 선택한 상대 조건으로 동행 후보를 미리 조회합니다. 상대의 희망 조건은 로그인 회원의 프로필과 비교합니다.
+         */
+        get: operations["previewCompanionCandidates"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/companion-searches": {
         parameters: {
             query?: never;
@@ -2629,6 +2649,41 @@ export interface operations {
             503: components["responses"]["SocialUnavailable"];
         };
     };
+    previewCompanionCandidates: {
+        parameters: {
+            query: {
+                destinationId: number;
+                endDate: string;
+                /** @description 0부터 시작하는 페이지 */
+                page?: number;
+                preferredGender?: "MALE" | "FEMALE";
+                preferredMaxAge?: number;
+                preferredMinAge?: number;
+                /** @description 등록 제목에 포함된 검색어. 앞뒤 공백은 제외 */
+                q?: string;
+                /** @description 페이지당 후보 수 */
+                size?: number;
+                startDate: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 후보 목록. 조건에 맞는 후보가 없으면 빈 배열 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CompanionCandidateListResponse"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+        };
+    };
     createCompanionSearch: {
         parameters: {
             query?: never;
@@ -2719,6 +2774,8 @@ export interface operations {
             query?: {
                 /** @description 0부터 시작하는 페이지 */
                 page?: number;
+                /** @description 등록 제목에 포함된 검색어. 앞뒤 공백은 제외 */
+                q?: string;
                 /** @description 페이지당 후보 수 */
                 size?: number;
             };
@@ -3485,6 +3542,13 @@ export const apiRoutes = {
     me: {
         method: "get",
         path: "/api/users/me",
+        auth: "required",
+        csrf: false,
+        responses: { "200": true },
+    },
+    previewCompanionCandidates: {
+        method: "get",
+        path: "/api/companion-candidates",
         auth: "required",
         csrf: false,
         responses: { "200": true },

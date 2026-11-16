@@ -2369,6 +2369,99 @@
                 "x-browser-navigation": true
             }
         },
+        "/api/companion-candidates": {
+            "get": {
+                "description": "여행지와 기간, 선택한 상대 조건으로 동행 후보를 미리 조회합니다. 상대의 희망 조건은 로그인 회원의 프로필과 비교합니다.",
+                "operationId": "previewCompanionCandidates",
+                "parameters": [
+                    {
+                        "in": "query",
+                        "name": "destinationId",
+                        "required": true,
+                        "schema": { "format": "int64", "type": "integer" }
+                    },
+                    {
+                        "in": "query",
+                        "name": "startDate",
+                        "required": true,
+                        "schema": { "format": "date", "type": "string" }
+                    },
+                    {
+                        "in": "query",
+                        "name": "endDate",
+                        "required": true,
+                        "schema": { "format": "date", "type": "string" }
+                    },
+                    {
+                        "in": "query",
+                        "name": "preferredGender",
+                        "required": false,
+                        "schema": { "enum": ["MALE", "FEMALE"], "type": "string" }
+                    },
+                    {
+                        "in": "query",
+                        "name": "preferredMinAge",
+                        "required": false,
+                        "schema": { "format": "int32", "minimum": 0, "type": "integer" }
+                    },
+                    {
+                        "in": "query",
+                        "name": "preferredMaxAge",
+                        "required": false,
+                        "schema": { "format": "int32", "minimum": 0, "type": "integer" }
+                    },
+                    {
+                        "description": "등록 제목에 포함된 검색어. 앞뒤 공백은 제외",
+                        "in": "query",
+                        "name": "q",
+                        "required": false,
+                        "schema": { "maxLength": 80, "type": "string" }
+                    },
+                    {
+                        "description": "0부터 시작하는 페이지",
+                        "in": "query",
+                        "name": "page",
+                        "required": false,
+                        "schema": {
+                            "default": 0,
+                            "format": "int32",
+                            "minimum": 0,
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "description": "페이지당 후보 수",
+                        "in": "query",
+                        "name": "size",
+                        "required": false,
+                        "schema": {
+                            "default": 20,
+                            "format": "int32",
+                            "maximum": 100,
+                            "minimum": 1,
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/CompanionCandidateListResponse"
+                                }
+                            }
+                        },
+                        "description": "후보 목록. 조건에 맞는 후보가 없으면 빈 배열"
+                    },
+                    "400": { "$ref": "#/components/responses/BadRequest" },
+                    "401": { "$ref": "#/components/responses/Unauthorized" }
+                },
+                "security": [{ "bearerAuth": [] }],
+                "summary": "동행 등록 전 후보 조회",
+                "tags": ["CompanionSearch"]
+            }
+        },
         "/api/companion-searches": {
             "post": {
                 "description": "활성 여행지와 여행 기간, 선택한 상대 조건과 제목을 저장합니다.",
@@ -2507,6 +2600,13 @@
                         "name": "searchId",
                         "required": true,
                         "schema": { "format": "int64", "type": "integer" }
+                    },
+                    {
+                        "description": "등록 제목에 포함된 검색어. 앞뒤 공백은 제외",
+                        "in": "query",
+                        "name": "q",
+                        "required": false,
+                        "schema": { "maxLength": 80, "type": "string" }
                     },
                     {
                         "description": "0부터 시작하는 페이지",

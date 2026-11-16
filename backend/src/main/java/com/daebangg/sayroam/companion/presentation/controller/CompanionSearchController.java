@@ -49,9 +49,10 @@ public class CompanionSearchController implements CompanionSearchApi {
     @GetMapping("/{searchId}/candidates")
     public ResponseEntity<CompanionCandidateListResponse> findCandidates(
             @AuthenticationPrincipal AuthenticatedAccount account, @PathVariable long searchId,
+            @RequestParam(required = false) String q,
             @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "20") int size) {
         return ResponseEntity.ok(CompanionCandidateListResponse.from(
-                service.findCandidates(account.userId(), searchId, page, size)));
+                service.findCandidates(account.userId(), searchId, q, page, size)));
     }
 
     @Override

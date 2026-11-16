@@ -3,6 +3,7 @@ package com.daebangg.sayroam.companion.application.service;
 import com.daebangg.sayroam.common.domain.TravelPeriod;
 import com.daebangg.sayroam.companion.application.dto.CompanionCandidateResult;
 import com.daebangg.sayroam.companion.application.dto.CompanionSearchResult;
+import com.daebangg.sayroam.companion.application.dto.PreviewCompanionCandidatesQuery;
 import com.daebangg.sayroam.companion.application.dto.SaveCompanionSearchCommand;
 import com.daebangg.sayroam.companion.application.port.out.CompanionCandidateQueryRepository;
 import com.daebangg.sayroam.companion.domain.AgeRange;
@@ -13,6 +14,7 @@ import com.daebangg.sayroam.companion.domain.error.CompanionSearchErrorCode;
 import com.daebangg.sayroam.destination.domain.DestinationRepository;
 import com.daebangg.sayroam.global.exception.BusinessException;
 import com.daebangg.sayroam.global.exception.CommonErrorCode;
+import com.daebangg.sayroam.user.domain.Gender;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -51,17 +53,44 @@ public class CompanionSearchService {
     }
 
     @Transactional(readOnly = true)
-    public CompanionCandidateResult.Page findCandidates(long userId, long searchId, int page, int size) {
-        if (page < 0 || size < 1 || size > MAX_CANDIDATE_PAGE_SIZE) {
-            throw new BusinessException(CommonErrorCode.INVALID_INPUT);
-        }
+    public CompanionCandidateResult.Page findCandidates(long userId, long searchId, String titleQuery,
+                                                         int page, int size) {
+        validateCandidatePage(page, size);
         CompanionSearch search = searches.findByIdAndUserId(searchId, userId)
                 .orElseThrow(() -> new BusinessException(CompanionSearchErrorCode.COMPANION_SEARCH_NOT_FOUND));
         search.validateCandidateSearch();
-        LocalDate ageReferenceDate = LocalDate.now(KOREA_ZONE);
+        return queryCandidates(userId, search.getDestinationId(), search.getPeriod(),
+                search.getPreferredGender(), search.getPreferredAgeRange(), titleQuery, page, size);
+    }
 
+    @Transactional(readOnly = true)
+    public CompanionCandidateResult.Page previewCandidates(long userId, PreviewCompanionCandidatesQuery query,
+                                                           int page, int size) {
+        validateCandidatePage(page, size);
+        TravelPeriod period = new TravelPeriod(query.startDate(), query.endDate());
+        AgeRange preferredAgeRange = new AgeRange(query.preferredMinAge(), query.preferredMaxAge());
+        requireActiveDestination(query.destinationId());
+        return queryCandidates(userId, query.destinationId(), period, query.preferredGender(), preferredAgeRange,
+                query.titleQuery(), page, size);
+    }
+
+    private void validateCandidatePage(int page, int size) {
+        if (page < 0 || size < 1 || size > MAX_CANDIDATE_PAGE_SIZE) {
+            throw new BusinessException(CommonErrorCode.INVALID_INPUT);
+        }
+    }
+
+    private CompanionCandidateResult.Page queryCandidates(long userId, long destinationId, TravelPeriod period,
+                                                          Gender preferredGender, AgeRange preferredAgeRange,
+                                                          String titleQuery, int page, int size) {
+        String keyword = titleQuery == null ? "" : titleQuery.strip();
+        if (keyword.codePointCount(0, keyword.length()) > CompanionSearch.MAX_TITLE_LENGTH) {
+            throw new BusinessException(CommonErrorCode.INVALID_INPUT);
+        }
+        LocalDate ageReferenceDate = LocalDate.now(KOREA_ZONE);
         CompanionCandidateQueryRepository.CandidateQuery query = new CompanionCandidateQueryRepository.CandidateQuery(
-                userId, searchId, ageReferenceDate, (long) page * size, size + 1);
+                userId, destinationId, period, preferredGender, preferredAgeRange, keyword, ageReferenceDate,
+                (long) page * size, size + 1);
         List<CompanionCandidateResult> results = candidates.findCandidates(query);
         boolean hasNext = results.size() > size;
         return new CompanionCandidateResult.Page(hasNext ? results.subList(0, size) : results, hasNext);

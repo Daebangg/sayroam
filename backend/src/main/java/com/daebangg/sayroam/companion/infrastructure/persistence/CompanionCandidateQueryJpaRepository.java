@@ -2,7 +2,9 @@ package com.daebangg.sayroam.companion.infrastructure.persistence;
 
 import com.daebangg.sayroam.companion.application.dto.CompanionCandidateResult;
 import com.daebangg.sayroam.companion.application.port.out.CompanionCandidateQueryRepository;
+import com.daebangg.sayroam.companion.domain.AgeRange;
 import com.daebangg.sayroam.companion.domain.CompanionSearch;
+import com.daebangg.sayroam.user.domain.Gender;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.Repository;
 import org.springframework.data.repository.query.Param;
@@ -15,7 +17,11 @@ interface CompanionCandidateQueryJpaRepository
 
     @Override
     default List<CompanionCandidateResult> findCandidates(CandidateQuery query) {
-        return findCandidates(query.ownerId(), query.searchId(), query.ageReferenceDate(), query.offset(), query.limit());
+        AgeRange ageRange = query.preferredAgeRange();
+        return findCandidates(query.ownerId(), query.destinationId(), query.period().startDate(),
+                query.period().endDate(), query.preferredGender(), ageRange == null ? null : ageRange.minAge(),
+                ageRange == null ? null : ageRange.maxAge(), query.titleQuery(), query.ageReferenceDate(),
+                query.offset(), query.limit());
     }
 
     @Query("""
@@ -23,23 +29,23 @@ interface CompanionCandidateQueryJpaRepository
                 select c.id as searchId, c.userId as userId, candidate.nickname as nickname,
                        candidate.profileImageUrl as profileImageUrl, c.title as title,
                        c.period.startDate as startDate, c.period.endDate as endDate,
-                       greatest(c.period.startDate, s.period.startDate) as overlapStart,
-                       least(c.period.endDate, s.period.endDate) as overlapEnd
-                from CompanionSearch s
-                join User owner on owner.id = s.userId and owner.deletedAt is null
-                join CompanionSearch c on c.destinationId = s.destinationId
-                    and c.status = ACTIVE
-                    and c.period.startDate <= s.period.endDate
-                    and c.period.endDate >= s.period.startDate
-                    and c.userId <> s.userId
+                       greatest(c.period.startDate, :startDate) as overlapStart,
+                       least(c.period.endDate, :endDate) as overlapEnd
+                from CompanionSearch c
+                join User owner on owner.id = :ownerId and owner.deletedAt is null
                 join User candidate on candidate.id = c.userId and candidate.deletedAt is null
-                where s.id = :searchId and s.userId = :ownerId
-                  and (s.preferredGender is null or candidate.gender = s.preferredGender)
+                where c.destinationId = :destinationId
+                  and c.status = ACTIVE
+                  and c.period.startDate <= :endDate
+                  and c.period.endDate >= :startDate
+                  and c.userId <> :ownerId
+                  and (:titleQuery = '' or locate(:titleQuery, c.title) > 0)
+                  and (:preferredGender is null or candidate.gender = :preferredGender)
                   and (c.preferredGender is null or owner.gender = c.preferredGender)
-                  and (s.preferredAgeRange.minAge is null
-                       or (:ageReferenceDate - candidate.birthDate) by year >= s.preferredAgeRange.minAge)
-                  and (s.preferredAgeRange.maxAge is null
-                       or (:ageReferenceDate - candidate.birthDate) by year <= s.preferredAgeRange.maxAge)
+                  and (:preferredMinAge is null
+                       or (:ageReferenceDate - candidate.birthDate) by year >= :preferredMinAge)
+                  and (:preferredMaxAge is null
+                       or (:ageReferenceDate - candidate.birthDate) by year <= :preferredMaxAge)
                   and (c.preferredAgeRange.minAge is null
                        or (:ageReferenceDate - owner.birthDate) by year >= c.preferredAgeRange.minAge)
                   and (c.preferredAgeRange.maxAge is null
@@ -82,7 +88,13 @@ interface CompanionCandidateQueryJpaRepository
             """)
     List<CompanionCandidateResult> findCandidates(
             @Param("ownerId") long ownerId,
-            @Param("searchId") long searchId,
+            @Param("destinationId") long destinationId,
+            @Param("startDate") LocalDate startDate,
+            @Param("endDate") LocalDate endDate,
+            @Param("preferredGender") Gender preferredGender,
+            @Param("preferredMinAge") Integer preferredMinAge,
+            @Param("preferredMaxAge") Integer preferredMaxAge,
+            @Param("titleQuery") String titleQuery,
             @Param("ageReferenceDate") LocalDate ageReferenceDate,
             @Param("offset") long offset,
             @Param("limit") int limit);
