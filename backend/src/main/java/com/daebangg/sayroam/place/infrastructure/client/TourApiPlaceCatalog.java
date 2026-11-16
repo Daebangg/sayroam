@@ -80,7 +80,12 @@ public class TourApiPlaceCatalog implements PlaceCatalog {
         if (!SUCCESS_CODE.equals(result.path("header").path("resultCode").asString(""))) {
             throw searchFailed();
         }
-        return result.path("body");
+        // 성공 코드여도 본문이 없으면 장애를 "결과 없음"으로 숨기지 않고 실패로 본다.
+        JsonNode body = result.path("body");
+        if (!body.isObject()) {
+            throw searchFailed();
+        }
+        return body;
     }
 
     // 결과가 없으면 items가 빈 문자열이다. 실제 응답은 한 건도 배열로 오지만,
@@ -98,21 +103,28 @@ public class TourApiPlaceCatalog implements PlaceCatalog {
                 .toList();
     }
 
-    // 서비스 분류가 없거나 지도에 표시할 좌표가 없는 항목은 담을 수 없어 뺀다.
+    // 사용하는 값만 검증한다. 장소 ID·이름·서비스 분류·좌표 중 하나라도 없으면 담을 수 없어 뺀다.
     private Optional<PlaceSearchItem> place(JsonNode item) {
+        String sourceId = text(item.path("contentid"));
+        String name = text(item.path("title"));
         Optional<PlaceCategory> category = TourContentType.categoryOf(item.path("contenttypeid").asString(""));
         Optional<BigDecimal> latitude = decimal(item.path("mapy"));
         Optional<BigDecimal> longitude = decimal(item.path("mapx"));
-        if (category.isEmpty() || latitude.isEmpty() || longitude.isEmpty()) {
+        if (sourceId == null || name == null || category.isEmpty() || latitude.isEmpty() || longitude.isEmpty()) {
             return Optional.empty();
         }
         return Optional.of(new PlaceSearchItem(
-                item.path("contentid").asString(""),
-                item.path("title").asString(""),
+                sourceId,
+                name,
                 category.get(),
                 text(item.path("addr1")),
                 latitude.get(),
                 longitude.get()));
+    }
+
+    private String text(JsonNode node) {
+        String value = node.asString("").trim();
+        return value.isEmpty() ? null : value;
     }
 
     private Optional<BigDecimal> decimal(JsonNode node) {
@@ -125,11 +137,6 @@ public class TourApiPlaceCatalog implements PlaceCatalog {
         } catch (NumberFormatException e) {
             return Optional.empty();
         }
-    }
-
-    private String text(JsonNode node) {
-        String value = node.asString("").trim();
-        return value.isEmpty() ? null : value;
     }
 
     private boolean hasNext(JsonNode body) {

@@ -133,6 +133,21 @@ class TourApiPlaceCatalogTest {
     }
 
     @Test
+    void 장소_ID나_이름이_없는_항목은_결과에서_뺀다() {
+        // given
+        respondWith(searchResponse(1, 3,
+                item("1", "12", "송정해수욕장", "부산", "129.1997", "35.1786"),
+                item("", "12", "ID 없는 장소", "부산", "129.2", "35.18"),
+                item("3", "12", "", "부산", "129.2", "35.18")));
+
+        // when
+        PlaceSearchResult result = catalog.search(new PlaceSearchQuery("송정", null, 1));
+
+        // then
+        assertThat(result.places()).extracting(PlaceSearchItem::sourceId).containsExactly("1");
+    }
+
+    @Test
     void 단일_항목이_배열이_아닌_객체로_와도_결과로_바꾼다() {
         // given
         respondWith("""
@@ -203,6 +218,17 @@ class TourApiPlaceCatalogTest {
         // given
         respondWith("""
                 {"response":{"header":{"resultCode":"22","resultMsg":"LIMITED_NUMBER_OF_SERVICE_REQUESTS_EXCEEDS_ERROR"}}}
+                """);
+
+        // when & then
+        assertSearchFails(PlaceErrorCode.PLACE_SEARCH_FAILED);
+    }
+
+    @Test
+    void 결과_코드가_정상이어도_본문이_없으면_검색_실패로_거부한다() {
+        // given
+        respondWith("""
+                {"response":{"header":{"resultCode":"0000","resultMsg":"OK"}}}
                 """);
 
         // when & then
