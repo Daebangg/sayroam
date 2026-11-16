@@ -380,6 +380,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/places": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 장소 키워드 검색
+         * @description 로그인한 회원이 여행에 담을 장소를 키워드로 검색합니다. 한국관광공사 TourAPI를 요청마다 호출하며 결과는 저장하지 않습니다. 한 페이지는 최대 20개이고, 축제·여행코스와 좌표가 없는 장소는 제외합니다.
+         */
+        get: operations["searchPlaces"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/room-members": {
         parameters: {
             query?: never;
@@ -490,7 +510,7 @@ export interface paths {
         };
         /**
          * 내 여행 목록 조회
-         * @description 로그인한 회원이 만든 여행을 나중에 만든 여행부터 조회합니다. 지난 여행도 포함합니다.
+         * @description 로그인한 회원이 볼 수 있는 여행을 나중에 만든 여행부터 조회합니다. 채팅방이 없는 여행은 만든 회원이, 채팅방이 연결된 여행은 그 방에 참여 중인 멤버가 볼 수 있습니다. 지난 여행도 포함합니다.
          */
         get: operations["listMyTrips"];
         put?: never;
@@ -514,11 +534,31 @@ export interface paths {
         };
         /**
          * 여행 조회
-         * @description 로그인한 회원이 만든 여행 하나를 조회합니다. 다른 회원의 여행은 없는 여행과 같이 404로 응답합니다.
+         * @description 로그인한 회원이 볼 수 있는 여행 하나를 조회합니다. 채팅방이 없는 여행은 만든 회원이, 채팅방이 연결된 여행은 그 방에 참여 중인 멤버가 볼 수 있습니다. 볼 수 없는 여행은 없는 여행과 같이 404로 응답합니다.
          */
         get: operations["getTrip"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/trips/{tripId}/room": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 여행에 채팅방 만들어 연결
+         * @description 방이 없는 여행에 채팅방을 만들고, 요청한 회원을 방장으로 등록한 뒤 여행에 연결합니다. 여행을 만든 회원만 사용할 수 있습니다. 이미 방이 연결된 여행은 여행 조회 응답의 roomId로 초대 링크를 발급합니다.
+         */
+        post: operations["createTripRoom"];
         delete?: never;
         options?: never;
         head?: never;
@@ -589,6 +629,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/users/me/travel-style": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 내 여행 스타일 조회
+         * @description 활성 질문과 본인의 응답을 표시 순서대로 반환합니다. 미응답 점수는 null입니다.
+         */
+        get: operations["getMyTravelStyle"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * 내 여행 스타일 수정
+         * @description 전달된 문항에 1~5점으로 답하거나 null로 기존 답변을 지웁니다. 생략한 문항의 응답은 유지합니다.
+         */
+        patch: operations["updateMyTravelStyle"];
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -649,6 +713,12 @@ export interface components {
             resendAfterSeconds: number;
             /** @description 확인 요청을 식별하는 UUID */
             verificationId: string;
+        };
+        Answer: {
+            /** @example planning */
+            code: string;
+            /** Format: int32 */
+            score: number | null;
         };
         /**
          * @description 백엔드에 정의된 업무·공통 오류 코드. Spring 기본 요청 오류와 향후 추가 코드는 별도 문자열로 받을 수 있습니다.
@@ -711,6 +781,7 @@ export interface components {
             | "TRAVEL_PERIOD_END_BEFORE_START"
             | "TRIP_NOT_FOUND"
             | "TRIP_PERIOD_REQUIRED"
+            | "TRIP_ROOM_ALREADY_LINKED"
             | "UNAUTHENTICATED"
             | "USER_BIRTH_DATE_INVALID"
             | "USER_BIRTH_YEAR_INVALID"
@@ -835,6 +906,21 @@ export interface components {
              */
             tripId: number;
         };
+        CreateTripRoomRequest: {
+            /**
+             * @description 방 이름. 선택값이며 앞뒤 공백 제거 후 20자 이내. 공백뿐이면 이름 없는 방으로 저장
+             * @example 제주 3박 4일
+             */
+            name?: string | null;
+        };
+        CreateTripRoomResponse: {
+            /**
+             * Format: int64
+             * @description 생성해 여행에 연결한 방 ID
+             * @example 7
+             */
+            roomId: number;
+        };
         CurrentUserResponse: {
             /**
              * Format: date
@@ -914,6 +1000,14 @@ export interface components {
             /** Format: int64 */
             resendAfterSeconds: number;
             verificationId: string;
+        };
+        Item: {
+            code: string;
+            /**
+             * Format: int32
+             * @description 미응답이면 null
+             */
+            score: number | null;
         };
         JoinRoomRequest: {
             /**
@@ -1019,6 +1113,48 @@ export interface components {
             /** @description 비밀번호 재설정 코드 확인에서 발급한 전용 일회성 증명 */
             resetProof: string;
         };
+        PlaceSearchItemResponse: {
+            /**
+             * @description 주소. 출처에 없으면 null
+             * @example 부산광역시 해운대구 송정해변로 62
+             */
+            address: string | null;
+            /**
+             * @description 분류
+             * @example ATTRACTION
+             * @enum {string}
+             */
+            category: "ATTRACTION" | "CULTURE" | "ACTIVITY" | "LODGING" | "SHOPPING" | "RESTAURANT";
+            /**
+             * @description 위도(WGS84)
+             * @example 35.1786
+             */
+            latitude: number;
+            /**
+             * @description 경도(WGS84)
+             * @example 129.1997
+             */
+            longitude: number;
+            /**
+             * @description 장소 이름
+             * @example 송정해수욕장
+             */
+            name: string;
+            /**
+             * @description TourAPI 장소 ID(contentid). 여행에 담을 때 사용
+             * @example 126081
+             */
+            sourceId: string;
+        };
+        PlaceSearchResponse: {
+            /**
+             * @description 다음 페이지가 있는지 여부
+             * @example true
+             */
+            hasNext: boolean;
+            /** @description 검색된 장소. 축제·여행코스와 좌표가 없는 장소는 제외하므로 한 페이지가 20개보다 적을 수 있음 */
+            places: components["schemas"]["PlaceSearchItemResponse"][];
+        };
         Signup: {
             /** @description 항상 false. 소셜 가입에 별도 인증 메일을 발송하지 않음 */
             emailVerificationRequired: boolean;
@@ -1102,6 +1238,9 @@ export interface components {
             /** @description 결과 교환에서 받은 가입 티켓 */
             signupTicket: string;
         };
+        TravelStyleResponse: {
+            items: components["schemas"]["Item"][];
+        };
         TripListResponse: {
             /** @description 볼 수 있는 여행. 나중에 만든 여행부터 정렬 */
             trips: components["schemas"]["TripSummaryResponse"][];
@@ -1136,6 +1275,10 @@ export interface components {
              * @example 12
              */
             tripId: number;
+        };
+        /** @description 전달한 문항의 답변만 수정합니다. score가 null이면 그 문항의 답변을 삭제합니다. */
+        UpdateTravelStyleRequest: {
+            answers: components["schemas"]["Answer"][];
         };
         /** @description 생략한 필드는 유지합니다. 선택 정보의 null은 삭제를 의미합니다. */
         UpdateUserProfileRequest: {
@@ -1498,6 +1641,33 @@ export interface components {
                 "application/problem+json": components["schemas"]["ApiProblem"];
             };
         };
+        /** @description 400: INVALID_INPUT(검색어 누락·100자 초과, 없는 분류, 1~50 밖의 페이지, errors 포함) */
+        PlaceSearchBadRequest: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/problem+json": components["schemas"]["ApiProblem"];
+            };
+        };
+        /** @description 502: PLACE_SEARCH_FAILED. TourAPI 오류·호출 한도 초과·시간 초과 또는 해석할 수 없는 응답. 잠시 후 재요청 */
+        PlaceSearchFailed: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/problem+json": components["schemas"]["ApiProblem"];
+            };
+        };
+        /** @description 503: PLACE_SEARCH_DISABLED(서버에 TourAPI가 설정되지 않음) 또는 AUTHENTICATION_UNAVAILABLE */
+        PlaceSearchUnavailable: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/problem+json": components["schemas"]["ApiProblem"];
+            };
+        };
         /** @description 401: REFRESH_TOKEN_INVALID 또는 REFRESH_TOKEN_REUSED. 쿠키 누락·중복·형식 오류·만료·폐기·회원 삭제/탈퇴·교체 한도, 또는 사용한 토큰 재사용. Refresh 쿠키를 만료시키며 재로그인 필요. 재사용은 해당 로그인만 갱신 불가로 만듦 */
         RefreshUnauthorized: {
             headers: {
@@ -1617,8 +1787,17 @@ export interface components {
                 "application/problem+json": components["schemas"]["ApiProblem"];
             };
         };
-        /** @description 404: TRIP_NOT_FOUND. 없는 여행이거나 다른 회원의 여행. 둘을 구분하지 않음 */
+        /** @description 404: TRIP_NOT_FOUND. 없는 여행이거나 접근할 수 없는 여행. 둘을 구분하지 않음 */
         TripNotFound: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/problem+json": components["schemas"]["ApiProblem"];
+            };
+        };
+        /** @description 409: TRIP_ROOM_ALREADY_LINKED. 이미 방이 연결된 여행. 여행을 다시 조회해 roomId로 초대 링크 발급 */
+        TripRoomAlreadyLinked: {
             headers: {
                 [name: string]: unknown;
             };
@@ -2234,6 +2413,54 @@ export interface operations {
             503: components["responses"]["SocialUnavailable"];
         };
     };
+    searchPlaces: {
+        parameters: {
+            query: {
+                /**
+                 * @description 분류. 생략하면 모든 분류를 검색
+                 * @example LODGING
+                 */
+                category?:
+                    | "ATTRACTION"
+                    | "CULTURE"
+                    | "ACTIVITY"
+                    | "LODGING"
+                    | "SHOPPING"
+                    | "RESTAURANT"
+                    | null;
+                /**
+                 * @description 페이지 번호. 1부터 시작하며 생략하면 1
+                 * @example 1
+                 */
+                page?: number | null;
+                /**
+                 * @description 검색어. 앞뒤 공백은 제외하고 검색
+                 * @example 해운대
+                 */
+                query: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 검색 결과. 결과가 없으면 빈 배열 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlaceSearchResponse"];
+                };
+            };
+            400: components["responses"]["PlaceSearchBadRequest"];
+            401: components["responses"]["Unauthorized"];
+            500: components["responses"]["InternalServerError"];
+            502: components["responses"]["PlaceSearchFailed"];
+            503: components["responses"]["PlaceSearchUnavailable"];
+        };
+    };
     joinByInvitation: {
         parameters: {
             query?: never;
@@ -2419,7 +2646,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description 여행 목록. 만든 여행이 없으면 빈 배열 */
+            /** @description 여행 목록. 볼 수 있는 여행이 없으면 빈 배열 */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -2487,6 +2714,42 @@ export interface operations {
             };
             401: components["responses"]["Unauthorized"];
             404: components["responses"]["TripNotFound"];
+            500: components["responses"]["InternalServerError"];
+            503: components["responses"]["AuthenticationUnavailable"];
+        };
+    };
+    createTripRoom: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /**
+                 * @description 여행 ID
+                 * @example 12
+                 */
+                tripId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateTripRoomRequest"];
+            };
+        };
+        responses: {
+            /** @description 방 생성, 방장 등록, 여행 연결 완료 */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CreateTripRoomResponse"];
+                };
+            };
+            400: components["responses"]["RoomBadRequest"];
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["TripNotFound"];
+            409: components["responses"]["TripRoomAlreadyLinked"];
             500: components["responses"]["InternalServerError"];
             503: components["responses"]["AuthenticationUnavailable"];
         };
@@ -2592,6 +2855,57 @@ export interface operations {
             500: components["responses"]["InternalServerError"];
         };
     };
+    getMyTravelStyle: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 여행 스타일 조회 완료 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TravelStyleResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            500: components["responses"]["InternalServerError"];
+            503: components["responses"]["AuthenticationUnavailable"];
+        };
+    };
+    updateMyTravelStyle: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateTravelStyleRequest"];
+            };
+        };
+        responses: {
+            /** @description 여행 스타일 수정 완료 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TravelStyleResponse"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            500: components["responses"]["InternalServerError"];
+            503: components["responses"]["AuthenticationUnavailable"];
+        };
+    };
 }
 
 /** operationId별 공통 실행 정보. 브라우저 이동용 콜백은 제외합니다. 직접 수정하지 않습니다. */
@@ -2652,6 +2966,13 @@ export const apiRoutes = {
         csrf: false,
         responses: { "201": true },
     },
+    createTripRoom: {
+        method: "post",
+        path: "/api/trips/{tripId}/room",
+        auth: "required",
+        csrf: false,
+        responses: { "201": true },
+    },
     csrf: {
         method: "get",
         path: "/api/auth/csrf",
@@ -2676,6 +2997,13 @@ export const apiRoutes = {
     findAfter: {
         method: "get",
         path: "/api/rooms/{roomId}/messages",
+        auth: "required",
+        csrf: false,
+        responses: { "200": true },
+    },
+    getMyTravelStyle: {
+        method: "get",
+        path: "/api/users/me/travel-style",
         auth: "required",
         csrf: false,
         responses: { "200": true },
@@ -2778,6 +3106,13 @@ export const apiRoutes = {
         csrf: true,
         responses: { "204": false },
     },
+    searchPlaces: {
+        method: "get",
+        path: "/api/places",
+        auth: "required",
+        csrf: false,
+        responses: { "200": true },
+    },
     signup: {
         method: "post",
         path: "/api/auth/signup",
@@ -2790,6 +3125,13 @@ export const apiRoutes = {
         path: "/api/auth/social/{provider}/authorizations",
         auth: "none",
         csrf: true,
+        responses: { "200": true },
+    },
+    updateMyTravelStyle: {
+        method: "patch",
+        path: "/api/users/me/travel-style",
+        auth: "required",
+        csrf: false,
         responses: { "200": true },
     },
     updateProfile: {
