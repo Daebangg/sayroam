@@ -324,7 +324,7 @@
                         "schema": { "$ref": "#/components/schemas/ApiProblem" }
                     }
                 },
-                "description": "400: INVALID_INPUT(검색어 누락·100자 초과, 없는 분류, 1~50 밖의 페이지, errors 포함)"
+                "description": "400: INVALID_INPUT(검색어 누락·100자 초과, 없는 분류, 1보다 작은 페이지, errors 포함)"
             },
             "PlaceSearchFailed": {
                 "content": {
@@ -2208,13 +2208,13 @@
                 "operationId": "searchPlaces",
                 "parameters": [
                     {
-                        "description": "검색어. 앞뒤 공백은 제외하고 검색",
+                        "description": "검색어. 앞뒤 공백 제거 후 1~100자",
                         "example": "해운대",
                         "in": "query",
                         "name": "query",
                         "required": true,
                         "schema": {
-                            "description": "검색어. 앞뒤 공백은 제외하고 검색",
+                            "description": "검색어. 앞뒤 공백 제거 후 1~100자",
                             "example": "해운대",
                             "maxLength": 100,
                             "minLength": 0,
@@ -2252,7 +2252,6 @@
                             "description": "페이지 번호. 1부터 시작하며 생략하면 1",
                             "example": 1,
                             "format": "int32",
-                            "maximum": 50,
                             "minimum": 1,
                             "type": ["integer", "null"]
                         }

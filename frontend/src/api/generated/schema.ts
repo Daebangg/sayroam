@@ -1641,7 +1641,7 @@ export interface components {
                 "application/problem+json": components["schemas"]["ApiProblem"];
             };
         };
-        /** @description 400: INVALID_INPUT(검색어 누락·100자 초과, 없는 분류, 1~50 밖의 페이지, errors 포함) */
+        /** @description 400: INVALID_INPUT(검색어 누락·100자 초과, 없는 분류, 1보다 작은 페이지, errors 포함) */
         PlaceSearchBadRequest: {
             headers: {
                 [name: string]: unknown;
@@ -2434,7 +2434,7 @@ export interface operations {
                  */
                 page?: number | null;
                 /**
-                 * @description 검색어. 앞뒤 공백은 제외하고 검색
+                 * @description 검색어. 앞뒤 공백 제거 후 1~100자
                  * @example 해운대
                  */
                 query: string;
