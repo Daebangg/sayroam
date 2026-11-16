@@ -87,6 +87,22 @@
                 },
                 "description": "400: INVALID_INPUT 또는 Spring 요청 오류. 검증 실패 시 errors 포함"
             },
+            "CompanionSearchClosed": {
+                "content": {
+                    "application/problem+json": {
+                        "schema": { "$ref": "#/components/schemas/ApiProblem" }
+                    }
+                },
+                "description": "409: COMPANION_SEARCH_CLOSED. 종료된 등록은 수정할 수 없음"
+            },
+            "CompanionSearchNotFound": {
+                "content": {
+                    "application/problem+json": {
+                        "schema": { "$ref": "#/components/schemas/ApiProblem" }
+                    }
+                },
+                "description": "404: COMPANION_SEARCH_NOT_FOUND. 등록이 없거나 다른 회원의 등록"
+            },
             "EmailCodeAttemptsExceeded": {
                 "content": {
                     "application/problem+json": {
@@ -600,6 +616,9 @@
                     "ACCOUNT_VERIFICATION_NOT_ALLOWED",
                     "AUTHENTICATION_REVOKED",
                     "AUTHENTICATION_UNAVAILABLE",
+                    "COMPANION_SEARCH_CLOSED",
+                    "COMPANION_SEARCH_NOT_FOUND",
+                    "DESTINATION_UNAVAILABLE",
                     "EMAIL_ALREADY_REGISTERED",
                     "EMAIL_CODE_ALREADY_USED",
                     "EMAIL_CODE_ATTEMPTS_EXCEEDED",
@@ -704,6 +723,11 @@
                 },
                 "required": ["code", "detail", "instance", "status", "title"]
             },
+            "ChangeCompanionSearchStatusRequest": {
+                "properties": { "status": { "enum": ["CLOSED"], "type": "string" } },
+                "required": ["status"],
+                "type": "object"
+            },
             "ChatMessageResponse": {
                 "properties": {
                     "clientMessageId": {
@@ -741,6 +765,50 @@
                         "type": "integer"
                     }
                 },
+                "type": "object"
+            },
+            "CompanionSearchListResponse": {
+                "properties": {
+                    "searches": {
+                        "items": { "$ref": "#/components/schemas/CompanionSearchResponse" },
+                        "type": "array"
+                    }
+                },
+                "required": ["searches"],
+                "type": "object"
+            },
+            "CompanionSearchResponse": {
+                "properties": {
+                    "destinationId": {
+                        "description": "기존 자유 입력 등록이면 null",
+                        "format": "int64",
+                        "type": ["integer", "null"]
+                    },
+                    "endDate": { "format": "date", "type": "string" },
+                    "id": { "format": "int64", "type": "integer" },
+                    "legacyRegion": {
+                        "description": "기존 자유 입력 등록의 지역명",
+                        "type": ["string", "null"]
+                    },
+                    "preferredGender": {
+                        "oneOf": [{ "$ref": "#/components/schemas/Gender" }, { "type": "null" }]
+                    },
+                    "preferredMaxAge": { "format": "int32", "type": ["integer", "null"] },
+                    "preferredMinAge": { "format": "int32", "type": ["integer", "null"] },
+                    "startDate": { "format": "date", "type": "string" },
+                    "status": { "enum": ["ACTIVE", "CLOSED"], "type": "string" }
+                },
+                "required": [
+                    "destinationId",
+                    "endDate",
+                    "id",
+                    "legacyRegion",
+                    "preferredGender",
+                    "preferredMaxAge",
+                    "preferredMinAge",
+                    "startDate",
+                    "status"
+                ],
                 "type": "object"
             },
             "CreateRoomInvitationResponse": {
@@ -869,6 +937,24 @@
                     "role",
                     "userId"
                 ],
+                "type": "object"
+            },
+            "DestinationListResponse": {
+                "properties": {
+                    "destinations": {
+                        "items": { "$ref": "#/components/schemas/DestinationSummary" },
+                        "type": "array"
+                    }
+                },
+                "required": ["destinations"],
+                "type": "object"
+            },
+            "DestinationSummary": {
+                "properties": {
+                    "id": { "format": "int64", "type": "integer" },
+                    "name": { "type": "string" }
+                },
+                "required": ["id", "name"],
                 "type": "object"
             },
             "EmailRequest": {
@@ -1198,6 +1284,35 @@
                     }
                 },
                 "required": ["hasNext", "places"],
+                "type": "object"
+            },
+            "SaveCompanionSearchRequest": {
+                "properties": {
+                    "destinationId": {
+                        "exclusiveMinimum": 0,
+                        "format": "int64",
+                        "type": "integer"
+                    },
+                    "endDate": { "format": "date", "type": "string" },
+                    "preferredGender": {
+                        "description": "생략하거나 null이면 성별 무관",
+                        "oneOf": [{ "$ref": "#/components/schemas/Gender" }, { "type": "null" }]
+                    },
+                    "preferredMaxAge": {
+                        "description": "생략하거나 null이면 최대 나이 제한 없음",
+                        "format": "int32",
+                        "minimum": 0,
+                        "type": ["integer", "null"]
+                    },
+                    "preferredMinAge": {
+                        "description": "생략하거나 null이면 최소 나이 제한 없음",
+                        "format": "int32",
+                        "minimum": 0,
+                        "type": ["integer", "null"]
+                    },
+                    "startDate": { "format": "date", "type": "string" }
+                },
+                "required": ["destinationId", "endDate", "startDate"],
                 "type": "object"
             },
             "Signup": {
@@ -2200,6 +2315,167 @@
                 "summary": "공급자 인증 콜백",
                 "tags": ["Auth"],
                 "x-browser-navigation": true
+            }
+        },
+        "/api/companion-searches": {
+            "post": {
+                "description": "활성 여행지와 여행 기간을 저장합니다. 여행 스타일은 기존 프로필 응답을 사용합니다.",
+                "operationId": "createCompanionSearch",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": { "$ref": "#/components/schemas/SaveCompanionSearchRequest" }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "201": {
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/CompanionSearchResponse" }
+                            }
+                        },
+                        "description": "등록 완료"
+                    },
+                    "400": { "$ref": "#/components/responses/BadRequest" },
+                    "401": { "$ref": "#/components/responses/Unauthorized" }
+                },
+                "security": [{ "bearerAuth": [] }],
+                "summary": "동행 매칭 등록",
+                "tags": ["CompanionSearch"]
+            }
+        },
+        "/api/companion-searches/me": {
+            "get": {
+                "description": "종료한 등록을 포함해 최신 등록순으로 조회합니다.",
+                "operationId": "listMyCompanionSearches",
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/CompanionSearchListResponse"
+                                }
+                            }
+                        },
+                        "description": "본인 등록 목록"
+                    },
+                    "401": { "$ref": "#/components/responses/Unauthorized" }
+                },
+                "security": [{ "bearerAuth": [] }],
+                "summary": "본인의 동행 매칭 등록 목록",
+                "tags": ["CompanionSearch"]
+            }
+        },
+        "/api/companion-searches/{searchId}": {
+            "patch": {
+                "description": "상태를 CLOSED로 변경합니다. 이미 종료한 등록에도 같은 요청을 보낼 수 있습니다.",
+                "operationId": "closeCompanionSearch",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "searchId",
+                        "required": true,
+                        "schema": { "format": "int64", "type": "integer" }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ChangeCompanionSearchStatusRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/CompanionSearchResponse" }
+                            }
+                        },
+                        "description": "종료 완료"
+                    },
+                    "400": { "$ref": "#/components/responses/BadRequest" },
+                    "401": { "$ref": "#/components/responses/Unauthorized" },
+                    "404": { "$ref": "#/components/responses/CompanionSearchNotFound" }
+                },
+                "security": [{ "bearerAuth": [] }],
+                "summary": "동행 매칭 종료",
+                "tags": ["CompanionSearch"]
+            },
+            "put": {
+                "description": "활성 등록의 조건을 교체합니다. 생략한 희망 성별과 나이 조건은 해제합니다.",
+                "operationId": "updateCompanionSearch",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "searchId",
+                        "required": true,
+                        "schema": { "format": "int64", "type": "integer" }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": { "$ref": "#/components/schemas/SaveCompanionSearchRequest" }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/CompanionSearchResponse" }
+                            }
+                        },
+                        "description": "수정 완료"
+                    },
+                    "400": { "$ref": "#/components/responses/BadRequest" },
+                    "401": { "$ref": "#/components/responses/Unauthorized" },
+                    "404": { "$ref": "#/components/responses/CompanionSearchNotFound" },
+                    "409": { "$ref": "#/components/responses/CompanionSearchClosed" }
+                },
+                "security": [{ "bearerAuth": [] }],
+                "summary": "동행 매칭 조건 수정",
+                "tags": ["CompanionSearch"]
+            }
+        },
+        "/api/destinations": {
+            "get": {
+                "description": "선택 가능한 국내 여행지를 이름순으로 조회합니다. 검색어가 있으면 공백을 제외하고 이름의 일부가 일치하는 여행지를 반환합니다.",
+                "operationId": "listDestinations",
+                "parameters": [
+                    {
+                        "description": "여행지 이름",
+                        "example": "고성",
+                        "in": "query",
+                        "name": "q",
+                        "required": false,
+                        "schema": { "maxLength": 80, "type": "string" }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/DestinationListResponse" }
+                            }
+                        },
+                        "description": "여행지 목록. 검색 결과가 없으면 빈 배열"
+                    },
+                    "400": { "$ref": "#/components/responses/BadRequest" },
+                    "401": { "$ref": "#/components/responses/Unauthorized" },
+                    "500": { "$ref": "#/components/responses/InternalServerError" },
+                    "503": { "$ref": "#/components/responses/AuthenticationUnavailable" }
+                },
+                "security": [{ "bearerAuth": [] }],
+                "summary": "국내 매칭 여행지 목록·검색",
+                "tags": ["Destination"]
             }
         },
         "/api/places": {

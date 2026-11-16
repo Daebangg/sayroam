@@ -2,6 +2,7 @@ package com.daebangg.sayroam.global.config;
 
 import com.daebangg.sayroam.auth.domain.error.AuthErrorCode;
 import com.daebangg.sayroam.common.domain.error.TravelPeriodErrorCode;
+import com.daebangg.sayroam.companion.domain.error.CompanionSearchErrorCode;
 import com.daebangg.sayroam.global.exception.CommonErrorCode;
 import com.daebangg.sayroam.global.exception.ErrorCode;
 import com.daebangg.sayroam.room.domain.error.RoomErrorCode;
@@ -58,7 +59,7 @@ public class OpenApiConfig {
         StringSchema errorCode = new StringSchema();
         errorCode.setEnum(Stream.of(CommonErrorCode.values(), AuthErrorCode.values(),
                         RoomErrorCode.values(), UserErrorCode.values(),
-                        TravelPeriodErrorCode.values(), TripErrorCode.values())
+                        TravelPeriodErrorCode.values(), TripErrorCode.values(), CompanionSearchErrorCode.values())
                 .flatMap(Arrays::stream).map(ErrorCode::getCode).distinct().sorted().toList());
         errorCode.setDescription("백엔드에 정의된 업무·공통 오류 코드. Spring 기본 요청 오류와 향후 추가 코드는 별도 문자열로 받을 수 있습니다.");
         // ProblemDetail의 동적 확장 필드도 프론트엔드 타입 생성기에 명시적으로 노출한다.
@@ -202,6 +203,8 @@ public class OpenApiConfig {
                 .addResponses("RoomBadRequest", problemResponse("400: ROOM_NAME_TOO_LONG 또는 Spring 요청 오류. 이름을 20자 이내로 수정 후 재요청"))
                 .addResponses("TripBadRequest", problemResponse("400: INVALID_INPUT(시작일·종료일 누락, errors 포함), TRAVEL_PERIOD_END_BEFORE_START(종료일이 시작일보다 앞섬) 또는 Spring 요청 오류(날짜 형식 오류). 날짜는 yyyy-MM-dd"))
                 .addResponses("TripNotFound", problemResponse("404: TRIP_NOT_FOUND. 없는 여행이거나 접근할 수 없는 여행. 둘을 구분하지 않음"))
+                .addResponses("CompanionSearchNotFound", problemResponse("404: COMPANION_SEARCH_NOT_FOUND. 등록이 없거나 다른 회원의 등록"))
+                .addResponses("CompanionSearchClosed", problemResponse("409: COMPANION_SEARCH_CLOSED. 종료된 등록은 수정할 수 없음"))
                 .addResponses("TripRoomAlreadyLinked", problemResponse("409: TRIP_ROOM_ALREADY_LINKED. 이미 방이 연결된 여행. 여행을 다시 조회해 roomId로 초대 링크 발급"))
                 .addResponses("PlaceSearchBadRequest", problemResponse("400: INVALID_INPUT(검색어 누락·100자 초과, 없는 분류, 1보다 작은 페이지, errors 포함)"))
                 .addResponses("PlaceSearchFailed", problemResponse("502: PLACE_SEARCH_FAILED. TourAPI 오류·호출 한도 초과·시간 초과 또는 해석할 수 없는 응답. 잠시 후 재요청"))
