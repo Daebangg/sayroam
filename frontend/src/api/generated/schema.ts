@@ -380,6 +380,90 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/companion-searches": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 동행 매칭 등록
+         * @description 활성 여행지와 여행 기간을 저장합니다. 여행 스타일은 기존 프로필 응답을 사용합니다.
+         */
+        post: operations["createCompanionSearch"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/companion-searches/{searchId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * 동행 매칭 조건 수정
+         * @description 활성 등록의 조건을 교체합니다. 생략한 희망 성별과 나이 조건은 해제합니다.
+         */
+        put: operations["updateCompanionSearch"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * 동행 매칭 종료
+         * @description 상태를 CLOSED로 변경합니다. 이미 종료한 등록에도 같은 요청을 보낼 수 있습니다.
+         */
+        patch: operations["closeCompanionSearch"];
+        trace?: never;
+    };
+    "/api/companion-searches/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 본인의 동행 매칭 등록 목록
+         * @description 종료한 등록을 포함해 최신 등록순으로 조회합니다.
+         */
+        get: operations["listMyCompanionSearches"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/destinations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 국내 매칭 여행지 목록·검색
+         * @description 선택 가능한 국내 여행지를 이름순으로 조회합니다. 검색어가 있으면 공백을 제외하고 이름의 일부가 일치하는 여행지를 반환합니다.
+         */
+        get: operations["listDestinations"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/places": {
         parameters: {
             query?: never;
@@ -734,6 +818,9 @@ export interface components {
             | "ACCOUNT_VERIFICATION_NOT_ALLOWED"
             | "AUTHENTICATION_REVOKED"
             | "AUTHENTICATION_UNAVAILABLE"
+            | "COMPANION_SEARCH_CLOSED"
+            | "COMPANION_SEARCH_NOT_FOUND"
+            | "DESTINATION_UNAVAILABLE"
             | "EMAIL_ALREADY_REGISTERED"
             | "EMAIL_CODE_ALREADY_USED"
             | "EMAIL_CODE_ATTEMPTS_EXCEEDED"
@@ -826,6 +913,10 @@ export interface components {
              */
             type?: string;
         };
+        ChangeCompanionSearchStatusRequest: {
+            /** @enum {string} */
+            status: "CLOSED";
+        };
         ChatMessageResponse: {
             /**
              * @description 클라이언트가 전송할 때 만든 UUID
@@ -861,6 +952,31 @@ export interface components {
              * @example 1
              */
             senderId?: number;
+        };
+        CompanionSearchListResponse: {
+            searches: components["schemas"]["CompanionSearchResponse"][];
+        };
+        CompanionSearchResponse: {
+            /**
+             * Format: int64
+             * @description 기존 자유 입력 등록이면 null
+             */
+            destinationId: number | null;
+            /** Format: date */
+            endDate: string;
+            /** Format: int64 */
+            id: number;
+            /** @description 기존 자유 입력 등록의 지역명 */
+            legacyRegion: string | null;
+            preferredGender: components["schemas"]["Gender"] | null;
+            /** Format: int32 */
+            preferredMaxAge: number | null;
+            /** Format: int32 */
+            preferredMinAge: number | null;
+            /** Format: date */
+            startDate: string;
+            /** @enum {string} */
+            status: "ACTIVE" | "CLOSED";
         };
         CreateRoomInvitationResponse: {
             /**
@@ -952,6 +1068,14 @@ export interface components {
              * @example 1
              */
             userId: number;
+        };
+        DestinationListResponse: {
+            destinations: components["schemas"]["DestinationSummary"][];
+        };
+        DestinationSummary: {
+            /** Format: int64 */
+            id: number;
+            name: string;
         };
         EmailRequest: {
             /**
@@ -1154,6 +1278,26 @@ export interface components {
             hasNext: boolean;
             /** @description 검색된 장소. 축제·여행코스와 좌표가 없는 장소는 제외하므로 한 페이지가 20개보다 적을 수 있음 */
             places: components["schemas"]["PlaceSearchItemResponse"][];
+        };
+        SaveCompanionSearchRequest: {
+            /** Format: int64 */
+            destinationId: number;
+            /** Format: date */
+            endDate: string;
+            /** @description 생략하거나 null이면 성별 무관 */
+            preferredGender?: components["schemas"]["Gender"] | null;
+            /**
+             * Format: int32
+             * @description 생략하거나 null이면 최대 나이 제한 없음
+             */
+            preferredMaxAge?: number | null;
+            /**
+             * Format: int32
+             * @description 생략하거나 null이면 최소 나이 제한 없음
+             */
+            preferredMinAge?: number | null;
+            /** Format: date */
+            startDate: string;
         };
         Signup: {
             /** @description 항상 false. 소셜 가입에 별도 인증 메일을 발송하지 않음 */
@@ -1399,6 +1543,24 @@ export interface components {
         };
         /** @description 400: INVALID_INPUT 또는 Spring 요청 오류. 검증 실패 시 errors 포함 */
         BadRequest: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/problem+json": components["schemas"]["ApiProblem"];
+            };
+        };
+        /** @description 409: COMPANION_SEARCH_CLOSED. 종료된 등록은 수정할 수 없음 */
+        CompanionSearchClosed: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/problem+json": components["schemas"]["ApiProblem"];
+            };
+        };
+        /** @description 404: COMPANION_SEARCH_NOT_FOUND. 등록이 없거나 다른 회원의 등록 */
+        CompanionSearchNotFound: {
             headers: {
                 [name: string]: unknown;
             };
@@ -2413,6 +2575,142 @@ export interface operations {
             503: components["responses"]["SocialUnavailable"];
         };
     };
+    createCompanionSearch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SaveCompanionSearchRequest"];
+            };
+        };
+        responses: {
+            /** @description 등록 완료 */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CompanionSearchResponse"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+        };
+    };
+    updateCompanionSearch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                searchId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SaveCompanionSearchRequest"];
+            };
+        };
+        responses: {
+            /** @description 수정 완료 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CompanionSearchResponse"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["CompanionSearchNotFound"];
+            409: components["responses"]["CompanionSearchClosed"];
+        };
+    };
+    closeCompanionSearch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                searchId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChangeCompanionSearchStatusRequest"];
+            };
+        };
+        responses: {
+            /** @description 종료 완료 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CompanionSearchResponse"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["CompanionSearchNotFound"];
+        };
+    };
+    listMyCompanionSearches: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 본인 등록 목록 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CompanionSearchListResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+        };
+    };
+    listDestinations: {
+        parameters: {
+            query?: {
+                /**
+                 * @description 여행지 이름
+                 * @example 고성
+                 */
+                q?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 여행지 목록. 검색 결과가 없으면 빈 배열 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DestinationListResponse"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            500: components["responses"]["InternalServerError"];
+            503: components["responses"]["AuthenticationUnavailable"];
+        };
+    };
     searchPlaces: {
         parameters: {
             query: {
@@ -2917,6 +3215,13 @@ export const apiRoutes = {
         csrf: true,
         responses: { "204": false },
     },
+    closeCompanionSearch: {
+        method: "patch",
+        path: "/api/companion-searches/{searchId}",
+        auth: "required",
+        csrf: false,
+        responses: { "200": true },
+    },
     completeSocialSignup: {
         method: "post",
         path: "/api/auth/social/signup",
@@ -2948,6 +3253,13 @@ export const apiRoutes = {
     create: {
         method: "post",
         path: "/api/rooms",
+        auth: "required",
+        csrf: false,
+        responses: { "201": true },
+    },
+    createCompanionSearch: {
+        method: "post",
+        path: "/api/companion-searches",
         auth: "required",
         csrf: false,
         responses: { "201": true },
@@ -3028,6 +3340,20 @@ export const apiRoutes = {
         auth: "required",
         csrf: false,
         responses: { "204": false },
+    },
+    listDestinations: {
+        method: "get",
+        path: "/api/destinations",
+        auth: "required",
+        csrf: false,
+        responses: { "200": true },
+    },
+    listMyCompanionSearches: {
+        method: "get",
+        path: "/api/companion-searches/me",
+        auth: "required",
+        csrf: false,
+        responses: { "200": true },
     },
     listMyTrips: {
         method: "get",
@@ -3125,6 +3451,13 @@ export const apiRoutes = {
         path: "/api/auth/social/{provider}/authorizations",
         auth: "none",
         csrf: true,
+        responses: { "200": true },
+    },
+    updateCompanionSearch: {
+        method: "put",
+        path: "/api/companion-searches/{searchId}",
+        auth: "required",
+        csrf: false,
         responses: { "200": true },
     },
     updateMyTravelStyle: {
