@@ -12,6 +12,7 @@ import com.daebangg.sayroam.place.domain.PlaceName;
 import com.daebangg.sayroam.place.domain.PlaceSource;
 import com.daebangg.sayroam.place.domain.error.PlaceErrorCode;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
@@ -29,6 +30,7 @@ import java.util.function.Function;
 /**
  * 한국관광공사 TourAPI로 장소를 검색하고, 여행에 담을 장소의 상세 정보를 조회한다.
  */
+@Slf4j
 @Component
 @RequiredArgsConstructor
 public class TourApiPlaceCatalog implements PlaceCatalog {
@@ -83,7 +85,7 @@ public class TourApiPlaceCatalog implements PlaceCatalog {
         JsonNode body = successBody(get(uri -> detailCommonUri(uri, sourceId)));
         return itemNodes(body).stream()
                 .findFirst()
-                .flatMap(item -> place(item).map(found -> toPlace(found, item)));
+                .flatMap(item -> place(item).flatMap(found -> toPlace(found, item)));
     }
 
     private URI detailCommonUri(UriBuilder uri, String sourceId) {
@@ -93,15 +95,21 @@ public class TourApiPlaceCatalog implements PlaceCatalog {
     }
 
     // 원본 분류 코드(contenttypeid)를 함께 남겨 서비스 분류를 바꿀 때 다시 분류할 수 있게 한다.
-    private Place toPlace(PlaceSearchItem found, JsonNode item) {
-        return new Place(
-                PlaceSource.TOUR,
-                found.sourceId(),
-                new PlaceName(found.name()),
-                found.category(),
-                item.path("contenttypeid").asString(""),
-                found.address(),
-                new Coordinate(found.latitude(), found.longitude()));
+    // 출처 데이터가 장소 규칙(원본 ID·주소 길이 등)을 어기면 회원 입력 오류가 아니라 담을 수 없는 장소로 본다.
+    private Optional<Place> toPlace(PlaceSearchItem found, JsonNode item) {
+        try {
+            return Optional.of(new Place(
+                    PlaceSource.TOUR,
+                    found.sourceId(),
+                    new PlaceName(found.name()),
+                    found.category(),
+                    item.path("contenttypeid").asString(""),
+                    found.address(),
+                    new Coordinate(found.latitude(), found.longitude())));
+        } catch (BusinessException e) {
+            log.warn("TourAPI place rejected: contentId={}", found.sourceId());
+            return Optional.empty();
+        }
     }
 
     private void ensureEnabled() {
@@ -159,14 +167,16 @@ public class TourApiPlaceCatalog implements PlaceCatalog {
         return nodes;
     }
 
-    // 사용하는 값만 검증한다. 장소 ID·이름·서비스 분류·좌표 중 하나라도 없으면 담을 수 없어 뺀다.
+    // 사용하는 값만 검증한다. 장소 ID·이름·서비스 분류·좌표 중 하나라도 없거나,
+    // 이름·좌표가 장소 규칙을 어기면 담을 수 없어 뺀다. 검색에 보인 장소는 추가도 되도록 같은 규칙을 쓴다.
     private Optional<PlaceSearchItem> place(JsonNode item) {
         String sourceId = text(item.path("contentid"));
         String name = text(item.path("title"));
         Optional<PlaceCategory> category = TourContentType.categoryOf(item.path("contenttypeid").asString(""));
         Optional<BigDecimal> latitude = decimal(item.path("mapy"));
         Optional<BigDecimal> longitude = decimal(item.path("mapx"));
-        if (sourceId == null || name == null || category.isEmpty() || latitude.isEmpty() || longitude.isEmpty()) {
+        if (sourceId == null || name == null || category.isEmpty() || latitude.isEmpty() || longitude.isEmpty()
+                || !followsPlaceRules(sourceId, name, latitude.get(), longitude.get())) {
             return Optional.empty();
         }
         return Optional.of(new PlaceSearchItem(
@@ -176,6 +186,18 @@ public class TourApiPlaceCatalog implements PlaceCatalog {
                 text(item.path("addr1")),
                 latitude.get(),
                 longitude.get()));
+    }
+
+    // 규칙은 값 객체가 가지고, 여기서는 출처 데이터가 그 규칙을 지키는지만 확인한다.
+    private boolean followsPlaceRules(String sourceId, String name, BigDecimal latitude, BigDecimal longitude) {
+        try {
+            new PlaceName(name);
+            new Coordinate(latitude, longitude);
+            return true;
+        } catch (BusinessException e) {
+            log.warn("TourAPI place rejected: contentId={}", sourceId);
+            return false;
+        }
     }
 
     private String text(JsonNode node) {

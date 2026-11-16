@@ -143,6 +143,21 @@ class TourApiPlaceCatalogTest {
     }
 
     @Test
+    void 좌표가_범위를_벗어나거나_이름이_너무_긴_항목은_결과에서_뺀다() {
+        // given
+        respondWith(searchResponse(1, 3,
+                item("1", "12", "송정해수욕장", "부산", "129.1997", "35.1786"),
+                item("2", "12", "잘못된 좌표", "부산", "181", "35.18"),
+                item("3", "12", "가".repeat(PlaceName.MAX_LENGTH + 1), "부산", "129.2", "35.18")));
+
+        // when
+        PlaceSearchResult result = catalog.search(new PlaceSearchQuery("송정", null, 1));
+
+        // then
+        assertThat(result.places()).extracting(PlaceSearchItem::sourceId).containsExactly("1");
+    }
+
+    @Test
     void 장소_ID나_이름이_없는_항목은_결과에서_뺀다() {
         // given
         respondWith(searchResponse(1, 3,
@@ -390,6 +405,35 @@ class TourApiPlaceCatalogTest {
 
         // when & then
         assertThat(catalog.find("3")).isEmpty();
+    }
+
+    @Test
+    void 좌표가_범위를_벗어나면_상세_조회가_비어_있다() {
+        // given
+        respondDetailWith(detailResponse(item("4", "12", "잘못된 좌표", "부산", "181", "35.18")));
+
+        // when & then
+        assertThat(catalog.find("4")).isEmpty();
+    }
+
+    @Test
+    void 이름이_최대_길이를_넘으면_상세_조회가_비어_있다() {
+        // given
+        String longName = "가".repeat(PlaceName.MAX_LENGTH + 1);
+        respondDetailWith(detailResponse(item("5", "12", longName, "부산", "129.2", "35.18")));
+
+        // when & then
+        assertThat(catalog.find("5")).isEmpty();
+    }
+
+    @Test
+    void 주소가_최대_길이를_넘으면_상세_조회가_비어_있다() {
+        // given
+        String longAddress = "가".repeat(Place.MAX_ADDRESS_LENGTH + 1);
+        respondDetailWith(detailResponse(item("6", "12", "송정해수욕장", longAddress, "129.2", "35.18")));
+
+        // when & then
+        assertThat(catalog.find("6")).isEmpty();
     }
 
     @Test
