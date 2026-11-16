@@ -123,3 +123,10 @@ app.auth.login-attempts.max-failures=5
 app.auth.login-attempts.ip-max-failures=100
 app.auth.login-attempts.window-seconds=300
 app.auth.login-attempts.block-seconds=300
+
+# --------------------------------------------------------
+# 한국관광공사 TourAPI 장소 검색
+# data.go.kr의 "한국관광공사_국문 관광정보 서비스_GW" 활용 신청 후 받은 일반 인증키(Decoding)를 입력하고 활성화합니다.
+# --------------------------------------------------------
+app.place.tour-api.enabled=false
+app.place.tour-api.service-key=
