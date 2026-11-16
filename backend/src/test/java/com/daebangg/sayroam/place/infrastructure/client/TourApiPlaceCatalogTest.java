@@ -4,7 +4,11 @@ import com.daebangg.sayroam.global.exception.BusinessException;
 import com.daebangg.sayroam.place.application.dto.PlaceSearchItem;
 import com.daebangg.sayroam.place.application.dto.PlaceSearchQuery;
 import com.daebangg.sayroam.place.application.dto.PlaceSearchResult;
+import com.daebangg.sayroam.place.domain.Coordinate;
+import com.daebangg.sayroam.place.domain.Place;
 import com.daebangg.sayroam.place.domain.PlaceCategory;
+import com.daebangg.sayroam.place.domain.PlaceName;
+import com.daebangg.sayroam.place.domain.PlaceSource;
 import com.daebangg.sayroam.place.domain.error.PlaceErrorCode;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -22,6 +26,7 @@ import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -326,12 +331,104 @@ class TourApiPlaceCatalogTest {
                         e -> assertThat(e.getErrorCode()).isEqualTo(PlaceErrorCode.PLACE_SEARCH_DISABLED));
     }
 
+    @Test
+    void 상세_조회는_장소_ID를_쿼리로_보낸다() {
+        // given
+        server.expect(requestTo(startsWith(BASE_URL + "/detailCommon2?")))
+                .andExpect(queryParam("serviceKey", SERVICE_KEY))
+                .andExpect(queryParam("contentId", "126081"))
+                .andExpect(queryParam("_type", "json"))
+                .andRespond(withSuccess(emptyResponse(), MediaType.APPLICATION_JSON));
+
+        // when
+        catalog.find("126081");
+
+        // then
+        server.verify();
+    }
+
+    @Test
+    void 상세_조회_결과로_장소를_만든다() {
+        // given
+        respondDetailWith(detailResponse(
+                item("126081", "12", "송정해수욕장", "부산광역시 해운대구 송정해변로 62", "129.1997", "35.1786")));
+
+        // when
+        Optional<Place> place = catalog.find("126081");
+
+        // then
+        assertThat(place).get()
+                .usingRecursiveComparison()
+                .ignoringFields("id", "createdAt", "updatedAt")
+                .isEqualTo(new Place(PlaceSource.TOUR, "126081", new PlaceName("송정해수욕장"),
+                        PlaceCategory.ATTRACTION, "12", "부산광역시 해운대구 송정해변로 62",
+                        new Coordinate(new BigDecimal("35.1786"), new BigDecimal("129.1997"))));
+    }
+
+    @Test
+    void 없는_장소_ID면_비어_있다() {
+        // given
+        respondDetailWith(emptyResponse());
+
+        // when & then
+        assertThat(catalog.find("0")).isEmpty();
+    }
+
+    @Test
+    void 장소로_다루지_않는_분류면_비어_있다() {
+        // given
+        respondDetailWith(detailResponse(item("2", "15", "송정 축제", "부산", "129.2", "35.18")));
+
+        // when & then
+        assertThat(catalog.find("2")).isEmpty();
+    }
+
+    @Test
+    void 좌표가_없으면_비어_있다() {
+        // given
+        respondDetailWith(detailResponse(item("3", "39", "좌표 없는 식당", "부산", "", "")));
+
+        // when & then
+        assertThat(catalog.find("3")).isEmpty();
+    }
+
+    @Test
+    void 상세_조회의_결과_코드가_정상이_아니면_조회_실패로_거부한다() {
+        // given
+        respondDetailWith("""
+                {"response":{"header":{"resultCode":"22","resultMsg":"LIMITED_NUMBER_OF_SERVICE_REQUESTS_EXCEEDS_ERROR"}}}
+                """);
+
+        // when & then
+        assertThatThrownBy(() -> catalog.find("126081"))
+                .isInstanceOfSatisfying(BusinessException.class,
+                        e -> assertThat(e.getErrorCode()).isEqualTo(PlaceErrorCode.PLACE_SEARCH_FAILED));
+    }
+
+    @Test
+    void 비활성화되어_있으면_호출하지_않고_상세_조회를_거부한다() {
+        // given
+        TourApiPlaceCatalog disabled = new TourApiPlaceCatalog(
+                RestClient.builder().baseUrl(BASE_URL).build(),
+                new TourApiProperties(false, URI.create(BASE_URL), null));
+
+        // when & then
+        assertThatThrownBy(() -> disabled.find("126081"))
+                .isInstanceOfSatisfying(BusinessException.class,
+                        e -> assertThat(e.getErrorCode()).isEqualTo(PlaceErrorCode.PLACE_SEARCH_DISABLED));
+    }
+
     private TourApiProperties enabledProperties() {
         return new TourApiProperties(true, URI.create(BASE_URL), SERVICE_KEY);
     }
 
     private void respondWith(String body) {
         server.expect(requestTo(startsWith(BASE_URL + "/searchKeyword2?")))
+                .andRespond(withSuccess(body, MediaType.APPLICATION_JSON));
+    }
+
+    private void respondDetailWith(String body) {
+        server.expect(requestTo(startsWith(BASE_URL + "/detailCommon2?")))
                 .andRespond(withSuccess(body, MediaType.APPLICATION_JSON));
     }
 
@@ -377,6 +474,13 @@ class TourApiPlaceCatalogTest {
                 {"response":{"header":{"resultCode":"0000","resultMsg":"OK"},
                 "body":{"items":{"item":[%s]},"numOfRows":20,"pageNo":%d,"totalCount":%d}}}
                 """.formatted(String.join(",", items), pageNo, totalCount);
+    }
+
+    private static String detailResponse(String item) {
+        return """
+                {"response":{"header":{"resultCode":"0000","resultMsg":"OK"},
+                "body":{"items":{"item":[%s]},"numOfRows":1,"pageNo":1,"totalCount":1}}}
+                """.formatted(item);
     }
 
     private static String item(String contentId, String contentTypeId, String title,

@@ -21,4 +21,17 @@ public interface TripJpaRepository extends TripRepository, JpaRepository<Trip, L
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select t from Trip t where t.id = :tripId")
     Optional<Trip> findByIdForUpdate(@Param("tripId") Long tripId);
+
+    @Override
+    @Query("""
+            select t
+            from Trip t
+            where t.id = :tripId
+              and ((t.roomId is null and t.createdById = :userId)
+                   or t.roomId in (select m.room.id
+                                   from RoomMember m
+                                   where m.userId = :userId
+                                     and m.status = com.daebangg.sayroam.room.domain.RoomMemberStatus.JOINED))
+            """)
+    Optional<Trip> findAccessible(@Param("userId") Long userId, @Param("tripId") Long tripId);
 }

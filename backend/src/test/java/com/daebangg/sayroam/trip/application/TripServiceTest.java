@@ -3,27 +3,40 @@ package com.daebangg.sayroam.trip.application;
 import com.daebangg.sayroam.common.domain.TravelPeriod;
 import com.daebangg.sayroam.common.domain.error.TravelPeriodErrorCode;
 import com.daebangg.sayroam.global.exception.BusinessException;
+import com.daebangg.sayroam.place.application.port.out.PlaceCatalog;
+import com.daebangg.sayroam.place.domain.Coordinate;
+import com.daebangg.sayroam.place.domain.Place;
+import com.daebangg.sayroam.place.domain.PlaceCategory;
+import com.daebangg.sayroam.place.domain.PlaceName;
+import com.daebangg.sayroam.place.domain.PlaceSource;
+import com.daebangg.sayroam.place.domain.error.PlaceErrorCode;
+import com.daebangg.sayroam.place.infrastructure.persistence.PlaceJpaRepository;
 import com.daebangg.sayroam.room.application.service.RoomService;
 import com.daebangg.sayroam.room.domain.RoomMember;
 import com.daebangg.sayroam.room.infrastructure.persistence.RoomInvitationJpaRepository;
 import com.daebangg.sayroam.room.infrastructure.persistence.RoomJpaRepository;
 import com.daebangg.sayroam.room.infrastructure.persistence.RoomMemberJpaRepository;
 import com.daebangg.sayroam.support.DatabaseIntegrationTest;
+import com.daebangg.sayroam.trip.application.dto.AddTripPlaceCommand;
 import com.daebangg.sayroam.trip.application.dto.TripSummaryResult;
 import com.daebangg.sayroam.trip.application.service.TripService;
 import com.daebangg.sayroam.trip.domain.Trip;
 import com.daebangg.sayroam.trip.domain.error.TripErrorCode;
 import com.daebangg.sayroam.trip.infrastructure.persistence.TripJpaRepository;
+import com.daebangg.sayroam.trip.infrastructure.persistence.TripPlaceJpaRepository;
 import com.daebangg.sayroam.user.domain.Role;
 import com.daebangg.sayroam.user.domain.User;
 import com.daebangg.sayroam.user.infrastructure.persistence.UserJpaRepository;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
@@ -34,12 +47,17 @@ import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 
 class TripServiceTest extends DatabaseIntegrationTest {
     private static final LocalDate START_DATE = LocalDate.of(2026, 12, 1);
     private static final LocalDate END_DATE = LocalDate.of(2026, 12, 4);
     private static final String ROOM_NAME = "제주 여행";
     private static final Long MISSING_TRIP_ID = 999_999L;
+    private static final String SOURCE_ID = "126081";
 
     @Autowired
     TripService tripService;
@@ -49,6 +67,15 @@ class TripServiceTest extends DatabaseIntegrationTest {
 
     @Autowired
     TripJpaRepository tripJpaRepository;
+
+    @Autowired
+    PlaceJpaRepository placeJpaRepository;
+
+    @Autowired
+    TripPlaceJpaRepository tripPlaceJpaRepository;
+
+    @MockitoBean
+    PlaceCatalog placeCatalog;
 
     @Autowired
     UserJpaRepository userRepository;
@@ -64,6 +91,8 @@ class TripServiceTest extends DatabaseIntegrationTest {
 
     @AfterEach
     void cleanUp() {
+        tripPlaceJpaRepository.deleteAllInBatch();
+        placeJpaRepository.deleteAllInBatch();
         tripJpaRepository.deleteAllInBatch();
         roomInvitationJpaRepository.deleteAllInBatch();
         roomMemberJpaRepository.deleteAllInBatch();
@@ -410,6 +439,130 @@ class TripServiceTest extends DatabaseIntegrationTest {
                         e -> assertThat(e.getErrorCode()).isEqualTo(TripErrorCode.TRIP_NOT_FOUND));
     }
 
+    @Test
+    void 장소를_추가하면_일차와_메모와_추가한_회원이_저장된다() {
+        // given
+        Long userId = saveUser();
+        Long tripId = tripService.create(userId, START_DATE, END_DATE);
+        givenTourPlace();
+
+        // when
+        Long tripPlaceId = tripService.addPlace(userId, tripId, command(2, "오전에 가기"));
+
+        // then
+        assertThat(tripPlaceJpaRepository.findById(tripPlaceId)).get()
+                .extracting("dayNumber", "memo", "addedById")
+                .containsExactly(2, "오전에 가기", userId);
+    }
+
+    @Test
+    void 채팅방에_참여_중인_멤버는_장소를_추가할_수_있다() {
+        // given
+        Long ownerId = saveUser();
+        Long memberId = saveUser("멤버");
+        Long tripId = tripService.create(ownerId, START_DATE, END_DATE);
+        Long roomId = tripService.createRoom(ownerId, tripId, ROOM_NAME);
+        joinRoom(roomId, ownerId, memberId);
+        givenTourPlace();
+
+        // when
+        Long tripPlaceId = tripService.addPlace(memberId, tripId, command(null, null));
+
+        // then
+        assertThat(tripPlaceJpaRepository.findById(tripPlaceId)).get()
+                .extracting("addedById")
+                .isEqualTo(memberId);
+    }
+
+    @Test
+    void 채팅방을_나간_멤버면_장소_추가를_TRIP_NOT_FOUND로_거부한다() {
+        // given
+        Long ownerId = saveUser();
+        Long memberId = saveUser("멤버");
+        Long tripId = tripService.create(ownerId, START_DATE, END_DATE);
+        Long roomId = tripService.createRoom(ownerId, tripId, ROOM_NAME);
+        joinRoom(roomId, ownerId, memberId);
+        roomService.leave(roomId, memberId);
+        givenTourPlace();
+
+        // when & then
+        assertThatThrownBy(() -> tripService.addPlace(memberId, tripId, command(null, null)))
+                .isInstanceOfSatisfying(BusinessException.class,
+                        e -> assertThat(e.getErrorCode()).isEqualTo(TripErrorCode.TRIP_NOT_FOUND));
+        assertThat(tripPlaceJpaRepository.count()).isZero();
+    }
+
+    @Test
+    void 채팅방이_없는_여행에_다른_회원이_추가하면_TourAPI를_호출하지_않고_거부한다() {
+        // given
+        Long ownerId = saveUser();
+        Long otherId = saveUser("다른 회원");
+        Long tripId = tripService.create(ownerId, START_DATE, END_DATE);
+        givenTourPlace();
+
+        // when & then
+        assertThatThrownBy(() -> tripService.addPlace(otherId, tripId, command(null, null)))
+                .isInstanceOfSatisfying(BusinessException.class,
+                        e -> assertThat(e.getErrorCode()).isEqualTo(TripErrorCode.TRIP_NOT_FOUND));
+        verify(placeCatalog, never()).find(any());
+    }
+
+    @Test
+    void 없는_여행이면_장소_추가를_TRIP_NOT_FOUND로_거부한다() {
+        // given
+        Long userId = saveUser();
+
+        // when & then
+        assertThatThrownBy(() -> tripService.addPlace(userId, MISSING_TRIP_ID, command(null, null)))
+                .isInstanceOfSatisfying(BusinessException.class,
+                        e -> assertThat(e.getErrorCode()).isEqualTo(TripErrorCode.TRIP_NOT_FOUND));
+    }
+
+    @Test
+    void 일차가_기간을_벗어나면_TourAPI를_호출하지_않고_거부한다() {
+        // given
+        Long userId = saveUser();
+        Long tripId = tripService.create(userId, START_DATE, END_DATE);
+        givenTourPlace();
+
+        // when & then
+        assertThatThrownBy(() -> tripService.addPlace(userId, tripId, command(5, null)))
+                .isInstanceOfSatisfying(BusinessException.class,
+                        e -> assertThat(e.getErrorCode()).isEqualTo(TripErrorCode.TRIP_DAY_OUT_OF_RANGE));
+        verify(placeCatalog, never()).find(any());
+    }
+
+    @Test
+    void TourAPI에서_찾을_수_없는_장소면_PLACE_NOT_FOUND로_거부하고_아무것도_저장하지_않는다() {
+        // given
+        Long userId = saveUser();
+        Long tripId = tripService.create(userId, START_DATE, END_DATE);
+        given(placeCatalog.find(SOURCE_ID)).willReturn(Optional.empty());
+
+        // when & then
+        assertThatThrownBy(() -> tripService.addPlace(userId, tripId, command(1, null)))
+                .isInstanceOfSatisfying(BusinessException.class,
+                        e -> assertThat(e.getErrorCode()).isEqualTo(PlaceErrorCode.PLACE_NOT_FOUND));
+        assertThat(tripPlaceJpaRepository.count()).isZero();
+        assertThat(placeJpaRepository.count()).isZero();
+    }
+
+    @Test
+    void 같은_장소를_한_여행에_여러_번_추가할_수_있다() {
+        // given
+        Long userId = saveUser();
+        Long tripId = tripService.create(userId, START_DATE, END_DATE);
+        givenTourPlace();
+
+        // when
+        tripService.addPlace(userId, tripId, command(1, null));
+        tripService.addPlace(userId, tripId, command(3, null));
+
+        // then
+        assertThat(tripPlaceJpaRepository.count()).isEqualTo(2);
+        assertThat(placeJpaRepository.count()).isEqualTo(1);
+    }
+
     private Long saveUser() {
         return saveUser("여행자");
     }
@@ -426,5 +579,17 @@ class TripServiceTest extends DatabaseIntegrationTest {
     private void joinRoom(Long roomId, Long ownerId, Long memberId) {
         String invitationCode = roomService.createInvitation(roomId, ownerId);
         roomService.joinByInvitation(invitationCode, memberId);
+    }
+
+    // 실제 어댑터처럼 조회할 때마다 새 장소 객체를 돌려준다
+    private void givenTourPlace() {
+        given(placeCatalog.find(SOURCE_ID)).willAnswer(invocation -> Optional.of(new Place(
+                PlaceSource.TOUR, SOURCE_ID, new PlaceName("송정해수욕장"), PlaceCategory.ATTRACTION, "12",
+                "부산광역시 해운대구 송정해변로 62",
+                new Coordinate(new BigDecimal("35.1786"), new BigDecimal("129.1997")))));
+    }
+
+    private AddTripPlaceCommand command(Integer day, String memo) {
+        return new AddTripPlaceCommand(SOURCE_ID, day, memo);
     }
 }

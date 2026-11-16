@@ -12,6 +12,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import lombok.AccessLevel;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 // 회원이 여행에 담은 외부 장소. 출처(source)와 원본 ID(sourceId)로 같은 장소를 한 번만 저장하고,
@@ -26,6 +27,7 @@ public class Place extends BaseTimeEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Getter
     private Long id;
 
     @Enumerated(EnumType.STRING)
@@ -49,5 +51,16 @@ public class Place extends BaseTimeEntity {
 
     @Embedded
     private Coordinate coordinate;
+
+    public Place(PlaceSource source, String sourceId, PlaceName name, PlaceCategory category,
+                 String sourceCategoryCode, String address, Coordinate coordinate) {
+        this.source = source;
+        this.sourceId = sourceId;
+        this.name = name;
+        this.category = category;
+        this.sourceCategoryCode = sourceCategoryCode;
+        this.address = address;
+        this.coordinate = coordinate;
+    }
 
 }

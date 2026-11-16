@@ -6,6 +6,7 @@ import com.daebangg.sayroam.global.exception.CommonErrorCode;
 import jakarta.persistence.Embeddable;
 
 import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 
 // 여행 기간과 동행 희망 기간이 함께 쓴다
 @Embeddable
@@ -23,4 +24,11 @@ public record TravelPeriod(
         }
     }
 
+    public boolean containsDay(int day) {
+        return 1 <= day && day <= days();
+    }
+
+    private long days() {
+        return ChronoUnit.DAYS.between(startDate, endDate) + 1;
+    }
 }

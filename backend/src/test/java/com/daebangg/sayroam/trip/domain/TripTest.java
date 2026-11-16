@@ -81,4 +81,35 @@ class TripTest {
                         e -> assertThat(e.getErrorCode()).isEqualTo(TripErrorCode.TRIP_ROOM_ALREADY_LINKED));
         assertThat(trip.getRoomId()).isEqualTo(ROOM_ID);
     }
+
+    @Test
+    void 기간_안의_일차면_장소를_추가할_수_있다() {
+        // given
+        Trip trip = new Trip(USER_ID, PERIOD);
+
+        // when & then
+        assertThatCode(() -> trip.ensurePlaceAddable(4))
+                .doesNotThrowAnyException();
+    }
+
+    @Test
+    void 일차_미정이면_장소를_추가할_수_있다() {
+        // given
+        Trip trip = new Trip(USER_ID, PERIOD);
+
+        // when & then
+        assertThatCode(() -> trip.ensurePlaceAddable(null))
+                .doesNotThrowAnyException();
+    }
+
+    @Test
+    void 일차가_기간을_벗어나면_장소를_추가할_수_없다() {
+        // given
+        Trip trip = new Trip(USER_ID, PERIOD);
+
+        // when & then
+        assertThatThrownBy(() -> trip.ensurePlaceAddable(5))
+                .isInstanceOfSatisfying(BusinessException.class,
+                        e -> assertThat(e.getErrorCode()).isEqualTo(TripErrorCode.TRIP_DAY_OUT_OF_RANGE));
+    }
 }

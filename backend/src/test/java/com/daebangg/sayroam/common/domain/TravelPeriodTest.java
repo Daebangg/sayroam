@@ -45,4 +45,34 @@ class TravelPeriodTest {
         assertThatCode(() -> new TravelPeriod(START_DATE, START_DATE))
                 .doesNotThrowAnyException();
     }
+
+    @Test
+    void 여행_기간_안의_일차를_포함한다() {
+        // given
+        TravelPeriod period = new TravelPeriod(START_DATE, END_DATE);
+
+        // when & then
+        assertThat(period.containsDay(1)).isTrue();
+        assertThat(period.containsDay(4)).isTrue();
+    }
+
+    @Test
+    void 첫날_전과_마지막_날_다음_일차는_포함하지_않는다() {
+        // given
+        TravelPeriod period = new TravelPeriod(START_DATE, END_DATE);
+
+        // when & then
+        assertThat(period.containsDay(0)).isFalse();
+        assertThat(period.containsDay(5)).isFalse();
+    }
+
+    @Test
+    void 하루짜리_여행은_1일차만_포함한다() {
+        // given
+        TravelPeriod oneDay = new TravelPeriod(START_DATE, START_DATE);
+
+        // when & then
+        assertThat(oneDay.containsDay(1)).isTrue();
+        assertThat(oneDay.containsDay(2)).isFalse();
+    }
 }
