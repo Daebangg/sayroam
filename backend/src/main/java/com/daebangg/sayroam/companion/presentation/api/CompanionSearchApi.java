@@ -19,7 +19,7 @@ import org.springframework.http.ResponseEntity;
 @SecurityRequirement(name = "bearerAuth")
 public interface CompanionSearchApi {
     @Operation(operationId = "createCompanionSearch", summary = "동행 매칭 등록",
-            description = "활성 여행지와 여행 기간, 선택한 상대 조건을 저장합니다.")
+            description = "활성 여행지와 여행 기간, 선택한 상대 조건과 제목을 저장합니다.")
     @ApiResponse(responseCode = "201", description = "등록 완료")
     @ApiResponse(responseCode = "400", ref = "#/components/responses/BadRequest")
     @ApiResponse(responseCode = "401", ref = "#/components/responses/Unauthorized")
@@ -50,7 +50,7 @@ public interface CompanionSearchApi {
                             maximum = "" + CompanionSearchService.MAX_CANDIDATE_PAGE_SIZE)) int size);
 
     @Operation(operationId = "updateCompanionSearch", summary = "동행 매칭 조건 수정",
-            description = "활성 등록의 조건을 교체합니다. 생략한 희망 성별과 나이 조건은 해제합니다.")
+            description = "활성 등록의 조건을 교체합니다. 희망 성별과 나이 조건, 제목은 생략하면 해제합니다.")
     @ApiResponse(responseCode = "200", description = "수정 완료")
     @ApiResponse(responseCode = "400", ref = "#/components/responses/BadRequest")
     @ApiResponse(responseCode = "401", ref = "#/components/responses/Unauthorized")

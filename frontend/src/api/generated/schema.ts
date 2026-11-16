@@ -391,7 +391,7 @@ export interface paths {
         put?: never;
         /**
          * 동행 매칭 등록
-         * @description 활성 여행지와 여행 기간, 선택한 상대 조건을 저장합니다.
+         * @description 활성 여행지와 여행 기간, 선택한 상대 조건과 제목을 저장합니다.
          */
         post: operations["createCompanionSearch"];
         delete?: never;
@@ -410,7 +410,7 @@ export interface paths {
         get?: never;
         /**
          * 동행 매칭 조건 수정
-         * @description 활성 등록의 조건을 교체합니다. 생략한 희망 성별과 나이 조건은 해제합니다.
+         * @description 활성 등록의 조건을 교체합니다. 희망 성별과 나이 조건, 제목은 생략하면 해제합니다.
          */
         put: operations["updateCompanionSearch"];
         post?: never;
@@ -949,6 +949,7 @@ export interface components {
             searchId: number;
             /** Format: date */
             startDate: string;
+            title: string | null;
         };
         ChangeCompanionSearchStatusRequest: {
             /** @enum {string} */
@@ -1018,6 +1019,7 @@ export interface components {
             startDate: string;
             /** @enum {string} */
             status: "ACTIVE" | "CLOSED";
+            title: string | null;
         };
         CreateRoomInvitationResponse: {
             /**
@@ -1339,6 +1341,8 @@ export interface components {
             preferredMinAge?: number | null;
             /** Format: date */
             startDate: string;
+            /** @description 동행 제목. 앞뒤 공백 제거 후 최대 80자. 생략하거나 비어 있으면 제목 없음 */
+            title?: string | null;
         };
         Signup: {
             /** @description 항상 false. 소셜 가입에 별도 인증 메일을 발송하지 않음 */

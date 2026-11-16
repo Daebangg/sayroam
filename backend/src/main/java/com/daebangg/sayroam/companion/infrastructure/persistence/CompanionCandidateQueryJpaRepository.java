@@ -21,7 +21,7 @@ interface CompanionCandidateQueryJpaRepository
     @Query("""
             with overlapping as (
                 select c.id as searchId, c.userId as userId, candidate.nickname as nickname,
-                       candidate.profileImageUrl as profileImageUrl,
+                       candidate.profileImageUrl as profileImageUrl, c.title as title,
                        c.period.startDate as startDate, c.period.endDate as endDate,
                        greatest(c.period.startDate, s.period.startDate) as overlapStart,
                        least(c.period.endDate, s.period.endDate) as overlapEnd
@@ -49,13 +49,13 @@ interface CompanionCandidateQueryJpaRepository
                 select o.searchId as searchId, o.userId as userId, o.nickname as nickname,
                        o.profileImageUrl as profileImageUrl, o.startDate as startDate, o.endDate as endDate,
                        o.overlapStart as overlapStart, o.overlapEnd as overlapEnd,
-                       cast((o.overlapEnd - o.overlapStart) by day + 1 as Integer) as overlapDays
+                       cast((o.overlapEnd - o.overlapStart) by day + 1 as Integer) as overlapDays, o.title as title
                 from overlapping o
             ),
             ranked as (
                 select o.searchId as searchId, o.nickname as nickname, o.profileImageUrl as profileImageUrl,
                        o.startDate as startDate, o.endDate as endDate, o.overlapStart as overlapStart,
-                       o.overlapEnd as overlapEnd, o.overlapDays as overlapDays,
+                       o.overlapEnd as overlapEnd, o.overlapDays as overlapDays, o.title as title,
                        row_number() over (
                            partition by o.userId order by o.overlapDays desc, o.overlapStart, o.searchId
                        ) as memberRank
@@ -64,7 +64,7 @@ interface CompanionCandidateQueryJpaRepository
             orderedCandidates as (
                 select r.searchId as searchId, r.nickname as nickname, r.profileImageUrl as profileImageUrl,
                        r.startDate as startDate, r.endDate as endDate, r.overlapStart as overlapStart,
-                       r.overlapEnd as overlapEnd, r.overlapDays as overlapDays,
+                       r.overlapEnd as overlapEnd, r.overlapDays as overlapDays, r.title as title,
                        row_number() over (
                            order by r.overlapDays desc, r.overlapStart, r.searchId
                        ) as candidateRank
@@ -73,7 +73,7 @@ interface CompanionCandidateQueryJpaRepository
             )
             select new com.daebangg.sayroam.companion.application.dto.CompanionCandidateResult(
                 r.searchId, r.nickname, r.profileImageUrl, r.startDate, r.endDate,
-                r.overlapStart, r.overlapEnd, r.overlapDays
+                r.overlapStart, r.overlapEnd, r.overlapDays, r.title
             )
             from orderedCandidates r
             where r.candidateRank > :offset

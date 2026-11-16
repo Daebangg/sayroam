@@ -14,7 +14,7 @@ public record CompanionCandidateListResponse(List<Candidate> candidates, boolean
     }
 
     @Schema(requiredProperties = {"searchId", "nickname", "profileImageUrl", "startDate", "endDate",
-            "overlapStartDate", "overlapEndDate", "overlapDays"})
+            "overlapStartDate", "overlapEndDate", "overlapDays", "title"})
     public record Candidate(
             long searchId,
             String nickname,
@@ -23,12 +23,13 @@ public record CompanionCandidateListResponse(List<Candidate> candidates, boolean
             LocalDate endDate,
             LocalDate overlapStartDate,
             LocalDate overlapEndDate,
-            int overlapDays
+            int overlapDays,
+            @Schema(types = {"string", "null"}) String title
     ) {
         private static Candidate from(CompanionCandidateResult result) {
             return new Candidate(result.searchId(), result.nickname(), result.profileImageUrl(),
                     result.startDate(), result.endDate(), result.overlapStartDate(), result.overlapEndDate(),
-                    result.overlapDays());
+                    result.overlapDays(), result.title());
         }
     }
 }

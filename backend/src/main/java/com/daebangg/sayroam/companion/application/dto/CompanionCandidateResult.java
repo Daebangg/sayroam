@@ -11,7 +11,8 @@ public record CompanionCandidateResult(
         LocalDate endDate,
         LocalDate overlapStartDate,
         LocalDate overlapEndDate,
-        int overlapDays
+        int overlapDays,
+        String title
 ) {
     public record Page(List<CompanionCandidateResult> candidates, boolean hasNext) {
     }

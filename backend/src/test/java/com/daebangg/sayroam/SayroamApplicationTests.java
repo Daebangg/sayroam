@@ -46,11 +46,11 @@ class SayroamApplicationTests extends DatabaseIntegrationTest {
                 SELECT COUNT(*) FROM information_schema.tables
                 WHERE table_schema = DATABASE() AND table_type = 'BASE TABLE'
                 """, Integer.class)).isEqualTo(20);
-        assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("12");
+        assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("13");
         flyway.validate();
         assertThat(flyway.migrate().migrationsExecuted).isZero();
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM flyway_schema_history WHERE success = 1",
-                Integer.class)).isEqualTo(12);
+                Integer.class)).isEqualTo(13);
     }
 
     @Test
@@ -100,10 +100,13 @@ class SayroamApplicationTests extends DatabaseIntegrationTest {
                     INSERT INTO companion_search (id, user_id, region, start_date, end_date, status, created_at, updated_at)
                     VALUES (1, 10, '기존 여행지', '2026-12-01', '2026-12-02', 'ACTIVE', NOW(), NOW())
                     """);
+            assertThat(Flyway.configure().dataSource(dataSource).target("12").load().migrate().migrationsExecuted)
+                    .isEqualTo(1);
             assertThat(Flyway.configure().dataSource(dataSource).load().migrate().migrationsExecuted).isEqualTo(1);
-            assertThat(legacy.queryForMap("SELECT region, destination_id FROM companion_search WHERE id = 1"))
+            assertThat(legacy.queryForMap("SELECT region, destination_id, title FROM companion_search WHERE id = 1"))
                     .containsEntry("region", "기존 여행지")
-                    .containsEntry("destination_id", null);
+                    .containsEntry("destination_id", null)
+                    .containsEntry("title", null);
         }
     }
 

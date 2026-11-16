@@ -40,6 +40,7 @@ public class CompanionSearchService {
                 .period(new TravelPeriod(command.startDate(), command.endDate()))
                 .preferredGender(command.preferredGender())
                 .preferredAgeRange(new AgeRange(command.preferredMinAge(), command.preferredMaxAge()))
+                .title(command.title())
                 .build();
         return CompanionSearchResult.from(searches.save(search));
     }
@@ -71,7 +72,7 @@ public class CompanionSearchService {
         CompanionSearch search = findMineForUpdate(userId, id);
         requireActiveDestination(command.destinationId());
         search.update(command.destinationId(), new TravelPeriod(command.startDate(), command.endDate()),
-                command.preferredGender(), new AgeRange(command.preferredMinAge(), command.preferredMaxAge()));
+                command.preferredGender(), new AgeRange(command.preferredMinAge(), command.preferredMaxAge()), command.title());
         return CompanionSearchResult.from(search);
     }
 
