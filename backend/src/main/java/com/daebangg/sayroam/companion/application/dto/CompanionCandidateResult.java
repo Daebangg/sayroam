@@ -1,5 +1,8 @@
 package com.daebangg.sayroam.companion.application.dto;
 
+import com.daebangg.sayroam.user.domain.Gender;
+import org.jspecify.annotations.Nullable;
+
 import java.time.LocalDate;
 import java.util.List;
 
@@ -12,7 +15,10 @@ public record CompanionCandidateResult(
         LocalDate overlapStartDate,
         LocalDate overlapEndDate,
         int overlapDays,
-        String title
+        String title,
+        @Nullable String introduction,
+        @Nullable Integer age,
+        @Nullable Gender gender
 ) {
     public record Page(List<CompanionCandidateResult> candidates, boolean hasNext) {
     }

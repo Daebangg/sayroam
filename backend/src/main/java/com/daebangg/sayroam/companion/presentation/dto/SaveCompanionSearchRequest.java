@@ -22,11 +22,20 @@ public record SaveCompanionSearchRequest(
         @PositiveOrZero Integer preferredMaxAge,
         @Schema(description = "동행 제목. 앞뒤 공백 제거 후 최대 80자. 생략하거나 비어 있으면 제목 없음",
                 types = {"string", "null"}, maxLength = CompanionSearch.MAX_TITLE_LENGTH)
-        @Nullable String title
+        @Nullable String title,
+        @Schema(description = "동행 소개글. 앞뒤 공백 제거 후 최대 200자. 수정 시 생략 또는 null이면 유지, 공백만 입력하면 삭제",
+                types = {"string", "null"}, maxLength = CompanionSearch.MAX_INTRODUCTION_LENGTH)
+        @Nullable String introduction,
+        @Schema(description = "내 만 나이 공개 여부. 생략 또는 null이면 신규 등록은 비공개, 수정은 기존 설정 유지",
+                types = {"boolean", "null"})
+        @Nullable Boolean showAge,
+        @Schema(description = "내 성별 공개 여부. 생략 또는 null이면 신규 등록은 비공개, 수정은 기존 설정 유지",
+                types = {"boolean", "null"})
+        @Nullable Boolean showGender
 ) {
 
     public SaveCompanionSearchCommand toCommand() {
         return new SaveCompanionSearchCommand(destinationId, startDate, endDate, preferredGender,
-                preferredMinAge, preferredMaxAge, title);
+                preferredMinAge, preferredMaxAge, title, introduction, showAge, showGender);
     }
 }

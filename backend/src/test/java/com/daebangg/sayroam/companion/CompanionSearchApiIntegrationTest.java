@@ -62,6 +62,9 @@ class CompanionSearchApiIntegrationTest extends DatabaseIntegrationTest {
                 .andExpect(jsonPath("$.preferredGender").value("FEMALE"))
                 .andExpect(jsonPath("$.preferredMinAge").value(25))
                 .andExpect(jsonPath("$.preferredMaxAge").value(nullValue()))
+                .andExpect(jsonPath("$.showAge").value(false))
+                .andExpect(jsonPath("$.showGender").value(false))
+                .andExpect(jsonPath("$.introduction").value(nullValue()))
                 .andExpect(jsonPath("$.status").value("ACTIVE"));
         long id = jdbc.queryForObject("SELECT id FROM companion_search WHERE destination_id = ?", Long.class, seoulId);
         String resource = PATH + "/" + id;
@@ -93,7 +96,8 @@ class CompanionSearchApiIntegrationTest extends DatabaseIntegrationTest {
         entityManager.clear();
 
         submit(patch(resource), resource, authorization, "{\"status\":\"ACTIVE\"}")
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("ACTIVE"));
         submit(patch(resource), resource, authorization, "{\"status\":\"CLOSED\"}").andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("CLOSED"));
         submit(patch(resource), resource, authorization, "{\"status\":\"CLOSED\"}").andExpect(status().isOk());
@@ -115,6 +119,39 @@ class CompanionSearchApiIntegrationTest extends DatabaseIntegrationTest {
                 .andExpect(jsonPath("$.title").value(title));
         submit(post(PATH), PATH, authorization, conditions(seoulId, "2030-04-21", "2030-04-23",
                 ", \"title\": \"" + title + "😀\"")).andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void savesAndEditsVisibilityIndependentlyAndValidatesIntroductionByCodePoint() throws Exception {
+        String introduction = "😀".repeat(200);
+        submit(post(PATH), PATH, authorization, conditions(seoulId, "2030-04-21", "2030-04-23",
+                ", \"introduction\": \"  " + introduction + "  \", \"showAge\": true, \"showGender\": true"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.introduction").value(introduction))
+                .andExpect(jsonPath("$.showAge").value(true))
+                .andExpect(jsonPath("$.showGender").value(true));
+        long id = jdbc.queryForObject("SELECT id FROM companion_search WHERE destination_id = ?", Long.class, seoulId);
+        String resource = PATH + "/" + id;
+
+        submit(put(resource), resource, authorization, conditions(seoulId, "2030-04-21", "2030-04-23",
+                ", \"introduction\": \"" + introduction + "😀\", \"showAge\": false"))
+                .andExpect(status().isBadRequest());
+        submit(put(resource), resource, authorization, conditions(seoulId, "2030-04-21", "2030-04-23", ""))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.introduction").value(introduction))
+                .andExpect(jsonPath("$.showAge").value(true))
+                .andExpect(jsonPath("$.showGender").value(true));
+        submit(put(resource), resource, authorization, conditions(seoulId, "2030-04-21", "2030-04-23",
+                ", \"introduction\": \" 새 소개글 \", \"showAge\": false"))
+                .andExpect(status().isOk());
+        mvc.perform(get(MINE).servletPath(MINE).header("Authorization", authorization))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.searches[0].introduction").value("새 소개글"))
+                .andExpect(jsonPath("$.searches[0].showAge").value(false))
+                .andExpect(jsonPath("$.searches[0].showGender").value(true));
+        submit(put(resource), resource, authorization, conditions(seoulId, "2030-04-21", "2030-04-23",
+                ", \"introduction\": \"   \"")).andExpect(status().isOk())
+                .andExpect(jsonPath("$.introduction").value(nullValue()));
     }
 
     @Test
