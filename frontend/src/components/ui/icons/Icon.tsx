@@ -28,7 +28,17 @@ export type IconName =
     | "check"
     | "flame"
     | "plan"
-    | "calendar";
+    | "calendar"
+    | "journey-place"
+    | "journey-dates"
+    | "journey-people"
+    | "journey-age"
+    | "journey-plan"
+    | "journey-pace"
+    | "journey-together"
+    | "journey-budget"
+    | "journey-register"
+    | "journey-list";
 
 type IconProps = {
     name: IconName;

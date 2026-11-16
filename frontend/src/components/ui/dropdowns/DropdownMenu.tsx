@@ -2,7 +2,7 @@ import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { MenuItem } from "./MenuItem";
 import { Button } from "../buttons/Button";
-import { Icon } from "../icons/Icon";
+import { Icon, type IconName } from "../icons/Icon";
 
 type DropdownOption = { value: string; label: string; disabled?: boolean };
 type DropdownMenuProps = {
@@ -12,6 +12,7 @@ type DropdownMenuProps = {
     onChange: (value: string) => void;
     disabled?: boolean;
     overlayOwner?: string;
+    icon?: IconName;
 };
 
 export function DropdownMenu({
@@ -21,6 +22,7 @@ export function DropdownMenu({
     onChange,
     disabled,
     overlayOwner,
+    icon,
 }: DropdownMenuProps) {
     const [open, setOpen] = useState(false);
     const [closing, setClosing] = useState(false);
@@ -160,6 +162,7 @@ export function DropdownMenu({
                 disabled={disabled}
                 onClick={() => (open && !closing ? setClosing(true) : showOverlay())}
             >
+                {icon && <Icon name={icon} className="ui-dropdown__leading-icon" />}
                 {options.find((option) => option.value === value)?.label ?? label}
                 <Icon name="chevron" variant="outline" className="ui-dropdown__chevron" />
             </Button>

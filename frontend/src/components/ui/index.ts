@@ -35,3 +35,11 @@ export { ImageCropDialog } from "./inputs/ImageCropDialog";
 export { AvatarPicker } from "./brand/AvatarPicker";
 export { IconChoiceGroup } from "./inputs/IconChoiceGroup";
 export { ThemePicker } from "./inputs/ThemePicker";
+
+export { Autocomplete } from "./inputs/Autocomplete";
+
+export { DateRangeCalendar } from "./inputs/DateRangeCalendar";
+
+export { RangeField } from "./inputs/RangeField";
+
+export { RangeSelector } from "./inputs/RangeSelector";

@@ -8,6 +8,7 @@ type IconChoiceGroupProps<T extends string> = {
     options: readonly { value: T; label: string; icon: IconName }[];
     onChange: (value: T) => void;
     disabled?: boolean;
+    showLabels?: boolean;
 };
 
 export function IconChoiceGroup<T extends string>({
@@ -16,9 +17,14 @@ export function IconChoiceGroup<T extends string>({
     options,
     onChange,
     disabled = false,
+    showLabels = false,
 }: IconChoiceGroupProps<T>) {
     return (
-        <div className="ui-icon-choice" role="group" aria-label={label}>
+        <div
+            className={`ui-icon-choice${showLabels ? " ui-icon-choice--labeled" : ""}`}
+            role="group"
+            aria-label={label}
+        >
             {options.map((option) => (
                 <Tooltip key={option.value} content={option.label}>
                     <Button
@@ -30,6 +36,7 @@ export function IconChoiceGroup<T extends string>({
                         onClick={() => onChange(option.value)}
                     >
                         <Icon name={option.icon} />
+                        {showLabels && <span>{option.label}</span>}
                     </Button>
                 </Tooltip>
             ))}

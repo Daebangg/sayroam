@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next";
 
-type SectionWordmarkProps = { variant: "settings" | "profile" };
+type SectionWordmarkProps = { variant: "settings" | "profile" | "matching" };
 
 export function SectionWordmark({ variant }: SectionWordmarkProps) {
     const { t } = useTranslation();
@@ -9,12 +9,24 @@ export function SectionWordmark({ variant }: SectionWordmarkProps) {
             <img
                 className="section-wordmark__light"
                 src={`/brand/${variant}-wordmark.svg`}
-                alt={t(variant === "profile" ? "settings.profileSignature" : "settings.signature")}
+                alt={t(
+                    variant === "matching"
+                        ? "matchingFlow.signature"
+                        : variant === "profile"
+                          ? "settings.profileSignature"
+                          : "settings.signature",
+                )}
             />
             <img
                 className="section-wordmark__dark"
                 src={`/brand/${variant}-wordmark-light.svg`}
-                alt={t(variant === "profile" ? "settings.profileSignature" : "settings.signature")}
+                alt={t(
+                    variant === "matching"
+                        ? "matchingFlow.signature"
+                        : variant === "profile"
+                          ? "settings.profileSignature"
+                          : "settings.signature",
+                )}
             />
         </span>
     );

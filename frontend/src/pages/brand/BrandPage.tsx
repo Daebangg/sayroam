@@ -19,12 +19,16 @@ import {
     Checkbox,
     DropdownMenu,
     DatePicker,
+    DateRangeCalendar,
     NumberStepper,
     Icon,
     KeyboardShortcut,
     Modal,
     Tag,
     TextField,
+    RangeField,
+    RangeSelector,
+    Autocomplete,
     FilePicker,
     ImageCropDialog,
     SectionWordmark,
@@ -44,6 +48,17 @@ import { mockupUrl } from "@/routing/mockups";
 
 const colors = ["primary", "sky", "sand", "surface", "text", "muted"] as const;
 const icons = [
+    "journey-list",
+    "journey-place",
+    "journey-dates",
+    "journey-people",
+    "journey-age",
+    "journey-plan",
+    "journey-pace",
+    "journey-together",
+    "journey-budget",
+    "journey-register",
+
     "home",
     "trips",
     "matching",
@@ -98,7 +113,12 @@ export function BrandPage() {
     const [pressed, setPressed] = useState(false);
     const [tagVisible, setTagVisible] = useState(true);
     const [filter, setFilter] = useState("all");
+    const [autocompleteQuery, setAutocompleteQuery] = useState("");
+    const [autocompleteValue, setAutocompleteValue] = useState("");
+    const [rangeSelection, setRangeSelection] = useState<[number, number]>([20, 40]);
+    const [rangeExample, setRangeExample] = useState(30);
     const [birthday, setBirthday] = useState("");
+    const [range, setRange] = useState({ start: "", end: "" });
     const [departure, setDeparture] = useState("");
     const [travelers, setTravelers] = useState(2);
     const [toast, setToast] = useState<{ id: number; tone: ToastTone } | null>(null);
@@ -120,6 +140,7 @@ export function BrandPage() {
             <div className="section-wordmark-showcase">
                 <SectionWordmark variant="settings" />
                 <SectionWordmark variant="profile" />
+                <SectionWordmark variant="matching" />
             </div>
             <section className="brand-design-intro">
                 <div>
@@ -337,6 +358,7 @@ export function BrandPage() {
                     <Card className="component-example">
                         <h3>{t("settings.gender")}</h3>
                         <IconChoiceGroup
+                            showLabels
                             label={t("settings.gender")}
                             value={gender}
                             onChange={setGender}
@@ -492,6 +514,75 @@ export function BrandPage() {
                                 disabled
                                 placeholder={t("brand.emailPlaceholder")}
                             />
+                            <Autocomplete
+                                label={t("matchingFlow.destinationSearch")}
+                                value={autocompleteValue}
+                                query={autocompleteQuery}
+                                options={options.filter((option) => !option.disabled)}
+                                emptyLabel={t("matchingFlow.noDestinations")}
+                                onQueryChange={(query) => {
+                                    setAutocompleteQuery(query);
+                                    setAutocompleteValue("");
+                                }}
+                                onSelect={(option) => {
+                                    setAutocompleteValue(option.value);
+                                    setAutocompleteQuery(option.label);
+                                }}
+                            />
+                            <Autocomplete
+                                label={t("brand.disabledInput")}
+                                value=""
+                                query=""
+                                options={[]}
+                                emptyLabel={t("matchingFlow.noDestinations")}
+                                disabled
+                                onQueryChange={() => {}}
+                                onSelect={() => {}}
+                            />
+                            <RangeSelector
+                                label={t("matchingFlow.age")}
+                                lowerLabel={t("matchingFlow.minAge")}
+                                upperLabel={t("matchingFlow.maxAge")}
+                                lowerValueLabel={t("matchingFlow.ageValue", {
+                                    count: rangeSelection[0],
+                                })}
+                                upperValueLabel={t("matchingFlow.ageValue", {
+                                    count: rangeSelection[1],
+                                })}
+                                min={1}
+                                max={120}
+                                value={rangeSelection}
+                                onChange={setRangeSelection}
+                            />
+                            <RangeSelector
+                                label={t("brand.disabledInput")}
+                                lowerLabel={t("matchingFlow.minAge")}
+                                upperLabel={t("matchingFlow.maxAge")}
+                                lowerValueLabel={t("matchingFlow.any")}
+                                upperValueLabel={t("matchingFlow.any")}
+                                min={1}
+                                max={120}
+                                value={[20, 40]}
+                                disabled
+                                onChange={() => {}}
+                            />
+                            <RangeField
+                                label={t("matchingFlow.minAge")}
+                                value={rangeExample}
+                                valueLabel={t("matchingFlow.ageValue", { count: rangeExample })}
+                                min={1}
+                                max={120}
+                                onChange={setRangeExample}
+                            />
+                            <RangeField
+                                label={t("brand.disabledInput")}
+                                value={30}
+                                valueLabel={t("matchingFlow.any")}
+                                min={1}
+                                max={120}
+                                disabled
+                                onChange={() => {}}
+                            />
                             <VerificationCode
                                 label={t("auth.codeLabel")}
                                 value={verificationCode}
@@ -566,6 +657,12 @@ export function BrandPage() {
                             label={t("mockup.departure")}
                             value={departure}
                             onChange={setDeparture}
+                        />
+                        <DateRangeCalendar
+                            label={t("matchingFlow.period")}
+                            startDate={range.start}
+                            endDate={range.end}
+                            onChange={(start, end) => setRange({ start, end })}
                         />
                         <NumberStepper
                             label={t("mockup.travelers")}
