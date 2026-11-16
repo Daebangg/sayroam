@@ -108,6 +108,16 @@ class CompanionSearchApiIntegrationTest extends DatabaseIntegrationTest {
     }
 
     @Test
+    void countsUnicodeCodePointsInTitle() throws Exception {
+        String title = "😀".repeat(80);
+        submit(post(PATH), PATH, authorization, conditions(seoulId, "2030-04-21", "2030-04-23",
+                ", \"title\": \"  " + title + "  \"")).andExpect(status().isCreated())
+                .andExpect(jsonPath("$.title").value(title));
+        submit(post(PATH), PATH, authorization, conditions(seoulId, "2030-04-21", "2030-04-23",
+                ", \"title\": \"" + title + "😀\"")).andExpect(status().isBadRequest());
+    }
+
+    @Test
     void rejectsInvalidDatesAgesAndUnavailableDestinations() throws Exception {
         submit(post(PATH), PATH, authorization, conditions(seoulId, "2030-04-21", "2030-04-23",
                 ", \"title\": \"" + "가".repeat(81) + "\"")).andExpect(status().isBadRequest());

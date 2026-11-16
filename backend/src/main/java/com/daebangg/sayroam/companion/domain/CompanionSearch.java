@@ -104,7 +104,7 @@ public class CompanionSearch extends BaseTimeEntity {
             return null;
         }
         String normalized = title.strip();
-        if (normalized.length() > MAX_TITLE_LENGTH) {
+        if (normalized.codePointCount(0, normalized.length()) > MAX_TITLE_LENGTH) {
             throw new BusinessException(CommonErrorCode.INVALID_INPUT);
         }
         return normalized;
