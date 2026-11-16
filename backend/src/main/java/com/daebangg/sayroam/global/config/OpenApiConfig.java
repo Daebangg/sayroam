@@ -5,6 +5,7 @@ import com.daebangg.sayroam.common.domain.error.TravelPeriodErrorCode;
 import com.daebangg.sayroam.companion.domain.error.CompanionSearchErrorCode;
 import com.daebangg.sayroam.global.exception.CommonErrorCode;
 import com.daebangg.sayroam.global.exception.ErrorCode;
+import com.daebangg.sayroam.place.domain.error.PlaceErrorCode;
 import com.daebangg.sayroam.room.domain.error.RoomErrorCode;
 import com.daebangg.sayroam.trip.domain.error.TripErrorCode;
 import com.daebangg.sayroam.user.domain.error.UserErrorCode;
@@ -59,7 +60,8 @@ public class OpenApiConfig {
         StringSchema errorCode = new StringSchema();
         errorCode.setEnum(Stream.of(CommonErrorCode.values(), AuthErrorCode.values(),
                         RoomErrorCode.values(), UserErrorCode.values(),
-                        TravelPeriodErrorCode.values(), TripErrorCode.values(), CompanionSearchErrorCode.values())
+                        TravelPeriodErrorCode.values(), TripErrorCode.values(), CompanionSearchErrorCode.values(),
+                        PlaceErrorCode.values())
                 .flatMap(Arrays::stream).map(ErrorCode::getCode).distinct().sorted().toList());
         errorCode.setDescription("백엔드에 정의된 업무·공통 오류 코드. Spring 기본 요청 오류와 향후 추가 코드는 별도 문자열로 받을 수 있습니다.");
         // ProblemDetail의 동적 확장 필드도 프론트엔드 타입 생성기에 명시적으로 노출한다.
