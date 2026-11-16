@@ -5,6 +5,7 @@ import com.daebangg.sayroam.support.DatabaseIntegrationTest;
 import com.daebangg.sayroam.user.domain.Role;
 import com.daebangg.sayroam.user.domain.User;
 import com.daebangg.sayroam.user.domain.UserRepository;
+import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.time.ZoneId;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.nullValue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -28,6 +30,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class CompanionCandidateApiIntegrationTest extends DatabaseIntegrationTest {
     @Autowired MockMvc mvc;
     @Autowired JdbcTemplate jdbc;
+    @Autowired EntityManager entityManager;
     @Autowired UserRepository users;
     @Autowired AccessTokenIssuer tokens;
 
@@ -128,6 +131,7 @@ class CompanionCandidateApiIntegrationTest extends DatabaseIntegrationTest {
         candidates(own, 0, 20).andExpect(status().isOk()).andExpect(jsonPath("$.candidates").isEmpty());
 
         preferences(own, null, null, null);
+        entityManager.clear();
         long noProfile = search(member("프로필 미입력", null, null), 1, 3);
         candidates(own, 0, 20).andExpect(status().isOk())
                 .andExpect(jsonPath("$.candidates[?(@.searchId == " + noProfile + ")]").isNotEmpty());
@@ -149,6 +153,106 @@ class CompanionCandidateApiIntegrationTest extends DatabaseIntegrationTest {
         jdbc.update("UPDATE companion_search SET status = 'CLOSED' WHERE id = ?", closed);
         candidates(closed, 0, 20).andExpect(status().isConflict())
                 .andExpect(jsonPath("$.code").value("COMPANION_SEARCH_CLOSED"));
+    }
+
+    @Test
+    void previewsWithOrWithoutPreferencesAndDoesNotRegisterTheViewer() throws Exception {
+        jdbc.update("UPDATE users SET gender = 'MALE', birth_date = ? WHERE id = ?", today.minusYears(30), owner);
+        long match = search(member("희망 조건 충족", "FEMALE", today.minusYears(25)), -1, 3);
+        preferences(match, "MALE", 30, 30);
+        long other = search(member("제한 없음", "MALE", today.minusYears(35)), 1, 3);
+        long reverseMismatch = search(member("상대 나이 제한", "FEMALE", today.minusYears(25)), 1, 3);
+        preferences(reverseMismatch, null, 31, null);
+
+        String path = "/api/companion-candidates";
+        mvc.perform(get(path).servletPath(path)).andExpect(status().isUnauthorized());
+        String start = today.toString();
+        String end = today.plusDays(3).toString();
+        mvc.perform(get(path).servletPath(path).header("Authorization", authorization)
+                        .param("destinationId", Long.toString(seoul)).param("startDate", start).param("endDate", end))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.candidates[*].searchId").value(contains((int) match, (int) other)));
+
+        mvc.perform(get(path).servletPath(path).header("Authorization", authorization)
+                        .param("destinationId", Long.toString(seoul)).param("startDate", start).param("endDate", end)
+                        .param("preferredGender", "FEMALE").param("preferredMinAge", "25").param("preferredMaxAge", "25"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.candidates[*].searchId").value(contains((int) match)));
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM companion_search WHERE user_id = ?", Integer.class, owner))
+                .isZero();
+
+        long own = search(owner, 0, 3);
+        preferences(own, "FEMALE", 25, 25);
+        candidates(own, 0, 20).andExpect(status().isOk())
+                .andExpect(jsonPath("$.candidates[*].searchId").value(contains((int) match)));
+    }
+
+    @Test
+    void filtersByTitleBeforeChoosingOneRegistrationPerMember() throws Exception {
+        long own = search(owner, 0, 4);
+        long traveler = member("여행자", null, null);
+        long longer = search(traveler, 0, 4);
+        long titled = search(traveler, 1, 2);
+        search(member("제목 없는 회원", null, null), 0, 4);
+        jdbc.update("UPDATE companion_search SET title = ? WHERE id = ?", "제주 산책", longer);
+        jdbc.update("UPDATE companion_search SET title = ? WHERE id = ?", "제주 카페 투어", titled);
+
+        String registered = path(own);
+        mvc.perform(get(registered).servletPath(registered).header("Authorization", authorization).param("q", " 카페 "))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.candidates[*].searchId").value(contains((int) titled)))
+                .andExpect(jsonPath("$.candidates[0].title").value("제주 카페 투어"));
+        mvc.perform(get(registered).servletPath(registered).header("Authorization", authorization).param("q", "%_"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.candidates").isEmpty());
+
+        String preview = "/api/companion-candidates";
+        mvc.perform(get(preview).servletPath(preview).header("Authorization", authorization)
+                        .param("destinationId", Long.toString(seoul)).param("startDate", today.toString())
+                        .param("endDate", today.plusDays(4).toString()).param("q", "카페"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.candidates[*].searchId").value(contains((int) titled)));
+    }
+
+    @Test
+    void validatesTitleQueryLengthByUnicodeCodePoints() throws Exception {
+        long own = search(owner, 0, 4);
+        long candidate = search(member("제목 검색 후보", null, null), 0, 4);
+        String title = "😀".repeat(80);
+        jdbc.update("UPDATE companion_search SET title = ? WHERE id = ?", title, candidate);
+
+        String registered = path(own);
+        mvc.perform(get(registered).servletPath(registered).header("Authorization", authorization)
+                        .param("q", " " + title + " "))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.candidates[*].searchId").value(contains((int) candidate)));
+
+        String preview = "/api/companion-candidates";
+        mvc.perform(get(preview).servletPath(preview).header("Authorization", authorization)
+                        .param("destinationId", Long.toString(seoul)).param("startDate", today.toString())
+                        .param("endDate", today.toString()).param("q", title + "😀"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("INVALID_INPUT"));
+    }
+
+    @Test
+    void rejectsInvalidPreviewConditions() throws Exception {
+        String path = "/api/companion-candidates";
+        mvc.perform(get(path).servletPath(path).header("Authorization", authorization)
+                        .param("destinationId", Long.toString(seoul)).param("startDate", today.toString()))
+                .andExpect(status().isBadRequest());
+        mvc.perform(get(path).servletPath(path).header("Authorization", authorization)
+                        .param("destinationId", Long.toString(seoul)).param("startDate", today.toString())
+                        .param("endDate", today.minusDays(1).toString()))
+                .andExpect(status().isBadRequest());
+        mvc.perform(get(path).servletPath(path).header("Authorization", authorization)
+                        .param("destinationId", Long.toString(seoul)).param("startDate", today.toString())
+                        .param("endDate", today.toString()).param("preferredMinAge", "30").param("preferredMaxAge", "29"))
+                .andExpect(status().isBadRequest());
+        mvc.perform(get(path).servletPath(path).header("Authorization", authorization)
+                        .param("destinationId", Long.toString(Long.MAX_VALUE)).param("startDate", today.toString())
+                        .param("endDate", today.toString()))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("DESTINATION_UNAVAILABLE"));
     }
 
     private long member(String nickname, String gender, LocalDate birthDate) {

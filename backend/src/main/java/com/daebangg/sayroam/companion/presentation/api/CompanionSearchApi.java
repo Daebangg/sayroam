@@ -7,6 +7,7 @@ import com.daebangg.sayroam.companion.presentation.dto.CompanionCandidateListRes
 import com.daebangg.sayroam.companion.presentation.dto.CompanionSearchListResponse;
 import com.daebangg.sayroam.companion.presentation.dto.CompanionSearchResponse;
 import com.daebangg.sayroam.companion.presentation.dto.SaveCompanionSearchRequest;
+import com.daebangg.sayroam.companion.domain.CompanionSearch;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -43,6 +44,8 @@ public interface CompanionSearchApi {
     ResponseEntity<CompanionCandidateListResponse> findCandidates(
             @Parameter(hidden = true) AuthenticatedAccount account,
             long searchId,
+            @Parameter(description = "등록 제목에 포함된 검색어. 앞뒤 공백은 제외",
+                    schema = @Schema(type = "string", maxLength = CompanionSearch.MAX_TITLE_LENGTH)) String q,
             @Parameter(description = "0부터 시작하는 페이지",
                     schema = @Schema(type = "integer", format = "int32", minimum = "0", defaultValue = "0")) int page,
             @Parameter(description = "페이지당 후보 수",
