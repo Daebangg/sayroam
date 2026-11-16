@@ -112,8 +112,7 @@ public class CompanionSearchService {
     @Transactional
     public CompanionSearchResult changeStatus(long userId, long id, CompanionSearchStatus status) {
         CompanionSearch search = findMineForUpdate(userId, id);
-        if (status == CompanionSearchStatus.ACTIVE && search.getStatus() == CompanionSearchStatus.CLOSED
-                && search.getDestinationId() != null) {
+        if (search.isReopening(status) && search.getDestinationId() != null) {
             requireActiveDestination(search.getDestinationId());
         }
         search.changeStatus(status);

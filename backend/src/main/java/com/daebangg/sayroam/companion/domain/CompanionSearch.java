@@ -136,11 +136,14 @@ public class CompanionSearch extends BaseTimeEntity {
         if (status == null) {
             throw new BusinessException(CommonErrorCode.INVALID_INPUT);
         }
-        if (status == CompanionSearchStatus.ACTIVE && this.status == CompanionSearchStatus.CLOSED
-                && destinationId == null) {
+        if (isReopening(status) && destinationId == null) {
             throw new BusinessException(CompanionSearchErrorCode.COMPANION_SEARCH_DESTINATION_REQUIRED);
         }
         this.status = status;
+    }
+
+    public boolean isReopening(@Nullable CompanionSearchStatus targetStatus) {
+        return status == CompanionSearchStatus.CLOSED && targetStatus == CompanionSearchStatus.ACTIVE;
     }
 
     public void validateCandidateSearch() {
