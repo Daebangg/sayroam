@@ -20,8 +20,10 @@ import org.springframework.http.ResponseEntity;
 @SecurityRequirement(name = "bearerAuth")
 public interface CompanionSearchApi {
     @Operation(operationId = "createCompanionSearch", summary = "동행 매칭 등록",
-            description = "활성 여행지와 여행 기간, 선택한 상대 조건, 제목, 소개글과 내 정보 공개 설정을 저장합니다.")
+            description = "활성 여행지와 여행 기간, 선택한 상대 조건, 제목, 소개글과 내 정보 공개 설정을 저장합니다. "
+                    + "회원당 활성 모집은 최대 3개입니다. 종료한 모집은 개수에서 제외합니다.")
     @ApiResponse(responseCode = "201", description = "등록 완료")
+    @ApiResponse(responseCode = "409", ref = "#/components/responses/CompanionSearchLimitExceeded")
     @ApiResponse(responseCode = "400", ref = "#/components/responses/BadRequest")
     @ApiResponse(responseCode = "401", ref = "#/components/responses/Unauthorized")
     ResponseEntity<CompanionSearchResponse> create(@Parameter(hidden = true) AuthenticatedAccount account,
@@ -66,12 +68,13 @@ public interface CompanionSearchApi {
 
     @Operation(operationId = "closeCompanionSearch", summary = "동행 모집 종료 또는 재개",
             description = "CLOSED는 모집 종료, ACTIVE는 모집 재개입니다. 이미 같은 상태인 등록에도 요청할 수 있습니다. "
-                    + "재개하려면 활성 여행지가 필요합니다.")
+                    + "재개하려면 활성 여행지가 필요하며, 활성 모집이 3개 미만이어야 합니다. "
+                    + "이미 ACTIVE인 등록에 같은 요청을 반복하면 한도와 무관하게 성공합니다.")
     @ApiResponse(responseCode = "200", description = "상태 변경 완료")
     @ApiResponse(responseCode = "400", ref = "#/components/responses/BadRequest")
     @ApiResponse(responseCode = "401", ref = "#/components/responses/Unauthorized")
     @ApiResponse(responseCode = "404", ref = "#/components/responses/CompanionSearchNotFound")
-    @ApiResponse(responseCode = "409", ref = "#/components/responses/CompanionSearchDestinationRequired")
+    @ApiResponse(responseCode = "409", ref = "#/components/responses/CompanionSearchStatusConflict")
     ResponseEntity<CompanionSearchResponse> changeStatus(@Parameter(hidden = true) AuthenticatedAccount account,
                                                          long searchId, ChangeCompanionSearchStatusRequest request);
 }

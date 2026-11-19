@@ -15,6 +15,7 @@ import com.daebangg.sayroam.destination.domain.DestinationRepository;
 import com.daebangg.sayroam.global.exception.BusinessException;
 import com.daebangg.sayroam.global.exception.CommonErrorCode;
 import com.daebangg.sayroam.user.domain.Gender;
+import com.daebangg.sayroam.user.domain.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -32,9 +33,12 @@ public class CompanionSearchService {
     private final CompanionSearchRepository searches;
     private final DestinationRepository destinations;
     private final CompanionCandidateQueryRepository candidates;
+    private final UserRepository users;
 
     @Transactional
     public CompanionSearchResult create(long userId, SaveCompanionSearchCommand command) {
+        lockOwner(userId);
+        requireAvailableActiveSlot(userId);
         requireActiveDestination(command.destinationId());
         CompanionSearch search = CompanionSearch.builder()
                 .userId(userId)
@@ -111,9 +115,13 @@ public class CompanionSearchService {
 
     @Transactional
     public CompanionSearchResult changeStatus(long userId, long id, CompanionSearchStatus status) {
+        lockOwner(userId);
         CompanionSearch search = findMineForUpdate(userId, id);
-        if (search.isReopening(status) && search.getDestinationId() != null) {
-            requireActiveDestination(search.getDestinationId());
+        if (search.isReopening(status)) {
+            requireAvailableActiveSlot(userId);
+            if (search.getDestinationId() != null) {
+                requireActiveDestination(search.getDestinationId());
+            }
         }
         search.changeStatus(status);
         return CompanionSearchResult.from(search);
@@ -122,6 +130,17 @@ public class CompanionSearchService {
     private CompanionSearch findMineForUpdate(long userId, long id) {
         return searches.findForUpdateByIdAndUserId(id, userId)
                 .orElseThrow(() -> new BusinessException(CompanionSearchErrorCode.COMPANION_SEARCH_NOT_FOUND));
+    }
+
+    private void lockOwner(long userId) {
+        // 신규 등록과 상태 변경은 회원 → 모집 순으로 잠가 같은 회원의 활성 개수 변경을 직렬화한다.
+        users.findForUpdateByIdAndDeletedAtIsNull(userId)
+                .orElseThrow(() -> new BusinessException(CommonErrorCode.UNAUTHENTICATED));
+    }
+
+    private void requireAvailableActiveSlot(long userId) {
+        // MySQL의 첫 일반 조회가 회원 잠금 획득 후 실행되도록 다른 조회보다 먼저 검사한다.
+        CompanionSearch.validateActiveSearchCount(searches.countByUserIdAndStatus(userId, CompanionSearchStatus.ACTIVE));
     }
 
     private void requireActiveDestination(Long destinationId) {

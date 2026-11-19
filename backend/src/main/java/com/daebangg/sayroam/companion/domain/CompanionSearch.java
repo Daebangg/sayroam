@@ -28,6 +28,7 @@ import org.jspecify.annotations.Nullable;
 public class CompanionSearch extends BaseTimeEntity {
     public static final int MAX_TITLE_LENGTH = 80;
     public static final int MAX_INTRODUCTION_LENGTH = 200;
+    public static final int MAX_ACTIVE_SEARCHES = 3;
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -130,6 +131,12 @@ public class CompanionSearch extends BaseTimeEntity {
             throw new BusinessException(CommonErrorCode.INVALID_INPUT);
         }
         return normalized;
+    }
+
+    public static void validateActiveSearchCount(long activeCount) {
+        if (activeCount >= MAX_ACTIVE_SEARCHES) {
+            throw new BusinessException(CompanionSearchErrorCode.COMPANION_SEARCH_LIMIT_EXCEEDED);
+        }
     }
 
     public void changeStatus(CompanionSearchStatus status) {
