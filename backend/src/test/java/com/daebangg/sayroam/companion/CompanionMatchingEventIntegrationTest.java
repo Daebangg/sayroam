@@ -11,6 +11,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.core.task.TaskRejectedException;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -24,6 +25,7 @@ import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -73,9 +75,9 @@ class CompanionMatchingEventIntegrationTest extends DatabaseIntegrationTest {
     }
 
     @Test
-    void doesNotWakeTheWorkerBeforeCommitOrAfterRollback() throws Exception {
+    void doesNotWakeTheWorkerBeforeCommitOrAfterRollback() {
         // 시작 이벤트의 DB 확인이 끝난 뒤 이번 트랜잭션의 실행 신호만 검증한다.
-        executor.submit(() -> {}).get(10, TimeUnit.SECONDS);
+        awaitWorkerCompletion();
         clearInvocations(worker);
         long owner = member();
         long destination = jdbc.queryForObject("SELECT id FROM destination WHERE name = '서울'", Long.class);
@@ -91,6 +93,15 @@ class CompanionMatchingEventIntegrationTest extends DatabaseIntegrationTest {
                 .isZero();
     }
 
+    private void awaitWorkerCompletion() {
+        CompletableFuture<Void> completed = new CompletableFuture<>();
+        // 단일 스레드 실행기에서 앞선 작업이 끝난 뒤 완료 장벽을 실행한다.
+        // 대기열이 한 건으로 제한되어 있으므로 제출 거부 시 빈자리가 날 때까지 기다린다.
+        await().atMost(Duration.ofSeconds(10)).ignoreException(TaskRejectedException.class)
+                .untilAsserted(() -> executor.execute(() -> completed.complete(null)));
+        completed.orTimeout(10, TimeUnit.SECONDS).join();
+    }
+
     @Test
     void aCommitAfterTheWorkerRanDoesNotLeaveTheNewJobSleeping() {
         long destination = jdbc.queryForObject("SELECT id FROM destination WHERE name = '서울'", Long.class);
@@ -101,8 +112,7 @@ class CompanionMatchingEventIntegrationTest extends DatabaseIntegrationTest {
                     null, null, null, null, null, null, null)).id();
             // 커밋 전 별도 스레드는 이 작업을 볼 수 없다. 커밋 이후 이벤트가 다시 깨워야 한다.
             worker.requestRun();
-            await().atMost(Duration.ofSeconds(10)).untilAsserted(() ->
-                    assertThat(executor.getActiveCount()).isZero());
+            awaitWorkerCompletion();
             return id;
         });
         await().atMost(Duration.ofSeconds(15)).untilAsserted(() ->
