@@ -43,8 +43,9 @@ public interface CompanionCandidatePreviewApi {
             @Parameter(description = "OVERLAP는 겹치는 일수순, STYLE은 여행 스타일 점수순. STYLE은 4문항 응답 필수",
                     schema = @Schema(implementation = CompanionCandidateSort.class, defaultValue = "OVERLAP"))
             CompanionCandidateSort sort,
-            @Parameter(description = "등록 전 4문항 점수. 하나라도 전달하면 네 점수 모두 필요하며 프로필 대신 사용", schema = @Schema(minimum = "1", maximum = "5")) Integer planning,
-            @Parameter(schema = @Schema(minimum = "1", maximum = "5")) Integer dailyPace,
-            @Parameter(schema = @Schema(minimum = "1", maximum = "5")) Integer timeTogether,
-            @Parameter(schema = @Schema(minimum = "1", maximum = "5")) Integer spending);
+            @Parameter(description = "등록 전 4문항 점수. 하나라도 전달하면 네 점수 모두 필요하며 프로필 대신 사용",
+                    schema = @Schema(type = "integer", format = "int32", minimum = "1", maximum = "5")) Integer planning,
+            @Parameter(schema = @Schema(type = "integer", format = "int32", minimum = "1", maximum = "5")) Integer dailyPace,
+            @Parameter(schema = @Schema(type = "integer", format = "int32", minimum = "1", maximum = "5")) Integer timeTogether,
+            @Parameter(schema = @Schema(type = "integer", format = "int32", minimum = "1", maximum = "5")) Integer spending);
 }

@@ -19,8 +19,11 @@ import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.nullValue;
+import static org.hamcrest.Matchers.contains;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -182,13 +185,17 @@ class CompanionSearchApiIntegrationTest extends DatabaseIntegrationTest {
 
     @Test
     void publishesTheRecruitmentStyleContractWithItsQuestionCodes() throws Exception {
-        mvc.perform(get("/v3/api-docs").servletPath("/v3/api-docs"))
+        ResultActions contract = mvc.perform(get("/v3/api-docs").servletPath("/v3/api-docs"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.components.schemas.RecruitmentTravelStyleRequest.properties.planning").exists())
                 .andExpect(jsonPath("$.components.schemas.RecruitmentTravelStyleRequest.properties['daily-pace']").exists())
                 .andExpect(jsonPath("$.components.schemas.RecruitmentTravelStyleRequest.properties['time-together']").exists())
                 .andExpect(jsonPath("$.components.schemas.RecruitmentTravelStyleRequest.properties.spending").exists())
                 .andExpect(jsonPath("$.components.schemas.CompanionSearchResponse.properties.travelStyle").exists());
+        for (String question : List.of("planning", "dailyPace", "timeTogether", "spending")) {
+            contract.andExpect(jsonPath("$.paths['/api/companion-candidates'].get.parameters[?(@.name == '"
+                    + question + "')].schema.type").value(contains("integer")));
+        }
     }
 
     @Test

@@ -389,7 +389,7 @@ export interface paths {
         };
         /**
          * 동행 등록 전 후보 조회
-         * @description 여행지와 기간, 선택한 상대 조건으로 동행 후보를 미리 조회합니다. 상대의 희망 조건은 로그인 회원의 프로필과 비교합니다. 만 나이와 성별은 해당 등록에서 공개한 값만 반환합니다. STYLE 정렬은 4문항 응답이 완성된 후보를 대상으로 합니다.
+         * @description 여행지와 기간, 선택한 상대 조건으로 동행 후보를 미리 조회합니다. 상대의 희망 조건은 로그인 회원의 프로필과 비교합니다. 만 나이와 성별은 해당 등록에서 공개한 값만 반환합니다. 전달한 4문항 점수를 상대 모집의 저장값과 비교합니다. 점수를 모두 생략하면 프로필을 초기값으로 사용합니다. STYLE 정렬은 저장값이 완성된 후보를 대상으로 합니다.
          */
         get: operations["previewCompanionCandidates"];
         put?: never;
@@ -411,7 +411,7 @@ export interface paths {
         put?: never;
         /**
          * 동행 매칭 등록
-         * @description 활성 여행지와 여행 기간, 선택한 상대 조건, 제목, 소개글과 내 정보 공개 설정을 저장합니다. 회원당 활성 모집은 최대 3개입니다. 종료한 모집은 개수에서 제외합니다. 여행 스타일 4문항 응답이 필요합니다.
+         * @description 활성 여행지와 여행 기간, 선택한 상대 조건, 제목, 소개글과 내 정보 공개 설정을 저장합니다. 회원당 활성 모집은 최대 3개입니다. 종료한 모집은 개수에서 제외합니다. 모집에 저장할 여행 스타일 4문항 응답이 필요하며 프로필과 별도로 보관합니다.
          */
         post: operations["createCompanionSearch"];
         delete?: never;
@@ -430,7 +430,7 @@ export interface paths {
         get?: never;
         /**
          * 동행 매칭 조건 수정
-         * @description 활성 등록의 조건을 교체합니다. 희망 성별과 나이 조건, 제목은 생략하면 해제합니다. 소개글과 내 정보 공개 설정은 생략하거나 null이면 유지합니다.
+         * @description 등록의 조건을 교체하며 종료 상태는 유지합니다. 종료한 기존 모집도 여행 스타일을 보완한 뒤 재개할 수 있습니다. 희망 성별과 나이 조건, 제목은 생략하면 해제합니다. 소개글과 내 정보 공개 설정, 여행 스타일은 생략하거나 null이면 유지합니다. 기존 모집에 여행 스타일 저장값이 없으면 4문항을 보내야 합니다.
          */
         put: operations["updateCompanionSearch"];
         post?: never;
@@ -439,7 +439,7 @@ export interface paths {
         head?: never;
         /**
          * 동행 모집 종료 또는 재개
-         * @description CLOSED는 모집 종료, ACTIVE는 모집 재개입니다. 이미 같은 상태인 등록에도 요청할 수 있습니다. 재개하려면 활성 여행지와 여행 스타일 4문항 응답이 필요하며, 활성 모집이 3개 미만이어야 합니다. 이미 ACTIVE인 등록에 같은 요청을 반복하면 한도와 무관하게 성공합니다.
+         * @description CLOSED는 모집 종료, ACTIVE는 모집 재개입니다. 이미 같은 상태인 등록에도 요청할 수 있습니다. 재개하려면 활성 여행지와 해당 모집에 저장된 여행 스타일 4문항 응답이 필요하며, 활성 모집이 3개 미만이어야 합니다. 이미 ACTIVE인 등록에 같은 요청을 반복하면 한도와 무관하게 성공합니다.
          */
         patch: operations["closeCompanionSearch"];
         trace?: never;
@@ -453,7 +453,7 @@ export interface paths {
         };
         /**
          * 동행 매칭 후보 조회
-         * @description 등록한 두 여행 기간이 하루 이상 겹치고 양쪽의 희망 나이·성별 조건을 충족하는 후보를 조회합니다. 여행 기간의 시작일과 종료일을 포함해 겹치는 일수가 많은 순으로, 회원별 한 건을 반환합니다. 만 나이와 성별은 해당 등록에서 공개한 값만 반환합니다. STYLE 정렬은 4문항 응답이 완성된 후보를 대상으로 합니다.
+         * @description 등록한 두 여행 기간이 하루 이상 겹치고 양쪽의 희망 나이·성별 조건을 충족하는 후보를 조회합니다. 여행 기간의 시작일과 종료일을 포함해 겹치는 일수가 많은 순으로, 회원별 한 건을 반환합니다. 만 나이와 성별은 해당 등록에서 공개한 값만 반환합니다. STYLE 정렬과 비교는 양쪽 모집에 저장된 4문항 점수를 사용합니다. STYLE 정렬에서는 회원별로 점수가 가장 비슷한 모집 한 건을 선택합니다.
          */
         get: operations["listCompanionCandidates"];
         put?: never;
@@ -473,7 +473,7 @@ export interface paths {
         };
         /**
          * 본인의 동행 매칭 등록 목록
-         * @description 종료한 등록을 포함해 최신 등록순으로 조회합니다.
+         * @description 종료한 등록을 포함해 최신 등록순으로 조회합니다. travelStyle은 모집 저장값이며 기존 미설정 모집은 빈 객체입니다.
          */
         get: operations["listMyCompanionSearches"];
         put?: never;
@@ -1108,6 +1108,10 @@ export interface components {
             /** @enum {string} */
             status: "ACTIVE" | "CLOSED";
             title: string | null;
+            /** @description 모집에 저장된 4문항 점수. 기존 미설정 모집은 빈 객체이며 수정으로 보완해야 합니다. */
+            travelStyle: {
+                [key: string]: number;
+            };
         };
         /** @enum {string} */
         CompanionSearchStatus: "ACTIVE" | "CLOSED";
@@ -1412,6 +1416,17 @@ export interface components {
             /** @description 검색된 장소. 축제·여행코스와 좌표가 없는 장소는 제외하므로 한 페이지가 20개보다 적을 수 있음 */
             places: components["schemas"]["PlaceSearchItemResponse"][];
         };
+        /** @description 모집에만 저장하는 4문항 점수. 각 점수는 1~5의 정수입니다. */
+        RecruitmentTravelStyleRequest: {
+            /** Format: int32 */
+            "daily-pace": number | null;
+            /** Format: int32 */
+            planning: number | null;
+            /** Format: int32 */
+            spending: number | null;
+            /** Format: int32 */
+            "time-together": number | null;
+        };
         SaveCompanionSearchRequest: {
             /** Format: int64 */
             destinationId: number;
@@ -1439,6 +1454,8 @@ export interface components {
             startDate: string;
             /** @description 동행 제목. 앞뒤 공백 제거 후 최대 80자. 생략하거나 비어 있으면 제목 없음 */
             title?: string | null;
+            /** @description 모집에만 저장할 4문항 점수(1~5). 신규 등록에서 생략하면 프로필을 복사하고 수정에서 생략하면 모집 저장값을 유지합니다. */
+            travelStyle?: components["schemas"]["RecruitmentTravelStyleRequest"] | null;
         };
         Signup: {
             /** @description 항상 false. 소셜 가입에 별도 인증 메일을 발송하지 않음 */
@@ -1718,7 +1735,7 @@ export interface components {
                 "application/problem+json": components["schemas"]["ApiProblem"];
             };
         };
-        /** @description 409: COMPANION_SEARCH_CLOSED. 종료된 등록은 수정할 수 없음 */
+        /** @description 409: COMPANION_SEARCH_CLOSED. 종료된 등록으로 후보를 조회할 수 없음 */
         CompanionSearchClosed: {
             headers: {
                 [name: string]: unknown;
@@ -1727,7 +1744,7 @@ export interface components {
                 "application/problem+json": components["schemas"]["ApiProblem"];
             };
         };
-        /** @description 409: COMPANION_SEARCH_LIMIT_EXCEEDED(활성 모집 최대 3개 초과), TRAVEL_STYLE_REQUIRED(여행 스타일 4문항 응답 필요) */
+        /** @description 409: COMPANION_SEARCH_LIMIT_EXCEEDED(활성 모집 최대 3개 초과), TRAVEL_STYLE_REQUIRED(모집에 저장할 여행 스타일 4문항 응답 필요) */
         CompanionSearchCreateConflict: {
             headers: {
                 [name: string]: unknown;
@@ -1763,7 +1780,7 @@ export interface components {
                 "application/problem+json": components["schemas"]["ApiProblem"];
             };
         };
-        /** @description 409: COMPANION_SEARCH_DESTINATION_REQUIRED(재개할 등록에 여행지가 없음), COMPANION_SEARCH_LIMIT_EXCEEDED(활성 모집 최대 3개 초과), TRAVEL_STYLE_REQUIRED(여행 스타일 4문항 응답 필요) */
+        /** @description 409: COMPANION_SEARCH_DESTINATION_REQUIRED(재개할 등록에 여행지가 없음), COMPANION_SEARCH_LIMIT_EXCEEDED(활성 모집 최대 3개 초과), TRAVEL_STYLE_REQUIRED(모집에 저장할 여행 스타일 4문항 응답 필요) */
         CompanionSearchStatusConflict: {
             headers: {
                 [name: string]: unknown;
@@ -2144,7 +2161,7 @@ export interface components {
                 "application/problem+json": components["schemas"]["ApiProblem"];
             };
         };
-        /** @description 409: TRAVEL_STYLE_REQUIRED. 여행 스타일 4문항에 모두 응답한 뒤 다시 요청 */
+        /** @description 409: TRAVEL_STYLE_REQUIRED. 모집 수정에서 여행 스타일 4문항을 저장한 뒤 다시 요청. 등록 전 조회는 4문항 점수를 전달 */
         TravelStyleRequired: {
             headers: {
                 [name: string]: unknown;
@@ -2809,10 +2826,13 @@ export interface operations {
     previewCompanionCandidates: {
         parameters: {
             query: {
+                dailyPace?: number;
                 destinationId: number;
                 endDate: string;
                 /** @description 0부터 시작하는 페이지 */
                 page?: number;
+                /** @description 등록 전 4문항 점수. 하나라도 전달하면 네 점수 모두 필요하며 프로필 대신 사용 */
+                planning?: number;
                 preferredGender?: "MALE" | "FEMALE";
                 preferredMaxAge?: number;
                 preferredMinAge?: number;
@@ -2822,7 +2842,9 @@ export interface operations {
                 size?: number;
                 /** @description OVERLAP는 겹치는 일수순, STYLE은 여행 스타일 점수순. STYLE은 4문항 응답 필수 */
                 sort?: "OVERLAP" | "STYLE";
+                spending?: number;
                 startDate: string;
+                timeTogether?: number;
             };
             header?: never;
             path?: never;
@@ -2898,7 +2920,7 @@ export interface operations {
             400: components["responses"]["BadRequest"];
             401: components["responses"]["Unauthorized"];
             404: components["responses"]["CompanionSearchNotFound"];
-            409: components["responses"]["CompanionSearchClosed"];
+            409: components["responses"]["TravelStyleRequired"];
         };
     };
     closeCompanionSearch: {

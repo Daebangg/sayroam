@@ -58,7 +58,7 @@ OVERLAP 정렬은 기존 기간 기준을 유지하며 선택된 모집의 저�
 ## 배포·검증
 
 앱 실행 전 기존 절차대로 `flywayMigrate`로 V16을 적용해야 합니다. 개인 DB에는 자동 적용하지 않습니다.
-이 작업은 백엔드만 변경하며 프론트엔드 계약 스냅샷·생성 타입·화면 연결은 포함하지 않습니다.
+백엔드 변경과 함께 프론트엔드 계약 스냅샷·생성 타입을 갱신합니다. 화면 연결은 별도 작업입니다.
 프론트엔드가 선택값을 사용하려면 위 `travelStyle` 필드를 저장 요청에 포함해야 합니다.
 
 `CompanionSearchApiIntegrationTest`, `CompanionCandidateApiIntegrationTest`는 프로필 없이 등록·재개,
