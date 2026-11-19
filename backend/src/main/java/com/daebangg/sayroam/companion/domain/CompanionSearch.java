@@ -20,12 +20,14 @@ import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.jspecify.annotations.Nullable;
 
 @Entity
 @Table(name = "companion_search")
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class CompanionSearch extends BaseTimeEntity {
     public static final int MAX_TITLE_LENGTH = 80;
+    public static final int MAX_INTRODUCTION_LENGTH = 200;
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -66,8 +68,17 @@ public class CompanionSearch extends BaseTimeEntity {
     @Column(length = MAX_TITLE_LENGTH)
     private String title;
 
+    @Getter
     @Column(columnDefinition = "TEXT")
     private String introduction;
+
+    @Getter
+    @Column(name = "show_age", nullable = false)
+    private boolean showAge;
+
+    @Getter
+    @Column(name = "show_gender", nullable = false)
+    private boolean showGender;
 
     @Getter
     @Enumerated(EnumType.STRING)
@@ -76,22 +87,33 @@ public class CompanionSearch extends BaseTimeEntity {
 
     @Builder
     private CompanionSearch(Long userId, Long destinationId, TravelPeriod period, Gender preferredGender,
-                          AgeRange preferredAgeRange, String introduction, String title) {
+                            AgeRange preferredAgeRange, String title, @Nullable String introduction,
+                            @Nullable Boolean showAge, @Nullable Boolean showGender) {
         this.userId = userId;
-        this.introduction = introduction;
         this.status = CompanionSearchStatus.ACTIVE;
-        update(destinationId, period, preferredGender, preferredAgeRange, title);
+        update(destinationId, period, preferredGender, preferredAgeRange, title, introduction, showAge, showGender);
     }
 
     public void update(Long destinationId, TravelPeriod period, Gender preferredGender, AgeRange preferredAgeRange,
-                       String title) {
+                       String title, @Nullable String introduction, @Nullable Boolean showAge,
+                       @Nullable Boolean showGender) {
         if (status == CompanionSearchStatus.CLOSED) {
             throw new BusinessException(CompanionSearchErrorCode.COMPANION_SEARCH_CLOSED);
         }
         if (destinationId == null || period == null) {
             throw new BusinessException(CommonErrorCode.INVALID_INPUT);
         }
-        this.title = normalizeTitle(title);
+        String normalizedTitle = normalizeText(title, MAX_TITLE_LENGTH);
+        if (introduction != null) {
+            this.introduction = normalizeText(introduction, MAX_INTRODUCTION_LENGTH);
+        }
+        if (showAge != null) {
+            this.showAge = showAge;
+        }
+        if (showGender != null) {
+            this.showGender = showGender;
+        }
+        this.title = normalizedTitle;
         this.destinationId = destinationId;
         this.region = null;
         this.period = period;
@@ -99,22 +121,29 @@ public class CompanionSearch extends BaseTimeEntity {
         this.preferredAgeRange = preferredAgeRange;
     }
 
-    private String normalizeTitle(String title) {
-        if (title == null || title.isBlank()) {
+    private String normalizeText(@Nullable String text, int maxLength) {
+        if (text == null || text.isBlank()) {
             return null;
         }
-        String normalized = title.strip();
-        if (normalized.codePointCount(0, normalized.length()) > MAX_TITLE_LENGTH) {
+        String normalized = text.strip();
+        if (normalized.codePointCount(0, normalized.length()) > maxLength) {
             throw new BusinessException(CommonErrorCode.INVALID_INPUT);
         }
         return normalized;
     }
 
     public void changeStatus(CompanionSearchStatus status) {
-        if (status != CompanionSearchStatus.CLOSED) {
+        if (status == null) {
             throw new BusinessException(CommonErrorCode.INVALID_INPUT);
         }
+        if (isReopening(status) && destinationId == null) {
+            throw new BusinessException(CompanionSearchErrorCode.COMPANION_SEARCH_DESTINATION_REQUIRED);
+        }
         this.status = status;
+    }
+
+    public boolean isReopening(@Nullable CompanionSearchStatus targetStatus) {
+        return status == CompanionSearchStatus.CLOSED && targetStatus == CompanionSearchStatus.ACTIVE;
     }
 
     public void validateCandidateSearch() {

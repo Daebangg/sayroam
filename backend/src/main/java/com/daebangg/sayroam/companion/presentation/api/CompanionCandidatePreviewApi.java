@@ -21,7 +21,8 @@ public interface CompanionCandidatePreviewApi {
 
     @Operation(operationId = "previewCompanionCandidates", summary = "동행 등록 전 후보 조회",
             description = "여행지와 기간, 선택한 상대 조건으로 동행 후보를 미리 조회합니다. "
-                    + "상대의 희망 조건은 로그인 회원의 프로필과 비교합니다.")
+                    + "상대의 희망 조건은 로그인 회원의 프로필과 비교합니다. "
+                    + "만 나이와 성별은 해당 등록에서 공개한 값만 반환합니다.")
     @ApiResponse(responseCode = "200", description = "후보 목록. 조건에 맞는 후보가 없으면 빈 배열")
     @ApiResponse(responseCode = "400", ref = "#/components/responses/BadRequest")
     @ApiResponse(responseCode = "401", ref = "#/components/responses/Unauthorized")

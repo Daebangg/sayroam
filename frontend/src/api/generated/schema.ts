@@ -389,7 +389,7 @@ export interface paths {
         };
         /**
          * 동행 등록 전 후보 조회
-         * @description 여행지와 기간, 선택한 상대 조건으로 동행 후보를 미리 조회합니다. 상대의 희망 조건은 로그인 회원의 프로필과 비교합니다.
+         * @description 여행지와 기간, 선택한 상대 조건으로 동행 후보를 미리 조회합니다. 상대의 희망 조건은 로그인 회원의 프로필과 비교합니다. 만 나이와 성별은 해당 등록에서 공개한 값만 반환합니다.
          */
         get: operations["previewCompanionCandidates"];
         put?: never;
@@ -411,7 +411,7 @@ export interface paths {
         put?: never;
         /**
          * 동행 매칭 등록
-         * @description 활성 여행지와 여행 기간, 선택한 상대 조건과 제목을 저장합니다.
+         * @description 활성 여행지와 여행 기간, 선택한 상대 조건, 제목, 소개글과 내 정보 공개 설정을 저장합니다.
          */
         post: operations["createCompanionSearch"];
         delete?: never;
@@ -430,7 +430,7 @@ export interface paths {
         get?: never;
         /**
          * 동행 매칭 조건 수정
-         * @description 활성 등록의 조건을 교체합니다. 희망 성별과 나이 조건, 제목은 생략하면 해제합니다.
+         * @description 활성 등록의 조건을 교체합니다. 희망 성별과 나이 조건, 제목은 생략하면 해제합니다. 소개글과 내 정보 공개 설정은 생략하거나 null이면 유지합니다.
          */
         put: operations["updateCompanionSearch"];
         post?: never;
@@ -438,8 +438,8 @@ export interface paths {
         options?: never;
         head?: never;
         /**
-         * 동행 매칭 종료
-         * @description 상태를 CLOSED로 변경합니다. 이미 종료한 등록에도 같은 요청을 보낼 수 있습니다.
+         * 동행 모집 종료 또는 재개
+         * @description CLOSED는 모집 종료, ACTIVE는 모집 재개입니다. 이미 같은 상태인 등록에도 요청할 수 있습니다. 재개하려면 활성 여행지가 필요합니다.
          */
         patch: operations["closeCompanionSearch"];
         trace?: never;
@@ -453,7 +453,7 @@ export interface paths {
         };
         /**
          * 동행 매칭 후보 조회
-         * @description 등록한 두 여행 기간이 하루 이상 겹치고 양쪽의 희망 나이·성별 조건을 충족하는 후보를 조회합니다. 여행 기간의 시작일과 종료일을 포함해 겹치는 일수가 많은 순으로, 회원별 한 건을 반환합니다.
+         * @description 등록한 두 여행 기간이 하루 이상 겹치고 양쪽의 희망 나이·성별 조건을 충족하는 후보를 조회합니다. 여행 기간의 시작일과 종료일을 포함해 겹치는 일수가 많은 순으로, 회원별 한 건을 반환합니다. 만 나이와 성별은 해당 등록에서 공개한 값만 반환합니다.
          */
         get: operations["listCompanionCandidates"];
         put?: never;
@@ -1008,8 +1008,16 @@ export interface components {
             type?: string;
         };
         Candidate: {
+            /**
+             * Format: int32
+             * @description 후보가 공개한 만 나이. 비공개 또는 프로필 미입력 시 null
+             */
+            age: number | null;
             /** Format: date */
             endDate: string;
+            /** @description 후보가 공개한 성별. 비공개 또는 프로필 미입력 시 null */
+            gender: components["schemas"]["Gender"] | null;
+            introduction: string | null;
             nickname: string;
             /** Format: int32 */
             overlapDays: number;
@@ -1025,8 +1033,8 @@ export interface components {
             title: string | null;
         };
         ChangeCompanionSearchStatusRequest: {
-            /** @enum {string} */
-            status: "CLOSED";
+            /** @description ACTIVE는 모집 재개, CLOSED는 모집 종료 */
+            status: components["schemas"]["CompanionSearchStatus"];
         };
         ChatMessageResponse: {
             /**
@@ -1081,6 +1089,7 @@ export interface components {
             endDate: string;
             /** Format: int64 */
             id: number;
+            introduction: string | null;
             /** @description 기존 자유 입력 등록의 지역명 */
             legacyRegion: string | null;
             preferredGender: components["schemas"]["Gender"] | null;
@@ -1088,12 +1097,16 @@ export interface components {
             preferredMaxAge: number | null;
             /** Format: int32 */
             preferredMinAge: number | null;
+            showAge: boolean;
+            showGender: boolean;
             /** Format: date */
             startDate: string;
             /** @enum {string} */
             status: "ACTIVE" | "CLOSED";
             title: string | null;
         };
+        /** @enum {string} */
+        CompanionSearchStatus: "ACTIVE" | "CLOSED";
         CreateRoomInvitationResponse: {
             /**
              * @description 초대 코드
@@ -1400,6 +1413,8 @@ export interface components {
             destinationId: number;
             /** Format: date */
             endDate: string;
+            /** @description 동행 소개글. 앞뒤 공백 제거 후 최대 200자. 수정 시 생략 또는 null이면 유지, 공백만 입력하면 삭제 */
+            introduction?: string | null;
             /** @description 생략하거나 null이면 성별 무관 */
             preferredGender?: components["schemas"]["Gender"] | null;
             /**
@@ -1412,6 +1427,10 @@ export interface components {
              * @description 생략하거나 null이면 최소 나이 제한 없음
              */
             preferredMinAge?: number | null;
+            /** @description 내 만 나이 공개 여부. 생략 또는 null이면 신규 등록은 비공개, 수정은 기존 설정 유지 */
+            showAge?: boolean | null;
+            /** @description 내 성별 공개 여부. 생략 또는 null이면 신규 등록은 비공개, 수정은 기존 설정 유지 */
+            showGender?: boolean | null;
             /** Format: date */
             startDate: string;
             /** @description 동행 제목. 앞뒤 공백 제거 후 최대 80자. 생략하거나 비어 있으면 제목 없음 */
@@ -1679,6 +1698,15 @@ export interface components {
         };
         /** @description 409: COMPANION_SEARCH_CLOSED. 종료된 등록은 수정할 수 없음 */
         CompanionSearchClosed: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/problem+json": components["schemas"]["ApiProblem"];
+            };
+        };
+        /** @description 409: COMPANION_SEARCH_DESTINATION_REQUIRED. 재개할 등록에 기준 여행지가 없음 */
+        CompanionSearchDestinationRequired: {
             headers: {
                 [name: string]: unknown;
             };
@@ -2826,7 +2854,7 @@ export interface operations {
             };
         };
         responses: {
-            /** @description 종료 완료 */
+            /** @description 상태 변경 완료 */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -2838,6 +2866,7 @@ export interface operations {
             400: components["responses"]["BadRequest"];
             401: components["responses"]["Unauthorized"];
             404: components["responses"]["CompanionSearchNotFound"];
+            409: components["responses"]["CompanionSearchDestinationRequired"];
         };
     };
     listCompanionCandidates: {

@@ -43,6 +43,9 @@ public class CompanionSearchService {
                 .preferredGender(command.preferredGender())
                 .preferredAgeRange(new AgeRange(command.preferredMinAge(), command.preferredMaxAge()))
                 .title(command.title())
+                .introduction(command.introduction())
+                .showAge(command.showAge())
+                .showGender(command.showGender())
                 .build();
         return CompanionSearchResult.from(searches.save(search));
     }
@@ -101,13 +104,17 @@ public class CompanionSearchService {
         CompanionSearch search = findMineForUpdate(userId, id);
         requireActiveDestination(command.destinationId());
         search.update(command.destinationId(), new TravelPeriod(command.startDate(), command.endDate()),
-                command.preferredGender(), new AgeRange(command.preferredMinAge(), command.preferredMaxAge()), command.title());
+                command.preferredGender(), new AgeRange(command.preferredMinAge(), command.preferredMaxAge()),
+                command.title(), command.introduction(), command.showAge(), command.showGender());
         return CompanionSearchResult.from(search);
     }
 
     @Transactional
     public CompanionSearchResult changeStatus(long userId, long id, CompanionSearchStatus status) {
         CompanionSearch search = findMineForUpdate(userId, id);
+        if (search.isReopening(status) && search.getDestinationId() != null) {
+            requireActiveDestination(search.getDestinationId());
+        }
         search.changeStatus(status);
         return CompanionSearchResult.from(search);
     }

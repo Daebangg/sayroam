@@ -207,6 +207,8 @@ public class OpenApiConfig {
                 .addResponses("TripNotFound", problemResponse("404: TRIP_NOT_FOUND. 없는 여행이거나 접근할 수 없는 여행. 둘을 구분하지 않음"))
                 .addResponses("CompanionSearchNotFound", problemResponse("404: COMPANION_SEARCH_NOT_FOUND. 등록이 없거나 다른 회원의 등록"))
                 .addResponses("CompanionSearchClosed", problemResponse("409: COMPANION_SEARCH_CLOSED. 종료된 등록은 수정할 수 없음"))
+                .addResponses("CompanionSearchDestinationRequired", problemResponse(
+                        "409: COMPANION_SEARCH_DESTINATION_REQUIRED. 재개할 등록에 기준 여행지가 없음"))
                 .addResponses("CompanionCandidateSearchUnavailable", problemResponse(
                         "409: COMPANION_SEARCH_CLOSED(종료), COMPANION_SEARCH_DESTINATION_REQUIRED(기준 여행지 선택 필요)"))
                 .addResponses("TripPlaceBadRequest", problemResponse("400: INVALID_INPUT(장소 ID 누락, 1보다 작은 일차, 255자 초과 메모, errors 포함), TRIP_DAY_OUT_OF_RANGE(여행 기간을 벗어난 일차) 또는 Spring 요청 오류"))

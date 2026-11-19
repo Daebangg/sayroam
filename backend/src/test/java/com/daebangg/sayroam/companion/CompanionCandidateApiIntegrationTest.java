@@ -10,6 +10,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
@@ -17,11 +18,13 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.ZoneId;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.nullValue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -153,6 +156,15 @@ class CompanionCandidateApiIntegrationTest extends DatabaseIntegrationTest {
         jdbc.update("UPDATE companion_search SET status = 'CLOSED' WHERE id = ?", closed);
         candidates(closed, 0, 20).andExpect(status().isConflict())
                 .andExpect(jsonPath("$.code").value("COMPANION_SEARCH_CLOSED"));
+
+        String resource = "/api/companion-searches/" + current;
+        mvc.perform(patch(resource).servletPath(resource).header("Authorization", authorization)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"status\":\"CLOSED\"}"))
+                .andExpect(status().isOk());
+        mvc.perform(patch(resource).servletPath(resource).header("Authorization", authorization)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"status\":\"ACTIVE\"}"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("COMPANION_SEARCH_DESTINATION_REQUIRED"));
     }
 
     @Test
@@ -235,6 +247,66 @@ class CompanionCandidateApiIntegrationTest extends DatabaseIntegrationTest {
     }
 
     @Test
+    void returnsOnlyTheSelectedRegistrationsPublicProfileInBothCandidateQueries() throws Exception {
+        long own = search(owner, 0, 4);
+        long traveler = member("여행자", "FEMALE", today.minusYears(28).minusDays(1));
+        long selected = search(traveler, 0, 4);
+        long duplicate = search(traveler, 0, 1);
+        long missingProfile = search(member("프로필 미입력", null, null), 0, 0);
+        jdbc.update("UPDATE companion_search SET show_age = TRUE, show_gender = TRUE WHERE id IN (?, ?)",
+                duplicate, missingProfile);
+        jdbc.update("UPDATE companion_search SET introduction = ? WHERE id = ?", "산책해요", selected);
+
+        for (ResultActions response : List.of(candidates(own, 0, 20), preview(0, 4))) {
+            response.andExpect(status().isOk())
+                    .andExpect(jsonPath("$.candidates[*].searchId").value(contains((int) selected, (int) missingProfile)))
+                    .andExpect(jsonPath("$.candidates[0].introduction").value("산책해요"))
+                    .andExpect(jsonPath("$.candidates[0].age").value(nullValue()))
+                    .andExpect(jsonPath("$.candidates[0].gender").value(nullValue()))
+                    .andExpect(jsonPath("$.candidates[1].age").value(nullValue()))
+                    .andExpect(jsonPath("$.candidates[1].gender").value(nullValue()));
+        }
+
+        jdbc.update("UPDATE companion_search SET show_age = TRUE WHERE id = ?", selected);
+        candidates(own, 0, 20).andExpect(status().isOk())
+                .andExpect(jsonPath("$.candidates[0].age").value(28))
+                .andExpect(jsonPath("$.candidates[0].gender").value(nullValue()));
+        jdbc.update("UPDATE companion_search SET show_age = FALSE, show_gender = TRUE WHERE id = ?", selected);
+        preview(0, 4).andExpect(status().isOk())
+                .andExpect(jsonPath("$.candidates[0].age").value(nullValue()))
+                .andExpect(jsonPath("$.candidates[0].gender").value("FEMALE"))
+                .andExpect(jsonPath("$.candidates[0].birthDate").doesNotHaveJsonPath());
+    }
+
+    @Test
+    void reopensAClosedRegistrationAndReturnsItInBothCandidateQueries() throws Exception {
+        long own = search(owner, 0, 2);
+        User traveler = users.saveNewAccount(User.builder().nickname("재개할 회원").role(Role.USER).build());
+        long candidate = search(traveler.getId(), 0, 2);
+        String resource = "/api/companion-searches/" + candidate;
+        jdbc.update("UPDATE companion_search SET status = 'CLOSED', introduction = ?, show_age = TRUE WHERE id = ?",
+                "재개할 여행", candidate);
+        candidates(own, 0, 20).andExpect(jsonPath("$.candidates").isEmpty());
+        preview(0, 2).andExpect(jsonPath("$.candidates").isEmpty());
+
+        String body = "{\"status\":\"ACTIVE\"}";
+        mvc.perform(patch(resource).servletPath(resource).header("Authorization", authorization)
+                        .contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isNotFound());
+        String travelerAuthorization = "Bearer " + tokens.issue(traveler.getId(), traveler.getAuthVersion()).accessToken();
+        mvc.perform(patch(resource).servletPath(resource).header("Authorization", travelerAuthorization)
+                        .contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("ACTIVE"))
+                .andExpect(jsonPath("$.introduction").value("재개할 여행"))
+                .andExpect(jsonPath("$.showAge").value(true));
+        for (ResultActions response : List.of(candidates(own, 0, 20), preview(0, 2))) {
+            response.andExpect(status().isOk())
+                    .andExpect(jsonPath("$.candidates[*].searchId").value(contains((int) candidate)));
+        }
+    }
+
+    @Test
     void rejectsInvalidPreviewConditions() throws Exception {
         String path = "/api/companion-candidates";
         mvc.perform(get(path).servletPath(path).header("Authorization", authorization)
@@ -280,6 +352,14 @@ class CompanionCandidateApiIntegrationTest extends DatabaseIntegrationTest {
         String path = path(searchId);
         return mvc.perform(get(path).servletPath(path).header("Authorization", authorization)
                 .param("page", Integer.toString(page)).param("size", Integer.toString(size)));
+    }
+
+    private ResultActions preview(int startOffset, int endOffset) throws Exception {
+        String path = "/api/companion-candidates";
+        return mvc.perform(get(path).servletPath(path).header("Authorization", authorization)
+                .param("destinationId", Long.toString(seoul))
+                .param("startDate", today.plusDays(startOffset).toString())
+                .param("endDate", today.plusDays(endOffset).toString()));
     }
 
     private String path(long searchId) {
