@@ -25,6 +25,7 @@ import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.nullValue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -47,6 +48,7 @@ class CompanionCandidateApiIntegrationTest extends DatabaseIntegrationTest {
         today = LocalDate.now(ZoneId.of("Asia/Seoul"));
         User user = users.saveNewAccount(User.builder().nickname("등록자").role(Role.USER).build());
         owner = user.getId();
+        style(owner, 2, 4, 2, 5);
         authorization = "Bearer " + tokens.issue(owner, user.getAuthVersion()).accessToken();
         seoul = jdbc.queryForObject("SELECT id FROM destination WHERE name = '서울'", Long.class);
     }
@@ -282,6 +284,7 @@ class CompanionCandidateApiIntegrationTest extends DatabaseIntegrationTest {
     void reopensAClosedRegistrationAndReturnsItInBothCandidateQueries() throws Exception {
         long own = search(owner, 0, 2);
         User traveler = users.saveNewAccount(User.builder().nickname("재개할 회원").role(Role.USER).build());
+        style(traveler.getId(), 2, 4, 2, 5);
         long candidate = search(traveler.getId(), 0, 2);
         String resource = "/api/companion-searches/" + candidate;
         jdbc.update("UPDATE companion_search SET status = 'CLOSED', introduction = ?, show_age = TRUE WHERE id = ?",
@@ -307,6 +310,71 @@ class CompanionCandidateApiIntegrationTest extends DatabaseIntegrationTest {
     }
 
     @Test
+    void ranksAllStyleCandidatesBeforePagingAndExplainsEachQuestion() throws Exception {
+        long own = search(owner, 0, 6);
+        long nearUser = member("비슷한 여행자", null, null);
+        style(nearUser, 2, 5, 2, 4);
+        long near = search(nearUser, 0, 1);
+        search(nearUser, 0, 0);
+        long discussUser = member("협의할 여행자", null, null);
+        style(discussUser, 2, 5, 4, 2);
+        long discuss = search(discussUser, 0, 6);
+        search(member("응답 없는 여행자", null, null), 0, 6);
+
+        String path = path(own);
+        mvc.perform(get(path).servletPath(path).header("Authorization", authorization)
+                        .param("sort", "STYLE").param("size", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.candidates[0].searchId").value(near))
+                .andExpect(jsonPath("$.candidates[0].travelStyleMatch.score").value(87.5))
+                .andExpect(jsonPath("$.candidates[0].travelStyleMatch.category").value("SIMILAR"))
+                .andExpect(jsonPath("$.candidates[0].travelStyleMatch.items[0].code").value("planning"))
+                .andExpect(jsonPath("$.candidates[0].travelStyleMatch.items[0].myScore").value(2))
+                .andExpect(jsonPath("$.candidates[0].travelStyleMatch.items[1].candidateScore").value(5))
+                .andExpect(jsonPath("$.candidates[0].travelStyleMatch.items[1].similarity").value("SIMILAR"))
+                .andExpect(jsonPath("$.hasNext").value(true));
+        mvc.perform(get(path).servletPath(path).header("Authorization", authorization)
+                        .param("sort", "STYLE").param("size", "1").param("page", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.candidates[0].searchId").value(discuss))
+                .andExpect(jsonPath("$.candidates[0].travelStyleMatch.score").value(62.5))
+                .andExpect(jsonPath("$.candidates[0].travelStyleMatch.category").value("NEEDS_DISCUSSION"))
+                .andExpect(jsonPath("$.candidates[0].travelStyleMatch.items[2].similarity").value("SOMEWHAT_DIFFERENT"))
+                .andExpect(jsonPath("$.candidates[0].travelStyleMatch.items[3].similarity").value("DIFFERENT"))
+                .andExpect(jsonPath("$.candidates[0].travelStyleMatch.items[3].difference").value(3))
+                .andExpect(jsonPath("$.hasNext").value(false));
+
+        String preview = "/api/companion-candidates";
+        mvc.perform(get(preview).servletPath(preview).header("Authorization", authorization)
+                        .param("destinationId", Long.toString(seoul)).param("startDate", today.toString())
+                        .param("endDate", today.plusDays(6).toString()).param("sort", "STYLE"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.candidates[*].searchId").value(contains((int) near, (int) discuss)));
+        // 기존 날짜순 조회에서는 부분 응답 모집도 계속 조회할 수 있다.
+        candidates(own, 0, 20).andExpect(status().isOk())
+                .andExpect(jsonPath("$.candidates.length()").value(3))
+                .andExpect(jsonPath("$.candidates[0].searchId").value(discuss));
+    }
+
+    @Test
+    void requiresAllFourAnswersForStyleMatchingAndNewRegistrations() throws Exception {
+        jdbc.update("DELETE FROM user_travel_style WHERE user_id = ?", owner);
+        String preview = "/api/companion-candidates";
+        mvc.perform(get(preview).servletPath(preview).header("Authorization", authorization)
+                        .param("destinationId", Long.toString(seoul)).param("startDate", today.toString())
+                        .param("endDate", today.toString()).param("sort", "STYLE"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("TRAVEL_STYLE_REQUIRED"));
+        String registration = "/api/companion-searches";
+        mvc.perform(post(registration).servletPath(registration).header("Authorization", authorization)
+                        .contentType(MediaType.APPLICATION_JSON).content("""
+                                {"destinationId": %d, "startDate": "%s", "endDate": "%s"}
+                                """.formatted(seoul, today, today)))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("TRAVEL_STYLE_REQUIRED"));
+    }
+
+    @Test
     void rejectsInvalidPreviewConditions() throws Exception {
         String path = "/api/companion-candidates";
         mvc.perform(get(path).servletPath(path).header("Authorization", authorization)
@@ -325,6 +393,18 @@ class CompanionCandidateApiIntegrationTest extends DatabaseIntegrationTest {
                         .param("endDate", today.toString()))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("DESTINATION_UNAVAILABLE"));
+    }
+
+    private void style(long userId, int planning, int pace, int together, int spending) {
+        String[] codes = {"planning", "daily-pace", "time-together", "spending"};
+        int[] scores = {planning, pace, together, spending};
+        for (int index = 0; index < codes.length; index++) {
+            jdbc.update("""
+                    INSERT INTO user_travel_style (user_id, item_id, score, created_at, updated_at)
+                    SELECT ?, id, ?, UTC_TIMESTAMP(6), UTC_TIMESTAMP(6)
+                    FROM travel_style_item WHERE code = ?
+                    """, userId, scores[index], codes[index]);
+        }
     }
 
     private long member(String nickname, String gender, LocalDate birthDate) {

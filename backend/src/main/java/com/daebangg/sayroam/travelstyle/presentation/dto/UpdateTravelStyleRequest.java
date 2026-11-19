@@ -4,20 +4,22 @@ import com.daebangg.sayroam.travelstyle.application.dto.UpdateTravelStyleCommand
 import com.daebangg.sayroam.travelstyle.domain.UserTravelStyle;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import io.swagger.v3.oas.annotations.media.Schema;
-import org.jspecify.annotations.Nullable;
+import io.swagger.v3.oas.annotations.media.ArraySchema;
 import tools.jackson.databind.JsonNode;
 
 import java.util.ArrayList;
 import java.util.List;
 
-@Schema(description = "전달한 문항의 답변만 수정합니다. score가 null이면 그 문항의 답변을 삭제합니다.",
+@Schema(description = "여행 스타일 네 문항에 모두 1~5점으로 응답합니다. 응답 생략과 삭제는 허용하지 않습니다.",
         additionalProperties = Schema.AdditionalPropertiesValue.FALSE)
 public record UpdateTravelStyleRequest(
+        @ArraySchema(minItems = 4, maxItems = 4)
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) List<Answer> answers) {
 
     @JsonCreator(mode = JsonCreator.Mode.DELEGATING)
     public static UpdateTravelStyleRequest from(JsonNode body) {
-        if (body == null || !body.isObject() || body.size() != 1 || !body.path("answers").isArray()) {
+        if (body == null || !body.isObject() || body.size() != 1 || !body.path("answers").isArray()
+                || body.path("answers").size() != 4) {
             throw new IllegalArgumentException("Travel style update requires an answers array");
         }
         List<Answer> answers = new ArrayList<>();
@@ -31,10 +33,10 @@ public record UpdateTravelStyleRequest(
         JsonNode code = answer.path("code");
         JsonNode score = answer.path("score");
         if (!answer.isObject() || answer.size() != 2 || !code.isString() || code.stringValue().isBlank()
-                || (!score.isNull() && (!score.isIntegralNumber() || !score.canConvertToInt()))) {
-            throw new IllegalArgumentException("An answer requires a question code and an integer or null score");
+                || (!score.isIntegralNumber() || !score.canConvertToInt())) {
+            throw new IllegalArgumentException("An answer requires a question code and an integer score");
         }
-        return new Answer(code.stringValue(), score.isNull() ? null : score.intValue());
+        return new Answer(code.stringValue(), score.intValue());
     }
 
     public UpdateTravelStyleCommand toCommand() {
@@ -46,8 +48,8 @@ public record UpdateTravelStyleRequest(
     @Schema(additionalProperties = Schema.AdditionalPropertiesValue.FALSE)
     public record Answer(
             @Schema(example = "planning", requiredMode = Schema.RequiredMode.REQUIRED) String code,
-            @Schema(types = {"integer", "null"}, format = "int32", minimum = "" + UserTravelStyle.MIN_SCORE,
+            @Schema(types = {"integer"}, format = "int32", minimum = "" + UserTravelStyle.MIN_SCORE,
                     maximum = "" + UserTravelStyle.MAX_SCORE, requiredMode = Schema.RequiredMode.REQUIRED)
-            @Nullable Integer score) {
+            int score) {
     }
 }

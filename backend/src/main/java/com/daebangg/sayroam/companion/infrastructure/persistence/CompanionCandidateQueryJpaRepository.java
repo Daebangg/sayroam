@@ -1,6 +1,7 @@
 package com.daebangg.sayroam.companion.infrastructure.persistence;
 
 import com.daebangg.sayroam.companion.application.dto.CompanionCandidateResult;
+import com.daebangg.sayroam.companion.application.dto.TravelStyleAnswerResult;
 import com.daebangg.sayroam.companion.application.port.out.CompanionCandidateQueryRepository;
 import com.daebangg.sayroam.companion.domain.AgeRange;
 import com.daebangg.sayroam.companion.domain.CompanionSearch;
@@ -21,7 +22,7 @@ interface CompanionCandidateQueryJpaRepository
         return findCandidates(query.ownerId(), query.destinationId(), query.period().startDate(),
                 query.period().endDate(), query.preferredGender(), ageRange == null ? null : ageRange.minAge(),
                 ageRange == null ? null : ageRange.maxAge(), query.titleQuery(), query.ageReferenceDate(),
-                query.offset(), query.limit());
+                query.offset(), query.limit(), query.styleSort());
     }
 
     @Query("""
@@ -67,22 +68,37 @@ interface CompanionCandidateQueryJpaRepository
                        ) as memberRank
                 from overlapsWithDays o
             ),
+            styleDistances as (
+                select answer.userId as userId, sum(abs(answer.score - mine.score)) as distance
+                from UserTravelStyle answer
+                join UserTravelStyle mine on mine.userId = :ownerId and mine.item.id = answer.item.id
+                join TravelStyleItem question on question.id = answer.item.id
+                where :styleSort = true and question.active = true
+                  and question.code in ('planning', 'daily-pace', 'time-together', 'spending')
+                  and answer.score between 1 and 5 and mine.score between 1 and 5
+                  and answer.userId in (select candidate.userId from overlapping candidate)
+                group by answer.userId
+                having count(*) = 4
+            ),
             orderedCandidates as (
-                select r.searchId as searchId, r.nickname as nickname, r.profileImageUrl as profileImageUrl,
+                select r.searchId as searchId, search.userId as userId, r.nickname as nickname, r.profileImageUrl as profileImageUrl,
                        r.startDate as startDate, r.endDate as endDate, r.overlapStart as overlapStart,
                        r.overlapEnd as overlapEnd, r.overlapDays as overlapDays, r.title as title,
                        row_number() over (
-                           order by r.overlapDays desc, r.overlapStart, r.searchId
+                           order by case when :styleSort = true then style.distance else 0 end,
+                                    r.overlapDays desc, r.overlapStart, r.searchId
                        ) as candidateRank
                 from ranked r
-                where r.memberRank = 1
+                join CompanionSearch search on search.id = r.searchId
+                left join styleDistances style on style.userId = search.userId
+                where r.memberRank = 1 and (:styleSort = false or style.distance is not null)
             )
             select new com.daebangg.sayroam.companion.application.dto.CompanionCandidateResult(
                 r.searchId, r.nickname, r.profileImageUrl, r.startDate, r.endDate,
                 r.overlapStart, r.overlapEnd, r.overlapDays, r.title, search.introduction,
                 case when search.showAge then cast((:ageReferenceDate - profile.birthDate) by year as Integer)
                      else null end,
-                case when search.showGender then profile.gender else null end
+                case when search.showGender then profile.gender else null end, r.userId
             )
             from orderedCandidates r
             join CompanionSearch search on search.id = r.searchId
@@ -102,5 +118,17 @@ interface CompanionCandidateQueryJpaRepository
             @Param("titleQuery") String titleQuery,
             @Param("ageReferenceDate") LocalDate ageReferenceDate,
             @Param("offset") long offset,
-            @Param("limit") int limit);
+            @Param("limit") int limit,
+            @Param("styleSort") boolean styleSort);
+
+    @Override
+    @Query("""
+            select new com.daebangg.sayroam.companion.application.dto.TravelStyleAnswerResult(
+                answer.userId, question.code, answer.score)
+            from UserTravelStyle answer
+            join answer.item question
+            where answer.userId in :userIds and question.active = true
+              and question.code in ('planning', 'daily-pace', 'time-together', 'spending')
+            """)
+    List<TravelStyleAnswerResult> findTravelStyleAnswers(@Param("userIds") List<Long> userIds);
 }
