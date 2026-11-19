@@ -1,3 +1,4 @@
+import { TravelStyleChoices } from "@/components/features/matching/TravelStyleChoices";
 import { useOutletContext } from "react-router";
 import type { PageContext } from "@/routing/context";
 import { useEffect, useState } from "react";
@@ -19,12 +20,17 @@ import {
     Checkbox,
     DropdownMenu,
     DatePicker,
+    DateRangeCalendar,
     NumberStepper,
     Icon,
     KeyboardShortcut,
     Modal,
     Tag,
     TextField,
+    TextArea,
+    RangeField,
+    RangeSelector,
+    Autocomplete,
     FilePicker,
     ImageCropDialog,
     SectionWordmark,
@@ -44,6 +50,37 @@ import { mockupUrl } from "@/routing/mockups";
 
 const colors = ["primary", "sky", "sand", "surface", "text", "muted"] as const;
 const icons = [
+    "journey-list",
+    "journey-place",
+    "journey-dates",
+    "journey-people",
+    "journey-age",
+    "journey-plan",
+    "journey-pace",
+    "journey-together",
+    "journey-budget",
+    "journey-register",
+    "style-plan-essential",
+    "style-plan-usual",
+    "style-plan-flexible",
+    "style-plan-spontaneous",
+    "style-plan-free",
+    "style-pace-slow",
+    "style-pace-relaxed",
+    "style-pace-balanced",
+    "style-pace-active",
+    "style-pace-packed",
+    "style-time-independent",
+    "style-time-apart",
+    "style-time-balanced",
+    "style-time-mostly",
+    "style-time-together",
+    "style-budget-save",
+    "style-budget-careful",
+    "style-budget-moderate",
+    "style-budget-worthwhile",
+    "style-budget-experiences",
+
     "home",
     "trips",
     "matching",
@@ -96,9 +133,15 @@ export function BrandPage() {
         [cropSource],
     );
     const [pressed, setPressed] = useState(false);
+    const [stylePreviews, setStylePreviews] = useState<Record<string, number>>({});
     const [tagVisible, setTagVisible] = useState(true);
     const [filter, setFilter] = useState("all");
+    const [autocompleteQuery, setAutocompleteQuery] = useState("");
+    const [autocompleteValue, setAutocompleteValue] = useState("");
+    const [rangeSelection, setRangeSelection] = useState<[number, number]>([20, 40]);
+    const [rangeExample, setRangeExample] = useState(30);
     const [birthday, setBirthday] = useState("");
+    const [range, setRange] = useState({ start: "", end: "" });
     const [departure, setDeparture] = useState("");
     const [travelers, setTravelers] = useState(2);
     const [toast, setToast] = useState<{ id: number; tone: ToastTone } | null>(null);
@@ -120,6 +163,7 @@ export function BrandPage() {
             <div className="section-wordmark-showcase">
                 <SectionWordmark variant="settings" />
                 <SectionWordmark variant="profile" />
+                <SectionWordmark variant="matching" />
             </div>
             <section className="brand-design-intro">
                 <div>
@@ -178,6 +222,30 @@ export function BrandPage() {
                         }
                     />
                 </Card>
+            </section>
+            <section
+                className="brand-section"
+                id="travel-style-showcase"
+                aria-label={t("matchingFlow.style")}
+            >
+                <h2 className="section-label">{t("matchingFlow.style")}</h2>
+                <div className="brand-travel-style-examples">
+                    {(["planning", "pace", "together", "spending"] as const).map((question) => (
+                        <Card key={question} className="component-example">
+                            <h3>{t(`matchingFlow.questions.${question}`)}</h3>
+                            <TravelStyleChoices
+                                question={question}
+                                value={stylePreviews[question] ?? 1}
+                                onChange={(value) =>
+                                    setStylePreviews((current) => ({
+                                        ...current,
+                                        [question]: value,
+                                    }))
+                                }
+                            />
+                        </Card>
+                    ))}
+                </div>
             </section>
             <section className="brand-section" aria-labelledby="brand-logo-heading">
                 <h2 id="brand-logo-heading" className="section-label">
@@ -337,6 +405,7 @@ export function BrandPage() {
                     <Card className="component-example">
                         <h3>{t("settings.gender")}</h3>
                         <IconChoiceGroup
+                            showLabels
                             label={t("settings.gender")}
                             value={gender}
                             onChange={setGender}
@@ -487,10 +556,85 @@ export function BrandPage() {
                                 defaultValue="invalid-email"
                                 error={t("brand.inputError")}
                             />
+                            <TextArea
+                                label={t("matchingFlow.introduction")}
+                                placeholder={t("matchingFlow.introductionPlaceholder")}
+                                rows={3}
+                            />
+                            <TextArea label={t("brand.disabledInput")} disabled rows={2} />
                             <TextField
                                 label={t("brand.disabledInput")}
                                 disabled
                                 placeholder={t("brand.emailPlaceholder")}
+                            />
+                            <Autocomplete
+                                label={t("matchingFlow.destinationSearch")}
+                                value={autocompleteValue}
+                                query={autocompleteQuery}
+                                options={options.filter((option) => !option.disabled)}
+                                emptyLabel={t("matchingFlow.noDestinations")}
+                                onQueryChange={(query) => {
+                                    setAutocompleteQuery(query);
+                                    setAutocompleteValue("");
+                                }}
+                                onSelect={(option) => {
+                                    setAutocompleteValue(option.value);
+                                    setAutocompleteQuery(option.label);
+                                }}
+                            />
+                            <Autocomplete
+                                label={t("brand.disabledInput")}
+                                value=""
+                                query=""
+                                options={[]}
+                                emptyLabel={t("matchingFlow.noDestinations")}
+                                disabled
+                                onQueryChange={() => {}}
+                                onSelect={() => {}}
+                            />
+                            <RangeSelector
+                                label={t("matchingFlow.age")}
+                                lowerLabel={t("matchingFlow.minAge")}
+                                upperLabel={t("matchingFlow.maxAge")}
+                                lowerValueLabel={t("matchingFlow.ageValue", {
+                                    count: rangeSelection[0],
+                                })}
+                                upperValueLabel={t("matchingFlow.ageValue", {
+                                    count: rangeSelection[1],
+                                })}
+                                min={1}
+                                max={120}
+                                value={rangeSelection}
+                                onChange={setRangeSelection}
+                            />
+                            <RangeSelector
+                                label={t("brand.disabledInput")}
+                                lowerLabel={t("matchingFlow.minAge")}
+                                upperLabel={t("matchingFlow.maxAge")}
+                                lowerValueLabel={t("matchingFlow.any")}
+                                upperValueLabel={t("matchingFlow.any")}
+                                min={1}
+                                max={120}
+                                value={[20, 40]}
+                                disabled
+                                onChange={() => {}}
+                            />
+                            <RangeField
+                                label={t("matchingFlow.minAge")}
+                                value={rangeExample}
+                                valueLabel={t("matchingFlow.ageValue", { count: rangeExample })}
+                                min={1}
+                                max={120}
+                                onChange={setRangeExample}
+                            />
+                            <RangeField
+                                label={t("brand.disabledInput")}
+                                value={30}
+                                valueLabel={t("matchingFlow.any")}
+                                min={1}
+                                max={120}
+                                disabled
+                                onChange={() => {}}
                             />
                             <VerificationCode
                                 label={t("auth.codeLabel")}
@@ -566,6 +710,12 @@ export function BrandPage() {
                             label={t("mockup.departure")}
                             value={departure}
                             onChange={setDeparture}
+                        />
+                        <DateRangeCalendar
+                            label={t("matchingFlow.period")}
+                            startDate={range.start}
+                            endDate={range.end}
+                            onChange={(start, end) => setRange({ start, end })}
                         />
                         <NumberStepper
                             label={t("mockup.travelers")}
