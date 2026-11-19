@@ -6,6 +6,7 @@ import com.daebangg.sayroam.companion.application.dto.PreviewCompanionCandidates
 import com.daebangg.sayroam.companion.application.service.CompanionSearchService;
 import com.daebangg.sayroam.companion.presentation.api.CompanionCandidatePreviewApi;
 import com.daebangg.sayroam.companion.presentation.dto.CompanionCandidateListResponse;
+import com.daebangg.sayroam.companion.presentation.dto.RecruitmentTravelStyleRequest;
 import com.daebangg.sayroam.user.domain.Gender;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -17,6 +18,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDate;
+import java.util.Map;
 
 @RestController
 @RequiredArgsConstructor
@@ -36,9 +38,17 @@ public class CompanionCandidatePreviewController implements CompanionCandidatePr
             @RequestParam(required = false) String q,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
-            @RequestParam(defaultValue = "OVERLAP") CompanionCandidateSort sort) {
+            @RequestParam(defaultValue = "OVERLAP") CompanionCandidateSort sort,
+            @RequestParam(required = false) Integer planning,
+            @RequestParam(required = false) Integer dailyPace,
+            @RequestParam(required = false) Integer timeTogether,
+            @RequestParam(required = false) Integer spending) {
+        Map<String, Integer> travelStyle = null;
+        if (planning != null || dailyPace != null || timeTogether != null || spending != null) {
+            travelStyle = new RecruitmentTravelStyleRequest(planning, dailyPace, timeTogether, spending).answers();
+        }
         PreviewCompanionCandidatesQuery query = new PreviewCompanionCandidatesQuery(
-                destinationId, startDate, endDate, preferredGender, preferredMinAge, preferredMaxAge, q);
+                destinationId, startDate, endDate, preferredGender, preferredMinAge, preferredMaxAge, q, travelStyle);
         return ResponseEntity.ok(CompanionCandidateListResponse.from(
                 service.previewCandidates(account.userId(), query, page, size, sort)));
     }

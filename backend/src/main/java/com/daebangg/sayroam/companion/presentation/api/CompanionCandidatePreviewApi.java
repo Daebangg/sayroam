@@ -23,7 +23,7 @@ public interface CompanionCandidatePreviewApi {
     @Operation(operationId = "previewCompanionCandidates", summary = "동행 등록 전 후보 조회",
             description = "여행지와 기간, 선택한 상대 조건으로 동행 후보를 미리 조회합니다. "
                     + "상대의 희망 조건은 로그인 회원의 프로필과 비교합니다. "
-                    + "만 나이와 성별은 해당 등록에서 공개한 값만 반환합니다. STYLE 정렬은 4문항 응답이 완성된 후보를 대상으로 합니다.")
+                    + "만 나이와 성별은 해당 등록에서 공개한 값만 반환합니다. 전달한 4문항 점수를 상대 모집의 저장값과 비교합니다. 점수를 모두 생략하면 프로필을 초기값으로 사용합니다. STYLE 정렬은 저장값이 완성된 후보를 대상으로 합니다.")
     @ApiResponse(responseCode = "200", description = "후보 목록. 조건에 맞는 후보가 없으면 빈 배열")
     @ApiResponse(responseCode = "409", ref = "#/components/responses/TravelStyleRequired")
     @ApiResponse(responseCode = "400", ref = "#/components/responses/BadRequest")
@@ -42,5 +42,10 @@ public interface CompanionCandidatePreviewApi {
                             maximum = "" + CompanionSearchService.MAX_CANDIDATE_PAGE_SIZE)) int size,
             @Parameter(description = "OVERLAP는 겹치는 일수순, STYLE은 여행 스타일 점수순. STYLE은 4문항 응답 필수",
                     schema = @Schema(implementation = CompanionCandidateSort.class, defaultValue = "OVERLAP"))
-            CompanionCandidateSort sort);
+            CompanionCandidateSort sort,
+            @Parameter(description = "등록 전 4문항 점수. 하나라도 전달하면 네 점수 모두 필요하며 프로필 대신 사용",
+                    schema = @Schema(type = "integer", format = "int32", minimum = "1", maximum = "5")) Integer planning,
+            @Parameter(schema = @Schema(type = "integer", format = "int32", minimum = "1", maximum = "5")) Integer dailyPace,
+            @Parameter(schema = @Schema(type = "integer", format = "int32", minimum = "1", maximum = "5")) Integer timeTogether,
+            @Parameter(schema = @Schema(type = "integer", format = "int32", minimum = "1", maximum = "5")) Integer spending);
 }

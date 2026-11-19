@@ -375,6 +375,41 @@ class CompanionCandidateApiIntegrationTest extends DatabaseIntegrationTest {
     }
 
     @Test
+    void comparesEachRecruitmentSnapshotAndAcceptsDraftScoresWithoutAProfile() throws Exception {
+        long own = search(owner, 0, 6);
+        long traveler = member("여행별 다른 스타일", null, null);
+        style(traveler, 2, 4, 2, 5);
+        long different = search(traveler, 0, 6);
+        long similar = search(traveler, 0, 1);
+        jdbc.update("UPDATE companion_search SET style_planning = 5, style_daily_pace = 1, style_time_together = 5, style_spending = 1 WHERE id = ?", different);
+        jdbc.update("UPDATE user_travel_style SET score = 1 WHERE user_id = ?", traveler);
+        jdbc.update("DELETE FROM user_travel_style WHERE user_id = ?", owner);
+
+        String path = path(own);
+        mvc.perform(get(path).servletPath(path).header("Authorization", authorization).param("sort", "STYLE"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.candidates[*].searchId").value(contains((int) similar)))
+                .andExpect(jsonPath("$.candidates[0].travelStyleMatch.score").value(100.0));
+        // 겹치는 기간순에서는 같은 회원의 다른 모집을 선택하고 그 모집의 스타일을 비교한다.
+        candidates(own, 0, 20).andExpect(status().isOk())
+                .andExpect(jsonPath("$.candidates[0].searchId").value(different))
+                .andExpect(jsonPath("$.candidates[0].travelStyleMatch.score").value(18.75));
+
+        String preview = "/api/companion-candidates";
+        mvc.perform(get(preview).servletPath(preview).header("Authorization", authorization)
+                        .param("destinationId", Long.toString(seoul)).param("startDate", today.toString())
+                        .param("endDate", today.plusDays(6).toString()).param("sort", "STYLE")
+                        .param("planning", "2").param("dailyPace", "4").param("timeTogether", "2").param("spending", "5"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.candidates[0].searchId").value(similar))
+                .andExpect(jsonPath("$.candidates[0].travelStyleMatch.score").value(100.0));
+        mvc.perform(get(preview).servletPath(preview).header("Authorization", authorization)
+                        .param("destinationId", Long.toString(seoul)).param("startDate", today.toString())
+                        .param("endDate", today.toString()).param("planning", "2"))
+                .andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("TRAVEL_STYLE_REQUIRED"));
+    }
+
+    @Test
     void rejectsInvalidPreviewConditions() throws Exception {
         String path = "/api/companion-candidates";
         mvc.perform(get(path).servletPath(path).header("Authorization", authorization)
@@ -418,7 +453,22 @@ class CompanionCandidateApiIntegrationTest extends DatabaseIntegrationTest {
                 INSERT INTO companion_search (user_id, destination_id, start_date, end_date, status, created_at, updated_at)
                 VALUES (?, ?, ?, ?, 'ACTIVE', UTC_TIMESTAMP(6), UTC_TIMESTAMP(6))
                 """, memberId, seoul, today.plusDays(startOffset), today.plusDays(endOffset));
-        return jdbc.queryForObject("SELECT LAST_INSERT_ID()", Long.class);
+        long id = jdbc.queryForObject("SELECT LAST_INSERT_ID()", Long.class);
+        snapshotStyle(id, memberId);
+        return id;
+    }
+
+    private void snapshotStyle(long searchId, long memberId) {
+        Integer count = jdbc.queryForObject("SELECT COUNT(*) FROM user_travel_style WHERE user_id = ?", Integer.class, memberId);
+        if (count != 4) return;
+        jdbc.update("""
+                UPDATE companion_search SET
+                    style_planning = (SELECT s.score FROM user_travel_style s JOIN travel_style_item i ON i.id = s.item_id WHERE s.user_id = ? AND i.code = 'planning'),
+                    style_daily_pace = (SELECT s.score FROM user_travel_style s JOIN travel_style_item i ON i.id = s.item_id WHERE s.user_id = ? AND i.code = 'daily-pace'),
+                    style_time_together = (SELECT s.score FROM user_travel_style s JOIN travel_style_item i ON i.id = s.item_id WHERE s.user_id = ? AND i.code = 'time-together'),
+                    style_spending = (SELECT s.score FROM user_travel_style s JOIN travel_style_item i ON i.id = s.item_id WHERE s.user_id = ? AND i.code = 'spending')
+                WHERE id = ?
+                """, memberId, memberId, memberId, memberId, searchId);
     }
 
     private void preferences(long searchId, String gender, Integer minAge, Integer maxAge) {

@@ -13,6 +13,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.env.Environment;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import org.springframework.transaction.annotation.Transactional;
@@ -46,11 +47,11 @@ class SayroamApplicationTests extends DatabaseIntegrationTest {
                 SELECT COUNT(*) FROM information_schema.tables
                 WHERE table_schema = DATABASE() AND table_type = 'BASE TABLE'
                 """, Integer.class)).isEqualTo(22);
-        assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("15");
+        assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("16");
         flyway.validate();
         assertThat(flyway.migrate().migrationsExecuted).isZero();
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM flyway_schema_history WHERE success = 1",
-                Integer.class)).isEqualTo(15);
+                Integer.class)).isEqualTo(16);
     }
 
     @Test
@@ -112,7 +113,28 @@ class SayroamApplicationTests extends DatabaseIntegrationTest {
                     SELECT 2, 10, id, '2035-01-01', '2035-01-05', 'ACTIVE', NOW(), NOW()
                     FROM destination WHERE name = '서울'
                     """);
+            assertThat(Flyway.configure().dataSource(dataSource).target("15").load().migrate().migrationsExecuted).isEqualTo(1);
+            legacy.update("""
+                    INSERT INTO user_travel_style (user_id, item_id, score, created_at, updated_at)
+                    SELECT 10, id, 4, NOW(), NOW() FROM travel_style_item WHERE is_active = TRUE
+                    """);
             assertThat(Flyway.configure().dataSource(dataSource).load().migrate().migrationsExecuted).isEqualTo(1);
+            assertThat(legacy.queryForObject("""
+                    SELECT COUNT(*) FROM companion_search WHERE style_planning IS NULL AND style_daily_pace IS NULL
+                        AND style_time_together IS NULL AND style_spending IS NULL
+                    """, Integer.class)).isEqualTo(2);
+            assertThat(legacy.queryForObject("SELECT COUNT(*) FROM user_travel_style WHERE user_id = 10", Integer.class))
+                    .isEqualTo(5);
+            assertThatThrownBy(() -> legacy.update("UPDATE companion_search SET style_planning = 3 WHERE id = 2"))
+                    .isInstanceOf(DataAccessException.class).hasMessageContaining("chk_companion_search_style");
+            assertThatThrownBy(() -> legacy.update("""
+                    UPDATE companion_search SET style_planning = 6, style_daily_pace = 3,
+                        style_time_together = 3, style_spending = 3 WHERE id = 2
+                    """)).isInstanceOf(DataAccessException.class).hasMessageContaining("chk_companion_search_style");
+            legacy.update("""
+                    UPDATE companion_search SET style_planning = 2, style_daily_pace = 4,
+                        style_time_together = 2, style_spending = 5 WHERE id = 2
+                    """);
             assertThat(legacy.queryForList("SELECT search_id FROM companion_matching_job", Long.class))
                     .containsExactly(2L);
             assertThat(legacy.queryForMap("SELECT region, destination_id, title FROM companion_search WHERE id = 1"))

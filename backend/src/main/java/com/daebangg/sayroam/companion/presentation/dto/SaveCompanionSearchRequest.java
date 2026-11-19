@@ -31,11 +31,15 @@ public record SaveCompanionSearchRequest(
         @Nullable Boolean showAge,
         @Schema(description = "내 성별 공개 여부. 생략 또는 null이면 신규 등록은 비공개, 수정은 기존 설정 유지",
                 types = {"boolean", "null"})
-        @Nullable Boolean showGender
+        @Nullable Boolean showGender,
+        @Schema(description = "모집에만 저장할 4문항 점수(1~5). 신규 등록에서 생략하면 프로필을 복사하고 "
+                + "수정에서 생략하면 모집 저장값을 유지합니다.", nullable = true)
+        @Nullable RecruitmentTravelStyleRequest travelStyle
 ) {
 
     public SaveCompanionSearchCommand toCommand() {
         return new SaveCompanionSearchCommand(destinationId, startDate, endDate, preferredGender,
-                preferredMinAge, preferredMaxAge, title, introduction, showAge, showGender);
+                preferredMinAge, preferredMaxAge, title, introduction, showAge, showGender,
+                travelStyle == null ? null : travelStyle.answers());
     }
 }

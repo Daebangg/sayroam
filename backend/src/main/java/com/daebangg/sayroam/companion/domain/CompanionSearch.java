@@ -23,6 +23,7 @@ import lombok.NoArgsConstructor;
 import org.jspecify.annotations.Nullable;
 
 import java.time.LocalDate;
+import java.util.Map;
 
 @Entity
 @Table(name = "companion_search")
@@ -88,6 +89,9 @@ public class CompanionSearch extends BaseTimeEntity {
     @Column(name = "show_gender", nullable = false)
     private boolean showGender;
 
+    @Embedded
+    private RecruitmentTravelStyle travelStyle;
+
     @Getter
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
@@ -105,9 +109,6 @@ public class CompanionSearch extends BaseTimeEntity {
     public void update(Long destinationId, TravelPeriod period, Gender preferredGender, AgeRange preferredAgeRange,
                        String title, @Nullable String introduction, @Nullable Boolean showAge,
                        @Nullable Boolean showGender) {
-        if (status == CompanionSearchStatus.CLOSED) {
-            throw new BusinessException(CompanionSearchErrorCode.COMPANION_SEARCH_CLOSED);
-        }
         if (destinationId == null || period == null) {
             throw new BusinessException(CommonErrorCode.INVALID_INPUT);
         }
@@ -141,6 +142,21 @@ public class CompanionSearch extends BaseTimeEntity {
         return normalized;
     }
 
+    public void updateTravelStyle(Map<String, Integer> answers) {
+        this.travelStyle = new RecruitmentTravelStyle(answers);
+        matchingRevision++;
+    }
+
+    public Map<String, Integer> travelStyleAnswers() {
+        return travelStyle == null ? Map.of() : travelStyle.answers();
+    }
+
+    public void requireCompleteTravelStyle() {
+        if (!TravelStyleMatch.isComplete(travelStyleAnswers())) {
+            throw new BusinessException(CompanionSearchErrorCode.TRAVEL_STYLE_REQUIRED);
+        }
+    }
+
     public static void validateActiveSearchCount(long activeCount) {
         if (activeCount >= MAX_ACTIVE_SEARCHES) {
             throw new BusinessException(CompanionSearchErrorCode.COMPANION_SEARCH_LIMIT_EXCEEDED);
@@ -153,6 +169,9 @@ public class CompanionSearch extends BaseTimeEntity {
         }
         if (isReopening(status) && destinationId == null) {
             throw new BusinessException(CompanionSearchErrorCode.COMPANION_SEARCH_DESTINATION_REQUIRED);
+        }
+        if (isReopening(status)) {
+            requireCompleteTravelStyle();
         }
         if (this.status != status) {
             matchingRevision++;
