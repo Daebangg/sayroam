@@ -22,6 +22,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.jspecify.annotations.Nullable;
 
+import java.time.LocalDate;
+
 @Entity
 @Table(name = "companion_search")
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
@@ -35,6 +37,11 @@ public class CompanionSearch extends BaseTimeEntity {
     @Getter
     private Long id;
 
+    @Getter
+    @Column(nullable = false)
+    private long matchingRevision;
+
+    @Getter
     @Column(name = "user_id", nullable = false)
     private Long userId;
 
@@ -120,6 +127,7 @@ public class CompanionSearch extends BaseTimeEntity {
         this.period = period;
         this.preferredGender = preferredGender;
         this.preferredAgeRange = preferredAgeRange;
+        matchingRevision++;
     }
 
     private String normalizeText(@Nullable String text, int maxLength) {
@@ -146,11 +154,19 @@ public class CompanionSearch extends BaseTimeEntity {
         if (isReopening(status) && destinationId == null) {
             throw new BusinessException(CompanionSearchErrorCode.COMPANION_SEARCH_DESTINATION_REQUIRED);
         }
+        if (this.status != status) {
+            matchingRevision++;
+        }
         this.status = status;
     }
 
     public boolean isReopening(@Nullable CompanionSearchStatus targetStatus) {
         return status == CompanionSearchStatus.CLOSED && targetStatus == CompanionSearchStatus.ACTIVE;
+    }
+
+    public boolean canMatch(long revision, LocalDate today) {
+        return matchingRevision == revision && status == CompanionSearchStatus.ACTIVE
+                && destinationId != null && !period.endDate().isBefore(today);
     }
 
     public void validateCandidateSearch() {

@@ -12,5 +12,7 @@ public interface CompanionSearchRepository {
 
     Optional<CompanionSearch> findByIdAndUserId(Long id, Long userId);
 
+    Optional<CompanionSearch> findForUpdateById(Long id);
+
     Optional<CompanionSearch> findForUpdateByIdAndUserId(Long id, Long userId);
 }
