@@ -13,6 +13,7 @@
         "skip": "Skip to content"
     },
     "common": {
+        "rangeSeparator": "~",
         "search": "Search",
         "changeLanguage": "Change language",
         "englishShort": "EN",
@@ -865,7 +866,7 @@
         "eyebrow": "Travel companions · Explore together",
         "headingBefore": "Find a ",
         "headingAccent": "travel companion",
-        "headingAfter": "",
+        "headingAfter": " for your next trip",
         "subtitle": "Recruit travel mates and manage your posts.",
         "mineAction": "View my posted trips",
         "mineDescription": "View and manage your recruitment posts."

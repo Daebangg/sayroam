@@ -5855,7 +5855,6 @@ p {
         width: 125px;
     }
     .matching-progress {
-        gap: var(--space-1);
         padding-bottom: var(--space-3);
     }
     .matching-progress li {
@@ -6031,9 +6030,6 @@ p {
     height: 36px;
 }
 .matching-filter-popover .ui-range-calendar .ui-calendar__day {
-    width: 32px;
-    max-width: 32px;
-    height: 32px;
     border-radius: 50%;
 }
 
@@ -6928,10 +6924,8 @@ p {
     align-items: flex-start;
     justify-content: space-between;
     gap: var(--space-4);
-    margin-bottom: var(--space-5);
 }
 .matching-details-panel__header h2 {
-    font-size: clamp(21px, 2.6vw, 28px);
     line-height: 1.5;
     margin: var(--space-3) 0 0;
     overflow-wrap: anywhere;
@@ -6941,7 +6935,6 @@ p {
     flex-direction: column;
     align-items: stretch;
     gap: var(--space-3);
-    margin-top: var(--space-5);
 }
 .matching-details-panel__footer > .matching-text-action {
     align-self: flex-end;
@@ -6953,18 +6946,8 @@ p {
 .matching-details-panel__actions > .ui-button {
     flex: 1;
 }
-
-.matching-details-panel .matching-conditions-summary {
-    grid-auto-rows: 1fr;
-}
 .matching-details-panel .matching-conditions-summary > div {
     position: relative;
-    grid-template-columns: 64px minmax(0, 1fr);
-    grid-template-rows: auto minmax(0, 1fr);
-    align-content: center;
-    gap: var(--space-2) var(--space-4);
-    padding: var(--space-5);
-    min-height: 120px;
     background: linear-gradient(
         120deg,
         color-mix(in srgb, var(--active-bg) 50%, var(--surface)),
@@ -6977,24 +6960,14 @@ p {
 }
 .matching-details-panel .matching-conditions-summary dd {
     grid-column: 2;
-    padding-left: 0;
-    font-size: 16px;
     line-height: 1.55;
 }
 .matching-details-panel .matching-conditions-summary dt > .icon {
-    position: absolute;
-    left: 20px;
     top: 50%;
-    transform: translateY(-50%);
-    width: 40px;
-    height: 40px;
 }
 .matching-details-panel .matching-conditions-summary > div::before {
     content: "";
     position: absolute;
-    left: 83px;
-    top: 20px;
-    bottom: 20px;
     width: 1px;
     background: color-mix(in srgb, var(--sky) 26%, var(--border));
 }
@@ -7003,9 +6976,6 @@ p {
     flex-wrap: wrap;
     align-content: flex-start;
     column-gap: var(--space-1);
-}
-.matching-details-panel__dates > span {
-    white-space: nowrap;
 }
 @media (max-width: 480px) {
     .matching-details-panel .matching-conditions-summary {
@@ -7066,12 +7036,6 @@ p {
     border-color: var(--primary);
     box-shadow: 0 0 0 1px var(--primary);
 }
-.matching-details-panel .matching-conditions-summary {
-    grid-template-columns: minmax(0, 1fr);
-}
-.matching-details-panel__header h2 {
-    font-size: 21px;
-}
 .matching-list-pagination {
     display: flex;
     justify-content: center;
@@ -7090,16 +7054,8 @@ p {
         translate: 0 0;
     }
 }
-.matching-details-panel .matching-conditions-summary > div {
-    grid-template-columns: 40px minmax(0, 1fr);
-    gap: var(--space-2) var(--space-3);
-    min-height: 88px;
-    padding: var(--space-4);
-}
 .matching-details-panel .matching-conditions-summary dt > .icon {
     left: 16px;
-    width: 30px;
-    height: 30px;
 }
 .matching-details-panel .matching-conditions-summary > div::before {
     left: 55px;
@@ -7366,8 +7322,6 @@ p {
 .matching-recruitments__filters {
     display: flex;
     align-items: center;
-    gap: 8px;
-    margin-inline-start: auto;
     min-width: 0;
 }
 .matching-recruitments__filters .ui-field {
@@ -7434,9 +7388,6 @@ p {
     padding: 16px;
     border: 1px solid var(--border);
     color: var(--text);
-}
-.matching-filter-popover .ui-range-selector {
-    margin-top: 12px;
 }
 .matching-filter-popover .ui-date-range {
     width: 100%;
@@ -7567,10 +7518,6 @@ p {
 .matching-filter-popover .ui-range-selector[aria-disabled="true"] .ui-range-selector__track,
 .matching-filter-popover .ui-range-selector[aria-disabled="true"] .ui-range-selector__ticks {
     opacity: 0.4;
-}
-
-.matching-filter-date-trigger .ui-button__label {
-    white-space: nowrap;
 }
 
 .matching-recruitments__filters .matching-filter-icon,

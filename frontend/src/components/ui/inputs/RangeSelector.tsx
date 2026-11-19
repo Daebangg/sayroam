@@ -1,4 +1,5 @@
 import { useId } from "react";
+import { useTranslation } from "react-i18next";
 import { NumberStepper } from "./NumberStepper";
 
 type RangeSelectorProps = {
@@ -28,6 +29,7 @@ export function RangeSelector({
     ticks = [min, max],
     onChange,
 }: RangeSelectorProps) {
+    const { t } = useTranslation();
     const id = useId();
     const lower = Math.max(min, Math.min(value[0], max));
     const upper = Math.max(lower, Math.min(value[1], max));
@@ -51,7 +53,7 @@ export function RangeSelector({
                     onChange={(next) => onChange([next, upper])}
                 />
                 <span className="ui-range-selector__separator" aria-hidden="true">
-                    ~
+                    {t("common.rangeSeparator")}
                 </span>
                 <NumberStepper
                     label={upperLabel}
