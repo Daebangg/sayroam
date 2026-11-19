@@ -1,6 +1,7 @@
 package com.daebangg.sayroam.companion.infrastructure.persistence;
 
 import com.daebangg.sayroam.companion.application.dto.CompanionCandidateResult;
+import com.daebangg.sayroam.companion.application.dto.CompanionMatchingCandidateResult;
 import com.daebangg.sayroam.companion.application.dto.TravelStyleAnswerResult;
 import com.daebangg.sayroam.companion.application.port.out.CompanionCandidateQueryRepository;
 import com.daebangg.sayroam.companion.domain.AgeRange;
@@ -15,6 +16,25 @@ import java.util.List;
 
 interface CompanionCandidateQueryJpaRepository
         extends CompanionCandidateQueryRepository, Repository<CompanionSearch, Long> {
+
+    // 화면 후보 조회와 백그라운드 발견에서 같은 필수 조건을 사용한다.
+    String ELIGIBLE_CANDIDATES = """
+                where c.destinationId = :destinationId
+                  and c.status = ACTIVE
+                  and c.period.startDate <= :endDate
+                  and c.period.endDate >= :startDate
+                  and c.userId <> :ownerId
+                  and (:preferredGender is null or candidate.gender = :preferredGender)
+                  and (c.preferredGender is null or owner.gender = c.preferredGender)
+                  and (:preferredMinAge is null
+                       or (:ageReferenceDate - candidate.birthDate) by year >= :preferredMinAge)
+                  and (:preferredMaxAge is null
+                       or (:ageReferenceDate - candidate.birthDate) by year <= :preferredMaxAge)
+                  and (c.preferredAgeRange.minAge is null
+                       or (:ageReferenceDate - owner.birthDate) by year >= c.preferredAgeRange.minAge)
+                  and (c.preferredAgeRange.maxAge is null
+                       or (:ageReferenceDate - owner.birthDate) by year <= c.preferredAgeRange.maxAge)
+            """;
 
     @Override
     default List<CompanionCandidateResult> findCandidates(CandidateQuery query) {
@@ -35,22 +55,8 @@ interface CompanionCandidateQueryJpaRepository
                 from CompanionSearch c
                 join User owner on owner.id = :ownerId and owner.deletedAt is null
                 join User candidate on candidate.id = c.userId and candidate.deletedAt is null
-                where c.destinationId = :destinationId
-                  and c.status = ACTIVE
-                  and c.period.startDate <= :endDate
-                  and c.period.endDate >= :startDate
-                  and c.userId <> :ownerId
+            """ + ELIGIBLE_CANDIDATES + """
                   and (:titleQuery = '' or locate(:titleQuery, c.title) > 0)
-                  and (:preferredGender is null or candidate.gender = :preferredGender)
-                  and (c.preferredGender is null or owner.gender = c.preferredGender)
-                  and (:preferredMinAge is null
-                       or (:ageReferenceDate - candidate.birthDate) by year >= :preferredMinAge)
-                  and (:preferredMaxAge is null
-                       or (:ageReferenceDate - candidate.birthDate) by year <= :preferredMaxAge)
-                  and (c.preferredAgeRange.minAge is null
-                       or (:ageReferenceDate - owner.birthDate) by year >= c.preferredAgeRange.minAge)
-                  and (c.preferredAgeRange.maxAge is null
-                       or (:ageReferenceDate - owner.birthDate) by year <= c.preferredAgeRange.maxAge)
             ),
             overlapsWithDays as (
                 select o.searchId as searchId, o.userId as userId, o.nickname as nickname,
@@ -120,6 +126,38 @@ interface CompanionCandidateQueryJpaRepository
             @Param("offset") long offset,
             @Param("limit") int limit,
             @Param("styleSort") boolean styleSort);
+
+    @Override
+    default List<CompanionMatchingCandidateResult> findMatchingCandidates(CompanionSearch source, LocalDate today,
+                                                                          long afterId, int limit) {
+        AgeRange ages = source.getPreferredAgeRange();
+        return findMatchingCandidates(source.getUserId(), source.getDestinationId(), source.getPeriod().startDate(),
+                source.getPeriod().endDate(), source.getPreferredGender(), ages == null ? null : ages.minAge(),
+                ages == null ? null : ages.maxAge(), today, afterId, limit);
+    }
+
+    @Query("""
+            select new com.daebangg.sayroam.companion.application.dto.CompanionMatchingCandidateResult(
+                c.id, c.matchingRevision, greatest(c.period.startDate, :startDate), least(c.period.endDate, :endDate))
+            from CompanionSearch c
+            join User owner on owner.id = :ownerId and owner.deletedAt is null
+            join User candidate on candidate.id = c.userId and candidate.deletedAt is null
+            """ + ELIGIBLE_CANDIDATES + """
+              and c.id > :afterId and least(c.period.endDate, :endDate) >= :ageReferenceDate
+            order by c.id
+            limit :limit
+            """)
+    List<CompanionMatchingCandidateResult> findMatchingCandidates(
+            @Param("ownerId") long ownerId,
+            @Param("destinationId") long destinationId,
+            @Param("startDate") LocalDate startDate,
+            @Param("endDate") LocalDate endDate,
+            @Param("preferredGender") Gender preferredGender,
+            @Param("preferredMinAge") Integer preferredMinAge,
+            @Param("preferredMaxAge") Integer preferredMaxAge,
+            @Param("ageReferenceDate") LocalDate today,
+            @Param("afterId") long afterId,
+            @Param("limit") int limit);
 
     @Override
     @Query("""

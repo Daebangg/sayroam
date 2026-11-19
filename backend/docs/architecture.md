@@ -77,6 +77,7 @@ domain은 어떤 계층도 참조하지 않습니다. infrastructure는 applicat
 - 저장 외의 역할(메일 발송, 결제 등)을 구현할 때는 역할 이름의 하위 패키지를 위 목록에 먼저 추가합니다.
 - 여러 도메인이 쓰는 값 객체는 `common/domain`, 전역 설정·예외·범용 헬퍼는 `global`에 둡니다.
 - REST 외 진입점은 `presentation` 아래 프로토콜 이름의 하위 패키지(예: `stomp/`)에 두고, 그 안은 종류별로 나누지 않습니다.
+- 이벤트 또는 주기 실행으로 서비스를 호출하는 백그라운드 진입점은 `presentation/scheduling/`에 둡니다. 작업 선점·재시도·트랜잭션은 application 서비스가 담당합니다.
 
 ### DTO 이름
 
@@ -98,8 +99,9 @@ domain은 어떤 계층도 참조하지 않습니다. infrastructure는 applicat
 - 외부에서 들어오는 요청·메시지를 받는 코드는 `presentation`, 외부로 나가는 저장·발송·호출 구현은 `infrastructure`에 둡니다. 같은 기술이라도 방향에 따라 계층이 달라집니다. 예: STOMP 메시지를 받는 컨트롤러는 `presentation`, 구독자에게 메시지를 내보내는 구현은 `infrastructure`.
 - 서비스는 흐름 조정(조회, 호출 순서, 트랜잭션)만 담당합니다. application에서 쓰는 스프링 기능은 `@Service`, `@Transactional`, 이벤트 발행처럼 특정 기술 구현에 묶이지 않는 것으로 한정합니다.
 - 서비스 간 호출은 허용합니다. 순환 참조가 생기면 공통 로직을 도메인이나 별도 서비스로 분리합니다.
-- presentation이 application 밖을 참조할 수 있는 예외는 세 가지입니다.
+- presentation이 application 밖을 참조할 수 있는 예외는 다음과 같습니다.
   - 컨트롤러가 인증 주체로 받는 `auth.domain.AuthenticatedAccount`
+  - 백그라운드 진입점이 수신하는 `domain.event` 이벤트. 이벤트에는 식별자 같은 불변 값만 담고, 작업 상태는 application 서비스에서 다시 조회합니다.
   - 요청 DTO의 검증 애너테이션이 참조하는 domain의 규칙 상수(아래 "규칙 상수")
   - 요청·응답 DTO가 API 값으로 쓰는 domain enum(예: `PlaceCategory`, `Gender`). 값 목록을 DTO에 다시 정의하지 않고 요청 바인딩·OpenAPI 문서에 그대로 사용합니다. enum 상수 이름이 곧 API 계약 값이므로 이름을 바꾸거나 상수를 지우면 API 변경으로 다룹니다.
 

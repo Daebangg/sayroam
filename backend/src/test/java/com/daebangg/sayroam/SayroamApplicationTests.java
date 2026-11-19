@@ -41,16 +41,16 @@ class SayroamApplicationTests extends DatabaseIntegrationTest {
     void schemaMatchesEntitiesAndRepeatedMigrationDoesNotReapply() {
         assertThat(environment.getProperty("spring.flyway.enabled")).isEqualTo("false");
         assertThat(environment.getProperty("spring.jpa.hibernate.ddl-auto")).isEqualTo("validate");
-        assertThat(entityManagerFactory.getMetamodel().getEntities()).hasSize(19);
+        assertThat(entityManagerFactory.getMetamodel().getEntities()).hasSize(21);
         assertThat(jdbc.queryForObject("""
                 SELECT COUNT(*) FROM information_schema.tables
                 WHERE table_schema = DATABASE() AND table_type = 'BASE TABLE'
-                """, Integer.class)).isEqualTo(20);
-        assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("14");
+                """, Integer.class)).isEqualTo(22);
+        assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("15");
         flyway.validate();
         assertThat(flyway.migrate().migrationsExecuted).isZero();
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM flyway_schema_history WHERE success = 1",
-                Integer.class)).isEqualTo(14);
+                Integer.class)).isEqualTo(15);
     }
 
     @Test
@@ -105,7 +105,16 @@ class SayroamApplicationTests extends DatabaseIntegrationTest {
             assertThat(Flyway.configure().dataSource(dataSource).target("13").load().migrate().migrationsExecuted)
                     .isEqualTo(1);
             legacy.update("UPDATE companion_search SET introduction = '이전 소개글' WHERE id = 1");
+            assertThat(Flyway.configure().dataSource(dataSource).target("14").load().migrate().migrationsExecuted).isEqualTo(1);
+            legacy.update("""
+                    INSERT INTO companion_search
+                        (id, user_id, destination_id, start_date, end_date, status, created_at, updated_at)
+                    SELECT 2, 10, id, '2035-01-01', '2035-01-05', 'ACTIVE', NOW(), NOW()
+                    FROM destination WHERE name = '서울'
+                    """);
             assertThat(Flyway.configure().dataSource(dataSource).load().migrate().migrationsExecuted).isEqualTo(1);
+            assertThat(legacy.queryForList("SELECT search_id FROM companion_matching_job", Long.class))
+                    .containsExactly(2L);
             assertThat(legacy.queryForMap("SELECT region, destination_id, title FROM companion_search WHERE id = 1"))
                     .containsEntry("region", "기존 여행지")
                     .containsEntry("destination_id", null)

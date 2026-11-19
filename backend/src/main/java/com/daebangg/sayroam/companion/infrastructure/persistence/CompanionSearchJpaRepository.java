@@ -11,5 +11,9 @@ import java.util.Optional;
 public interface CompanionSearchJpaRepository extends CompanionSearchRepository, JpaRepository<CompanionSearch, Long> {
     @Override
     @Lock(LockModeType.PESSIMISTIC_WRITE)
+    Optional<CompanionSearch> findForUpdateById(Long id);
+
+    @Override
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
     Optional<CompanionSearch> findForUpdateByIdAndUserId(Long id, Long userId);
 }

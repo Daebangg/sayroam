@@ -9,22 +9,28 @@ import com.daebangg.sayroam.companion.application.dto.TravelStyleAnswerResult;
 import com.daebangg.sayroam.companion.application.port.out.CompanionCandidateQueryRepository;
 import com.daebangg.sayroam.companion.domain.AgeRange;
 import com.daebangg.sayroam.companion.domain.CompanionCandidateSort;
+import com.daebangg.sayroam.companion.domain.CompanionMatchingJob;
+import com.daebangg.sayroam.companion.domain.CompanionMatchingJobRepository;
 import com.daebangg.sayroam.companion.domain.CompanionSearch;
 import com.daebangg.sayroam.companion.domain.CompanionSearchRepository;
 import com.daebangg.sayroam.companion.domain.CompanionSearchStatus;
 import com.daebangg.sayroam.companion.domain.TravelStyleMatch;
 import com.daebangg.sayroam.companion.domain.error.CompanionSearchErrorCode;
+import com.daebangg.sayroam.companion.domain.event.CompanionMatchingRequested;
 import com.daebangg.sayroam.destination.domain.DestinationRepository;
 import com.daebangg.sayroam.global.exception.BusinessException;
 import com.daebangg.sayroam.global.exception.CommonErrorCode;
 import com.daebangg.sayroam.user.domain.Gender;
 import com.daebangg.sayroam.user.domain.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -41,6 +47,8 @@ public class CompanionSearchService {
     private final DestinationRepository destinations;
     private final CompanionCandidateQueryRepository candidates;
     private final UserRepository users;
+    private final CompanionMatchingJobRepository matchingJobs;
+    private final ApplicationEventPublisher events;
 
     @Transactional
     public CompanionSearchResult create(long userId, SaveCompanionSearchCommand command) {
@@ -59,7 +67,9 @@ public class CompanionSearchService {
                 .showAge(command.showAge())
                 .showGender(command.showGender())
                 .build();
-        return CompanionSearchResult.from(searches.save(search));
+        searches.save(search);
+        enqueueMatching(search);
+        return CompanionSearchResult.from(search);
     }
 
     @Transactional(readOnly = true)
@@ -153,6 +163,7 @@ public class CompanionSearchService {
         search.update(command.destinationId(), new TravelPeriod(command.startDate(), command.endDate()),
                 command.preferredGender(), new AgeRange(command.preferredMinAge(), command.preferredMaxAge()),
                 command.title(), command.introduction(), command.showAge(), command.showGender());
+        enqueueMatching(search);
         return CompanionSearchResult.from(search);
     }
 
@@ -160,7 +171,8 @@ public class CompanionSearchService {
     public CompanionSearchResult changeStatus(long userId, long id, CompanionSearchStatus status) {
         lockOwner(userId);
         CompanionSearch search = findMineForUpdate(userId, id);
-        if (search.isReopening(status)) {
+        boolean reopening = search.isReopening(status);
+        if (reopening) {
             requireAvailableActiveSlot(userId);
             requireCompleteTravelStyle(userId);
             if (search.getDestinationId() != null) {
@@ -168,7 +180,15 @@ public class CompanionSearchService {
             }
         }
         search.changeStatus(status);
+        if (reopening) {
+            enqueueMatching(search);
+        }
         return CompanionSearchResult.from(search);
+    }
+
+    private void enqueueMatching(CompanionSearch search) {
+        CompanionMatchingJob job = matchingJobs.save(new CompanionMatchingJob(search, LocalDateTime.now(ZoneOffset.UTC)));
+        events.publishEvent(new CompanionMatchingRequested(job.getId()));
     }
 
     private CompanionSearch findMineForUpdate(long userId, long id) {
