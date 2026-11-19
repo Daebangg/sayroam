@@ -29,7 +29,7 @@ export async function sendResponse(
     }
 
     if (!response.ok) {
-        if (response.status === 502 && !options.signal?.aborted) reportBadGateway();
+        if (response.status === 502 && !options.signal?.aborted) reportBadGateway(path);
         let value: unknown;
         try {
             value = JSON.parse(body);

@@ -1,13 +1,13 @@
 import { Link, Outlet, useLocation, useOutletContext } from "react-router";
 import { useTranslation } from "react-i18next";
 import { useState } from "react";
-import { useAccountAction } from "@/hooks/api/auth/useAccountAction";
+import { useTravelStyle } from "@/hooks/api/profile/useTravelStyle";
+import { ProfileStyleEditor } from "@/components/features/profile/ProfileStyleEditor";
+import { ProfileTravelStyle } from "@/components/features/profile/ProfileTravelStyle";
 import { useLoginMethods } from "@/hooks/api/auth/useLoginMethods";
 import { useProfilePhoto } from "@/hooks/api/auth/useProfilePhoto";
 import { useProfileEditor } from "@/hooks/api/auth/useProfileEditor";
 import { useNicknameEditor } from "@/hooks/api/auth/useNicknameEditor";
-import type { AccountPurpose } from "@/hooks/account.types";
-import { AccountActionDialog } from "@/components/features/settings/AccountDialogs";
 import { ButtonLink, Icon, SectionWordmark } from "@/components/ui";
 import {
     AccountDetails,
@@ -129,11 +129,10 @@ export function KeyboardSettingsPage() {
 }
 
 export function AccountSettingsPage() {
-    const { member, onUpdateNickname } = useOutletContext<PageContext>();
+    const { member, onUpdateNickname, onAccountAction } = useOutletContext<PageContext>();
     const nicknameEditor = useNicknameEditor(onUpdateNickname);
     const { t } = useTranslation();
     const { methods, failed, reload } = useLoginMethods(member?.userId ?? 0);
-    const [action, setAction] = useState<AccountPurpose | null>(null);
     return member ? (
         <>
             <SettingsHeading title={t("settings.account")} />
@@ -143,16 +142,8 @@ export function AccountSettingsPage() {
                 methodsFailed={failed}
                 onReloadMethods={reload}
                 nicknameEditor={nicknameEditor}
-                onAction={setAction}
+                onAction={onAccountAction}
             />
-            {action && (
-                <AccountActionFlow
-                    key={action}
-                    purpose={action}
-                    email={member.email}
-                    onClose={() => setAction(null)}
-                />
-            )}
         </>
     ) : null;
 }
@@ -173,6 +164,18 @@ export function ProfileSettingsPage() {
         onUploadProfileImage,
     );
     const detailsEditor = useProfileEditor(onUpdateProfileDetails);
+    const travelStyle = useTravelStyle(member?.userId);
+    const [editingStyle, setEditingStyle] = useState(false);
+    if (member && editingStyle && travelStyle.values)
+        return (
+            <ProfileStyleEditor
+                initialValues={travelStyle.values}
+                busy={travelStyle.busy}
+                failed={travelStyle.failed}
+                onSave={travelStyle.save}
+                onClose={() => setEditingStyle(false)}
+            />
+        );
     return member ? (
         <>
             <SettingsHeading title={t("settings.profile")} />
@@ -181,33 +184,19 @@ export function ProfileSettingsPage() {
                 nicknameEditor={nicknameEditor}
                 imageEditor={imageEditor}
                 detailsEditor={detailsEditor}
+                travelStyle={
+                    <ProfileTravelStyle
+                        values={travelStyle.values}
+                        failed={travelStyle.failed}
+                        saved={travelStyle.saved}
+                        onEdit={() => setEditingStyle(true)}
+                        onRetry={travelStyle.reload}
+                        onDismissSaved={travelStyle.dismissSaved}
+                    />
+                }
             />
         </>
     ) : null;
-}
-
-function AccountActionFlow({
-    purpose,
-    email,
-    onClose,
-}: {
-    purpose: AccountPurpose;
-    email: string | null;
-    onClose: () => void;
-}) {
-    const { onAccountResult } = useOutletContext<PageContext>();
-    const flow = useAccountAction(purpose, onAccountResult);
-    return (
-        <AccountActionDialog
-            {...flow}
-            purpose={purpose}
-            email={email}
-            onRequest={flow.requestCode}
-            onVerify={flow.verifyCode}
-            onComplete={flow.complete}
-            onClose={onClose}
-        />
-    );
 }
 
 export function AppearanceSettingsPage() {

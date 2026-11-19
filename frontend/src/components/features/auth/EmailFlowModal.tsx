@@ -18,6 +18,7 @@ type EmailFlowModalProps = {
     expiresIn: number;
     resendIn: number;
     message: EmailFlowMessage | null;
+    messageTarget?: "email" | "verification" | "completion";
     onEmailChange: () => void;
     onRequest: (email: string) => Promise<boolean>;
     onVerify: (code: string) => Promise<boolean>;
@@ -59,6 +60,7 @@ export function EmailFlowModal({
     expiresIn,
     resendIn,
     message,
+    messageTarget = "completion",
     onEmailChange,
     onRequest,
     onVerify,
@@ -81,6 +83,28 @@ export function EmailFlowModal({
     const matches = password.length > 0 && password === confirmation;
     const canComplete =
         verified && validPassword && matches && (mode === "reset" || isValidNickname(nickname));
+    const nicknameMessage = message === "invalidNickname";
+    const passwordMessage = message === "invalidPassword";
+    const verificationMessage =
+        message !== null &&
+        !nicknameMessage &&
+        !passwordMessage &&
+        (["codeInvalid", "expired", "conflict"].includes(message) ||
+            messageTarget === "verification");
+    const emailMessage =
+        message !== null &&
+        !verificationMessage &&
+        !nicknameMessage &&
+        !passwordMessage &&
+        (["registered", "invalidEmail", "delivery"].includes(message) || messageTarget === "email");
+    const silentMailFailure =
+        messageTarget === "email" &&
+        ["delivery", "unavailable", "uncertain"].includes(message ?? "");
+    const feedback = message && !silentMailFailure && (
+        <p className="auth-feedback" role="alert" id={errorId} ref={errorRef} tabIndex={-1}>
+            {t(`auth.flowMessages.${message}`)}
+        </p>
+    );
     useEffect(() => {
         if (message) errorRef.current?.focus();
     }, [message]);
@@ -91,12 +115,14 @@ export function EmailFlowModal({
             onClose={onClose}
             labelledBy={titleId}
             className="auth-modal--flow"
+            dismissible={!blocking}
             closeOnBackdrop={false}
         >
             <Tooltip content={t("common.close")} shortcut={["Escape"]} className="ui-modal__close">
                 <Button
                     variant="ghost"
                     className="icon-button"
+                    disabled={blocking}
                     onClick={onClose}
                     aria-label={t("common.close")}
                 >
@@ -109,7 +135,7 @@ export function EmailFlowModal({
                     {t(mode === "signup" ? "auth.signupDescription" : "auth.resetDescription")}
                 </p>
             </div>
-            <div className="auth-flow-body">
+            <div className="auth-flow-body" aria-busy={busy || undefined}>
                 <form
                     className="auth-flow-form"
                     onSubmit={(event) => {
@@ -121,10 +147,13 @@ export function EmailFlowModal({
                         }
                         if (!canComplete) return;
                         const input = { nickname, password };
-                        setPassword("");
-                        setConfirmation("");
-                        setCode("");
-                        void onComplete(input);
+                        void onComplete(input).then((success) => {
+                            if (!success) {
+                                setPassword("");
+                                setConfirmation("");
+                                setCode("");
+                            }
+                        });
                     }}
                     aria-describedby={message ? errorId : undefined}
                 >
@@ -140,6 +169,7 @@ export function EmailFlowModal({
                             onChange={(event) => setNickname(event.target.value)}
                         />
                     )}
+                    {nicknameMessage && feedback}
                     <TextField
                         label={t("auth.emailLabel")}
                         name="email"
@@ -162,15 +192,20 @@ export function EmailFlowModal({
                             items={[{ label: t("auth.emailRule"), valid: isValidEmail(email) }]}
                         />
                     )}
-                    {(mode !== "reset" || sent || sending) && (
-                        <section className="auth-verification" aria-label={t("auth.verifyEmail")}>
+                    {emailMessage && feedback}
+                    {(mode !== "reset" || sent) && (
+                        <section
+                            key={verified ? "verified" : sent ? "code" : "request"}
+                            className="auth-verification auth-stage-enter"
+                            aria-label={t("auth.verifyEmail")}
+                        >
                             {verified ? (
                                 <p className="auth-success" role="status">
                                     {t("auth.verified", { seconds: expiresIn })}
                                 </p>
                             ) : (
                                 <>
-                                    {(sent || sending) && (
+                                    {sent && (
                                         <>
                                             {sent && (
                                                 <p className="auth-flow-hint" role="status">
@@ -190,6 +225,7 @@ export function EmailFlowModal({
                                             />
                                             <Button
                                                 variant="brand"
+                                                loading={busy && !sending && !verified}
                                                 disabled={
                                                     !/^\d{6}$/.test(code) || expiresIn === 0 || busy
                                                 }
@@ -201,7 +237,7 @@ export function EmailFlowModal({
                                             >
                                                 {t("auth.verifyCode")}
                                             </Button>
-                                            {!sending && expiresIn === 0 && (
+                                            {!busy && expiresIn === 0 && (
                                                 <p className="auth-feedback">
                                                     {t("auth.flowMessages.expired")}
                                                 </p>
@@ -218,16 +254,13 @@ export function EmailFlowModal({
                                     >
                                         {resendIn > 0
                                             ? t("auth.resendAfter", { seconds: resendIn })
-                                            : t(
-                                                  sent || sending
-                                                      ? "auth.resendCode"
-                                                      : "auth.sendCode",
-                                              )}
+                                            : t(sent ? "auth.resendCode" : "auth.sendCode")}
                                     </Button>
                                 </>
                             )}
                         </section>
                     )}
+                    {verificationMessage && feedback}
                     {(mode === "signup" || verified) && (
                         <>
                             <TextField
@@ -265,6 +298,7 @@ export function EmailFlowModal({
                                     },
                                 ]}
                             />
+                            {passwordMessage && feedback}
                             <TextField
                                 label={t("auth.confirmPasswordLabel")}
                                 name="confirmation"
@@ -282,22 +316,17 @@ export function EmailFlowModal({
                             />
                         </>
                     )}
-                    {message && (
-                        <p
-                            id={errorId}
-                            ref={errorRef}
-                            role="alert"
-                            tabIndex={-1}
-                            className="auth-feedback"
-                        >
-                            {t(`auth.flowMessages.${message}`)}
-                        </p>
-                    )}
-                    {(mode === "signup" || verified || (!sent && !sending)) && (
+                    {message &&
+                        !emailMessage &&
+                        !verificationMessage &&
+                        !nicknameMessage &&
+                        !passwordMessage &&
+                        feedback}
+                    {(mode === "signup" || verified || !sent) && (
                         <Button
                             variant="brand"
                             type="submit"
-                            loading={mode === "reset" ? busy : blocking}
+                            loading={busy && !sending}
                             disabled={
                                 mode === "reset" && !verified
                                     ? sent || !isValidEmail(email) || resendIn > 0 || busy

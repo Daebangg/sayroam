@@ -1,8 +1,10 @@
+import { AccountActionFlow } from "@/pages/auth/AccountActionFlow";
+import { ProfileSetupGate } from "@/pages/onboarding/ProfileSetupGate";
 import { useInputValidation } from "@/hooks/useInputValidation";
 import { useServerErrors } from "@/hooks/useServerErrors";
 import { StatusPage } from "@/pages/status/StatusPage";
 import { socialReturn } from "@/routing/socialReturn";
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { Outlet, ScrollRestoration, useLocation, useNavigate } from "react-router";
 import { AppShell } from "@/components/layout/AppShell";
@@ -19,9 +21,11 @@ import { useTheme, type ThemePreference } from "@/hooks/useTheme";
 import { RouteAccessibility } from "@/routing/RouteAccessibility";
 import { Toast } from "@/components/ui";
 import { AccountResultDialog } from "@/components/features/settings/AccountDialogs";
-import type { AccountResult, ProfileDetailsUpdate } from "@/hooks/account.types";
+import type { PageContext } from "@/routing/context";
+import type { AccountPurpose, AccountResult, ProfileDetailsUpdate } from "@/hooks/account.types";
 
 type AuthToast =
+    | "emailSent"
     | "signupComplete"
     | "socialSignupComplete"
     | "resetComplete"
@@ -43,11 +47,24 @@ export default function App() {
         | null
     >(null);
     const [recovering, setRecovering] = useState(false);
+    const [accountAction, setAccountAction] = useState<{
+        purpose: AccountPurpose;
+        email: string | null;
+    } | null>(null);
+    const [accountLeavingKey, setAccountLeavingKey] = useState<string | null>(null);
     const [accountResult, setAccountResult] = useState<AccountResult | null>(null);
     const toastSequence = useRef(0);
-    useServerErrors(() =>
-        setToast({ id: ++toastSequence.current, message: "badGateway", error: true }),
-    );
+    useServerErrors((path) => {
+        if (
+            [
+                "/api/auth/email-verifications",
+                "/api/auth/password-reset-verifications",
+                "/api/auth/account-verifications",
+            ].includes(path ?? "")
+        )
+            return;
+        setToast({ id: ++toastSequence.current, message: "badGateway", error: true });
+    });
 
     useInputValidation((message, field) => {
         const last = field.charCodeAt(field.length - 1);
@@ -65,6 +82,12 @@ export default function App() {
     function showToast(message: AuthToast): void {
         setToast({ id: ++toastSequence.current, message });
     }
+    function showEmailRequest(): () => void {
+        const id = ++toastSequence.current;
+        setToast({ id, message: "emailSent" });
+        return () => setToast((current) => (current?.id === id ? null : current));
+    }
+    const [profileSetupActive, setProfileSetupActive] = useState(false);
     const location = useLocation();
     const mockupScreen = getMockupScreen(location.pathname, location.search);
     const navigate = useNavigate();
@@ -201,6 +224,7 @@ export default function App() {
         knownPage && auth.status === "unavailable" && auth.message !== "logoutUncertain";
     return (
         <AppShell
+            setupActive={profileSetupActive}
             mockupScreen={mockupScreen}
             isHome={location.pathname === "/"}
             theme={theme.resolved}
@@ -209,16 +233,23 @@ export default function App() {
             authBusy={authBusy}
             onLogout={logout}
         >
-            {auth.message && !authOpen && !modalOnlyAuthMessage && !showAuthFailure && (
-                <AuthNotice
-                    message={auth.message}
-                    busy={authBusy}
-                    onLogin={openAuth}
-                    onRetryLogout={logout}
-                    onRetryProfile={retryProfile}
-                />
-            )}
-            {showAuthFailure ? (
+            {auth.message &&
+                !authOpen &&
+                !modalOnlyAuthMessage &&
+                !showAuthFailure &&
+                !accountAction &&
+                accountLeavingKey !== location.key && (
+                    <AuthNotice
+                        message={auth.message}
+                        busy={authBusy}
+                        onLogin={openAuth}
+                        onRetryLogout={logout}
+                        onRetryProfile={retryProfile}
+                    />
+                )}
+            {!auth.user && (accountAction || accountLeavingKey === location.key) ? (
+                <main id="main-content" tabIndex={-1} className="status-page" aria-busy="true" />
+            ) : showAuthFailure ? (
                 <StatusPage
                     kind={(auth.failureStatus ?? 0) >= 500 ? "serverError" : "error"}
                     onRetry={retryProfile}
@@ -233,50 +264,49 @@ export default function App() {
                     onLogin={openAuth}
                 />
             ) : (
-                <Outlet
-                    context={{
-                        onOpenAuth: openAuth,
-                        onLanguageChange: () =>
-                            changeLanguage(i18n.resolvedLanguage === "ko" ? "en" : "ko"),
-                        member: auth.user,
-                        themePreference: theme.preference,
-                        onThemeChange: changeTheme,
-                        onSelectLanguage: changeLanguage,
-                        onUpdateProfileDetails: async (
-                            input: ProfileDetailsUpdate,
-                            signal: AbortSignal,
-                        ) => {
-                            await auth.updateProfileDetails(input, signal);
-                            showToast("profileDetailsSaved");
-                        },
-                        onUploadProfileImage: async (dataUrl: string, signal: AbortSignal) => {
-                            await auth.uploadProfileImage(dataUrl, signal);
-                            showToast("profileImageSaved");
-                        },
-                        onUpdateProfileImage: async (
-                            profileImageUrl: string,
-                            signal: AbortSignal,
-                        ) => {
-                            await auth.updateProfileImage(profileImageUrl, signal);
-                            showToast("profileImageSaved");
-                        },
-                        onUpdateNickname: async (nickname: string, signal: AbortSignal) => {
-                            await auth.updateNickname(nickname, signal);
-                            showToast("nicknameSaved");
-                        },
-                        onAccountResult: (result: AccountResult) => {
-                            auth.endSession();
-                            setAccountResult(result.outcome === "complete" ? null : result);
-                            if (result.outcome === "complete")
-                                showToast(
-                                    result.purpose === "ACCOUNT_DELETION"
-                                        ? "accountDeleted"
-                                        : "passwordChanged",
-                                );
-                            void navigate(pagePaths.plaza, { replace: true });
-                        },
-                    }}
-                />
+                <ProfileSetupBoundary
+                    member={auth.user}
+                    onUpdate={auth.updateProfileDetails}
+                    onActivity={setProfileSetupActive}
+                >
+                    <Outlet
+                        context={{
+                            onOpenAuth: openAuth,
+                            onLanguageChange: () =>
+                                changeLanguage(i18n.resolvedLanguage === "ko" ? "en" : "ko"),
+                            member: auth.user,
+                            themePreference: theme.preference,
+                            onThemeChange: changeTheme,
+                            onSelectLanguage: changeLanguage,
+                            onUpdateProfileDetails: async (
+                                input: ProfileDetailsUpdate,
+                                signal: AbortSignal,
+                            ) => {
+                                await auth.updateProfileDetails(input, signal);
+                                showToast("profileDetailsSaved");
+                            },
+                            onUploadProfileImage: async (dataUrl: string, signal: AbortSignal) => {
+                                await auth.uploadProfileImage(dataUrl, signal);
+                                showToast("profileImageSaved");
+                            },
+                            onUpdateProfileImage: async (
+                                profileImageUrl: string,
+                                signal: AbortSignal,
+                            ) => {
+                                await auth.updateProfileImage(profileImageUrl, signal);
+                                showToast("profileImageSaved");
+                            },
+                            onUpdateNickname: async (nickname: string, signal: AbortSignal) => {
+                                await auth.updateNickname(nickname, signal);
+                                showToast("nicknameSaved");
+                            },
+                            onAccountAction: (purpose: AccountPurpose) => {
+                                if (auth.user)
+                                    setAccountAction({ purpose, email: auth.user.email });
+                            },
+                        }}
+                    />
+                </ProfileSetupBoundary>
             )}
             <RouteAccessibility
                 contentKey={
@@ -289,6 +319,7 @@ export default function App() {
             <ScrollRestoration />
             {authOpen && !showAuthFailure && (
                 <AuthDialog
+                    onEmailSent={showEmailRequest}
                     onCancelSocial={auth.cancelSocial}
                     onClose={closeAuth}
                     onSubmit={login}
@@ -313,6 +344,36 @@ export default function App() {
                     onDismiss={() => setToast(null)}
                 />
             )}
+            {accountAction && (
+                <AccountActionFlow
+                    key={accountAction.purpose}
+                    purpose={accountAction.purpose}
+                    email={accountAction.email}
+                    onEmailSent={showEmailRequest}
+                    onClose={() => {
+                        if (auth.user) setAccountAction(null);
+                        else {
+                            setAccountLeavingKey(location.key);
+                            void Promise.resolve(navigate(pagePaths.plaza, { replace: true })).then(
+                                () => setAccountAction(null),
+                            );
+                        }
+                    }}
+                    onResult={async (result) => {
+                        setAccountLeavingKey(location.key);
+                        await navigate(pagePaths.plaza, { replace: true });
+                        auth.endSession();
+                        setAccountAction(null);
+                        setAccountResult(result.outcome === "complete" ? null : result);
+                        if (result.outcome === "complete")
+                            showToast(
+                                result.purpose === "ACCOUNT_DELETION"
+                                    ? "accountDeleted"
+                                    : "passwordChanged",
+                            );
+                    }}
+                />
+            )}
             {accountResult && (
                 <AccountResultDialog
                     result={accountResult}
@@ -324,5 +385,30 @@ export default function App() {
                 />
             )}
         </AppShell>
+    );
+}
+
+function ProfileSetupBoundary({
+    member,
+    onUpdate,
+    children,
+    onActivity,
+}: {
+    onActivity: (active: boolean) => void;
+    member: PageContext["member"];
+    onUpdate: PageContext["onUpdateProfileDetails"];
+    children: ReactNode;
+}) {
+    return member ? (
+        <ProfileSetupGate
+            key={member.userId}
+            member={member}
+            onUpdate={onUpdate}
+            onActivity={onActivity}
+        >
+            {children}
+        </ProfileSetupGate>
+    ) : (
+        children
     );
 }

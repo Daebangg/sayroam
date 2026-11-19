@@ -1046,22 +1046,6 @@ function MatchingWorkspace({
                                 {t(matching.errorKey)}
                             </p>
                         )}
-                        {!matching.catalogLoading &&
-                            !matching.catalogFailed &&
-                            userId !== undefined &&
-                            matching.searches.length === 0 && (
-                                <div className="matching-empty">
-                                    <p>{t("matchingFlow.noRegistrations")}</p>
-                                    <Button
-                                        onClick={() => {
-                                            setView("find");
-                                            goTo(0);
-                                        }}
-                                    >
-                                        {t("matchingFlow.find")}
-                                    </Button>
-                                </div>
-                            )}
                         <div
                             className={`matching-recruitments${selectedRegistration ? " matching-recruitments--with-panel" : ""}`}
                         >
@@ -1249,17 +1233,42 @@ function MatchingWorkspace({
                                     </div>
                                 </header>
                                 {!matching.catalogLoading &&
-                                    matching.searches.length > 0 &&
+                                    !matching.catalogFailed &&
+                                    userId !== undefined &&
                                     filteredSearches.length === 0 && (
                                         <div className="matching-filter-empty" role="status">
                                             <div
                                                 className="matching-filter-empty__illustration"
                                                 aria-hidden="true"
                                             >
-                                                <Icon name="search" />
+                                                <Icon
+                                                    name={
+                                                        matching.searches.length === 0
+                                                            ? "journey-register"
+                                                            : "search"
+                                                    }
+                                                />
                                             </div>
-                                            <h3>{t("matchingFlow.noFilteredPosts")}</h3>
-                                            <p>{t("matchingFlow.adjustFilters")}</p>
+                                            <h3>
+                                                {t(
+                                                    matching.searches.length === 0
+                                                        ? "matchingFlow.noRegistrations"
+                                                        : "matchingFlow.noFilteredPosts",
+                                                )}
+                                            </h3>
+                                            {matching.searches.length === 0 ? (
+                                                <Button
+                                                    variant="brand"
+                                                    onClick={() => {
+                                                        setView("find");
+                                                        goTo(0);
+                                                    }}
+                                                >
+                                                    {t("matchingEntry.registerTitle")}
+                                                </Button>
+                                            ) : (
+                                                <p>{t("matchingFlow.adjustFilters")}</p>
+                                            )}
                                         </div>
                                     )}
                                 <div

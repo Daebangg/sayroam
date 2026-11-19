@@ -126,8 +126,11 @@ export function LoginModal({
                     }
                     setLocalError(null);
                     const submittedPassword = password;
-                    setPassword("");
-                    void onSubmit({ email, password: submittedPassword, rememberMe });
+                    void onSubmit({ email, password: submittedPassword, rememberMe }).then(
+                        (success) => {
+                            if (!success) setPassword("");
+                        },
+                    );
                 }}
             >
                 <TextField

@@ -2,9 +2,11 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { isMemberPath, legacyPageUrl } from "../src/routing/paths.ts";
 
-test("여행·내 방·계정·프로필은 보호하고 대소문자·끝 슬래시를 처리", () => {
+test("여행·여행 메이트·내 방·계정·프로필은 보호하고 대소문자·끝 슬래시를 처리", () => {
     for (const path of [
         "/trips",
+        "/matching",
+        "/MATCHING/",
         "/rooms",
         "/TRIPS/",
         "/Rooms///",
@@ -15,7 +17,6 @@ test("여행·내 방·계정·프로필은 보호하고 대소문자·끝 슬�
         assert.equal(isMemberPath(path), true);
     for (const path of [
         "/",
-        "/matching",
         "/brand",
         "/rooms/unknown",
         "//external.test/trips",
@@ -67,6 +68,8 @@ test("목업 쿼리로 실제 회원 전용 경로를 공개 화면으로 바꾸
     const { getMockupScreen } = await import("../src/routing/mockups.ts");
     for (const path of [
         "/trips",
+        "/matching",
+        "/MATCHING/",
         "/rooms",
         "/TRIPS/",
         "/Rooms///",

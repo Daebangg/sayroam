@@ -145,7 +145,8 @@
         "profileImageSaved": "프로필 사진이 변경되었습니다.",
         "profileDetailsSaved": "프로필 정보가 저장되었습니다.",
         "badGateway": "일시적인 서버 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.",
-        "socialSignupComplete": "회원가입이 완료되었습니다."
+        "socialSignupComplete": "회원가입이 완료되었습니다.",
+        "emailSent": "인증 메일을 요청했어요. 메일함을 확인해주세요."
     },
     "trips": {
         "heading": "내 여행",
@@ -870,5 +871,31 @@
         "subtitle": "함께할 여행 메이트를 모집하고, 내 모집글을 관리하세요.",
         "mineAction": "내가 모집한 여행 메이트 보기",
         "mineDescription": "내가 모집한 여행 메이트를 확인하고 관리하세요."
+    },
+    "profileSetup": {
+        "styleTitle": "여행 스타일",
+        "styleHint": "다음 모집을 시작할 때 미리 선택돼요. 이미 모집한 여행의 스타일은 바뀌지 않아요.",
+        "styleError": "여행 스타일을 불러오거나 저장하지 못했어요. 다시 시도해주세요.",
+        "styleSaved": "여행 스타일을 저장했어요.",
+        "retry": "다시 시도",
+        "welcome": "반가워요, {{nickname}}님",
+        "genderQuestion": "성별을 알려주세요",
+        "birthdayQuestion": "생년월일을 알려주세요",
+        "intro": "내 프로필에 표시할 기본 정보예요. 언제든 설정에서 바꿀 수 있어요.",
+        "finish": "저장하고 시작하기",
+        "later": "나중에 할게요",
+        "save": "저장",
+        "leaveTitle": "설정을 나중에 할까요?",
+        "leaveHint": "선택하지 않은 정보는 프로필에서 언제든 설정할 수 있어요.",
+        "leave": "이동하기",
+        "birthdayPlaceholder": "생년월일 선택",
+        "age": "만 {{count}}세",
+        "greetingTitle": "환영합니다!",
+        "greetingDescription": "SayRoam에서 여행 계획을 세우고,\n함께 떠날 여행 메이트를 만나보세요.",
+        "greetingStart": "여행 시작하기",
+        "editHint": "프로필에 저장할 여행 스타일을 선택해주세요. 기존 모집에는 영향을 주지 않아요.",
+        "backToProfile": "프로필로 돌아가기",
+        "editStyle": "여행 스타일 수정",
+        "saveStyle": "여행 스타일 저장하기"
     }
 }

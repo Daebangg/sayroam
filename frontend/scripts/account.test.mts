@@ -183,3 +183,64 @@ test("연결된 로그인 수단은 불리언과 지원 공급자만 허용", ()
     ])
         assert.throws(() => validateLoginMethods(value, 200), ApiError);
 });
+
+test("계정 변경 성공 후 화면 전환 콜백이 끝날 때까지 버튼 처리 상태 유지", async (t) => {
+    t.mock.method(globalThis, "fetch", async (path: unknown) => {
+        if (path === "/api/auth/account-verifications")
+            return Response.json({ ...issued, purpose: "PASSWORD_CHANGE" }, { status: 202 });
+        if (path === "/api/auth/account-verifications/verify")
+            return Response.json({
+                purpose: "PASSWORD_CHANGE",
+                accountProof,
+                expiresInSeconds: 300,
+            });
+        return new Response(null, { status: 204 });
+    });
+    let finishNavigation!: () => void;
+    let enteredResult!: () => void;
+    const navigation = new Promise<void>((resolve) => {
+        finishNavigation = resolve;
+    });
+    const entered = new Promise<void>((resolve) => {
+        enteredResult = resolve;
+    });
+    const flow = createAccountController("PASSWORD_CHANGE", async () => {
+        enteredResult();
+        await navigation;
+    });
+    await flow.requestCode();
+    await flow.verifyCode("123456");
+    const completing = flow.complete(password, false);
+    await entered;
+    assert.equal(flow.getSnapshot().busy, true);
+    assert.equal(flow.getSnapshot().stage, "verified");
+    finishNavigation();
+    assert.equal(await completing, true);
+    assert.equal(flow.getSnapshot().busy, false);
+});
+
+test("인증 메일 재발송 중 기존 코드 입력 단계를 유지", async (t) => {
+    let count = 0;
+    let release!: () => void;
+    t.mock.method(globalThis, "fetch", async () => {
+        if (count++ > 0)
+            await new Promise<void>((resolve) => {
+                release = resolve;
+            });
+        return Response.json(
+            { ...issued, purpose: "PASSWORD_CHANGE", resendAfterSeconds: 0 },
+            { status: 202 },
+        );
+    });
+    const flow = createAccountController("PASSWORD_CHANGE", () => assert.fail("완료 요청 아님"));
+    await flow.requestCode();
+    const resending = flow.requestCode();
+    assert.equal(flow.getSnapshot().busy, true);
+    assert.equal(flow.getSnapshot().sending, true);
+    assert.equal(flow.getSnapshot().stage, "code");
+    // The request passes through the shared cookie lock before reaching fetch.
+    while (!release) await new Promise<void>((resolve) => setImmediate(resolve));
+    release();
+    assert.equal(await resending, true);
+    assert.equal(flow.getSnapshot().stage, "code");
+});
