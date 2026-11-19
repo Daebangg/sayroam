@@ -115,11 +115,13 @@ export function CompanionSearch({
                                 destinationId: Number(destinationId),
                                 startDate,
                                 endDate,
-                                q: keyword.trim() || undefined,
-                                preferredGender:
-                                    gender === "MALE" || gender === "FEMALE" ? gender : undefined,
-                                preferredMinAge: anyAge ? undefined : ages[0],
-                                preferredMaxAge: anyAge ? undefined : ages[1],
+                                ...(keyword.trim() ? { q: keyword.trim() } : {}),
+                                ...(gender === "MALE" || gender === "FEMALE"
+                                    ? { preferredGender: gender }
+                                    : {}),
+                                ...(!anyAge
+                                    ? { preferredMinAge: ages[0], preferredMaxAge: ages[1] }
+                                    : {}),
                                 page: 0,
                                 size: 9,
                             });
@@ -316,8 +318,10 @@ export function CompanionSearch({
                                             </p>
                                             <p>
                                                 <Icon name="calendar" />
-                                                {date(candidate.startDate)} ~{" "}
-                                                {date(candidate.endDate)}
+                                                {t("matchingFlow.dateRange", {
+                                                    start: date(candidate.startDate),
+                                                    end: date(candidate.endDate),
+                                                })}
                                             </p>
                                         </div>
                                         <div className="companion-search__card-footer">
@@ -378,6 +382,10 @@ export function CompanionSearch({
                                 endDate: selectedCandidate.endDate,
                                 destinationId: submitted.destinationId,
                                 legacyRegion: null,
+                                introduction: selectedCandidate.introduction,
+                                showAge: selectedCandidate.age !== null,
+                                showGender: selectedCandidate.gender !== null,
+                                travelStyle: {},
                                 status: "ACTIVE",
                                 preferredGender: null,
                                 preferredMinAge: null,

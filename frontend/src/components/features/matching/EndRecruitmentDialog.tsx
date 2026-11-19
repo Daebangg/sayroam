@@ -4,6 +4,8 @@ import { Button, Modal } from "@/components/ui";
 
 type EndRecruitmentDialogProps = {
     title: string;
+    action?: "close" | "resume";
+    errorMessage?: string;
     busy: boolean;
     failed: boolean;
     onCancel: () => void;
@@ -12,6 +14,8 @@ type EndRecruitmentDialogProps = {
 
 export function EndRecruitmentDialog({
     title,
+    action = "close",
+    errorMessage,
     busy,
     failed,
     onCancel,
@@ -27,11 +31,17 @@ export function EndRecruitmentDialog({
             dismissible={!busy}
             className="matching-end-dialog"
         >
-            <h2 id={id}>{t("matchingFlow.endConfirmation")}</h2>
+            <h2 id={id}>
+                {t(
+                    action === "resume"
+                        ? "matchingFlow.resumeConfirmation"
+                        : "matchingFlow.endConfirmation",
+                )}
+            </h2>
             <p className="matching-end-dialog__title">{title}</p>
             {failed && (
                 <p role="alert" className="matching-error">
-                    {t("matchingFlow.endFailed")}
+                    {errorMessage ?? t("matchingFlow.endFailed")}
                 </p>
             )}
             <div className="matching-end-dialog__actions">
@@ -39,7 +49,7 @@ export function EndRecruitmentDialog({
                     {t("common.cancel")}
                 </Button>
                 <Button variant="brand" loading={busy} onClick={onConfirm}>
-                    {t("matchingFlow.close")}
+                    {t(action === "resume" ? "matchingFlow.resume" : "matchingFlow.close")}
                 </Button>
             </div>
         </Modal>

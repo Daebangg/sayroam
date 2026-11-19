@@ -7,7 +7,6 @@ import {
     Badge,
     DateRangeCalendar,
     Autocomplete,
-    FilterChips,
     DropdownMenu,
     IconChoiceGroup,
     Checkbox,
@@ -15,6 +14,7 @@ import {
     Icon,
     Spinner,
     TextField,
+    TextArea,
     Tooltip,
     Toast,
 } from "@/components/ui";
@@ -24,6 +24,7 @@ import {
 } from "@/hooks/api/matching/useCompanionMatching";
 import { EndRecruitmentDialog } from "@/components/features/matching/EndRecruitmentDialog";
 import { RecruitmentDetailsPanel } from "@/components/features/matching/RecruitmentDetailsPanel";
+import { TravelStyleChoices } from "@/components/features/matching/TravelStyleChoices";
 import { MatchingFilterPopover } from "@/components/features/matching/MatchingFilterPopover";
 import type { PageContext } from "@/routing/context";
 
@@ -55,6 +56,7 @@ export function MatchingPage() {
         <MatchingWorkspace
             key={member?.userId ?? "guest"}
             userId={member?.userId}
+            profile={member}
             initialDraft={draft}
             onLogin={(next) => {
                 setDraft(next);
@@ -67,7 +69,8 @@ export function MatchingPage() {
 }
 
 type MatchingWorkspaceProps = {
-    userId?: number;
+    userId: number | undefined;
+    profile: PageContext["member"];
     onLogin: (draft: MatchingDraft) => void;
     initialDraft: MatchingDraft;
     language: string;
@@ -75,9 +78,16 @@ type MatchingWorkspaceProps = {
 };
 
 const styleQuestions = ["planning", "pace", "together", "spending"] as const;
+const styleCodes = {
+    planning: "planning",
+    pace: "daily-pace",
+    together: "time-together",
+    spending: "spending",
+} as const;
 const questionIcons = [
     "journey-place",
     "journey-dates",
+    "profile",
     "journey-people",
     "journey-age",
     "journey-plan",
@@ -89,6 +99,7 @@ const questionIcons = [
 const progressIcons = [
     "journey-place",
     "journey-dates",
+    "profile",
     "journey-people",
     "journey-plan",
     "journey-register",
@@ -97,6 +108,7 @@ const progressIcons = [
 const questionKeys = [
     "destination",
     "dates",
+    "privacy",
     "gender",
     "age",
     "planning",
@@ -108,12 +120,24 @@ const questionKeys = [
 
 function MatchingWorkspace({
     userId,
+    profile,
     onLogin,
     initialDraft,
     language,
     title,
 }: MatchingWorkspaceProps) {
     const { t } = useTranslation();
+    const today = new Intl.DateTimeFormat("sv-SE", {
+        timeZone: "Asia/Seoul",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+    }).format(new Date());
+    const profileAge = profile?.birthDate
+        ? Number(today.slice(0, 4)) -
+          Number(profile.birthDate.slice(0, 4)) -
+          (today.slice(5) < profile.birthDate.slice(5) ? 1 : 0)
+        : null;
     const matching = useCompanionMatching(userId);
     const [step, setStep] = useState(0);
     const [view, setView] = useState<string>(initialDraft.view);
@@ -122,6 +146,9 @@ function MatchingWorkspace({
     const [startDate, setStartDate] = useState(initialDraft.startDate);
     const [endDate, setEndDate] = useState(initialDraft.endDate);
     const [registrationTitle, setRegistrationTitle] = useState("");
+    const [introduction, setIntroduction] = useState("");
+    const [showAge, setShowAge] = useState(false);
+    const [showGender, setShowGender] = useState(false);
     const [titleEdited, setTitleEdited] = useState(false);
     const [gender, setGender] = useState(initialDraft.gender);
     const [minAge, setMinAge] = useState(initialDraft.minAge || "20");
@@ -180,6 +207,10 @@ function MatchingWorkspace({
         (currentPage + 1) * myPageSize,
     );
     const [endingId, setEndingId] = useState<number>();
+    const [statusAction, setStatusAction] = useState<"close" | "resume">("close");
+    const [statusNotice, setStatusNotice] = useState<
+        "closedNotice" | "resumedNotice" | "activeLimit" | "travelStyleRequired"
+    >();
     const [endFailed, setEndFailed] = useState(false);
     const endingRegistration = matching.searches.find((item) => item.id === endingId);
     const [selectedRegistrationId, setSelectedRegistrationId] = useState<number>();
@@ -197,17 +228,44 @@ function MatchingWorkspace({
             ageValid(maxAge) &&
             (!minAge || !maxAge || Number(minAge) <= Number(maxAge)));
     const datesValid = Boolean(startDate && endDate && startDate <= endDate);
-    const valid = Boolean(selectedDestination && datesValid && agesValid);
+    function styleScore(name: (typeof styleQuestions)[number]): number {
+        return Number(
+            styles[name] ??
+                (editingId === undefined
+                    ? matching.travelStyle.find((item) => item.code === styleCodes[name])?.score
+                    : undefined) ??
+                0,
+        );
+    }
+    function styleDescription(name: (typeof styleQuestions)[number], score: number): string {
+        const level = ([1, 2, 3, 4, 5] as const).find((value) => value === score);
+        return level
+            ? t(`matchingFlow.styleDegrees.${name}.${level}`)
+            : t("matchingFlow.profileMissing");
+    }
+    const styleQuestion = styleQuestions[step - 5];
+    const stylesValid = styleQuestions.every(
+        (name) => styleScore(name) >= 1 && styleScore(name) <= 5,
+    );
+    const valid = Boolean(
+        selectedDestination &&
+        datesValid &&
+        agesValid &&
+        stylesValid &&
+        Array.from(introduction).length <= 200,
+    );
     const canContinue =
         step === 0
             ? Boolean(selectedDestination)
             : step === 1
               ? datesValid
-              : step === 3
+              : step === 4
                 ? agesValid
-                : true;
-    const group = step === 0 ? 0 : step === 1 ? 1 : step <= 3 ? 2 : step <= 7 ? 3 : 4;
-    const styleQuestion = styleQuestions[step - 4];
+                : styleQuestion && step >= 5 && step <= 8
+                  ? styleScore(styleQuestion) >= 1 && styleScore(styleQuestion) <= 5
+                  : true;
+    const group =
+        step === 0 ? 0 : step === 1 ? 1 : step === 2 ? 2 : step <= 4 ? 3 : step <= 8 ? 4 : 5;
     const date = (value: string) =>
         new Intl.DateTimeFormat(language === "en" ? "en-US" : "ko-KR", {
             month: "short",
@@ -225,12 +283,21 @@ function MatchingWorkspace({
         startDate,
         endDate,
         title: displayedTitle.trim() || null,
+        introduction: introduction.trim(),
+        showAge,
+        showGender,
+        travelStyle: {
+            planning: styleScore("planning"),
+            "daily-pace": styleScore("pace"),
+            "time-together": styleScore("together"),
+            spending: styleScore("spending"),
+        },
         preferredGender: gender === "MALE" || gender === "FEMALE" ? gender : null,
         preferredMinAge: !anyAge && minAge ? Number(minAge) : null,
         preferredMaxAge: !anyAge && maxAge ? Number(maxAge) : null,
     };
     function goTo(next: number): void {
-        setStep(Math.max(0, Math.min(8, next)));
+        setStep(Math.max(0, Math.min(9, next)));
     }
     function editRegistration(id: number): void {
         const registration = matching.searches.find((item) => item.id === id);
@@ -246,21 +313,53 @@ function MatchingWorkspace({
         setMinAge(String(Math.max(19, Math.min(100, registration.preferredMinAge ?? 20))));
         setMaxAge(String(Math.max(19, Math.min(100, registration.preferredMaxAge ?? 40))));
         setRegistrationTitle(registration.title ?? "");
+        setIntroduction(registration.introduction ?? "");
+        setShowAge(registration.showAge);
+        setShowGender(registration.showGender);
+        setStyles(
+            Object.fromEntries(
+                styleQuestions.map((name) => [
+                    name,
+                    String(registration.travelStyle[styleCodes[name]] ?? 0),
+                ]),
+            ),
+        );
         setTitleEdited(Boolean(registration.title));
         setEditingId(registration.id);
         setSaved(false);
         setView("find");
         goTo(0);
     }
-    function requestEnd(id: number): void {
+    function requestEnd(id: number, action: "close" | "resume" = "close"): void {
+        if (action === "resume" && matching.limitReached) {
+            setStatusNotice("activeLimit");
+            return;
+        }
+        if (action === "resume" && !matching.canCreate) return;
+        setStatusAction(action);
         setEndFailed(false);
         setEndingId(id);
     }
     async function confirmEnd(): Promise<void> {
         if (endingId === undefined || matching.busy) return;
-        const ok = await matching.close(endingId);
-        if (ok) setEndingId(undefined);
-        else setEndFailed(true);
+        const ok =
+            statusAction === "resume"
+                ? await matching.resume(endingId)
+                : await matching.close(endingId);
+        if (ok) {
+            setEndingId(undefined);
+            setStatusNotice(statusAction === "resume" ? "resumedNotice" : "closedNotice");
+        } else if (
+            matching.getFailureReason() === "matchingFlow.activeLimit" ||
+            matching.getFailureReason() === "matchingFlow.travelStyleRequired"
+        ) {
+            setEndingId(undefined);
+            setStatusNotice(
+                matching.getFailureReason() === "matchingFlow.activeLimit"
+                    ? "activeLimit"
+                    : "travelStyleRequired",
+            );
+        } else setEndFailed(true);
     }
     function login(): void {
         onLogin({
@@ -319,9 +418,23 @@ function MatchingWorkspace({
                             <Button
                                 variant="plain"
                                 className="matching-entry__choice"
+                                disabled={
+                                    matching.busy ||
+                                    (userId !== undefined &&
+                                        (matching.catalogLoading || matching.catalogFailed))
+                                }
                                 onClick={() => {
+                                    if (matching.limitReached) {
+                                        setStatusNotice("activeLimit");
+                                        return;
+                                    }
+                                    if (userId !== undefined && !matching.canCreate) return;
                                     setEditingId(undefined);
                                     setTitleEdited(false);
+                                    setIntroduction("");
+                                    setShowAge(false);
+                                    setShowGender(false);
+                                    setStyles({});
                                     setView("find");
                                     goTo(0);
                                 }}
@@ -378,6 +491,7 @@ function MatchingWorkspace({
                                 [
                                     "destination",
                                     "period",
+                                    "privacy",
                                     "preferences",
                                     "style",
                                     "register",
@@ -418,17 +532,36 @@ function MatchingWorkspace({
                             ))}
                         </ol>
                         <form
-                            className={`matching-question${step === 1 ? " matching-question--dates" : step === 8 ? " matching-question--confirm" : ""}`}
+                            className={`matching-question${step === 1 ? " matching-question--dates" : step === 9 ? " matching-question--confirm" : ""}`}
                             noValidate
                             onSubmit={(event) => {
                                 event.preventDefault();
                                 if (matching.busy || !canContinue) return;
-                                if (step < 8) {
+                                if (editingId === undefined && matching.limitReached) {
+                                    setStatusNotice("activeLimit");
+                                    return;
+                                }
+                                if (
+                                    editingId === undefined &&
+                                    (matching.catalogLoading || matching.catalogFailed)
+                                )
+                                    return;
+                                if (step < 9) {
                                     goTo(step + 1);
                                     return;
                                 }
                                 if (!valid) {
-                                    goTo(!selectedDestination ? 0 : !datesValid ? 1 : 3);
+                                    goTo(
+                                        !selectedDestination
+                                            ? 0
+                                            : !datesValid
+                                              ? 1
+                                              : !agesValid
+                                                ? 4
+                                                : !stylesValid
+                                                  ? 5
+                                                  : 9,
+                                    );
                                     return;
                                 }
                                 void matching.save(conditions, editingId).then((ok) => {
@@ -438,6 +571,18 @@ function MatchingWorkspace({
                                         setMyPage(0);
                                         setView("mine");
                                         setEditingId(undefined);
+                                    } else if (
+                                        matching.getFailureReason() ===
+                                            "matchingFlow.activeLimit" ||
+                                        matching.getFailureReason() ===
+                                            "matchingFlow.travelStyleRequired"
+                                    ) {
+                                        setStatusNotice(
+                                            matching.getFailureReason() ===
+                                                "matchingFlow.activeLimit"
+                                                ? "activeLimit"
+                                                : "travelStyleRequired",
+                                        );
                                     }
                                 });
                             }}
@@ -447,11 +592,20 @@ function MatchingWorkspace({
                                     <h2>
                                         <Icon name={questionIcons[step]!} />
                                         {t(
-                                            step === 8 && editingId !== undefined
+                                            step === 9 && editingId !== undefined
                                                 ? "matchingFlow.editReview"
                                                 : `matchingFlow.questions.${questionKeys[step]!}`,
                                         )}
                                     </h2>
+                                    {styleQuestion && step >= 5 && step <= 8 && (
+                                        <p>
+                                            {t(
+                                                editingId === undefined
+                                                    ? "matchingFlow.styleSelectionHint"
+                                                    : "matchingFlow.styleEditHint",
+                                            )}
+                                        </p>
+                                    )}
                                 </header>
                                 <div className="matching-question__content">
                                     {step === 0 && (
@@ -516,7 +670,7 @@ function MatchingWorkspace({
                                             }}
                                         />
                                     )}
-                                    {step === 2 && (
+                                    {step === 3 && (
                                         <div className="matching-gender">
                                             <IconChoiceGroup
                                                 showLabels
@@ -543,7 +697,7 @@ function MatchingWorkspace({
                                             />
                                         </div>
                                     )}
-                                    {step === 3 && (
+                                    {step === 4 && (
                                         <div className="matching-age-range">
                                             <Checkbox
                                                 label={t("matchingFlow.anyAge")}
@@ -574,27 +728,76 @@ function MatchingWorkspace({
                                             />
                                         </div>
                                     )}
-                                    {styleQuestion && step >= 4 && step <= 7 && (
-                                        <FilterChips
-                                            label={t(`matchingFlow.styleLabels.${styleQuestion}`)}
-                                            value={styles[styleQuestion] ?? ""}
+                                    {step === 2 && (
+                                        <Card className="matching-privacy">
+                                            <p>{t("matchingFlow.privacyHint")}</p>
+                                            <div className="matching-privacy__options">
+                                                <div className="matching-privacy__item">
+                                                    <Icon
+                                                        name={
+                                                            profile?.gender === "MALE"
+                                                                ? "gender-male"
+                                                                : profile?.gender === "FEMALE"
+                                                                  ? "gender-female"
+                                                                  : "gender-unset"
+                                                        }
+                                                    />
+                                                    <div>
+                                                        <span>{t("settings.gender")}</span>
+                                                        <strong>
+                                                            {t(
+                                                                profile?.gender === "MALE"
+                                                                    ? "matchingFlow.male"
+                                                                    : profile?.gender === "FEMALE"
+                                                                      ? "matchingFlow.female"
+                                                                      : "matchingFlow.profileMissing",
+                                                            )}
+                                                        </strong>
+                                                    </div>
+                                                    <Checkbox
+                                                        label={t("matchingFlow.public")}
+                                                        checked={showGender}
+                                                        onChange={(event) =>
+                                                            setShowGender(event.target.checked)
+                                                        }
+                                                    />
+                                                </div>
+                                                <div className="matching-privacy__item">
+                                                    <Icon name="profile" />
+                                                    <div>
+                                                        <span>{t("matchingFlow.myAge")}</span>
+                                                        <strong>
+                                                            {profileAge === null
+                                                                ? t("matchingFlow.profileMissing")
+                                                                : t("matchingFlow.ageValue", {
+                                                                      count: profileAge,
+                                                                  })}
+                                                        </strong>
+                                                    </div>
+                                                    <Checkbox
+                                                        label={t("matchingFlow.public")}
+                                                        checked={showAge}
+                                                        onChange={(event) =>
+                                                            setShowAge(event.target.checked)
+                                                        }
+                                                    />
+                                                </div>
+                                            </div>
+                                        </Card>
+                                    )}
+                                    {styleQuestion && step >= 5 && step <= 8 && (
+                                        <TravelStyleChoices
+                                            question={styleQuestion}
+                                            value={styleScore(styleQuestion)}
                                             onChange={(value) =>
                                                 setStyles((current) => ({
                                                     ...current,
-                                                    [styleQuestion]: value,
+                                                    [styleQuestion]: String(value),
                                                 }))
                                             }
-                                            options={(["first", "either", "last"] as const).map(
-                                                (value) => ({
-                                                    value,
-                                                    label: t(
-                                                        `matchingFlow.styleOptions.${styleQuestion}.${value}`,
-                                                    ),
-                                                }),
-                                            )}
                                         />
                                     )}
-                                    {step === 8 && (
+                                    {step === 9 && (
                                         <div className="matching-confirm">
                                             <Card className="matching-confirm__card">
                                                 <TextField
@@ -607,90 +810,145 @@ function MatchingWorkspace({
                                                     }}
                                                     placeholder={t("matchingFlow.titlePlaceholder")}
                                                 />
-                                                <dl className="matching-conditions-summary">
-                                                    <div>
-                                                        <dt>
-                                                            <Icon name="journey-place" />
-                                                            {t("matchingFlow.destination")}
-                                                        </dt>
-                                                        <dd>{selectedDestination?.name}</dd>
-                                                    </div>
-                                                    <div>
-                                                        <dt>
-                                                            <Icon name="journey-dates" />
-                                                            {t("matchingFlow.period")}
-                                                        </dt>
-                                                        <dd>
-                                                            {startDate && date(startDate)} ~{" "}
-                                                            {endDate && date(endDate)}
-                                                        </dd>
-                                                    </div>
-                                                    <div>
-                                                        <dt>
-                                                            <Icon name="journey-people" />
-                                                            {t("settings.gender")}
-                                                        </dt>
-                                                        <dd>
-                                                            {t(
-                                                                gender === "MALE"
-                                                                    ? "matchingFlow.male"
-                                                                    : gender === "FEMALE"
-                                                                      ? "matchingFlow.female"
-                                                                      : "matchingFlow.any",
-                                                            )}
-                                                        </dd>
-                                                    </div>
-                                                    <div>
-                                                        <dt>
-                                                            <Icon name="journey-age" />
-                                                            {t("matchingFlow.ageSummary")}
-                                                        </dt>
-                                                        <dd>
-                                                            {anyAge
-                                                                ? t("matchingFlow.anyAge")
-                                                                : `${t("matchingFlow.ageValue", { count: Number(minAge) })} ~ ${t("matchingFlow.ageValue", { count: Number(maxAge) })}`}
-                                                        </dd>
-                                                    </div>
-                                                    {styleQuestions.map((name) => {
-                                                        const choice = styles[name];
-                                                        return (
-                                                            <div key={name}>
-                                                                <dt>
-                                                                    <Icon
-                                                                        name={
-                                                                            name === "planning"
-                                                                                ? "journey-plan"
-                                                                                : name === "pace"
-                                                                                  ? "journey-pace"
-                                                                                  : name ===
-                                                                                      "together"
-                                                                                    ? "journey-together"
-                                                                                    : "journey-budget"
-                                                                        }
-                                                                    />
-                                                                    {t(
-                                                                        `matchingFlow.styleLabels.${name}`,
-                                                                    )}
-                                                                </dt>
-                                                                <dd>
-                                                                    {choice === "first" ||
-                                                                    choice === "either" ||
-                                                                    choice === "last"
-                                                                        ? t(
-                                                                              `matchingFlow.styleOptions.${name}.${choice}`,
-                                                                          )
-                                                                        : t("matchingFlow.any")}
-                                                                </dd>
-                                                            </div>
-                                                        );
+                                                <TextArea
+                                                    label={t("matchingFlow.introduction")}
+                                                    placeholder={t(
+                                                        "matchingFlow.introductionPlaceholder",
+                                                    )}
+                                                    rows={3}
+                                                    value={introduction}
+                                                    onChange={(event) =>
+                                                        setIntroduction(
+                                                            Array.from(event.target.value)
+                                                                .slice(0, 200)
+                                                                .join(""),
+                                                        )
+                                                    }
+                                                    hint={t("matchingFlow.introductionCount", {
+                                                        count: Array.from(introduction).length,
+                                                        max: 200,
                                                     })}
-                                                </dl>
+                                                />
+                                                <details className="matching-confirm__review">
+                                                    <summary>
+                                                        {t("matchingFlow.reviewConditions")}
+                                                        <Icon name="chevron" variant="outline" />
+                                                    </summary>
+                                                    <dl className="matching-conditions-summary">
+                                                        <div>
+                                                            <dt>
+                                                                <Icon name="journey-place" />
+                                                                {t("matchingFlow.destination")}
+                                                            </dt>
+                                                            <dd>{selectedDestination?.name}</dd>
+                                                        </div>
+                                                        <div>
+                                                            <dt>
+                                                                <Icon name="journey-dates" />
+                                                                {t("matchingFlow.period")}
+                                                            </dt>
+                                                            <dd>
+                                                                {t("matchingFlow.dateRange", {
+                                                                    start: startDate
+                                                                        ? date(startDate)
+                                                                        : "",
+                                                                    end: endDate
+                                                                        ? date(endDate)
+                                                                        : "",
+                                                                })}
+                                                            </dd>
+                                                        </div>
+                                                        <div>
+                                                            <dt>
+                                                                <Icon name="journey-people" />
+                                                                {t("settings.gender")}
+                                                            </dt>
+                                                            <dd>
+                                                                {t(
+                                                                    gender === "MALE"
+                                                                        ? "matchingFlow.male"
+                                                                        : gender === "FEMALE"
+                                                                          ? "matchingFlow.female"
+                                                                          : "matchingFlow.any",
+                                                                )}
+                                                            </dd>
+                                                        </div>
+                                                        <div>
+                                                            <dt>
+                                                                <Icon name="journey-age" />
+                                                                {t("matchingFlow.ageSummary")}
+                                                            </dt>
+                                                            <dd>
+                                                                {anyAge
+                                                                    ? t("matchingFlow.anyAge")
+                                                                    : `${t("matchingFlow.ageValue", { count: Number(minAge) })} ~ ${t("matchingFlow.ageValue", { count: Number(maxAge) })}`}
+                                                            </dd>
+                                                        </div>
+                                                        {styleQuestions.map((name) => {
+                                                            const choice = styleScore(name);
+                                                            return (
+                                                                <div key={name}>
+                                                                    <dt>
+                                                                        <Icon
+                                                                            name={
+                                                                                name === "planning"
+                                                                                    ? "journey-plan"
+                                                                                    : name ===
+                                                                                        "pace"
+                                                                                      ? "journey-pace"
+                                                                                      : name ===
+                                                                                          "together"
+                                                                                        ? "journey-together"
+                                                                                        : "journey-budget"
+                                                                            }
+                                                                        />
+                                                                        {t(
+                                                                            `matchingFlow.styleLabels.${name}`,
+                                                                        )}
+                                                                    </dt>
+                                                                    <dd>
+                                                                        {styleDescription(
+                                                                            name,
+                                                                            choice,
+                                                                        )}
+                                                                    </dd>
+                                                                </div>
+                                                            );
+                                                        })}
+                                                        <div>
+                                                            <dt>
+                                                                <Icon name="profile" />
+                                                                {t("matchingFlow.privacy")}
+                                                            </dt>
+                                                            <dd>
+                                                                {t("matchingFlow.privacySummary", {
+                                                                    gender: t(
+                                                                        showGender
+                                                                            ? "matchingFlow.public"
+                                                                            : "matchingFlow.private",
+                                                                    ),
+                                                                    age: t(
+                                                                        showAge
+                                                                            ? "matchingFlow.public"
+                                                                            : "matchingFlow.private",
+                                                                    ),
+                                                                })}
+                                                            </dd>
+                                                        </div>
+                                                    </dl>
+                                                </details>
                                             </Card>
                                             <Button
                                                 type="submit"
                                                 variant="brand"
                                                 className="matching-confirm__submit"
-                                                disabled={!valid || userId === undefined}
+                                                disabled={
+                                                    !valid ||
+                                                    userId === undefined ||
+                                                    (editingId === undefined &&
+                                                        (matching.catalogLoading ||
+                                                            matching.catalogFailed))
+                                                }
                                                 loading={matching.busy}
                                             >
                                                 <Icon name="check" variant="outline" />
@@ -702,11 +960,14 @@ function MatchingWorkspace({
                                             </Button>
                                         </div>
                                     )}
-                                    {matching.failed && (
-                                        <p className="matching-error" role="alert">
-                                            {t("matchingFlow.saveError")}
-                                        </p>
-                                    )}
+                                    {matching.failed &&
+                                        matching.errorKey !== "matchingFlow.activeLimit" &&
+                                        matching.errorKey !==
+                                            "matchingFlow.travelStyleRequired" && (
+                                            <p className="matching-error" role="alert">
+                                                {t(matching.errorKey)}
+                                            </p>
+                                        )}
                                 </div>
                             </div>
                             <Tooltip
@@ -727,11 +988,11 @@ function MatchingWorkspace({
                                     />
                                 </Button>
                             </Tooltip>
-                            {step < 8 && (
+                            {step < 9 && (
                                 <Tooltip
                                     className="matching-step-nav matching-step-nav--next"
                                     content={t(
-                                        step === 8 ? "matchingFlow.save" : "matchingFlow.next",
+                                        step === 9 ? "matchingFlow.save" : "matchingFlow.next",
                                     )}
                                 >
                                     <Button
@@ -739,15 +1000,19 @@ function MatchingWorkspace({
                                         variant="plain"
                                         className="matching-step-arrow"
                                         aria-label={t(
-                                            step === 8 ? "matchingFlow.save" : "matchingFlow.next",
+                                            step === 9 ? "matchingFlow.save" : "matchingFlow.next",
                                         )}
                                         aria-busy={matching.busy || undefined}
                                         disabled={
-                                            !canContinue || userId === undefined || matching.busy
+                                            !canContinue ||
+                                            userId === undefined ||
+                                            matching.busy ||
+                                            (editingId === undefined &&
+                                                (matching.catalogLoading || matching.catalogFailed))
                                         }
                                     >
                                         <Icon
-                                            name={step === 8 ? "check" : "arrow"}
+                                            name={step === 9 ? "check" : "arrow"}
                                             variant="brand"
                                         />
                                     </Button>
@@ -773,9 +1038,12 @@ function MatchingWorkspace({
                             <Button onClick={login}>{t("matchingFlow.login")}</Button>
                         )}
                         {matching.catalogLoading && <Spinner label={t("matchingFlow.loading")} />}
-                        {(matching.catalogFailed || matching.failed) && (
+                        {(matching.catalogFailed ||
+                            (matching.failed &&
+                                matching.errorKey !== "matchingFlow.activeLimit" &&
+                                matching.errorKey !== "matchingFlow.travelStyleRequired")) && (
                             <p role="alert" className="matching-error">
-                                {t("matchingFlow.saveError")}
+                                {t(matching.errorKey)}
                             </p>
                         )}
                         {!matching.catalogLoading &&
@@ -1052,8 +1320,10 @@ function MatchingWorkspace({
                                                 </p>
                                                 <p>
                                                     <Icon name="journey-dates" />
-                                                    {date(registration.startDate)} ~{" "}
-                                                    {date(registration.endDate)}
+                                                    {t("matchingFlow.dateRange", {
+                                                        start: date(registration.startDate),
+                                                        end: date(registration.endDate),
+                                                    })}
                                                 </p>
                                             </div>
                                             {registration.status === "ACTIVE" && (
@@ -1082,6 +1352,44 @@ function MatchingWorkspace({
                                                     </Button>
                                                 </div>
                                             )}
+                                            {registration.status === "CLOSED" && (
+                                                <div className="matching-registration__actions">
+                                                    <Tooltip
+                                                        content={t(
+                                                            !matching.destinations.some(
+                                                                (item) =>
+                                                                    item.id ===
+                                                                    registration.destinationId,
+                                                            )
+                                                                ? "matchingFlow.resumeDestinationUnavailable"
+                                                                : "matchingFlow.resume",
+                                                        )}
+                                                    >
+                                                        <Button
+                                                            variant="plain"
+                                                            className="matching-text-action"
+                                                            disabled={
+                                                                matching.busy ||
+                                                                matching.catalogLoading ||
+                                                                matching.catalogFailed ||
+                                                                !matching.destinations.some(
+                                                                    (item) =>
+                                                                        item.id ===
+                                                                        registration.destinationId,
+                                                                )
+                                                            }
+                                                            onClick={() =>
+                                                                requestEnd(
+                                                                    registration.id,
+                                                                    "resume",
+                                                                )
+                                                            }
+                                                        >
+                                                            {t("matchingFlow.resume")}
+                                                        </Button>
+                                                    </Tooltip>
+                                                </div>
+                                            )}
                                         </Card>
                                     ))}
                                 </div>
@@ -1102,7 +1410,10 @@ function MatchingWorkspace({
                                             {t("matchingFlow.previous")}
                                         </Button>
                                         <span aria-live="polite">
-                                            {currentPage + 1} / {pageCount}
+                                            {t("matchingFlow.pagePosition", {
+                                                page: currentPage + 1,
+                                                total: pageCount,
+                                            })}
                                         </span>
                                         <Button
                                             variant="plain"
@@ -1131,20 +1442,55 @@ function MatchingWorkspace({
                                         ""
                                     }
                                     busy={matching.busy}
-                                    failed={matching.failed}
+                                    failed={
+                                        matching.failed &&
+                                        matching.errorKey !== "matchingFlow.activeLimit" &&
+                                        matching.errorKey !== "matchingFlow.travelStyleRequired"
+                                    }
                                     onClose={() => setSelectedRegistrationId(undefined)}
                                     onEdit={() => editRegistration(selectedRegistration.id)}
                                     onFinish={() => requestEnd(selectedRegistration.id)}
+                                    onResume={() => requestEnd(selectedRegistration.id, "resume")}
+                                    resumeDisabled={
+                                        matching.catalogLoading ||
+                                        matching.catalogFailed ||
+                                        !matching.destinations.some(
+                                            (item) =>
+                                                item.id === selectedRegistration.destinationId,
+                                        )
+                                    }
+                                    resumeHint={t(
+                                        !matching.destinations.some(
+                                            (item) =>
+                                                item.id === selectedRegistration.destinationId,
+                                        )
+                                            ? "matchingFlow.resumeDestinationUnavailable"
+                                            : "matchingFlow.resume",
+                                    )}
+                                    errorMessage={t(matching.errorKey)}
                                 />
                             )}
                         </div>
                     </section>
                 )}
             </div>
+            {statusNotice && (
+                <Toast
+                    message={t(`matchingFlow.${statusNotice}`)}
+                    tone={
+                        statusNotice === "activeLimit" || statusNotice === "travelStyleRequired"
+                            ? "error"
+                            : "success"
+                    }
+                    onDismiss={() => setStatusNotice(undefined)}
+                />
+            )}
             {endingRegistration && (
                 <EndRecruitmentDialog
                     title={endingRegistration.title || t("matchingFlow.untitled")}
                     busy={matching.busy}
+                    action={statusAction}
+                    errorMessage={t(matching.errorKey)}
                     failed={endFailed}
                     onCancel={() => {
                         if (!matching.busy) setEndingId(undefined);

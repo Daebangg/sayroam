@@ -1,7 +1,7 @@
 import { useEffect, useEffectEvent, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
-import { Avatar, Badge, Button, Icon } from "@/components/ui";
+import { Avatar, Badge, Button, Icon, Tooltip } from "@/components/ui";
 import type { CandidateResult, MatchingRegistration } from "@/hooks/matching.types";
 
 type RecruitmentDetailsPanelProps = {
@@ -10,6 +10,10 @@ type RecruitmentDetailsPanelProps = {
     onClose: () => void;
     onEdit?: () => void;
     onFinish?: () => void;
+    onResume?: () => void;
+    resumeDisabled?: boolean;
+    resumeHint?: string;
+    errorMessage?: string;
     candidate?: CandidateResult["candidates"][number];
     busy: boolean;
     failed: boolean;
@@ -22,6 +26,10 @@ export function RecruitmentDetailsPanel({
     onClose,
     onEdit,
     onFinish,
+    onResume,
+    resumeDisabled = false,
+    resumeHint,
+    errorMessage,
     busy,
     failed,
 }: RecruitmentDetailsPanelProps) {
@@ -140,13 +148,30 @@ export function RecruitmentDetailsPanel({
                                     {t("matchingFlow.close")}
                                 </Button>
                             )}
+                            {registration.status === "CLOSED" && onResume && (
+                                <Tooltip content={resumeHint || t("matchingFlow.resume")}>
+                                    <Button
+                                        variant="plain"
+                                        className="matching-text-action"
+                                        disabled={busy || resumeDisabled}
+                                        onClick={onResume}
+                                    >
+                                        {t("matchingFlow.resume")}
+                                    </Button>
+                                </Tooltip>
+                            )}
                         </div>
                         <h2 id={titleId} aria-live="polite">
                             {registration.title || t("matchingFlow.untitled")}
                         </h2>
+                        {registration.introduction && (
+                            <div className="matching-details-introduction">
+                                <p>{registration.introduction}</p>
+                            </div>
+                        )}
                     </div>
                 </header>
-                <dl className="matching-conditions-summary">
+                <dl className="matching-details-panel__meta">
                     <div>
                         <dt>
                             <Icon name="pin" />
@@ -160,10 +185,46 @@ export function RecruitmentDetailsPanel({
                             {t("matchingFlow.period")}
                         </dt>
                         <dd className="matching-details-panel__dates">
-                            <span>{date(registration.startDate)} ~</span>
+                            <span>
+                                {t("matchingFlow.dateRangeStart", {
+                                    start: date(registration.startDate),
+                                })}
+                            </span>
                             <span>{date(registration.endDate)}</span>
                         </dd>
                     </div>
+                </dl>
+                {!candidate && (
+                    <dl className="matching-details-panel__privacy">
+                        <div>
+                            <dt>
+                                <Icon name="gender-unset" />
+                                {t("matchingFlow.genderVisibilityLabel")}
+                            </dt>
+                            <dd>
+                                {t(
+                                    registration.showGender
+                                        ? "matchingFlow.public"
+                                        : "matchingFlow.private",
+                                )}
+                            </dd>
+                        </div>
+                        <div>
+                            <dt>
+                                <Icon name="profile" />
+                                {t("matchingFlow.ageVisibilityLabel")}
+                            </dt>
+                            <dd>
+                                {t(
+                                    registration.showAge
+                                        ? "matchingFlow.public"
+                                        : "matchingFlow.private",
+                                )}
+                            </dd>
+                        </div>
+                    </dl>
+                )}
+                <dl className="matching-conditions-summary">
                     {candidate ? (
                         <>
                             <div>
@@ -182,8 +243,10 @@ export function RecruitmentDetailsPanel({
                                     {t("matchingFlow.overlap", { count: candidate.overlapDays })}
                                 </dt>
                                 <dd>
-                                    {date(candidate.overlapStartDate)} ~{" "}
-                                    {date(candidate.overlapEndDate)}
+                                    {t("matchingFlow.dateRange", {
+                                        start: date(candidate.overlapStartDate),
+                                        end: date(candidate.overlapEndDate),
+                                    })}
                                 </dd>
                             </div>
                         </>
@@ -227,6 +290,35 @@ export function RecruitmentDetailsPanel({
                         </>
                     )}
                 </dl>
+                <dl className="matching-conditions-summary matching-details-panel__styles">
+                    {!candidate &&
+                        (
+                            [
+                                ["planning", "planning", "journey-plan"],
+                                ["pace", "daily-pace", "journey-pace"],
+                                ["together", "time-together", "journey-together"],
+                                ["spending", "spending", "journey-budget"],
+                            ] as const
+                        ).map(([name, code, icon]) => {
+                            const score = registration.travelStyle[code];
+                            const level = ([1, 2, 3, 4, 5] as const).find(
+                                (value) => value === score,
+                            );
+                            return (
+                                <div key={code}>
+                                    <dt>
+                                        <Icon name={icon} />
+                                        {t(`matchingFlow.styleLabels.${name}`)}
+                                    </dt>
+                                    <dd>
+                                        {level
+                                            ? t(`matchingFlow.styleDegrees.${name}.${level}`)
+                                            : t("matchingFlow.profileMissing")}
+                                    </dd>
+                                </div>
+                            );
+                        })}
+                </dl>
             </div>
             <footer className="matching-details-panel__footer">
                 <div className="matching-details-panel__actions">
@@ -246,7 +338,7 @@ export function RecruitmentDetailsPanel({
                 </div>
                 {failed && (
                     <p className="matching-error" role="alert">
-                        {t("matchingFlow.saveError")}
+                        {errorMessage ?? t("matchingFlow.saveError")}
                     </p>
                 )}
             </footer>

@@ -447,7 +447,37 @@
             "keyboard": "Keyboard",
             "gender-unset": "Gender unset",
             "gender-male": "Male",
-            "gender-female": "Female"
+            "gender-female": "Female",
+            "journey-place": "Destination",
+            "journey-dates": "Travel dates",
+            "journey-people": "Preferences",
+            "journey-age": "Age range",
+            "journey-plan": "Planning",
+            "journey-pace": "Travel pace",
+            "journey-together": "Time together",
+            "journey-budget": "Travel budget",
+            "journey-register": "Recruitment",
+            "journey-list": "My posts",
+            "style-plan-essential": "A plan is a must",
+            "style-plan-usual": "I like to plan",
+            "style-plan-flexible": "It depends",
+            "style-plan-spontaneous": "Usually spontaneous",
+            "style-plan-free": "See where I end up",
+            "style-pace-slow": "Take it slow",
+            "style-pace-relaxed": "Mostly relaxed",
+            "style-pace-balanced": "A balanced pace",
+            "style-pace-active": "Make the most of it",
+            "style-pace-packed": "Always on the go",
+            "style-time-independent": "Do our own thing",
+            "style-time-apart": "Some time apart",
+            "style-time-balanced": "Half and half",
+            "style-time-mostly": "Mostly together",
+            "style-time-together": "Everything together",
+            "style-budget-save": "Save wherever I can",
+            "style-budget-careful": "Usually keep it cheap",
+            "style-budget-moderate": "Spend moderately",
+            "style-budget-worthwhile": "Spend when it counts",
+            "style-budget-experiences": "Experiences come first"
         },
         "saveTrip": "Bookmark {{title}}",
         "customControls": "Travel controls",
@@ -696,24 +726,24 @@
         },
         "styleOptions": {
             "planning": {
-                "first": "Planned",
-                "either": "Flexible",
-                "last": "Spontaneous"
+                "first": "A plan is a must",
+                "either": "It depends",
+                "last": "See where I end up"
             },
             "pace": {
-                "first": "Relaxed",
-                "either": "Balanced",
-                "last": "Busy"
+                "first": "Take it slow",
+                "either": "A balanced pace",
+                "last": "Always on the go"
             },
             "together": {
-                "first": "Some time apart",
-                "either": "Balanced",
-                "last": "Mostly together"
+                "first": "Do our own thing",
+                "either": "Half and half",
+                "last": "Everything together"
             },
             "spending": {
-                "first": "Budget minded",
-                "either": "As needed",
-                "last": "Experience first"
+                "first": "Save wherever I can",
+                "either": "Spend moderately",
+                "last": "Experiences come first"
             }
         },
         "loading": "Loading trip information",
@@ -735,7 +765,8 @@
             "pace": "What is your travel pace?",
             "together": "How much time would you spend together?",
             "spending": "How do you budget for travel?",
-            "title": "Give your shared adventure a name."
+            "title": "Tell travel mates about your trip.",
+            "privacy": "Review your profile details."
         },
         "noDestinations": "No matching destinations",
         "anyAge": "Any age",
@@ -760,7 +791,65 @@
         "editMode": "Edit recruitment post",
         "editReview": "Review changes",
         "saveChanges": "Save changes",
-        "updated": "Your recruitment post has been updated."
+        "updated": "Your recruitment post has been updated.",
+        "resume": "Reopen recruitment",
+        "resumeConfirmation": "Reopen this recruitment post?",
+        "resumedNotice": "Recruitment reopened.",
+        "closedNotice": "Recruitment closed.",
+        "activeLimit": "You can have up to 3 active recruitments.\nClose an existing recruitment before creating or reopening one.",
+        "travelStyleRequired": "Select all four travel style preferences in the recruitment form.\nThen you can create or reopen the recruitment.",
+        "resumeDestinationRequired": "Posts without a destination cannot be reopened.",
+        "resumeDestinationUnavailable": "This destination is unavailable. The post cannot be reopened.",
+        "dateRange": "{{start}} ~ {{end}}",
+        "dateRangeStart": "{{start}} ~",
+        "pagePosition": "{{page}} / {{total}}",
+        "privacy": "My details",
+        "privacyHint": "Choose which details to share with other travel mates. Unchecked details stay private.",
+        "genderVisibilityLabel": "My gender",
+        "ageVisibilityLabel": "My age",
+        "shareGender": "Share my gender",
+        "shareAge": "Share my age",
+        "public": "Public",
+        "private": "Private",
+        "privacySummary": "Gender: {{gender}} · Age: {{age}}",
+        "introduction": "Introduction (optional)",
+        "introductionPlaceholder": "Describe your plans or what you would like your travel mate to know.",
+        "introductionCount": "{{count}} / {{max}} characters",
+        "reviewConditions": "Review recruitment preferences",
+        "styleDegrees": {
+            "planning": {
+                "1": "A plan is a must",
+                "2": "I like to plan",
+                "3": "It depends",
+                "4": "Usually spontaneous",
+                "5": "See where I end up"
+            },
+            "pace": {
+                "1": "Take it slow",
+                "2": "Mostly relaxed",
+                "3": "A balanced pace",
+                "4": "Make the most of it",
+                "5": "Always on the go"
+            },
+            "together": {
+                "1": "Do our own thing",
+                "2": "Some time apart",
+                "3": "Half and half",
+                "4": "Mostly together",
+                "5": "Everything together"
+            },
+            "spending": {
+                "1": "Save wherever I can",
+                "2": "Usually keep it cheap",
+                "3": "Spend moderately",
+                "4": "Spend when it counts",
+                "5": "Experiences come first"
+            }
+        },
+        "profileMissing": "Not set",
+        "myAge": "Age",
+        "styleEditHint": "These preferences belong to this recruitment. Changes only apply to this recruitment.",
+        "styleSelectionHint": "Your profile preferences are preselected. Adjust them for this trip if needed."
     },
     "matchingEntry": {
         "heading": "How would you like to find companions?",

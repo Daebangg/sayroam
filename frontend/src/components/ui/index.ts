@@ -43,3 +43,5 @@ export { DateRangeCalendar } from "./inputs/DateRangeCalendar";
 export { RangeField } from "./inputs/RangeField";
 
 export { RangeSelector } from "./inputs/RangeSelector";
+
+export { TextArea } from "./inputs/TextArea";
