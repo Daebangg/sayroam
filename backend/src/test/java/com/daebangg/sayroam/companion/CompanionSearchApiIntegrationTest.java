@@ -8,6 +8,8 @@ import com.daebangg.sayroam.user.domain.UserRepository;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
@@ -101,14 +103,92 @@ class CompanionSearchApiIntegrationTest extends DatabaseIntegrationTest {
         submit(patch(resource), resource, authorization, "{\"status\":\"CLOSED\"}").andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("CLOSED"));
         submit(patch(resource), resource, authorization, "{\"status\":\"CLOSED\"}").andExpect(status().isOk());
-        submit(put(resource), resource, authorization, updated).andExpect(status().isConflict())
-                .andExpect(jsonPath("$.code").value("COMPANION_SEARCH_CLOSED"));
+        submit(put(resource), resource, authorization, updated).andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("CLOSED"));
 
         entityManager.flush();
         assertThat(jdbc.queryForMap("SELECT destination_id, status, title FROM companion_search WHERE id = ?", id))
                 .containsEntry("destination_id", busanId)
                 .containsEntry("status", "CLOSED")
-                .containsEntry("title", null);
+                .containsEntry("title", "해변 산책");
+    }
+
+    @Test
+    void savesRecruitmentStyleWithoutProfileAndKeepsBothRecruitmentsIndependent() throws Exception {
+        jdbc.update("DELETE FROM user_travel_style");
+        String style = ", \"travelStyle\": {\"planning\":1,\"daily-pace\":2,\"time-together\":4,\"spending\":5}";
+        submit(post(PATH), PATH, authorization, conditions(seoulId, "2030-04-21", "2030-04-23", style))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.travelStyle.planning").value(1))
+                .andExpect(jsonPath("$['travelStyle']['daily-pace']").value(2));
+        long id = jdbc.queryForObject("SELECT MAX(id) FROM companion_search", Long.class);
+        String resource = PATH + "/" + id;
+        submit(post(PATH), PATH, authorization, conditions(seoulId, "2030-04-21", "2030-04-23",
+                style.replace("planning\":1", "planning\":5"))).andExpect(status().isCreated());
+        submit(put(resource), resource, authorization, conditions(seoulId, "2030-04-21", "2030-04-23", ""))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.travelStyle.planning").value(1));
+        submit(put(resource), resource, authorization, conditions(seoulId, "2030-04-21", "2030-04-23",
+                style.replace("planning\":1", "planning\":3")))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.travelStyle.planning").value(3));
+        entityManager.flush();
+        entityManager.clear();
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM user_travel_style", Integer.class)).isZero();
+        assertThat(jdbc.queryForObject("SELECT style_planning FROM companion_search WHERE id <> ?", Integer.class, id)).isEqualTo(5);
+        submit(patch(resource), resource, authorization, "{\"status\":\"CLOSED\"}").andExpect(status().isOk());
+        submit(patch(resource), resource, authorization, "{\"status\":\"ACTIVE\"}").andExpect(status().isOk());
+    }
+
+    @Test
+    void snapshotsProfileOnlyAtCreationAndLetsLegacyClosedSearchCompleteItsStyle() throws Exception {
+        submit(post(PATH), PATH, authorization, conditions(seoulId, "2030-04-21", "2030-04-23", ""))
+                .andExpect(status().isCreated()).andExpect(jsonPath("$.travelStyle.planning").value(3));
+        long id = jdbc.queryForObject("SELECT MAX(id) FROM companion_search", Long.class);
+        String resource = PATH + "/" + id;
+        jdbc.update("UPDATE user_travel_style SET score = 5");
+        entityManager.clear();
+        mvc.perform(get(MINE).servletPath(MINE).header("Authorization", authorization))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.searches[0].travelStyle.planning").value(3));
+        jdbc.update("UPDATE companion_search SET status = 'CLOSED', style_planning = NULL, style_daily_pace = NULL, style_time_together = NULL, style_spending = NULL WHERE id = ?", id);
+        entityManager.clear();
+        submit(patch(resource), resource, authorization, "{\"status\":\"ACTIVE\"}")
+                .andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("TRAVEL_STYLE_REQUIRED"));
+        submit(put(resource), resource, authorization, conditions(seoulId, "2030-04-21", "2030-04-23", ""))
+                .andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("TRAVEL_STYLE_REQUIRED"));
+        submit(put(resource), resource, authorization, conditions(seoulId, "2030-04-21", "2030-04-23",
+                ", \"travelStyle\": {\"planning\":1,\"daily-pace\":2,\"time-together\":3,\"spending\":4}"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.status").value("CLOSED"));
+        submit(patch(resource), resource, authorization, "{\"status\":\"ACTIVE\"}").andExpect(status().isOk());
+        assertThat(jdbc.queryForObject("SELECT MIN(score) FROM user_travel_style", Integer.class)).isEqualTo(5);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"0", "6", "1.5", "\"3\"", "true", "2147483648"})
+    void rejectsInvalidRecruitmentStyleScoresWithoutSaving(String score) throws Exception {
+        submit(post(PATH), PATH, authorization, conditions(seoulId, "2030-04-21", "2030-04-23",
+                ", \"travelStyle\": {\"planning\":" + score + ",\"daily-pace\":2,\"time-together\":3,\"spending\":4}"))
+                .andExpect(status().isBadRequest());
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM companion_search", Integer.class)).isZero();
+    }
+
+    @Test
+    void rejectsIncompleteAndUnknownRecruitmentStyleWithoutFallingBackToProfile() throws Exception {
+        submit(post(PATH), PATH, authorization, conditions(seoulId, "2030-04-21", "2030-04-23",
+                ", \"travelStyle\": {\"planning\":3}"))
+                .andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("TRAVEL_STYLE_REQUIRED"));
+        submit(post(PATH), PATH, authorization, conditions(seoulId, "2030-04-21", "2030-04-23",
+                ", \"travelStyle\": {\"planning\":1,\"daily-pace\":2,\"time-together\":3,\"spending\":4,\"unknown\":5}"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void publishesTheRecruitmentStyleContractWithItsQuestionCodes() throws Exception {
+        mvc.perform(get("/v3/api-docs").servletPath("/v3/api-docs"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.components.schemas.RecruitmentTravelStyleRequest.properties.planning").exists())
+                .andExpect(jsonPath("$.components.schemas.RecruitmentTravelStyleRequest.properties['daily-pace']").exists())
+                .andExpect(jsonPath("$.components.schemas.RecruitmentTravelStyleRequest.properties['time-together']").exists())
+                .andExpect(jsonPath("$.components.schemas.RecruitmentTravelStyleRequest.properties.spending").exists())
+                .andExpect(jsonPath("$.components.schemas.CompanionSearchResponse.properties.travelStyle").exists());
     }
 
     @Test

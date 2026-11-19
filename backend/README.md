@@ -433,3 +433,8 @@ Swagger, actuator/error 및 login/logout/oauth2 예약 경로는 기존 서버 �
 
 모집 등록·수정·재개가 커밋되면 이벤트로 DB 작업 큐를 처리하고 모집 조합별 발견 이력을 저장합니다. 누락·실패 작업은 시작 시 확인과 주기적 복구로 처리합니다.
 실행 주기·한국 시간 기준·중복 방지·재시도·V15 배포 방법은 [백그라운드 매칭 안내](docs/companion-background-matching.md)를 참고하세요.
+
+## 모집별 여행 스타일
+
+프로필과 독립적인 모집 점수의 저장·수정·재개·후보 비교 계약과 V16 배포 조건은
+[모집별 여행 스타일 안내](docs/companion-travel-style.md)를 참고하세요.

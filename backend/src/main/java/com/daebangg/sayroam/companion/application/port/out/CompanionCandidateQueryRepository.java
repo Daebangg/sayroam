@@ -10,6 +10,7 @@ import com.daebangg.sayroam.user.domain.Gender;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 
 public interface CompanionCandidateQueryRepository {
 
@@ -22,6 +23,6 @@ public interface CompanionCandidateQueryRepository {
 
     record CandidateQuery(long ownerId, long destinationId, TravelPeriod period, Gender preferredGender,
                           AgeRange preferredAgeRange, String titleQuery, LocalDate ageReferenceDate,
-                          long offset, int limit, boolean styleSort) {
+                          long offset, int limit, boolean styleSort, Map<String, Integer> travelStyle) {
     }
 }

@@ -207,19 +207,19 @@ public class OpenApiConfig {
                 .addResponses("TripNotFound", problemResponse("404: TRIP_NOT_FOUND. 없는 여행이거나 접근할 수 없는 여행. 둘을 구분하지 않음"))
                 .addResponses("CompanionSearchNotFound", problemResponse("404: COMPANION_SEARCH_NOT_FOUND. 등록이 없거나 다른 회원의 등록"))
                 .addResponses("TravelStyleRequired", problemResponse(
-                        "409: TRAVEL_STYLE_REQUIRED. 여행 스타일 4문항에 모두 응답한 뒤 다시 요청"))
-                .addResponses("CompanionSearchClosed", problemResponse("409: COMPANION_SEARCH_CLOSED. 종료된 등록은 수정할 수 없음"))
+                        "409: TRAVEL_STYLE_REQUIRED. 모집 수정에서 여행 스타일 4문항을 저장한 뒤 다시 요청. 등록 전 조회는 4문항 점수를 전달"))
+                .addResponses("CompanionSearchClosed", problemResponse("409: COMPANION_SEARCH_CLOSED. 종료된 등록으로 후보를 조회할 수 없음"))
                 .addResponses("CompanionSearchDestinationRequired", problemResponse(
                         "409: COMPANION_SEARCH_DESTINATION_REQUIRED. 재개할 등록에 기준 여행지가 없음"))
                 .addResponses("CompanionSearchLimitExceeded", problemResponse(
                         "409: COMPANION_SEARCH_LIMIT_EXCEEDED. 활성 모집은 최대 3개. 기존 모집 종료 후 등록·재개 가능"))
                 .addResponses("CompanionSearchCreateConflict", problemResponse(
                         "409: COMPANION_SEARCH_LIMIT_EXCEEDED(활성 모집 최대 3개 초과), "
-                                + "TRAVEL_STYLE_REQUIRED(여행 스타일 4문항 응답 필요)"))
+                                + "TRAVEL_STYLE_REQUIRED(모집에 저장할 여행 스타일 4문항 응답 필요)"))
                 .addResponses("CompanionSearchStatusConflict", problemResponse(
                         "409: COMPANION_SEARCH_DESTINATION_REQUIRED(재개할 등록에 여행지가 없음), "
                                 + "COMPANION_SEARCH_LIMIT_EXCEEDED(활성 모집 최대 3개 초과), "
-                                + "TRAVEL_STYLE_REQUIRED(여행 스타일 4문항 응답 필요)"))
+                                + "TRAVEL_STYLE_REQUIRED(모집에 저장할 여행 스타일 4문항 응답 필요)"))
                 .addResponses("CompanionCandidateSearchUnavailable", problemResponse(
                         "409: COMPANION_SEARCH_CLOSED(종료), COMPANION_SEARCH_DESTINATION_REQUIRED(기준 여행지 선택 필요), TRAVEL_STYLE_REQUIRED(STYLE 정렬에 4문항 응답 필요)"))
                 .addResponses("TripPlaceBadRequest", problemResponse("400: INVALID_INPUT(장소 ID 누락, 1보다 작은 일차, 255자 초과 메모, errors 포함), TRIP_DAY_OUT_OF_RANGE(여행 기간을 벗어난 일차) 또는 Spring 요청 오류"))

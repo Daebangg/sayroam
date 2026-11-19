@@ -162,8 +162,8 @@ class CompanionSearchLimitIntegrationTest extends DatabaseIntegrationTest {
     private long seed(String status) {
         jdbc.update("""
                 INSERT INTO companion_search
-                    (user_id, destination_id, start_date, end_date, status, created_at, updated_at)
-                VALUES (?, ?, '2030-04-21', '2030-04-23', ?, UTC_TIMESTAMP(6), UTC_TIMESTAMP(6))
+                    (user_id, destination_id, start_date, end_date, status, created_at, updated_at, style_planning, style_daily_pace, style_time_together, style_spending)
+                VALUES (?, ?, '2030-04-21', '2030-04-23', ?, UTC_TIMESTAMP(6), UTC_TIMESTAMP(6), 3, 3, 3, 3)
                 """, userId, destinationId, status);
         return jdbc.queryForObject("SELECT MAX(id) FROM companion_search WHERE user_id = ?", Long.class, userId);
     }

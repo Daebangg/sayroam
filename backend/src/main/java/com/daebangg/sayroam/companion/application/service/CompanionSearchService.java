@@ -14,6 +14,7 @@ import com.daebangg.sayroam.companion.domain.CompanionMatchingJobRepository;
 import com.daebangg.sayroam.companion.domain.CompanionSearch;
 import com.daebangg.sayroam.companion.domain.CompanionSearchRepository;
 import com.daebangg.sayroam.companion.domain.CompanionSearchStatus;
+import com.daebangg.sayroam.companion.domain.RecruitmentTravelStyle;
 import com.daebangg.sayroam.companion.domain.TravelStyleMatch;
 import com.daebangg.sayroam.companion.domain.error.CompanionSearchErrorCode;
 import com.daebangg.sayroam.companion.domain.event.CompanionMatchingRequested;
@@ -32,7 +33,6 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -54,7 +54,6 @@ public class CompanionSearchService {
     public CompanionSearchResult create(long userId, SaveCompanionSearchCommand command) {
         lockOwner(userId);
         requireAvailableActiveSlot(userId);
-        requireCompleteTravelStyle(userId);
         requireActiveDestination(command.destinationId());
         CompanionSearch search = CompanionSearch.builder()
                 .userId(userId)
@@ -67,6 +66,8 @@ public class CompanionSearchService {
                 .showAge(command.showAge())
                 .showGender(command.showGender())
                 .build();
+        search.updateTravelStyle(command.travelStyle() == null
+                ? findTravelStyleAnswers(userId) : command.travelStyle());
         searches.save(search);
         enqueueMatching(search);
         return CompanionSearchResult.from(search);
@@ -85,7 +86,8 @@ public class CompanionSearchService {
                 .orElseThrow(() -> new BusinessException(CompanionSearchErrorCode.COMPANION_SEARCH_NOT_FOUND));
         search.validateCandidateSearch();
         return queryCandidates(userId, search.getDestinationId(), search.getPeriod(),
-                search.getPreferredGender(), search.getPreferredAgeRange(), titleQuery, page, size, sort);
+                search.getPreferredGender(), search.getPreferredAgeRange(), titleQuery, page, size, sort,
+                search.travelStyleAnswers());
     }
 
     @Transactional(readOnly = true)
@@ -96,7 +98,9 @@ public class CompanionSearchService {
         AgeRange preferredAgeRange = new AgeRange(query.preferredMinAge(), query.preferredMaxAge());
         requireActiveDestination(query.destinationId());
         return queryCandidates(userId, query.destinationId(), period, query.preferredGender(), preferredAgeRange,
-                query.titleQuery(), page, size, sort);
+                query.titleQuery(), page, size, sort,
+                query.travelStyle() == null ? findTravelStyleAnswers(userId)
+                        : new RecruitmentTravelStyle(query.travelStyle()).answers());
     }
 
     private void validateCandidatePage(int page, int size) {
@@ -107,19 +111,19 @@ public class CompanionSearchService {
 
     private CompanionCandidateResult.Page queryCandidates(long userId, long destinationId, TravelPeriod period,
                                                           Gender preferredGender, AgeRange preferredAgeRange,
-                                                          String titleQuery, int page, int size, CompanionCandidateSort sort) {
+                                                          String titleQuery, int page, int size, CompanionCandidateSort sort,
+                                                          Map<String, Integer> myAnswers) {
         String keyword = titleQuery == null ? "" : titleQuery.strip();
         if (keyword.codePointCount(0, keyword.length()) > CompanionSearch.MAX_TITLE_LENGTH) {
             throw new BusinessException(CommonErrorCode.INVALID_INPUT);
         }
-        Map<String, Integer> myAnswers = findTravelStyleAnswers(userId);
         if (sort == CompanionCandidateSort.STYLE && !TravelStyleMatch.isComplete(myAnswers)) {
             throw new BusinessException(CompanionSearchErrorCode.TRAVEL_STYLE_REQUIRED);
         }
         LocalDate ageReferenceDate = LocalDate.now(KOREA_ZONE);
         CompanionCandidateQueryRepository.CandidateQuery query = new CompanionCandidateQueryRepository.CandidateQuery(
                 userId, destinationId, period, preferredGender, preferredAgeRange, keyword, ageReferenceDate,
-                (long) page * size, size + 1, sort == CompanionCandidateSort.STYLE);
+                (long) page * size, size + 1, sort == CompanionCandidateSort.STYLE, myAnswers);
         List<CompanionCandidateResult> results = candidates.findCandidates(query);
         boolean hasNext = results.size() > size;
         List<CompanionCandidateResult> pageResults = hasNext ? results.subList(0, size) : results;
@@ -131,24 +135,13 @@ public class CompanionSearchService {
         if (results.isEmpty() || !TravelStyleMatch.isComplete(myAnswers)) {
             return results;
         }
-        List<Long> userIds = results.stream().map(CompanionCandidateResult::userId).toList();
-        Map<Long, Map<String, Integer>> answersByUser = new HashMap<>();
-        for (TravelStyleAnswerResult answer : candidates.findTravelStyleAnswers(userIds)) {
-            answersByUser.computeIfAbsent(answer.userId(), ignored -> new HashMap<>()).put(answer.code(), answer.score());
-        }
         List<CompanionCandidateResult> enriched = new ArrayList<>();
         for (CompanionCandidateResult candidate : results) {
-            Map<String, Integer> answers = answersByUser.getOrDefault(candidate.userId(), Map.of());
+            Map<String, Integer> answers = candidate.travelStyle() == null ? Map.of() : candidate.travelStyle().answers();
             enriched.add(TravelStyleMatch.isComplete(answers)
                     ? candidate.withTravelStyleMatch(TravelStyleMatch.compare(myAnswers, answers)) : candidate);
         }
         return enriched;
-    }
-
-    private void requireCompleteTravelStyle(long userId) {
-        if (!TravelStyleMatch.isComplete(findTravelStyleAnswers(userId))) {
-            throw new BusinessException(CompanionSearchErrorCode.TRAVEL_STYLE_REQUIRED);
-        }
     }
 
     private Map<String, Integer> findTravelStyleAnswers(long userId) {
@@ -160,6 +153,10 @@ public class CompanionSearchService {
     public CompanionSearchResult update(long userId, long id, SaveCompanionSearchCommand command) {
         CompanionSearch search = findMineForUpdate(userId, id);
         requireActiveDestination(command.destinationId());
+        if (command.travelStyle() != null) {
+            search.updateTravelStyle(command.travelStyle());
+        }
+        search.requireCompleteTravelStyle();
         search.update(command.destinationId(), new TravelPeriod(command.startDate(), command.endDate()),
                 command.preferredGender(), new AgeRange(command.preferredMinAge(), command.preferredMaxAge()),
                 command.title(), command.introduction(), command.showAge(), command.showGender());
@@ -174,7 +171,6 @@ public class CompanionSearchService {
         boolean reopening = search.isReopening(status);
         if (reopening) {
             requireAvailableActiveSlot(userId);
-            requireCompleteTravelStyle(userId);
             if (search.getDestinationId() != null) {
                 requireActiveDestination(search.getDestinationId());
             }

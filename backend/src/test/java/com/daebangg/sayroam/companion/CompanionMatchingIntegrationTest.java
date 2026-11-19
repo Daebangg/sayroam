@@ -87,7 +87,7 @@ class CompanionMatchingIntegrationTest extends DatabaseIntegrationTest {
         searches.changeStatus(member, source, CompanionSearchStatus.ACTIVE);
         assertThat(jobCount(source)).isEqualTo(3);
         assertThat(jdbc.queryForObject("SELECT matching_revision FROM companion_search WHERE id = ?",
-                Long.class, source)).isEqualTo(4);
+                Long.class, source)).isEqualTo(5);
 
         new TransactionTemplate(transactions).executeWithoutResult(status -> {
             searches.update(member, source, conditions(Gender.FEMALE, 20, 40));
@@ -95,7 +95,7 @@ class CompanionMatchingIntegrationTest extends DatabaseIntegrationTest {
         });
         assertThat(jobCount(source)).isEqualTo(3);
         assertThat(jdbc.queryForObject("SELECT matching_revision FROM companion_search WHERE id = ?",
-                Long.class, source)).isEqualTo(4);
+                Long.class, source)).isEqualTo(5);
         drain();
         assertThat(jdbc.queryForList("SELECT status FROM companion_matching_job WHERE search_id = ? ORDER BY id",
                 String.class, source)).containsExactly("SKIPPED", "SKIPPED", "SUCCEEDED");
@@ -321,8 +321,8 @@ class CompanionMatchingIntegrationTest extends DatabaseIntegrationTest {
         jdbc.update("""
                 INSERT INTO companion_search
                     (user_id, destination_id, start_date, end_date, status, preferred_gender, preferred_min_age,
-                     preferred_max_age, created_at, updated_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, UTC_TIMESTAMP(6), UTC_TIMESTAMP(6))
+                     preferred_max_age, created_at, updated_at, style_planning, style_daily_pace, style_time_together, style_spending)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, UTC_TIMESTAMP(6), UTC_TIMESTAMP(6), 3, 3, 3, 3)
                 """, member, place, start, end, status, preferredGender, minAge, maxAge);
         return jdbc.queryForObject("SELECT MAX(id) FROM companion_search WHERE user_id = ?", Long.class, member);
     }
