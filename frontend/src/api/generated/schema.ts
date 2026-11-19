@@ -411,7 +411,7 @@ export interface paths {
         put?: never;
         /**
          * 동행 매칭 등록
-         * @description 활성 여행지와 여행 기간, 선택한 상대 조건, 제목, 소개글과 내 정보 공개 설정을 저장합니다.
+         * @description 활성 여행지와 여행 기간, 선택한 상대 조건, 제목, 소개글과 내 정보 공개 설정을 저장합니다. 회원당 활성 모집은 최대 3개입니다. 종료한 모집은 개수에서 제외합니다.
          */
         post: operations["createCompanionSearch"];
         delete?: never;
@@ -439,7 +439,7 @@ export interface paths {
         head?: never;
         /**
          * 동행 모집 종료 또는 재개
-         * @description CLOSED는 모집 종료, ACTIVE는 모집 재개입니다. 이미 같은 상태인 등록에도 요청할 수 있습니다. 재개하려면 활성 여행지가 필요합니다.
+         * @description CLOSED는 모집 종료, ACTIVE는 모집 재개입니다. 이미 같은 상태인 등록에도 요청할 수 있습니다. 재개하려면 활성 여행지가 필요하며, 활성 모집이 3개 미만이어야 합니다. 이미 ACTIVE인 등록에 같은 요청을 반복하면 한도와 무관하게 성공합니다.
          */
         patch: operations["closeCompanionSearch"];
         trace?: never;
@@ -906,6 +906,7 @@ export interface components {
             | "AUTHENTICATION_UNAVAILABLE"
             | "COMPANION_SEARCH_CLOSED"
             | "COMPANION_SEARCH_DESTINATION_REQUIRED"
+            | "COMPANION_SEARCH_LIMIT_EXCEEDED"
             | "COMPANION_SEARCH_NOT_FOUND"
             | "DESTINATION_UNAVAILABLE"
             | "EMAIL_ALREADY_REGISTERED"
@@ -1714,8 +1715,26 @@ export interface components {
                 "application/problem+json": components["schemas"]["ApiProblem"];
             };
         };
+        /** @description 409: COMPANION_SEARCH_LIMIT_EXCEEDED. 활성 모집은 최대 3개. 기존 모집 종료 후 등록·재개 가능 */
+        CompanionSearchLimitExceeded: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/problem+json": components["schemas"]["ApiProblem"];
+            };
+        };
         /** @description 404: COMPANION_SEARCH_NOT_FOUND. 등록이 없거나 다른 회원의 등록 */
         CompanionSearchNotFound: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/problem+json": components["schemas"]["ApiProblem"];
+            };
+        };
+        /** @description 409: COMPANION_SEARCH_DESTINATION_REQUIRED(재개할 등록에 여행지가 없음), COMPANION_SEARCH_LIMIT_EXCEEDED(활성 모집 최대 3개 초과) */
+        CompanionSearchStatusConflict: {
             headers: {
                 [name: string]: unknown;
             };
@@ -2807,6 +2826,7 @@ export interface operations {
             };
             400: components["responses"]["BadRequest"];
             401: components["responses"]["Unauthorized"];
+            409: components["responses"]["CompanionSearchLimitExceeded"];
         };
     };
     updateCompanionSearch: {
@@ -2866,7 +2886,7 @@ export interface operations {
             400: components["responses"]["BadRequest"];
             401: components["responses"]["Unauthorized"];
             404: components["responses"]["CompanionSearchNotFound"];
-            409: components["responses"]["CompanionSearchDestinationRequired"];
+            409: components["responses"]["CompanionSearchStatusConflict"];
         };
     };
     listCompanionCandidates: {

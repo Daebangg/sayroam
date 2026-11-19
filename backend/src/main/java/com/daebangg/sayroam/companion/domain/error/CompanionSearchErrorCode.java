@@ -8,6 +8,8 @@ import lombok.RequiredArgsConstructor;
 @Getter
 @RequiredArgsConstructor
 public enum CompanionSearchErrorCode implements ErrorCode {
+    COMPANION_SEARCH_LIMIT_EXCEEDED(ErrorType.CONFLICT, "COMPANION_SEARCH_LIMIT_EXCEEDED",
+            "A maximum of 3 active companion searches is allowed. Close an existing search before creating or reopening one"),
     COMPANION_SEARCH_NOT_FOUND(ErrorType.NOT_FOUND, "COMPANION_SEARCH_NOT_FOUND", "Companion search does not exist"),
     COMPANION_SEARCH_CLOSED(ErrorType.CONFLICT, "COMPANION_SEARCH_CLOSED", "Companion search is closed"),
     COMPANION_SEARCH_DESTINATION_REQUIRED(ErrorType.CONFLICT, "COMPANION_SEARCH_DESTINATION_REQUIRED",

@@ -209,6 +209,11 @@ public class OpenApiConfig {
                 .addResponses("CompanionSearchClosed", problemResponse("409: COMPANION_SEARCH_CLOSED. 종료된 등록은 수정할 수 없음"))
                 .addResponses("CompanionSearchDestinationRequired", problemResponse(
                         "409: COMPANION_SEARCH_DESTINATION_REQUIRED. 재개할 등록에 기준 여행지가 없음"))
+                .addResponses("CompanionSearchLimitExceeded", problemResponse(
+                        "409: COMPANION_SEARCH_LIMIT_EXCEEDED. 활성 모집은 최대 3개. 기존 모집 종료 후 등록·재개 가능"))
+                .addResponses("CompanionSearchStatusConflict", problemResponse(
+                        "409: COMPANION_SEARCH_DESTINATION_REQUIRED(재개할 등록에 여행지가 없음), "
+                                + "COMPANION_SEARCH_LIMIT_EXCEEDED(활성 모집 최대 3개 초과)"))
                 .addResponses("CompanionCandidateSearchUnavailable", problemResponse(
                         "409: COMPANION_SEARCH_CLOSED(종료), COMPANION_SEARCH_DESTINATION_REQUIRED(기준 여행지 선택 필요)"))
                 .addResponses("TripPlaceBadRequest", problemResponse("400: INVALID_INPUT(장소 ID 누락, 1보다 작은 일차, 255자 초과 메모, errors 포함), TRIP_DAY_OUT_OF_RANGE(여행 기간을 벗어난 일차) 또는 Spring 요청 오류"))
