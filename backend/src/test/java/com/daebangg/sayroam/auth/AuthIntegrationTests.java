@@ -468,25 +468,23 @@ class AuthIntegrationTests extends DatabaseIntegrationTest {
         assertThat(empty).allSatisfy(item -> assertThat(item.path("score").isNull()).isTrue());
         assertThat(empty).allSatisfy(item -> assertThat(item.propertyNames()).containsExactlyInAnyOrder("code", "score"));
 
-        MvcResult saved = call(HttpMethod.PATCH, TRAVEL_STYLE, Map.of("answers", List.of(
-                Map.of("code", "planning", "score", 3), Map.of("code", "daily-pace", "score", 5))), member.access());
+        Object allAnswers = Map.of("answers", List.of(
+                Map.of("code", "planning", "score", 3), Map.of("code", "daily-pace", "score", 5),
+                Map.of("code", "time-together", "score", 2), Map.of("code", "spending", "score", 4)));
+        MvcResult saved = call(HttpMethod.PATCH, TRAVEL_STYLE, allAnswers, member.access());
         assertStatus(saved, 200);
         assertThat(json(saved).at("/items/0/score").asInt()).isEqualTo(3);
-        assertThat(json(saved).at("/items/2/score").isNull()).isTrue();
+        assertThat(json(saved).at("/items/2/score").asInt()).isEqualTo(2);
         assertThat(json(call(HttpMethod.GET, TRAVEL_STYLE, null, other.access())).path("items")).isEqualTo(empty);
-
         assertStatus(call(HttpMethod.PATCH, TRAVEL_STYLE,
-                Map.of("answers", List.of(Map.of("code", "planning", "score", 1))), member.access()), 200);
+                Map.of("answers", List.of(Map.of("code", "planning", "score", 1))), member.access()), 400);
         JsonNode clear = mapper.readTree("""
-                {"answers":[{"code":"daily-pace","score":null}]}
+                {"answers":[{"code":"planning","score":3},{"code":"daily-pace","score":null},
+                            {"code":"time-together","score":2},{"code":"spending","score":4}]}
                 """);
-        for (int attempt = 0; attempt < 2; attempt++) {
-            assertStatus(call(HttpMethod.PATCH, TRAVEL_STYLE, clear, member.access()), 200);
-        }
-        JsonNode reloaded = json(call(HttpMethod.GET, TRAVEL_STYLE, null, member.access()));
-        assertThat(reloaded.at("/items/0/score").asInt()).isEqualTo(1);
-        assertThat(reloaded.at("/items/1/score").isNull()).isTrue();
-        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM user_travel_style", Integer.class)).isEqualTo(1);
+        assertStatus(call(HttpMethod.PATCH, TRAVEL_STYLE, clear, member.access()), 400);
+        assertThat(json(call(HttpMethod.GET, TRAVEL_STYLE, null, member.access()))).isEqualTo(json(saved));
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM user_travel_style", Integer.class)).isEqualTo(4);
     }
 
     @Test
@@ -524,7 +522,9 @@ class AuthIntegrationTests extends DatabaseIntegrationTest {
                     {"code":"planning","score":4}
                     """)) {
                 JsonNode update = mapper.readTree(
-                        "{\"answers\":[{\"code\":\"planning\",\"score\":3}," + invalid + "]}");
+                        "{\"answers\":[{\"code\":\"planning\",\"score\":3},"
+                                + "{\"code\":\"time-together\",\"score\":2},"
+                                + "{\"code\":\"spending\",\"score\":4}," + invalid + "]}");
                 assertStatus(call(HttpMethod.PATCH, TRAVEL_STYLE, update, member.access()), 400);
                 assertThat(json(call(HttpMethod.GET, TRAVEL_STYLE, null, member.access()))).isEqualTo(before);
             }
@@ -537,16 +537,18 @@ class AuthIntegrationTests extends DatabaseIntegrationTest {
     @Test
     void concurrentFirstTravelStyleWritesKeepOneAnswerPerQuestion() throws Exception {
         Login member = login(register(), PASSWORD);
-        Object update = Map.of("answers", List.of(Map.of("code", "spending", "score", 5)));
+        Object update = Map.of("answers", List.of(Map.of("code", "planning", "score", 3),
+                Map.of("code", "daily-pace", "score", 3), Map.of("code", "time-together", "score", 3),
+                Map.of("code", "spending", "score", 5)));
         for (MvcResult result : concurrent(() -> call(HttpMethod.PATCH, TRAVEL_STYLE, update, member.access()))) {
             assertStatus(result, 200);
             assertThat(json(result).at("/items/3/score").asInt()).isEqualTo(5);
         }
-        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM user_travel_style", Integer.class)).isEqualTo(1);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM user_travel_style", Integer.class)).isEqualTo(4);
     }
 
     @Test
-    void travelStyleOpenApiDeclaresAuthenticatedPartialUpdatesAndNullableScores() throws Exception {
+    void travelStyleOpenApiDeclaresRequiredScoresAndLegacyUnansweredReads() throws Exception {
         MvcResult docs = call(HttpMethod.GET, "/v3/api-docs", null, null);
         assertStatus(docs, 200);
         JsonNode spec = json(docs);
@@ -562,7 +564,11 @@ class AuthIntegrationTests extends DatabaseIntegrationTest {
             assertThat(itemRef).startsWith("#/components/schemas/");
             JsonNode score = schemas.path(itemRef.substring(itemRef.lastIndexOf('/') + 1))
                     .at("/properties/score");
-            assertThat(score.path("type")).extracting(JsonNode::asText).containsExactlyInAnyOrder("integer", "null");
+            if (owner.equals("TravelStyleResponse")) {
+                assertThat(score.path("type")).extracting(JsonNode::asText).containsExactlyInAnyOrder("integer", "null");
+            } else {
+                assertThat(score.path("type").toString()).isIn("\"integer\"", "[\"integer\"]");
+            }
         }
     }
 

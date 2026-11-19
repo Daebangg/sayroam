@@ -1,6 +1,7 @@
 package com.daebangg.sayroam.companion.presentation.controller;
 
 import com.daebangg.sayroam.auth.domain.AuthenticatedAccount;
+import com.daebangg.sayroam.companion.domain.CompanionCandidateSort;
 import com.daebangg.sayroam.companion.application.dto.PreviewCompanionCandidatesQuery;
 import com.daebangg.sayroam.companion.application.service.CompanionSearchService;
 import com.daebangg.sayroam.companion.presentation.api.CompanionCandidatePreviewApi;
@@ -34,10 +35,11 @@ public class CompanionCandidatePreviewController implements CompanionCandidatePr
             @RequestParam(required = false) Integer preferredMaxAge,
             @RequestParam(required = false) String q,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(defaultValue = "OVERLAP") CompanionCandidateSort sort) {
         PreviewCompanionCandidatesQuery query = new PreviewCompanionCandidatesQuery(
                 destinationId, startDate, endDate, preferredGender, preferredMinAge, preferredMaxAge, q);
         return ResponseEntity.ok(CompanionCandidateListResponse.from(
-                service.previewCandidates(account.userId(), query, page, size)));
+                service.previewCandidates(account.userId(), query, page, size, sort)));
     }
 }

@@ -176,6 +176,12 @@ class CompanionSearchApiIntegrationTest extends DatabaseIntegrationTest {
 
     private String createAuthorization(String nickname) {
         User user = users.saveNewAccount(User.builder().nickname(nickname).role(Role.USER).build());
+        jdbc.update("""
+                INSERT INTO user_travel_style (user_id, item_id, score, created_at, updated_at)
+                SELECT ?, id, 3, UTC_TIMESTAMP(6), UTC_TIMESTAMP(6)
+                FROM travel_style_item WHERE is_active = TRUE
+                  AND code IN ('planning', 'daily-pace', 'time-together', 'spending')
+                """, user.getId());
         return "Bearer " + tokens.issue(user.getId(), user.getAuthVersion()).accessToken();
     }
 

@@ -11,11 +11,14 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.util.List;
+
 // 여행 스타일 질문. 질문을 없앨 때 행을 지우면 기존 답변이 깨지므로 active를 false로 바꾼다
 @Entity
 @Table(name = "travel_style_item")
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class TravelStyleItem extends BaseTimeEntity {
+    public static final List<String> MATCHING_CODES = List.of("planning", "daily-pace", "time-together", "spending");
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

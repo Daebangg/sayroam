@@ -39,6 +39,9 @@ public class TravelStyleService {
     public List<TravelStyleItemResult> updateMine(long userId, long authVersion, UpdateTravelStyleCommand command) {
         // 최초 저장·수정과 회원 탈퇴가 같은 회원 행을 잠가 순서대로 처리된다.
         requireCurrentUser(users.findForUpdateByIdAndDeletedAtIsNull(userId), authVersion);
+        if (command.answers().size() != TravelStyleItem.MATCHING_CODES.size()) {
+            throw new BusinessException(CommonErrorCode.INVALID_INPUT);
+        }
         List<TravelStyleItem> activeItems = items.findAllByActiveTrueOrderBySortOrderAscIdAsc();
         Map<String, TravelStyleItem> itemsByCode = activeItems.stream()
                 .collect(Collectors.toMap(TravelStyleItem::getCode, Function.identity()));
@@ -47,7 +50,7 @@ public class TravelStyleService {
 
         for (UpdateTravelStyleCommand.Answer update : command.answers()) {
             TravelStyleItem item = itemsByCode.get(update.code());
-            if (item == null || !updatedCodes.add(update.code())) {
+            if (item == null || !TravelStyleItem.MATCHING_CODES.contains(update.code()) || !updatedCodes.add(update.code())) {
                 throw new BusinessException(CommonErrorCode.INVALID_INPUT);
             }
             applyAnswer(userId, item, update, answersByItemId);
@@ -59,13 +62,8 @@ public class TravelStyleService {
                              Map<Long, UserTravelStyle> answersByItemId) {
         Long itemId = item.getId();
         UserTravelStyle existing = answersByItemId.get(itemId);
-        Integer score = update.score();
-        if (score == null) {
-            if (existing != null) {
-                answers.delete(existing);
-                answersByItemId.remove(itemId);
-            }
-        } else if (existing == null) {
+        int score = update.score();
+        if (existing == null) {
             answersByItemId.put(itemId, answers.save(new UserTravelStyle(userId, item, score)));
         } else {
             existing.changeScore(score);

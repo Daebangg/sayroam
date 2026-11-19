@@ -1,6 +1,7 @@
 package com.daebangg.sayroam.companion.presentation.controller;
 
 import com.daebangg.sayroam.auth.domain.AuthenticatedAccount;
+import com.daebangg.sayroam.companion.domain.CompanionCandidateSort;
 import com.daebangg.sayroam.companion.application.service.CompanionSearchService;
 import com.daebangg.sayroam.companion.presentation.api.CompanionSearchApi;
 import com.daebangg.sayroam.companion.presentation.dto.ChangeCompanionSearchStatusRequest;
@@ -50,9 +51,10 @@ public class CompanionSearchController implements CompanionSearchApi {
     public ResponseEntity<CompanionCandidateListResponse> findCandidates(
             @AuthenticationPrincipal AuthenticatedAccount account, @PathVariable long searchId,
             @RequestParam(required = false) String q,
-            @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "20") int size) {
+            @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "20") int size,
+            @RequestParam(defaultValue = "OVERLAP") CompanionCandidateSort sort) {
         return ResponseEntity.ok(CompanionCandidateListResponse.from(
-                service.findCandidates(account.userId(), searchId, q, page, size)));
+                service.findCandidates(account.userId(), searchId, q, page, size, sort)));
     }
 
     @Override

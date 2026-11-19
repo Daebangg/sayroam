@@ -48,6 +48,12 @@ class CompanionSearchLimitIntegrationTest extends DatabaseIntegrationTest {
     void setUp() {
         User user = users.saveNewAccount(User.builder().nickname("모집 한도 검증").role(Role.USER).build());
         userId = user.getId();
+        jdbc.update("""
+                INSERT INTO user_travel_style (user_id, item_id, score, created_at, updated_at)
+                SELECT ?, id, 3, UTC_TIMESTAMP(6), UTC_TIMESTAMP(6)
+                FROM travel_style_item WHERE is_active = TRUE
+                  AND code IN ('planning', 'daily-pace', 'time-together', 'spending')
+                """, userId);
         destinationId = jdbc.queryForObject("SELECT id FROM destination WHERE name = '서울'", Long.class);
         authorization = "Bearer " + tokens.issue(userId, user.getAuthVersion()).accessToken();
     }
@@ -55,6 +61,7 @@ class CompanionSearchLimitIntegrationTest extends DatabaseIntegrationTest {
     @AfterEach
     void cleanUp() {
         jdbc.update("DELETE FROM companion_search WHERE user_id = ?", userId);
+        jdbc.update("DELETE FROM user_travel_style WHERE user_id = ?", userId);
         jdbc.update("DELETE FROM users WHERE id = ?", userId);
     }
 

@@ -389,7 +389,7 @@ export interface paths {
         };
         /**
          * 동행 등록 전 후보 조회
-         * @description 여행지와 기간, 선택한 상대 조건으로 동행 후보를 미리 조회합니다. 상대의 희망 조건은 로그인 회원의 프로필과 비교합니다. 만 나이와 성별은 해당 등록에서 공개한 값만 반환합니다.
+         * @description 여행지와 기간, 선택한 상대 조건으로 동행 후보를 미리 조회합니다. 상대의 희망 조건은 로그인 회원의 프로필과 비교합니다. 만 나이와 성별은 해당 등록에서 공개한 값만 반환합니다. STYLE 정렬은 4문항 응답이 완성된 후보를 대상으로 합니다.
          */
         get: operations["previewCompanionCandidates"];
         put?: never;
@@ -411,7 +411,7 @@ export interface paths {
         put?: never;
         /**
          * 동행 매칭 등록
-         * @description 활성 여행지와 여행 기간, 선택한 상대 조건, 제목, 소개글과 내 정보 공개 설정을 저장합니다. 회원당 활성 모집은 최대 3개입니다. 종료한 모집은 개수에서 제외합니다.
+         * @description 활성 여행지와 여행 기간, 선택한 상대 조건, 제목, 소개글과 내 정보 공개 설정을 저장합니다. 회원당 활성 모집은 최대 3개입니다. 종료한 모집은 개수에서 제외합니다. 여행 스타일 4문항 응답이 필요합니다.
          */
         post: operations["createCompanionSearch"];
         delete?: never;
@@ -439,7 +439,7 @@ export interface paths {
         head?: never;
         /**
          * 동행 모집 종료 또는 재개
-         * @description CLOSED는 모집 종료, ACTIVE는 모집 재개입니다. 이미 같은 상태인 등록에도 요청할 수 있습니다. 재개하려면 활성 여행지가 필요하며, 활성 모집이 3개 미만이어야 합니다. 이미 ACTIVE인 등록에 같은 요청을 반복하면 한도와 무관하게 성공합니다.
+         * @description CLOSED는 모집 종료, ACTIVE는 모집 재개입니다. 이미 같은 상태인 등록에도 요청할 수 있습니다. 재개하려면 활성 여행지와 여행 스타일 4문항 응답이 필요하며, 활성 모집이 3개 미만이어야 합니다. 이미 ACTIVE인 등록에 같은 요청을 반복하면 한도와 무관하게 성공합니다.
          */
         patch: operations["closeCompanionSearch"];
         trace?: never;
@@ -453,7 +453,7 @@ export interface paths {
         };
         /**
          * 동행 매칭 후보 조회
-         * @description 등록한 두 여행 기간이 하루 이상 겹치고 양쪽의 희망 나이·성별 조건을 충족하는 후보를 조회합니다. 여행 기간의 시작일과 종료일을 포함해 겹치는 일수가 많은 순으로, 회원별 한 건을 반환합니다. 만 나이와 성별은 해당 등록에서 공개한 값만 반환합니다.
+         * @description 등록한 두 여행 기간이 하루 이상 겹치고 양쪽의 희망 나이·성별 조건을 충족하는 후보를 조회합니다. 여행 기간의 시작일과 종료일을 포함해 겹치는 일수가 많은 순으로, 회원별 한 건을 반환합니다. 만 나이와 성별은 해당 등록에서 공개한 값만 반환합니다. STYLE 정렬은 4문항 응답이 완성된 후보를 대상으로 합니다.
          */
         get: operations["listCompanionCandidates"];
         put?: never;
@@ -792,7 +792,7 @@ export interface paths {
         head?: never;
         /**
          * 내 여행 스타일 수정
-         * @description 전달된 문항에 1~5점으로 답하거나 null로 기존 답변을 지웁니다. 생략한 문항의 응답은 유지합니다.
+         * @description planning, daily-pace, time-together, spending 네 문항을 모두 1~5점으로 제출합니다. 부분 저장과 null 응답은 거절합니다.
          */
         patch: operations["updateMyTravelStyle"];
         trace?: never;
@@ -888,7 +888,7 @@ export interface components {
             /** @example planning */
             code: string;
             /** Format: int32 */
-            score: number | null;
+            score: number;
         };
         /**
          * @description 백엔드에 정의된 업무·공통 오류 코드. Spring 기본 요청 오류와 향후 추가 코드는 별도 문자열로 받을 수 있습니다.
@@ -959,6 +959,7 @@ export interface components {
             | "SOCIAL_RETURN_PATH_INVALID"
             | "SOCIAL_SIGNUP_INVALID"
             | "TRAVEL_PERIOD_END_BEFORE_START"
+            | "TRAVEL_STYLE_REQUIRED"
             | "TRIP_DAY_OUT_OF_RANGE"
             | "TRIP_NOT_FOUND"
             | "TRIP_PERIOD_REQUIRED"
@@ -1032,6 +1033,8 @@ export interface components {
             /** Format: date */
             startDate: string;
             title: string | null;
+            /** @description 4문항 비교 결과. 날짜순 조회에서 응답이 부족하면 null */
+            travelStyleMatch: components["schemas"]["TravelStyleMatchResponse"] | null;
         };
         ChangeCompanionSearchStatusRequest: {
             /** @description ACTIVE는 모집 재개, CLOSED는 모집 종료 */
@@ -1520,6 +1523,24 @@ export interface components {
             /** @description 결과 교환에서 받은 가입 티켓 */
             signupTicket: string;
         };
+        StyleItem: {
+            /** Format: int32 */
+            candidateScore: number;
+            code: string;
+            /** Format: int32 */
+            difference: number;
+            /** Format: int32 */
+            myScore: number;
+            /** @enum {string} */
+            similarity: "SAME" | "SIMILAR" | "SOMEWHAT_DIFFERENT" | "DIFFERENT";
+        };
+        TravelStyleMatchResponse: {
+            /** @enum {string} */
+            category: "SIMILAR" | "NEEDS_DISCUSSION";
+            items: components["schemas"]["StyleItem"][];
+            /** Format: double */
+            score: number;
+        };
         TravelStyleResponse: {
             items: components["schemas"]["Item"][];
         };
@@ -1558,7 +1579,7 @@ export interface components {
              */
             tripId: number;
         };
-        /** @description 전달한 문항의 답변만 수정합니다. score가 null이면 그 문항의 답변을 삭제합니다. */
+        /** @description 여행 스타일 네 문항에 모두 1~5점으로 응답합니다. 응답 생략과 삭제는 허용하지 않습니다. */
         UpdateTravelStyleRequest: {
             answers: components["schemas"]["Answer"][];
         };
@@ -1688,7 +1709,7 @@ export interface components {
                 "application/problem+json": components["schemas"]["ApiProblem"];
             };
         };
-        /** @description 409: COMPANION_SEARCH_CLOSED(종료), COMPANION_SEARCH_DESTINATION_REQUIRED(기준 여행지 선택 필요) */
+        /** @description 409: COMPANION_SEARCH_CLOSED(종료), COMPANION_SEARCH_DESTINATION_REQUIRED(기준 여행지 선택 필요), TRAVEL_STYLE_REQUIRED(STYLE 정렬에 4문항 응답 필요) */
         CompanionCandidateSearchUnavailable: {
             headers: {
                 [name: string]: unknown;
@@ -1699,6 +1720,15 @@ export interface components {
         };
         /** @description 409: COMPANION_SEARCH_CLOSED. 종료된 등록은 수정할 수 없음 */
         CompanionSearchClosed: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/problem+json": components["schemas"]["ApiProblem"];
+            };
+        };
+        /** @description 409: COMPANION_SEARCH_LIMIT_EXCEEDED(활성 모집 최대 3개 초과), TRAVEL_STYLE_REQUIRED(여행 스타일 4문항 응답 필요) */
+        CompanionSearchCreateConflict: {
             headers: {
                 [name: string]: unknown;
             };
@@ -1733,7 +1763,7 @@ export interface components {
                 "application/problem+json": components["schemas"]["ApiProblem"];
             };
         };
-        /** @description 409: COMPANION_SEARCH_DESTINATION_REQUIRED(재개할 등록에 여행지가 없음), COMPANION_SEARCH_LIMIT_EXCEEDED(활성 모집 최대 3개 초과) */
+        /** @description 409: COMPANION_SEARCH_DESTINATION_REQUIRED(재개할 등록에 여행지가 없음), COMPANION_SEARCH_LIMIT_EXCEEDED(활성 모집 최대 3개 초과), TRAVEL_STYLE_REQUIRED(여행 스타일 4문항 응답 필요) */
         CompanionSearchStatusConflict: {
             headers: {
                 [name: string]: unknown;
@@ -2107,6 +2137,15 @@ export interface components {
         };
         /** @description 503: SOCIAL_AUTH_UNAVAILABLE, AUTHENTICATION_UNAVAILABLE 또는 EMAIL_VERIFICATION_UNAVAILABLE. 상태·증명 소비나 가입 커밋 결과가 불확실할 수 있음. 자동 재시도 없이 소셜 인증부터 다시 시작 */
         SocialUnavailable: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/problem+json": components["schemas"]["ApiProblem"];
+            };
+        };
+        /** @description 409: TRAVEL_STYLE_REQUIRED. 여행 스타일 4문항에 모두 응답한 뒤 다시 요청 */
+        TravelStyleRequired: {
             headers: {
                 [name: string]: unknown;
             };
@@ -2781,6 +2820,8 @@ export interface operations {
                 q?: string;
                 /** @description 페이지당 후보 수 */
                 size?: number;
+                /** @description OVERLAP는 겹치는 일수순, STYLE은 여행 스타일 점수순. STYLE은 4문항 응답 필수 */
+                sort?: "OVERLAP" | "STYLE";
                 startDate: string;
             };
             header?: never;
@@ -2800,6 +2841,7 @@ export interface operations {
             };
             400: components["responses"]["BadRequest"];
             401: components["responses"]["Unauthorized"];
+            409: components["responses"]["TravelStyleRequired"];
         };
     };
     createCompanionSearch: {
@@ -2826,7 +2868,7 @@ export interface operations {
             };
             400: components["responses"]["BadRequest"];
             401: components["responses"]["Unauthorized"];
-            409: components["responses"]["CompanionSearchLimitExceeded"];
+            409: components["responses"]["CompanionSearchCreateConflict"];
         };
     };
     updateCompanionSearch: {
@@ -2898,6 +2940,8 @@ export interface operations {
                 q?: string;
                 /** @description 페이지당 후보 수 */
                 size?: number;
+                /** @description OVERLAP는 겹치는 일수순, STYLE은 여행 스타일 점수순. STYLE은 4문항 응답 필수 */
+                sort?: "OVERLAP" | "STYLE";
             };
             header?: never;
             path: {

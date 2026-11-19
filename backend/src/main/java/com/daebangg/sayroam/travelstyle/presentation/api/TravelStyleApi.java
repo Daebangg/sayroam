@@ -27,7 +27,7 @@ public interface TravelStyleApi {
             @Parameter(hidden = true) @AuthenticationPrincipal AuthenticatedAccount account);
 
     @Operation(operationId = "updateMyTravelStyle", summary = "내 여행 스타일 수정",
-            description = "전달된 문항에 1~5점으로 답하거나 null로 기존 답변을 지웁니다. 생략한 문항의 응답은 유지합니다.",
+            description = "planning, daily-pace, time-together, spending 네 문항을 모두 1~5점으로 제출합니다. 부분 저장과 null 응답은 거절합니다.",
             security = @SecurityRequirement(name = "bearerAuth"))
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "여행 스타일 수정 완료"),
