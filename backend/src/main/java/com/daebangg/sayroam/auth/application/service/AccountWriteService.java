@@ -53,24 +53,26 @@ public class AccountWriteService {
     }
 
     public long register(String email, String nickname, String passwordHash, Instant emailVerifiedAt) {
-        return write(AuthErrorCode.SIGNUP_UNAVAILABLE, () -> {
+        long userId = write(AuthErrorCode.SIGNUP_UNAVAILABLE, () -> {
             User user = User.verifiedEmailMember(email, nickname, LocalDateTime.ofInstant(emailVerifiedAt, ZoneOffset.UTC),
                     passwordHash);
             User saved = users.saveNewAccount(user);
-            createWelcomeNotification(saved.getId());
             return saved.getId();
         });
+        createWelcomeNotification(userId);
+        return userId;
     }
 
     public SocialAccountResult registerSocial(SocialIdentity identity, String email, String nickname, Instant verifiedAt) {
-        return write(AuthErrorCode.SOCIAL_AUTH_UNAVAILABLE, () -> {
+        SocialAccountResult account = write(AuthErrorCode.SOCIAL_AUTH_UNAVAILABLE, () -> {
             User user = User.verifiedSocialMember(email, nickname, identity.profileImageUrl(),
                     LocalDateTime.ofInstant(verifiedAt, ZoneOffset.UTC));
             user.linkSocialAccount(identity.provider(), identity.providerUserId(), identity.email());
             User saved = users.saveNewAccount(user);
-            createWelcomeNotification(saved.getId());
             return new SocialAccountResult(saved.getId(), saved.getAuthVersion());
         });
+        createWelcomeNotification(account.userId());
+        return account;
     }
 
     public SocialAccountResult linkVerifiedEmail(SocialAccountResult account, SocialIdentity identity) {
@@ -135,8 +137,15 @@ public class AccountWriteService {
     }
 
     private void createWelcomeNotification(Long userId) {
-        notificationService.create(new CreateNotificationCommand(userId, NotificationType.WELCOME, null, null,
-                "account-signup:" + userId, "Welcome to SayRoam! Your next adventure starts here."));
+        try {
+            // 회원가입 커밋 후 별도 트랜잭션에서 시도하며 알림 실패가 가입 결과를 바꾸지 않게 한다.
+            transaction.executeWithoutResult(status -> notificationService.create(new CreateNotificationCommand(
+                    userId, NotificationType.WELCOME, null, null, "account-signup:" + userId,
+                    "Welcome to SayRoam! Your next adventure starts here.")));
+        } catch (RuntimeException exception) {
+            log.warn("Welcome notification creation failed for user {}: {}", userId,
+                    exception.getClass().getSimpleName());
+        }
     }
 
     private <T> T write(AuthErrorCode unavailable, Supplier<T> action) {

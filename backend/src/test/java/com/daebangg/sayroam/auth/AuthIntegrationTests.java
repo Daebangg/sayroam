@@ -41,6 +41,8 @@ import org.springframework.security.oauth2.jwt.JwtEncoderParameters;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.testcontainers.containers.Container;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
@@ -63,7 +65,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.request;
@@ -92,6 +93,7 @@ class AuthIntegrationTests extends DatabaseIntegrationTest {
     @Autowired OAuthBrowserCookie oauthBrowserCookie;
     @Autowired org.springframework.data.redis.core.StringRedisTemplate redis;
     @Autowired AccountWriteService accountWrites;
+    @Autowired PlatformTransactionManager transactionManager;
     private Cookie csrf;
 
     @BeforeEach
@@ -263,25 +265,39 @@ class AuthIntegrationTests extends DatabaseIntegrationTest {
     }
 
     @Test
-    void welcomeStorageFailureRollsBackEmailSignupWithItsCredentials() throws Exception {
+    void welcomeStorageFailureDoesNotFailEmailSignupOrLogin() throws Exception {
         String email = email();
         String proof = signupProof(email);
         jdbc.execute("""
                 CREATE TRIGGER test_fail_notification_insert BEFORE INSERT ON notification FOR EACH ROW
                 SIGNAL SQLSTATE '40001' SET MESSAGE_TEXT = 'Test welcome storage failure'
                 """);
-        MvcResult failed = call(HttpMethod.POST, "/api/auth/signup", Map.of("email", email, "password", PASSWORD,
+        MvcResult signup = call(HttpMethod.POST, "/api/auth/signup", Map.of("email", email, "password", PASSWORD,
                 "nickname", "여행자", "signupProof", proof), null);
-        assertStatus(failed, 503);
-        assertThat(json(failed).path("code").asText()).isEqualTo("SIGNUP_UNAVAILABLE");
-        SocialIdentity identity = new SocialIdentity(SocialProvider.GOOGLE, "rollback-welcome", email,
-                true, "신규 소셜 회원", null);
-        assertThatThrownBy(() -> accountWrites.registerSocial(identity, email, "신규 소셜 회원", Instant.now()))
-                .isInstanceOfSatisfying(AuthException.class,
-                        exception -> assertThat(exception.getErrorCode()).isEqualTo(AuthErrorCode.SOCIAL_AUTH_UNAVAILABLE));
-        for (String table : List.of("users", "user_credential", "user_social_account", "notification")) {
-            assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM " + table, Integer.class)).isZero();
-        }
+        assertStatus(signup, 201);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM users", Integer.class)).isEqualTo(1);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM user_credential", Integer.class)).isEqualTo(1);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM notification", Integer.class)).isZero();
+        Login login = login(email, PASSWORD);
+        assertStatus(call(HttpMethod.GET, "/api/users/me", null, login.access()), 200);
+        MvcResult summary = call(HttpMethod.GET, "/api/notifications/summary", null, login.access());
+        assertStatus(summary, 200);
+        assertThat(json(summary).path("totalCount").asLong()).isZero();
+        assertStatus(call(HttpMethod.POST, "/api/auth/signup", Map.of("email", email, "password", PASSWORD,
+                "nickname", "여행자", "signupProof", proof), null), 409);
+    }
+
+    @Test
+    void signupAndWelcomeCommitIndependentlyOfTheCallersTransaction() {
+        new TransactionTemplate(transactionManager).executeWithoutResult(status -> {
+            accountWrites.register(email(), "신규 회원", passwords.encode(PASSWORD), Instant.now());
+            status.setRollbackOnly();
+        });
+
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM users", Integer.class)).isEqualTo(1);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM user_credential", Integer.class)).isEqualTo(1);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM notification WHERE type = 'WELCOME'", Integer.class))
+                .isEqualTo(1);
     }
 
     @ParameterizedTest

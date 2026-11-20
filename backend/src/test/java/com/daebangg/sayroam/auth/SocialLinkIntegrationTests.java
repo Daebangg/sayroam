@@ -80,10 +80,36 @@ class SocialLinkIntegrationTests extends DatabaseIntegrationTest {
     }
 
     @AfterEach void clean() throws Exception {
+        jdbc.execute("DROP TRIGGER IF EXISTS test_fail_notification_insert");
         for (String table : List.of("expense_share", "expense", "trip_place", "trip", "companion_request", "companion_search",
                 "room_invitation", "room_member", "chat_message", "room", "place", "user_travel_style",
                 "notification", "user_social_account", "user_credential", "users")) jdbc.update("DELETE FROM " + table);
         assertThat(REDIS.execInContainer("redis-cli", "FLUSHDB").getExitCode()).isZero();
+    }
+
+    @Test
+    void welcomeStorageFailureDoesNotFailSocialSignupOrSubsequentLogin() throws Exception {
+        jdbc.execute("""
+                CREATE TRIGGER test_fail_notification_insert BEFORE INSERT ON notification FOR EACH ROW
+                SIGNAL SQLSTATE '40001' SET MESSAGE_TEXT = 'Test welcome storage failure'
+                """);
+
+        MvcResult signup = exchange(returned());
+        assertThat(signup.getResponse().getStatus()).isEqualTo(200);
+        assertThat(json.readTree(signup.getResponse().getContentAsByteArray()).path("newlyRegistered").asBoolean())
+                .isTrue();
+        long userId = jdbc.queryForObject("SELECT id FROM users WHERE email = ?", Long.class, EMAIL);
+        assertAuthenticatedAs(signup, userId);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM user_social_account WHERE user_id = ?",
+                Integer.class, userId)).isEqualTo(1);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM notification", Integer.class)).isZero();
+
+        MvcResult login = exchange(returned());
+        assertAuthenticatedAs(login, userId);
+        assertThat(json.readTree(login.getResponse().getContentAsByteArray()).path("newlyRegistered").asBoolean())
+                .isFalse();
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM users", Integer.class)).isEqualTo(1);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM notification", Integer.class)).isZero();
     }
 
     @Test void verifiedMatchingEmailConnectsAndSignsInWithoutPasswordOrAnotherRequest() throws Exception {
