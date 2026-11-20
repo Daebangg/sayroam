@@ -166,35 +166,36 @@ export function ProfileSettingsPage() {
     const detailsEditor = useProfileEditor(onUpdateProfileDetails);
     const travelStyle = useTravelStyle(member?.userId);
     const [editingStyle, setEditingStyle] = useState(false);
-    if (member && editingStyle && travelStyle.values)
-        return (
-            <ProfileStyleEditor
-                initialValues={travelStyle.values}
-                busy={travelStyle.busy}
-                failed={travelStyle.failed}
-                onSave={travelStyle.save}
-                onClose={() => setEditingStyle(false)}
-            />
-        );
     return member ? (
         <>
-            <SettingsHeading title={t("settings.profile")} />
-            <ProfileDetails
-                member={member}
-                nicknameEditor={nicknameEditor}
-                imageEditor={imageEditor}
-                detailsEditor={detailsEditor}
-                travelStyle={
-                    <ProfileTravelStyle
-                        values={travelStyle.values}
-                        failed={travelStyle.failed}
-                        saved={travelStyle.saved}
-                        onEdit={() => setEditingStyle(true)}
-                        onRetry={travelStyle.reload}
-                        onDismissSaved={travelStyle.dismissSaved}
-                    />
-                }
-            />
+            {editingStyle && travelStyle.values && (
+                <ProfileStyleEditor
+                    initialValues={travelStyle.values}
+                    busy={travelStyle.busy}
+                    failed={travelStyle.failed}
+                    onSave={travelStyle.save}
+                    onClose={() => setEditingStyle(false)}
+                />
+            )}
+            <div hidden={editingStyle}>
+                <SettingsHeading title={t("settings.profile")} />
+                <ProfileDetails
+                    member={member}
+                    nicknameEditor={nicknameEditor}
+                    imageEditor={imageEditor}
+                    detailsEditor={detailsEditor}
+                    travelStyle={
+                        <ProfileTravelStyle
+                            values={travelStyle.values}
+                            failed={travelStyle.failed}
+                            saved={travelStyle.saved}
+                            onEdit={() => setEditingStyle(true)}
+                            onRetry={travelStyle.reload}
+                            onDismissSaved={travelStyle.dismissSaved}
+                        />
+                    }
+                />
+            </div>
         </>
     ) : null;
 }

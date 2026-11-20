@@ -241,13 +241,18 @@ export function ProfileSetupGate({
                               : "matchingFlow.next",
                     )}
                     disabled={busy}
+                    aria-busy={saving || undefined}
                     onClick={() => {
                         if (!canContinue || style.values === null) dismiss();
                         else if (step === 5) void finish();
                         else setStep(step + 1);
                     }}
                 >
-                    <Icon name="arrow" variant="brand" />
+                    {saving ? (
+                        <Spinner label={t("matchingFlow.loading")} labelHidden />
+                    ) : (
+                        <Icon name="arrow" variant="brand" />
+                    )}
                 </Button>
             </Tooltip>
             <Modal
