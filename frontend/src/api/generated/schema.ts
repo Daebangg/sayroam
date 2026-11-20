@@ -1556,8 +1556,9 @@ export interface components {
             /**
              * @description 전체 읽음 처리에는 true만 허용
              * @example true
+             * @constant
              */
-            isRead: boolean;
+            isRead: true;
         };
         /** @description 모집에만 저장하는 4문항 점수. 각 점수는 1~5의 정수입니다. */
         RecruitmentTravelStyleRequest: {

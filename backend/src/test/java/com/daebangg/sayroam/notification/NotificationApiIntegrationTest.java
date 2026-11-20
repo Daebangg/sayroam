@@ -412,11 +412,10 @@ class NotificationApiIntegrationTest extends DatabaseIntegrationTest {
         assertThat(schemas.path("NotificationResponse").path("properties").has("isRead")).isTrue();
         assertThat(schemas.path("UpdateNotificationReadRequest").path("required").toString()).contains("isRead");
         assertThat(schemas.path("ReadAllNotificationsRequest").path("required").toString()).contains("isRead");
-        assertThat(schemas.path("ReadAllNotificationsRequest").path("properties").path("isRead")
-                .path("type").asString()).isEqualTo("boolean");
-        for (JsonNode value : schemas.path("ReadAllNotificationsRequest").path("properties").path("isRead").path("enum")) {
-            assertThat(value.isBoolean()).isTrue();
-        }
+        JsonNode readAllStatus = schemas.path("ReadAllNotificationsRequest").path("properties").path("isRead");
+        assertThat(readAllStatus.path("type").asString()).isEqualTo("boolean");
+        assertThat(readAllStatus.path("const").isBoolean()).isTrue();
+        assertThat(readAllStatus.path("const").asBoolean()).isTrue();
         assertThat(schemas.path("NotificationType").path("enum").toString()).contains("WELCOME");
         assertThat(schemas.path("ApiErrorCode").path("enum").toString())
                 .contains("NOTIFICATION_NOT_FOUND", "NOTIFICATION_DELETED");

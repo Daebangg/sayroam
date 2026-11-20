@@ -1590,6 +1590,7 @@
             "ReadAllNotificationsRequest": {
                 "properties": {
                     "isRead": {
+                        "const": true,
                         "description": "전체 읽음 처리에는 true만 허용",
                         "example": true,
                         "type": "boolean"
