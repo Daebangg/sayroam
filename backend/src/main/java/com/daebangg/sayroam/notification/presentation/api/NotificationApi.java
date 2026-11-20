@@ -3,6 +3,7 @@ package com.daebangg.sayroam.notification.presentation.api;
 import com.daebangg.sayroam.auth.domain.AuthenticatedAccount;
 import com.daebangg.sayroam.notification.application.dto.NotificationListQuery;
 import com.daebangg.sayroam.notification.presentation.dto.NotificationListResponse;
+import com.daebangg.sayroam.notification.presentation.dto.NotificationSummaryResponse;
 import com.daebangg.sayroam.notification.presentation.dto.UpdateNotificationReadRequest;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -32,6 +33,15 @@ public interface NotificationApi {
             @Parameter(description = "조회할 최대 알림 개수",
                     schema = @Schema(type = "integer", format = "int32", minimum = "1",
                             maximum = "" + NotificationListQuery.MAX_PAGE_SIZE, defaultValue = "20")) int size);
+
+    @Operation(operationId = "getMyNotificationSummary", summary = "내 알림 개수 요약 조회",
+            description = "로그인한 회원의 삭제되지 않은 전체 알림 개수와 미읽음 개수를 조회합니다. "
+                    + "목록 페이지의 개수와 무관한 전체 집계이며 알림이 없으면 두 값 모두 0입니다. 조회만으로 읽음 처리하지 않습니다.")
+    @ApiResponse(responseCode = "200", description = "알림 개수 요약 조회 완료")
+    @ApiResponse(responseCode = "401", ref = "#/components/responses/Unauthorized")
+    @ApiResponse(responseCode = "503", ref = "#/components/responses/AuthenticationUnavailable")
+    @ApiResponse(responseCode = "500", ref = "#/components/responses/InternalServerError")
+    ResponseEntity<NotificationSummaryResponse> getSummary(@Parameter(hidden = true) AuthenticatedAccount account);
 
     @Operation(operationId = "updateNotificationReadStatus", summary = "알림 읽음 상태 변경",
             description = "본인의 알림을 읽음 또는 읽지 않음으로 변경합니다. 같은 상태를 반복 요청할 수 있으며, "

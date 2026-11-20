@@ -4,6 +4,7 @@ import com.daebangg.sayroam.global.exception.BusinessException;
 import com.daebangg.sayroam.notification.application.dto.CreateNotificationCommand;
 import com.daebangg.sayroam.notification.application.dto.NotificationListQuery;
 import com.daebangg.sayroam.notification.application.dto.NotificationResult;
+import com.daebangg.sayroam.notification.application.dto.NotificationSummaryResult;
 import com.daebangg.sayroam.notification.domain.Notification;
 import com.daebangg.sayroam.notification.domain.NotificationRepository;
 import com.daebangg.sayroam.notification.domain.error.NotificationErrorCode;
@@ -43,6 +44,11 @@ public class NotificationService {
                 .stream()
                 .map(NotificationResult::from)
                 .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public NotificationSummaryResult getSummary(Long userId) {
+        return NotificationSummaryResult.from(notifications.countVisibleByReceiverId(userId));
     }
 
     @Transactional

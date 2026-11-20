@@ -1,6 +1,7 @@
 package com.daebangg.sayroam.notification.infrastructure.persistence;
 
 import com.daebangg.sayroam.notification.domain.Notification;
+import com.daebangg.sayroam.notification.domain.NotificationRepository;
 import com.daebangg.sayroam.notification.domain.NotificationTargetType;
 import com.daebangg.sayroam.notification.domain.NotificationType;
 import com.daebangg.sayroam.support.DatabaseIntegrationTest;
@@ -151,6 +152,50 @@ class NotificationJpaRepositoryTest extends DatabaseIntegrationTest {
         assertThatThrownBy(() -> notifications.saveAndFlush(newNotification(receiverId)))
                 .isInstanceOf(DataIntegrityViolationException.class)
                 .hasMessageContaining("uk_notification_receiver_event");
+    }
+
+    @Test
+    void 본인의_미삭제_알림_전체와_미읽음_개수만_집계한다() {
+        Long receiverId = createUser("수신자");
+        Long otherId = createUser("다른 회원");
+        Notification read = notifications.save(Notification.create(receiverId, NotificationType.TRIP_INVITE,
+                NotificationTargetType.TRIP, 42L, "trip-invite:read", CONTENT));
+        read.read(NOW);
+        saveNotification(receiverId);
+        Notification deletedUnread = notifications.save(Notification.create(receiverId, NotificationType.TRIP_INVITE,
+                NotificationTargetType.TRIP, 42L, "trip-invite:deleted-unread", CONTENT));
+        deletedUnread.delete(NOW);
+        Notification deletedRead = notifications.save(Notification.create(receiverId, NotificationType.TRIP_INVITE,
+                NotificationTargetType.TRIP, 42L, "trip-invite:deleted-read", CONTENT));
+        deletedRead.read(NOW);
+        deletedRead.delete(NOW);
+        saveNotification(otherId);
+        flushAndClear();
+
+        assertThat(notifications.countVisibleByReceiverId(receiverId))
+                .isEqualTo(new NotificationRepository.Counts(2, 1));
+    }
+
+    @Test
+    void 알림이_없으면_전체와_미읽음_개수는_모두_0이다() {
+        Long receiverId = createUser("수신자");
+
+        assertThat(notifications.countVisibleByReceiverId(receiverId))
+                .isEqualTo(new NotificationRepository.Counts(0, 0));
+    }
+
+    @Test
+    void 이관된_예약_사건_키를_가진_기존_알림은_JPA로_복원할_수_있다() {
+        Long receiverId = createUser("수신자");
+        entityManager.createNativeQuery("""
+                INSERT INTO notification (receiver_id, type, event_key, content, created_at, updated_at)
+                VALUES (:receiverId, 'TRIP_INVITE', 'legacy:notification:100', '기존 알림', UTC_TIMESTAMP(6), UTC_TIMESTAMP(6))
+                """).setParameter("receiverId", receiverId).executeUpdate();
+        flushAndClear();
+
+        assertThat(notifications.findVisibleBefore(receiverId, null, 20)).singleElement()
+                .hasFieldOrPropertyWithValue("eventKey", "legacy:notification:100")
+                .hasFieldOrPropertyWithValue("content", "기존 알림");
     }
 
     private Long createUser(String nickname) {

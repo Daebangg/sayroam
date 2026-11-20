@@ -69,6 +69,7 @@ class NotificationApiIntegrationTest extends DatabaseIntegrationTest {
     @Test
     void 인증되지_않은_조회와_상태_변경과_삭제를_거부한다() throws Exception {
         mvc.perform(get(PATH).servletPath(PATH)).andExpect(status().isUnauthorized());
+        mvc.perform(get(PATH + "/summary").servletPath(PATH + "/summary")).andExpect(status().isUnauthorized());
         String resource = PATH + "/1";
         mvc.perform(patch(resource).servletPath(resource).contentType(MediaType.APPLICATION_JSON)
                 .content("{\"isRead\":true}")).andExpect(status().isUnauthorized());
@@ -117,6 +118,60 @@ class NotificationApiIntegrationTest extends DatabaseIntegrationTest {
 
         mvc.perform(get(PATH).servletPath(PATH).header("Authorization", authorization))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.notifications.length()").value(20));
+        mvc.perform(get(PATH + "/summary").servletPath(PATH + "/summary").header("Authorization", authorization))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalCount").value(21))
+                .andExpect(jsonPath("$.unreadCount").value(21));
+    }
+
+    @Test
+    void 알림이_없으면_요약_개수는_모두_0이다() throws Exception {
+        mvc.perform(get(PATH + "/summary").servletPath(PATH + "/summary").header("Authorization", authorization))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalCount").value(0))
+                .andExpect(jsonPath("$.unreadCount").value(0));
+    }
+
+    @Test
+    void 요약은_본인_미삭제_알림만_집계하고_읽음과_삭제_변경을_반영한다() throws Exception {
+        Notification read = saveNotification(owner.getId(), "trip-invite:read");
+        read.read(LocalDateTime.now());
+        Notification unread = saveNotification(owner.getId(), "trip-invite:unread");
+        Notification deleted = saveNotification(owner.getId(), "trip-invite:deleted");
+        deleted.delete(LocalDateTime.now());
+        User other = createUser("다른 회원");
+        saveNotification(other.getId(), "trip-invite:other");
+        flushAndClear();
+        String summary = PATH + "/summary";
+        String resource = PATH + "/" + unread.getId();
+
+        mvc.perform(get(summary).servletPath(summary).header("Authorization", authorization)
+                        .param("receiverId", other.getId().toString()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalCount").value(2))
+                .andExpect(jsonPath("$.unreadCount").value(1));
+        assertThat(jdbc.queryForObject("SELECT read_at FROM notification WHERE id = ?",
+                LocalDateTime.class, unread.getId())).isNull();
+
+        updateReadStatus(resource, authorization, "{\"isRead\":true}").andExpect(status().isNoContent());
+        flushAndClear();
+        mvc.perform(get(summary).servletPath(summary).header("Authorization", authorization))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalCount").value(2))
+                .andExpect(jsonPath("$.unreadCount").value(0));
+
+        updateReadStatus(resource, authorization, "{\"isRead\":false}").andExpect(status().isNoContent());
+        flushAndClear();
+        mvc.perform(get(summary).servletPath(summary).header("Authorization", authorization))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.unreadCount").value(1));
+
+        mvc.perform(delete(resource).servletPath(resource).header("Authorization", authorization))
+                .andExpect(status().isNoContent());
+        flushAndClear();
+        mvc.perform(get(summary).servletPath(summary).header("Authorization", authorization))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalCount").value(1))
+                .andExpect(jsonPath("$.unreadCount").value(0));
     }
 
     @Test
@@ -254,6 +309,8 @@ class NotificationApiIntegrationTest extends DatabaseIntegrationTest {
         JsonNode paths = spec.path("paths");
         assertThat(paths.path(PATH).path("get").path("operationId").asString()).isEqualTo("listMyNotifications");
         assertThat(paths.path(PATH).has("post")).isFalse();
+        assertThat(paths.path(PATH + "/summary").path("get").path("operationId").asString())
+                .isEqualTo("getMyNotificationSummary");
         assertThat(paths.path(PATH + "/{notificationId}").path("patch").path("operationId").asString())
                 .isEqualTo("updateNotificationReadStatus");
         assertThat(paths.path(PATH + "/{notificationId}").path("patch").path("parameters")
@@ -261,6 +318,10 @@ class NotificationApiIntegrationTest extends DatabaseIntegrationTest {
         assertThat(paths.path(PATH + "/{notificationId}").path("delete").path("responses").has("204")).isTrue();
         assertThat(paths.path(PATH).path("get").path("security").toString()).contains("bearerAuth");
         JsonNode schemas = spec.path("components").path("schemas");
+        assertThat(schemas.path("NotificationSummaryResponse").path("properties").path("totalCount")
+                .path("type").asString()).isEqualTo("integer");
+        assertThat(schemas.path("NotificationSummaryResponse").path("properties").path("unreadCount")
+                .path("type").asString()).isEqualTo("integer");
         assertThat(schemas.path("NotificationResponse").path("properties").has("isRead")).isTrue();
         assertThat(schemas.path("UpdateNotificationReadRequest").path("required").toString()).contains("isRead");
         assertThat(schemas.path("ApiErrorCode").path("enum").toString())

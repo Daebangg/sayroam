@@ -42,4 +42,14 @@ public interface NotificationJpaRepository extends NotificationRepository, JpaRe
             @Param("beforeId") Long beforeId,
             Limit limit
     );
+
+    @Override
+    @Query("""
+            select new com.daebangg.sayroam.notification.domain.NotificationRepository$Counts(
+                count(n.id), count(n.id) - count(n.readAt))
+            from Notification n
+            where n.receiverId = :receiverId
+              and n.deletedAt is null
+            """)
+    Counts countVisibleByReceiverId(@Param("receiverId") Long receiverId);
 }

@@ -548,6 +548,26 @@ export interface paths {
         patch: operations["updateNotificationReadStatus"];
         trace?: never;
     };
+    "/api/notifications/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 내 알림 개수 요약 조회
+         * @description 로그인한 회원의 삭제되지 않은 전체 알림 개수와 미읽음 개수를 조회합니다. 목록 페이지의 개수와 무관한 전체 집계이며 알림이 없으면 두 값 모두 0입니다. 조회만으로 읽음 처리하지 않습니다.
+         */
+        get: operations["getMyNotificationSummary"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/places": {
         parameters: {
             query?: never;
@@ -1435,6 +1455,20 @@ export interface components {
             targetType: components["schemas"]["NotificationTargetType"] | null;
             /** @description 알림 종류 */
             type: components["schemas"]["NotificationType"];
+        };
+        NotificationSummaryResponse: {
+            /**
+             * Format: int64
+             * @description 삭제되지 않은 본인 알림의 전체 개수
+             * @example 12
+             */
+            totalCount: number;
+            /**
+             * Format: int64
+             * @description 삭제되지 않은 본인 알림 중 읽지 않은 개수
+             * @example 3
+             */
+            unreadCount: number;
         };
         /** @enum {string} */
         NotificationTargetType: "COMPANION_REQUEST" | "TRIP" | "ROOM_INVITATION";
@@ -3244,6 +3278,29 @@ export interface operations {
             503: components["responses"]["AuthenticationUnavailable"];
         };
     };
+    getMyNotificationSummary: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 알림 개수 요약 조회 완료 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotificationSummaryResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            500: components["responses"]["InternalServerError"];
+            503: components["responses"]["AuthenticationUnavailable"];
+        };
+    };
     searchPlaces: {
         parameters: {
             query: {
@@ -3892,6 +3949,13 @@ export const apiRoutes = {
     findAfter: {
         method: "get",
         path: "/api/rooms/{roomId}/messages",
+        auth: "required",
+        csrf: false,
+        responses: { "200": true },
+    },
+    getMyNotificationSummary: {
+        method: "get",
+        path: "/api/notifications/summary",
         auth: "required",
         csrf: false,
         responses: { "200": true },

@@ -13,4 +13,9 @@ public interface NotificationRepository {
             Long beforeId,
             int size
     );
+
+    Counts countVisibleByReceiverId(Long receiverId);
+
+    record Counts(long totalCount, long unreadCount) {
+    }
 }

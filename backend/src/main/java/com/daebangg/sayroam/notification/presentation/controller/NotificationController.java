@@ -5,6 +5,7 @@ import com.daebangg.sayroam.notification.application.dto.NotificationListQuery;
 import com.daebangg.sayroam.notification.application.service.NotificationService;
 import com.daebangg.sayroam.notification.presentation.api.NotificationApi;
 import com.daebangg.sayroam.notification.presentation.dto.NotificationListResponse;
+import com.daebangg.sayroam.notification.presentation.dto.NotificationSummaryResponse;
 import com.daebangg.sayroam.notification.presentation.dto.UpdateNotificationReadRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
@@ -33,6 +34,13 @@ public class NotificationController implements NotificationApi {
             @RequestParam(defaultValue = "20") int size) {
         NotificationListQuery query = new NotificationListQuery(account.userId(), beforeId, size);
         return ResponseEntity.ok(NotificationListResponse.from(notifications.findAll(query)));
+    }
+
+    @Override
+    @GetMapping("/summary")
+    public ResponseEntity<NotificationSummaryResponse> getSummary(
+            @AuthenticationPrincipal AuthenticatedAccount account) {
+        return ResponseEntity.ok(NotificationSummaryResponse.from(notifications.getSummary(account.userId())));
     }
 
     @Override
