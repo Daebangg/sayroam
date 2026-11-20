@@ -504,6 +504,50 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/notifications": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 내 알림 목록 조회
+         * @description 로그인한 회원의 삭제되지 않은 알림을 ID 내림차순으로 조회합니다. 조회만으로 읽음 처리하지 않습니다. 첫 조회는 beforeId를 생략하고, 다음 조회는 이전 목록의 마지막 알림 ID를 전달합니다. 알림이 없으면 빈 배열을 반환합니다.
+         */
+        get: operations["listMyNotifications"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/notifications/{notificationId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * 알림 삭제
+         * @description 본인의 알림을 알림함에서 숨깁니다. 반복 삭제는 성공으로 응답하며 최초 삭제 시각을 유지합니다. 관련 여행·매칭 등 원래 데이터는 삭제하지 않습니다.
+         */
+        delete: operations["deleteNotification"];
+        options?: never;
+        head?: never;
+        /**
+         * 알림 읽음 상태 변경
+         * @description 본인의 알림을 읽음 또는 읽지 않음으로 변경합니다. 같은 상태를 반복 요청할 수 있으며, 이미 읽은 알림에 다시 읽음을 요청해도 최초 읽음 시각을 유지합니다. 삭제한 알림은 변경할 수 없습니다.
+         */
+        patch: operations["updateNotificationReadStatus"];
+        trace?: never;
+    };
     "/api/places": {
         parameters: {
             query?: never;
@@ -925,6 +969,13 @@ export interface components {
             | "INVALID_INPUT"
             | "LOGIN_ATTEMPTS_UNAVAILABLE"
             | "LOGIN_RATE_LIMITED"
+            | "NOTIFICATION_CONTENT_INVALID"
+            | "NOTIFICATION_DELETED"
+            | "NOTIFICATION_EVENT_KEY_INVALID"
+            | "NOTIFICATION_NOT_FOUND"
+            | "NOTIFICATION_RECEIVER_INVALID"
+            | "NOTIFICATION_TARGET_INVALID"
+            | "NOTIFICATION_TYPE_REQUIRED"
             | "PASSWORD_CHANGE_CONFLICT"
             | "PASSWORD_CHANGE_NOT_ALLOWED"
             | "PASSWORD_CHANGE_UNAVAILABLE"
@@ -1347,6 +1398,49 @@ export interface components {
                       code: "UNAUTHENTICATED";
                   }
             );
+        NotificationListResponse: {
+            /** @description 본인의 삭제되지 않은 알림. ID 내림차순으로 정렬 */
+            notifications: components["schemas"]["NotificationResponse"][];
+        };
+        NotificationResponse: {
+            /**
+             * @description 알림 생성 시 저장한 문구
+             * @example 여행에 초대되었습니다.
+             */
+            content: string;
+            /**
+             * Format: date-time
+             * @description 알림 생성 시각. UTC 기준
+             * @example 2026-11-20T09:00:00Z
+             */
+            createdAt: string;
+            /**
+             * Format: int64
+             * @description 알림 ID
+             * @example 42
+             */
+            id: number;
+            /**
+             * @description 읽음 여부
+             * @example false
+             */
+            isRead: boolean;
+            /**
+             * Format: int64
+             * @description 연결 대상 ID. 연결 대상이 없으면 null
+             * @example 12
+             */
+            targetId: number | null;
+            /** @description 연결 대상 종류. 연결 대상이 없으면 null */
+            targetType: components["schemas"]["NotificationTargetType"] | null;
+            /** @description 알림 종류 */
+            type: components["schemas"]["NotificationType"];
+        };
+        /** @enum {string} */
+        NotificationTargetType: "COMPANION_REQUEST" | "TRIP" | "ROOM_INVITATION";
+        /** @enum {string} */
+        NotificationType:
+            "COMPANION_REQUEST" | "COMPANION_ACCEPTED" | "TRIP_INVITE" | "EXPENSE_ADDED";
         PasswordChangeRequest: {
             /** @description PASSWORD_CHANGE 본인 확인에서 발급한 일회성 증명 */
             accountProof: string;
@@ -1595,6 +1689,13 @@ export interface components {
              * @example 12
              */
             tripId: number;
+        };
+        UpdateNotificationReadRequest: {
+            /**
+             * @description true는 읽음 처리, false는 읽지 않음 처리
+             * @example true
+             */
+            isRead: boolean;
         };
         /** @description 여행 스타일 네 문항에 모두 1~5점으로 응답합니다. 응답 생략과 삭제는 허용하지 않습니다. */
         UpdateTravelStyleRequest: {
@@ -1932,6 +2033,24 @@ export interface components {
         };
         /** @description 503: AUTHENTICATION_UNAVAILABLE. Redis 폐기 결과를 확인할 수 없음. 성공 응답·Refresh 쿠키 삭제 없이 실패하며 같은 쿠키로 재시도 가능. 폐기는 이미 실행됐을 수도 있음 */
         LogoutUnavailable: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/problem+json": components["schemas"]["ApiProblem"];
+            };
+        };
+        /** @description 409: NOTIFICATION_DELETED. 삭제한 알림은 읽음 상태를 변경할 수 없음 */
+        NotificationDeleted: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/problem+json": components["schemas"]["ApiProblem"];
+            };
+        };
+        /** @description 404: NOTIFICATION_NOT_FOUND. 없는 알림이거나 다른 회원의 알림. 둘을 구분하지 않음 */
+        NotificationNotFound: {
             headers: {
                 [name: string]: unknown;
             };
@@ -3039,6 +3158,92 @@ export interface operations {
             503: components["responses"]["AuthenticationUnavailable"];
         };
     };
+    listMyNotifications: {
+        parameters: {
+            query?: {
+                /** @description 이 ID보다 작은 알림 조회. 첫 조회는 생략 */
+                beforeId?: number;
+                /** @description 조회할 최대 알림 개수 */
+                size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 알림 목록 조회 완료 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotificationListResponse"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            500: components["responses"]["InternalServerError"];
+            503: components["responses"]["AuthenticationUnavailable"];
+        };
+    };
+    deleteNotification: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 알림 ID */
+                notificationId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 알림 삭제 완료 */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotificationNotFound"];
+            500: components["responses"]["InternalServerError"];
+            503: components["responses"]["AuthenticationUnavailable"];
+        };
+    };
+    updateNotificationReadStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 알림 ID */
+                notificationId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateNotificationReadRequest"];
+            };
+        };
+        responses: {
+            /** @description 읽음 상태 변경 완료 */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotificationNotFound"];
+            409: components["responses"]["NotificationDeleted"];
+            500: components["responses"]["InternalServerError"];
+            503: components["responses"]["AuthenticationUnavailable"];
+        };
+    };
     searchPlaces: {
         parameters: {
             query: {
@@ -3670,6 +3875,13 @@ export const apiRoutes = {
         csrf: true,
         responses: { "204": false },
     },
+    deleteNotification: {
+        method: "delete",
+        path: "/api/notifications/{notificationId}",
+        auth: "required",
+        csrf: false,
+        responses: { "204": false },
+    },
     exchangeSocialLoginResult: {
         method: "post",
         path: "/api/auth/social/results/exchange",
@@ -3729,6 +3941,13 @@ export const apiRoutes = {
     listMyCompanionSearches: {
         method: "get",
         path: "/api/companion-searches/me",
+        auth: "required",
+        csrf: false,
+        responses: { "200": true },
+    },
+    listMyNotifications: {
+        method: "get",
+        path: "/api/notifications",
         auth: "required",
         csrf: false,
         responses: { "200": true },
@@ -3851,6 +4070,13 @@ export const apiRoutes = {
         auth: "required",
         csrf: false,
         responses: { "200": true },
+    },
+    updateNotificationReadStatus: {
+        method: "patch",
+        path: "/api/notifications/{notificationId}",
+        auth: "required",
+        csrf: false,
+        responses: { "204": false },
     },
     updateProfile: {
         method: "patch",

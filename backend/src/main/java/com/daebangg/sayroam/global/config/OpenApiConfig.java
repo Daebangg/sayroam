@@ -5,6 +5,7 @@ import com.daebangg.sayroam.common.domain.error.TravelPeriodErrorCode;
 import com.daebangg.sayroam.companion.domain.error.CompanionSearchErrorCode;
 import com.daebangg.sayroam.global.exception.CommonErrorCode;
 import com.daebangg.sayroam.global.exception.ErrorCode;
+import com.daebangg.sayroam.notification.domain.error.NotificationErrorCode;
 import com.daebangg.sayroam.place.domain.error.PlaceErrorCode;
 import com.daebangg.sayroam.room.domain.error.RoomErrorCode;
 import com.daebangg.sayroam.trip.domain.error.TripErrorCode;
@@ -61,7 +62,7 @@ public class OpenApiConfig {
         errorCode.setEnum(Stream.of(CommonErrorCode.values(), AuthErrorCode.values(),
                         RoomErrorCode.values(), UserErrorCode.values(),
                         TravelPeriodErrorCode.values(), TripErrorCode.values(), CompanionSearchErrorCode.values(),
-                        PlaceErrorCode.values())
+                        PlaceErrorCode.values(), NotificationErrorCode.values())
                 .flatMap(Arrays::stream).map(ErrorCode::getCode).distinct().sorted().toList());
         errorCode.setDescription("백엔드에 정의된 업무·공통 오류 코드. Spring 기본 요청 오류와 향후 추가 코드는 별도 문자열로 받을 수 있습니다.");
         // ProblemDetail의 동적 확장 필드도 프론트엔드 타입 생성기에 명시적으로 노출한다.
@@ -205,6 +206,8 @@ public class OpenApiConfig {
                 .addResponses("RoomBadRequest", problemResponse("400: ROOM_NAME_TOO_LONG 또는 Spring 요청 오류. 이름을 20자 이내로 수정 후 재요청"))
                 .addResponses("TripBadRequest", problemResponse("400: INVALID_INPUT(시작일·종료일 누락, errors 포함), TRAVEL_PERIOD_END_BEFORE_START(종료일이 시작일보다 앞섬) 또는 Spring 요청 오류(날짜 형식 오류). 날짜는 yyyy-MM-dd"))
                 .addResponses("TripNotFound", problemResponse("404: TRIP_NOT_FOUND. 없는 여행이거나 접근할 수 없는 여행. 둘을 구분하지 않음"))
+                .addResponses("NotificationNotFound", problemResponse("404: NOTIFICATION_NOT_FOUND. 없는 알림이거나 다른 회원의 알림. 둘을 구분하지 않음"))
+                .addResponses("NotificationDeleted", problemResponse("409: NOTIFICATION_DELETED. 삭제한 알림은 읽음 상태를 변경할 수 없음"))
                 .addResponses("CompanionSearchNotFound", problemResponse("404: COMPANION_SEARCH_NOT_FOUND. 등록이 없거나 다른 회원의 등록"))
                 .addResponses("TravelStyleRequired", problemResponse(
                         "409: TRAVEL_STYLE_REQUIRED. 모집 수정에서 여행 스타일 4문항을 저장한 뒤 다시 요청. 등록 전 조회는 4문항 점수를 전달"))
