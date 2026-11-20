@@ -39,7 +39,8 @@ public class NotificationService {
         return notifications.findVisibleBefore(
                         query.receiverId(),
                         query.beforeId(),
-                        query.size()
+                        query.size(),
+                        query.unreadOnly()
                 )
                 .stream()
                 .map(NotificationResult::from)
@@ -55,6 +56,11 @@ public class NotificationService {
     public void read(Long userId, Long notificationId) {
         Notification notification = getOwnedNotification(notificationId, userId);
         notification.read(LocalDateTime.now(ZoneOffset.UTC));
+    }
+
+    @Transactional
+    public void readAll(Long userId) {
+        notifications.markAllVisibleUnreadAsRead(userId, LocalDateTime.now(ZoneOffset.UTC));
     }
 
     @Transactional

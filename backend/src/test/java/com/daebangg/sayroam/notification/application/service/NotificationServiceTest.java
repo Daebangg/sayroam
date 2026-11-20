@@ -44,7 +44,7 @@ class NotificationServiceTest extends DatabaseIntegrationTest {
         flushAndClear();
 
         List<NotificationResult> results = notificationService.findAll(
-                new NotificationListQuery(receiverId, null, 20));
+                new NotificationListQuery(receiverId, null, 20, false));
 
         assertThat(results).extracting(NotificationResult::id)
                 .containsExactly(read.getId(), unread.getId());
@@ -67,7 +67,7 @@ class NotificationServiceTest extends DatabaseIntegrationTest {
         flushAndClear();
 
         List<NotificationResult> firstPage = notificationService.findAll(
-                new NotificationListQuery(receiverId, null, 2));
+                new NotificationListQuery(receiverId, null, 2, false));
         assertThat(firstPage).extracting(NotificationResult::id)
                 .containsExactly(third.getId(), second.getId());
 
@@ -75,7 +75,7 @@ class NotificationServiceTest extends DatabaseIntegrationTest {
         flushAndClear();
 
         List<NotificationResult> nextPage = notificationService.findAll(
-                new NotificationListQuery(receiverId, firstPage.getLast().id(), 2));
+                new NotificationListQuery(receiverId, firstPage.getLast().id(), 2, false));
         assertThat(nextPage).extracting(NotificationResult::id).containsExactly(first.getId());
     }
 
@@ -87,7 +87,7 @@ class NotificationServiceTest extends DatabaseIntegrationTest {
         entityManager.persist(notification);
         flushAndClear();
 
-        assertThat(notificationService.findAll(new NotificationListQuery(receiverId, null, 20)))
+        assertThat(notificationService.findAll(new NotificationListQuery(receiverId, null, 20, false)))
                 .singleElement().satisfies(result -> {
                     assertThat(result.targetType()).isNull();
                     assertThat(result.targetId()).isNull();
@@ -99,7 +99,7 @@ class NotificationServiceTest extends DatabaseIntegrationTest {
     void 조회_개수의_허용_경계값을_받고_알림이_없으면_빈_목록을_반환한다(int size) {
         Long receiverId = createUser("수신자");
 
-        assertThat(notificationService.findAll(new NotificationListQuery(receiverId, null, size)))
+        assertThat(notificationService.findAll(new NotificationListQuery(receiverId, null, size, false)))
                 .isEmpty();
     }
 

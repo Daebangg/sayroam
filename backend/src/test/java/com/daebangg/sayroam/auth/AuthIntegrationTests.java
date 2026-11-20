@@ -47,6 +47,7 @@ import tools.jackson.databind.json.JsonMapper;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.time.LocalDateTime;
 import java.time.Year;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -62,6 +63,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.request;
@@ -103,6 +105,7 @@ class AuthIntegrationTests extends DatabaseIntegrationTest {
     @AfterEach
     void clean() throws Exception {
         jdbc.execute("DROP TRIGGER IF EXISTS test_fail_user_update");
+        jdbc.execute("DROP TRIGGER IF EXISTS test_fail_notification_insert");
         for (String table : TABLES) jdbc.update("DELETE FROM " + table);
         // CLI를 테스트 컨테이너 안에서만 실행하므로 개발 Redis에 접근할 수 없다.
         assertThat(REDIS.execInContainer("redis-cli", "FLUSHDB").getExitCode()).isZero();
@@ -219,6 +222,68 @@ class AuthIntegrationTests extends DatabaseIntegrationTest {
         assertStatus(call(HttpMethod.GET, "/api/users/me/login-methods", null, null), 401);
     }
 
+    @Test
+    void welcomeNotificationIsStoredOnceAndPersistsAcrossLoginsReadAndDeletion() throws Exception {
+        String email = email();
+        String proof = signupProof(email);
+        long id = signup(email, proof);
+        Login first = login(email, PASSWORD);
+        MvcResult inbox = call(HttpMethod.GET, "/api/notifications", null, first.access());
+        assertStatus(inbox, 200);
+        JsonNode notifications = json(inbox).path("notifications");
+        assertThat(notifications.size()).isEqualTo(1);
+        JsonNode welcome = notifications.get(0);
+        assertThat(welcome.path("type").asText()).isEqualTo("WELCOME");
+        assertThat(welcome.path("content").asText()).isEqualTo("SayRoam에 오신 것을 환영합니다! 함께 떠날 여행을 찾아보세요.");
+        assertThat(welcome.path("targetType").isNull()).isTrue();
+        assertThat(welcome.path("targetId").isNull()).isTrue();
+        assertThat(welcome.path("isRead").asBoolean()).isFalse();
+        String resource = "/api/notifications/" + welcome.path("id").asLong();
+        assertStatus(call(HttpMethod.PATCH, resource, Map.of("isRead", true), first.access()), 204);
+
+        Login otherDevice = login(email, PASSWORD);
+        MvcResult reread = call(HttpMethod.GET, "/api/notifications", null, otherDevice.access());
+        assertStatus(reread, 200);
+        assertThat(json(reread).path("notifications").size()).isEqualTo(1);
+        assertThat(json(reread).path("notifications").get(0).path("isRead").asBoolean()).isTrue();
+        assertStatus(call(HttpMethod.DELETE, resource, null, otherDevice.access()), 204);
+        Login reconnected = login(email, PASSWORD);
+        MvcResult summary = call(HttpMethod.GET, "/api/notifications/summary", null, reconnected.access());
+        assertStatus(summary, 200);
+        assertThat(json(summary).path("totalCount").asLong()).isZero();
+        assertThat(json(summary).path("unreadCount").asLong()).isZero();
+        assertStatus(call(HttpMethod.POST, "/api/auth/signup", Map.of("email", email, "password", PASSWORD,
+                "nickname", "여행자", "signupProof", proof), null), 409);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM notification WHERE receiver_id = ?", Integer.class, id))
+                .isEqualTo(1);
+        assertThat(jdbc.queryForObject("SELECT event_key FROM notification WHERE receiver_id = ?", String.class, id))
+                .isEqualTo("account-signup:" + id);
+        assertThat(jdbc.queryForObject("SELECT deleted_at FROM notification WHERE receiver_id = ?",
+                LocalDateTime.class, id)).isNotNull();
+    }
+
+    @Test
+    void welcomeStorageFailureRollsBackEmailSignupWithItsCredentials() throws Exception {
+        String email = email();
+        String proof = signupProof(email);
+        jdbc.execute("""
+                CREATE TRIGGER test_fail_notification_insert BEFORE INSERT ON notification FOR EACH ROW
+                SIGNAL SQLSTATE '40001' SET MESSAGE_TEXT = 'Test welcome storage failure'
+                """);
+        MvcResult failed = call(HttpMethod.POST, "/api/auth/signup", Map.of("email", email, "password", PASSWORD,
+                "nickname", "여행자", "signupProof", proof), null);
+        assertStatus(failed, 503);
+        assertThat(json(failed).path("code").asText()).isEqualTo("SIGNUP_UNAVAILABLE");
+        SocialIdentity identity = new SocialIdentity(SocialProvider.GOOGLE, "rollback-welcome", email,
+                true, "신규 소셜 회원", null);
+        assertThatThrownBy(() -> accountWrites.registerSocial(identity, email, "신규 소셜 회원", Instant.now()))
+                .isInstanceOfSatisfying(AuthException.class,
+                        exception -> assertThat(exception.getErrorCode()).isEqualTo(AuthErrorCode.SOCIAL_AUTH_UNAVAILABLE));
+        for (String table : List.of("users", "user_credential", "user_social_account", "notification")) {
+            assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM " + table, Integer.class)).isZero();
+        }
+    }
+
     @ParameterizedTest
     @NullAndEmptySource
     @ValueSource(strings = {" \t\n　 ", "https://example.com/profile.png", " https://example.com/profile.png "})
@@ -268,6 +333,8 @@ class AuthIntegrationTests extends DatabaseIntegrationTest {
         assertStatus(replay, 400);
         assertThat(json(replay).path("code").asText()).isEqualTo("SOCIAL_AUTH_INVALID");
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM users", Integer.class)).isEqualTo(1);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM notification WHERE type = 'WELCOME'", Integer.class))
+                .isEqualTo(1);
     }
 
     @Test
@@ -867,6 +934,7 @@ class AuthIntegrationTests extends DatabaseIntegrationTest {
         assertStatus(upload, 200);
         String photoUrl = json(upload).path("profileImageUrl").asText();
         String proof = accountProof(login, email, "ACCOUNT_DELETION");
+        List<Map<String, Object>> notificationsBefore = jdbc.queryForList("SELECT * FROM notification ORDER BY id");
         jdbc.execute("""
                 CREATE TRIGGER test_fail_user_update BEFORE UPDATE ON users FOR EACH ROW
                 SIGNAL SQLSTATE '40001' SET MYSQL_ERRNO = 1213, MESSAGE_TEXT = 'test transaction failure'
@@ -876,9 +944,10 @@ class AuthIntegrationTests extends DatabaseIntegrationTest {
         assertThat(json(failed).path("code").asText()).isEqualTo("ACCOUNT_DELETION_UNAVAILABLE");
         jdbc.execute("DROP TRIGGER test_fail_user_update");
         for (String table : new String[]{"user_credential", "user_social_account", "user_travel_style",
-                "notification", "user_profile_image"}) {
+                "user_profile_image"}) {
             assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM " + table, Integer.class)).isEqualTo(1);
         }
+        assertThat(jdbc.queryForList("SELECT * FROM notification ORDER BY id")).isEqualTo(notificationsBefore);
         assertStatus(call(HttpMethod.GET, photoUrl, null, null), 200);
         assertThat(jdbc.queryForObject("SELECT deleted_at IS NULL AND auth_version = 0 FROM users WHERE id = ?", Boolean.class, id)).isTrue();
         assertStatus(call(HttpMethod.POST, "/api/auth/account-deletion", Map.of("accountProof", proof), login.access()), 409);
@@ -891,6 +960,7 @@ class AuthIntegrationTests extends DatabaseIntegrationTest {
         long userId = jdbc.queryForObject("SELECT id FROM users WHERE email = ?", Long.class, email);
         seedDeletionData(userId);
         String proof = accountProof(login, email, "ACCOUNT_DELETION");
+        List<Map<String, Object>> notificationsBefore = jdbc.queryForList("SELECT * FROM notification ORDER BY id");
 
         MvcResult failed = SocialAccountReadFailure.during(jdbc, () -> call(HttpMethod.POST,
                 "/api/auth/account-deletion", Map.of("accountProof", proof), login.access()));
@@ -899,9 +969,10 @@ class AuthIntegrationTests extends DatabaseIntegrationTest {
         assertThat(json(failed).path("code").asText()).isEqualTo("ACCOUNT_DELETION_UNAVAILABLE");
         assertThat(failed.getResponse().getCookie(REFRESH)).isNotNull();
         assertThat(failed.getResponse().getCookie(REFRESH).getMaxAge()).isZero();
-        for (String table : List.of("user_credential", "user_social_account", "user_travel_style", "notification")) {
+        for (String table : List.of("user_credential", "user_social_account", "user_travel_style")) {
             assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM " + table, Integer.class)).isEqualTo(1);
         }
+        assertThat(jdbc.queryForList("SELECT * FROM notification ORDER BY id")).isEqualTo(notificationsBefore);
         assertStatus(call(HttpMethod.GET, "/api/users/me", null, login.access()), 200);
         assertStatus(call(HttpMethod.POST, "/api/auth/account-deletion", Map.of("accountProof", proof), login.access()), 409);
     }
@@ -931,6 +1002,8 @@ class AuthIntegrationTests extends DatabaseIntegrationTest {
         List<MvcResult> results = concurrent(() -> call(HttpMethod.POST, "/api/auth/signup", body, null));
         assertThat(results).extracting(r -> r.getResponse().getStatus()).containsExactlyInAnyOrder(201, 409);
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM users", Integer.class)).isEqualTo(1);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM notification WHERE type = 'WELCOME'", Integer.class))
+                .isEqualTo(1);
     }
 
     @ParameterizedTest

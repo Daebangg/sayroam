@@ -6,6 +6,7 @@ import com.daebangg.sayroam.notification.application.service.NotificationService
 import com.daebangg.sayroam.notification.presentation.api.NotificationApi;
 import com.daebangg.sayroam.notification.presentation.dto.NotificationListResponse;
 import com.daebangg.sayroam.notification.presentation.dto.NotificationSummaryResponse;
+import com.daebangg.sayroam.notification.presentation.dto.ReadAllNotificationsRequest;
 import com.daebangg.sayroam.notification.presentation.dto.UpdateNotificationReadRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
@@ -31,8 +32,9 @@ public class NotificationController implements NotificationApi {
     public ResponseEntity<NotificationListResponse> findAll(
             @AuthenticationPrincipal AuthenticatedAccount account,
             @RequestParam(required = false) Long beforeId,
-            @RequestParam(defaultValue = "20") int size) {
-        NotificationListQuery query = new NotificationListQuery(account.userId(), beforeId, size);
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(defaultValue = "false") boolean unreadOnly) {
+        NotificationListQuery query = new NotificationListQuery(account.userId(), beforeId, size, unreadOnly);
         return ResponseEntity.ok(NotificationListResponse.from(notifications.findAll(query)));
     }
 
@@ -41,6 +43,15 @@ public class NotificationController implements NotificationApi {
     public ResponseEntity<NotificationSummaryResponse> getSummary(
             @AuthenticationPrincipal AuthenticatedAccount account) {
         return ResponseEntity.ok(NotificationSummaryResponse.from(notifications.getSummary(account.userId())));
+    }
+
+    @Override
+    @PatchMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<Void> readAll(
+            @AuthenticationPrincipal AuthenticatedAccount account,
+            @RequestBody ReadAllNotificationsRequest request) {
+        notifications.readAll(account.userId());
+        return ResponseEntity.noContent().build();
     }
 
     @Override

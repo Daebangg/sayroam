@@ -7,7 +7,10 @@ import com.daebangg.sayroam.auth.domain.EmailAddress;
 import com.daebangg.sayroam.auth.domain.error.AuthErrorCode;
 import com.daebangg.sayroam.auth.domain.error.AuthException;
 import com.daebangg.sayroam.auth.domain.event.LoginsInvalidated;
+import com.daebangg.sayroam.notification.application.dto.CreateNotificationCommand;
 import com.daebangg.sayroam.notification.application.port.out.NotificationDeletion;
+import com.daebangg.sayroam.notification.application.service.NotificationService;
+import com.daebangg.sayroam.notification.domain.NotificationType;
 import com.daebangg.sayroam.travelstyle.application.port.out.TravelStyleDeletion;
 import com.daebangg.sayroam.user.domain.User;
 import com.daebangg.sayroam.user.domain.UserCredential;
@@ -30,16 +33,19 @@ public class AccountWriteService {
     private final UserRepository users;
     private final TravelStyleDeletion travelStyles;
     private final NotificationDeletion notifications;
+    private final NotificationService notificationService;
     private final ApplicationEventPublisher events;
     private final AccountPersistenceFailures failures;
     private final TransactionTemplate transaction;
 
     public AccountWriteService(UserRepository users, TravelStyleDeletion travelStyles,
                                NotificationDeletion notifications, ApplicationEventPublisher events,
-                               AccountPersistenceFailures failures, PlatformTransactionManager manager) {
+                               AccountPersistenceFailures failures, PlatformTransactionManager manager,
+                               NotificationService notificationService) {
         this.users = users;
         this.travelStyles = travelStyles;
         this.notifications = notifications;
+        this.notificationService = notificationService;
         this.events = events;
         this.failures = failures;
         this.transaction = new TransactionTemplate(manager);
@@ -50,7 +56,9 @@ public class AccountWriteService {
         return write(AuthErrorCode.SIGNUP_UNAVAILABLE, () -> {
             User user = User.verifiedEmailMember(email, nickname, LocalDateTime.ofInstant(emailVerifiedAt, ZoneOffset.UTC),
                     passwordHash);
-            return users.saveNewAccount(user).getId();
+            User saved = users.saveNewAccount(user);
+            createWelcomeNotification(saved.getId());
+            return saved.getId();
         });
     }
 
@@ -60,6 +68,7 @@ public class AccountWriteService {
                     LocalDateTime.ofInstant(verifiedAt, ZoneOffset.UTC));
             user.linkSocialAccount(identity.provider(), identity.providerUserId(), identity.email());
             User saved = users.saveNewAccount(user);
+            createWelcomeNotification(saved.getId());
             return new SocialAccountResult(saved.getId(), saved.getAuthVersion());
         });
     }
@@ -123,6 +132,11 @@ public class AccountWriteService {
         users.flush();
         // 트랜잭션 안에서 발행해야 커밋 후 리스너가 받는다.
         events.publishEvent(new LoginsInvalidated(userId));
+    }
+
+    private void createWelcomeNotification(Long userId) {
+        notificationService.create(new CreateNotificationCommand(userId, NotificationType.WELCOME, null, null,
+                "account-signup:" + userId, "SayRoam에 오신 것을 환영합니다! 함께 떠날 여행을 찾아보세요."));
     }
 
     private <T> T write(AuthErrorCode unavailable, Supplier<T> action) {
