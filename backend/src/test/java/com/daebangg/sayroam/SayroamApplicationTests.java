@@ -20,6 +20,8 @@ import org.springframework.transaction.annotation.Transactional;
 import org.testcontainers.mysql.MySQLContainer;
 
 import java.time.LocalDate;
+import java.util.List;
+import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -47,11 +49,11 @@ class SayroamApplicationTests extends DatabaseIntegrationTest {
                 SELECT COUNT(*) FROM information_schema.tables
                 WHERE table_schema = DATABASE() AND table_type = 'BASE TABLE'
                 """, Integer.class)).isEqualTo(22);
-        assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("16");
+        assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("17");
         flyway.validate();
         assertThat(flyway.migrate().migrationsExecuted).isZero();
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM flyway_schema_history WHERE success = 1",
-                Integer.class)).isEqualTo(16);
+                Integer.class)).isEqualTo(17);
     }
 
     @Test
@@ -118,7 +120,7 @@ class SayroamApplicationTests extends DatabaseIntegrationTest {
                     INSERT INTO user_travel_style (user_id, item_id, score, created_at, updated_at)
                     SELECT 10, id, 4, NOW(), NOW() FROM travel_style_item WHERE is_active = TRUE
                     """);
-            assertThat(Flyway.configure().dataSource(dataSource).load().migrate().migrationsExecuted).isEqualTo(1);
+            assertThat(Flyway.configure().dataSource(dataSource).target("16").load().migrate().migrationsExecuted).isEqualTo(1);
             assertThat(legacy.queryForObject("""
                     SELECT COUNT(*) FROM companion_search WHERE style_planning IS NULL AND style_daily_pace IS NULL
                         AND style_time_together IS NULL AND style_spending IS NULL
@@ -145,6 +147,66 @@ class SayroamApplicationTests extends DatabaseIntegrationTest {
                     SELECT COUNT(*) FROM companion_search
                     WHERE id = 1 AND show_age = FALSE AND show_gender = FALSE AND introduction = '이전 소개글'
                     """, Integer.class)).isEqualTo(1);
+            assertThat(Flyway.configure().dataSource(dataSource).load().migrate().migrationsExecuted).isEqualTo(1);
+        }
+    }
+
+    @Test
+    void upgradesVersionSixteenPreservingNotificationsAndPreventsDuplicateEventsAfterDeletion() {
+        try (MySQLContainer mysql = new MySQLContainer("mysql:8.4")
+                .withCommand("--log-bin-trust-function-creators=1")) {
+            mysql.start();
+            DriverManagerDataSource dataSource = new DriverManagerDataSource(
+                    mysql.getJdbcUrl(), mysql.getUsername(), mysql.getPassword());
+            Flyway.configure().dataSource(dataSource).target("16").load().migrate();
+            JdbcTemplate legacy = new JdbcTemplate(dataSource);
+            legacy.update("""
+                    INSERT INTO users (id, nickname, role, created_at, updated_at)
+                    VALUES (10, '기존 수신자', 'USER', NOW(), NOW()),
+                           (20, '다른 수신자', 'USER', NOW(), NOW())
+                    """);
+            legacy.update("""
+                    INSERT INTO notification
+                        (id, receiver_id, type, target_type, target_id, content, read_at, created_at, updated_at)
+                    VALUES (100, 10, 'TRIP_INVITE', 'TRIP', 42, ?, '2026-11-20 09:00:00', NOW(), NOW()),
+                           (101, 10, 'TRIP_INVITE', 'TRIP', 42, ?, NULL, NOW(), NOW())
+                    """, "가".repeat(255), "가".repeat(255));
+            String originalColumns = """
+                    SELECT id, receiver_id, type, target_type, target_id, content, read_at, created_at, updated_at
+                    FROM notification ORDER BY id
+                    """;
+            List<Map<String, Object>> originalNotifications = legacy.queryForList(originalColumns);
+
+            Flyway upgraded = Flyway.configure().dataSource(dataSource).load();
+            assertThat(upgraded.migrate().migrationsExecuted).isEqualTo(1);
+            assertThat(legacy.queryForList(originalColumns)).isEqualTo(originalNotifications);
+            assertThat(legacy.queryForList("SELECT event_key FROM notification ORDER BY id", String.class))
+                    .containsExactly("legacy:notification:100", "legacy:notification:101");
+            assertThat(legacy.queryForObject("SELECT COUNT(*) FROM notification WHERE deleted_at IS NOT NULL",
+                    Integer.class)).isZero();
+            assertThatThrownBy(() -> legacy.update("""
+                    INSERT INTO notification (receiver_id, type, content, created_at, updated_at)
+                    VALUES (10, 'TRIP_INVITE', '사건 식별값 누락', NOW(), NOW())
+                    """)).isInstanceOf(DataAccessException.class).hasMessageContaining("event_key");
+
+            String insertNotification = """
+                    INSERT INTO notification (receiver_id, type, event_key, content, created_at, updated_at)
+                    VALUES (?, 'TRIP_INVITE', 'trip-invite:42', '새 알림', NOW(), NOW())
+                    """;
+            legacy.update(insertNotification, 10);
+            assertThatThrownBy(() -> legacy.update(insertNotification, 10))
+                    .isInstanceOf(DataIntegrityViolationException.class)
+                    .hasMessageContaining("uk_notification_receiver_event");
+            legacy.update(insertNotification, 20);
+            legacy.update("""
+                    UPDATE notification SET deleted_at = NOW()
+                    WHERE receiver_id = 10 AND event_key = 'trip-invite:42'
+                    """);
+            assertThatThrownBy(() -> legacy.update(insertNotification, 10))
+                    .isInstanceOf(DataIntegrityViolationException.class)
+                    .hasMessageContaining("uk_notification_receiver_event");
+            upgraded.validate();
+            assertThat(upgraded.migrate().migrationsExecuted).isZero();
         }
     }
 

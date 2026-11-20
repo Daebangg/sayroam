@@ -1501,7 +1501,7 @@ class AuthIntegrationTests extends DatabaseIntegrationTest {
         jdbc.update("INSERT INTO user_social_account (user_id, provider, provider_user_id, created_at, updated_at) VALUES (?, 'GOOGLE', 'test-provider-id', NOW(), NOW())", id);
         long item = jdbc.queryForObject("SELECT id FROM travel_style_item WHERE code = 'planning'", Long.class);
         jdbc.update("INSERT INTO user_travel_style (user_id,item_id,score,created_at,updated_at) VALUES (?,?,3,NOW(),NOW())", id, item);
-        jdbc.update("INSERT INTO notification (receiver_id,type,content,created_at,updated_at) VALUES (?,'TRIP_INVITE','private',NOW(),NOW())", id);
+        jdbc.update("INSERT INTO notification (receiver_id,type,event_key,content,created_at,updated_at) VALUES (?,'TRIP_INVITE',?,'private',NOW(),NOW())", id, "account-private:" + id);
         jdbc.update("INSERT INTO room (created_at,updated_at) VALUES (NOW(),NOW())");
         long room = jdbc.queryForObject("SELECT id FROM room", Long.class);
         jdbc.update("INSERT INTO room_member (room_id,user_id,role,status,notification_muted,joined_at,created_at,updated_at) VALUES (?,?,'OWNER','JOINED',0,NOW(),NOW(),NOW())", room, id);
