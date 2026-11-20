@@ -211,7 +211,7 @@ class SayroamApplicationTests extends DatabaseIntegrationTest {
             assertThat(legacy.queryForList("SELECT * FROM notification ORDER BY id")).isEqualTo(beforeWelcome);
             legacy.update("""
                     INSERT INTO notification (receiver_id, type, event_key, content, created_at, updated_at)
-                    VALUES (10, 'WELCOME', 'account-signup:10', '가입을 축하합니다.', NOW(), NOW())
+                    VALUES (10, 'WELCOME', 'account-signup:10', 'Welcome to SayRoam!', NOW(), NOW())
                     """);
             assertThat(legacy.queryForObject("SELECT COUNT(*) FROM notification WHERE type = 'WELCOME'",
                     Integer.class)).isEqualTo(1);

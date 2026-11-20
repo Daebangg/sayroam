@@ -234,7 +234,7 @@ class AuthIntegrationTests extends DatabaseIntegrationTest {
         assertThat(notifications.size()).isEqualTo(1);
         JsonNode welcome = notifications.get(0);
         assertThat(welcome.path("type").asText()).isEqualTo("WELCOME");
-        assertThat(welcome.path("content").asText()).isEqualTo("SayRoam에 오신 것을 환영합니다! 함께 떠날 여행을 찾아보세요.");
+        assertThat(welcome.path("content").asText()).isEqualTo("Welcome to SayRoam! Your next adventure starts here.");
         assertThat(welcome.path("targetType").isNull()).isTrue();
         assertThat(welcome.path("targetId").isNull()).isTrue();
         assertThat(welcome.path("isRead").asBoolean()).isFalse();

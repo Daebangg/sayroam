@@ -136,7 +136,7 @@ public class AccountWriteService {
 
     private void createWelcomeNotification(Long userId) {
         notificationService.create(new CreateNotificationCommand(userId, NotificationType.WELCOME, null, null,
-                "account-signup:" + userId, "SayRoam에 오신 것을 환영합니다! 함께 떠날 여행을 찾아보세요."));
+                "account-signup:" + userId, "Welcome to SayRoam! Your next adventure starts here."));
     }
 
     private <T> T write(AuthErrorCode unavailable, Supplier<T> action) {
