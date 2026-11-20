@@ -1,5 +1,6 @@
 package com.daebangg.sayroam.notification.domain;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -11,10 +12,13 @@ public interface NotificationRepository {
     List<Notification> findVisibleBefore(
             Long receiverId,
             Long beforeId,
-            int size
+            int size,
+            boolean unreadOnly
     );
 
     Counts countVisibleByReceiverId(Long receiverId);
+
+    int markAllVisibleUnreadAsRead(Long receiverId, LocalDateTime readAt);
 
     record Counts(long totalCount, long unreadCount) {
     }

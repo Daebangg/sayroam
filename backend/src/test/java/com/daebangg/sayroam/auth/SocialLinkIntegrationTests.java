@@ -80,10 +80,36 @@ class SocialLinkIntegrationTests extends DatabaseIntegrationTest {
     }
 
     @AfterEach void clean() throws Exception {
+        jdbc.execute("DROP TRIGGER IF EXISTS test_fail_notification_insert");
         for (String table : List.of("expense_share", "expense", "trip_place", "trip", "companion_request", "companion_search",
                 "room_invitation", "room_member", "chat_message", "room", "place", "user_travel_style",
                 "notification", "user_social_account", "user_credential", "users")) jdbc.update("DELETE FROM " + table);
         assertThat(REDIS.execInContainer("redis-cli", "FLUSHDB").getExitCode()).isZero();
+    }
+
+    @Test
+    void welcomeStorageFailureDoesNotFailSocialSignupOrSubsequentLogin() throws Exception {
+        jdbc.execute("""
+                CREATE TRIGGER test_fail_notification_insert BEFORE INSERT ON notification FOR EACH ROW
+                SIGNAL SQLSTATE '40001' SET MESSAGE_TEXT = 'Test welcome storage failure'
+                """);
+
+        MvcResult signup = exchange(returned());
+        assertThat(signup.getResponse().getStatus()).isEqualTo(200);
+        assertThat(json.readTree(signup.getResponse().getContentAsByteArray()).path("newlyRegistered").asBoolean())
+                .isTrue();
+        long userId = jdbc.queryForObject("SELECT id FROM users WHERE email = ?", Long.class, EMAIL);
+        assertAuthenticatedAs(signup, userId);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM user_social_account WHERE user_id = ?",
+                Integer.class, userId)).isEqualTo(1);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM notification", Integer.class)).isZero();
+
+        MvcResult login = exchange(returned());
+        assertAuthenticatedAs(login, userId);
+        assertThat(json.readTree(login.getResponse().getContentAsByteArray()).path("newlyRegistered").asBoolean())
+                .isFalse();
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM users", Integer.class)).isEqualTo(1);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM notification", Integer.class)).isZero();
     }
 
     @Test void verifiedMatchingEmailConnectsAndSignsInWithoutPasswordOrAnotherRequest() throws Exception {
@@ -100,6 +126,8 @@ class SocialLinkIntegrationTests extends DatabaseIntegrationTest {
         assertThat(jdbc.queryForObject("select nickname from users where id = ?", String.class, id)).isEqualTo("기존 여행자");
         assertThat(jdbc.queryForObject("select password_hash from user_credential where user_id = ?", String.class, id)).isEqualTo(hash);
         assertAuthenticatedAs(exchange(returned()), id);
+        assertThat(jdbc.queryForObject("select count(*) from notification where receiver_id = ? and type = 'WELCOME'",
+                Long.class, id)).isEqualTo(1);
     }
 
     @ParameterizedTest @NullSource @ValueSource(strings = {EMAIL})
@@ -299,6 +327,13 @@ class SocialLinkIntegrationTests extends DatabaseIntegrationTest {
         assertAuthenticatedAsNewProvider(exchange(returned(provider)), provider);
         when(identities.authenticate(eq(provider), any())).thenReturn(userInfos.map(provider, profile(provider, null)));
         assertAuthenticatedAs(exchange(returned(provider)), jdbc.queryForObject("select id from users where email = ?", Long.class, EMAIL));
+        assertThat(jdbc.queryForObject("select count(*) from notification where type = 'WELCOME'", Long.class))
+                .isEqualTo(1);
+        jdbc.update("update notification set deleted_at = UTC_TIMESTAMP() where type = 'WELCOME'");
+        assertAuthenticatedAs(exchange(returned(provider)), jdbc.queryForObject("select id from users where email = ?", Long.class, EMAIL));
+        assertThat(jdbc.queryForObject("select count(*) from notification where type = 'WELCOME'", Long.class))
+                .isEqualTo(1);
+        assertThat(jdbc.queryForObject("select count(*) from notification where deleted_at is null", Long.class)).isZero();
     }
 
     @ParameterizedTest @EnumSource(value = SocialProvider.class, names = {"NAVER", "KAKAO"})
@@ -344,6 +379,9 @@ class SocialLinkIntegrationTests extends DatabaseIntegrationTest {
         assertAuthenticatedAs(response, id);
         assertThat(jdbc.queryForObject("select nickname from users where id = ?", String.class, id)).isEqualTo(provider == SocialProvider.NAVER ? "네이버 별명" : "카카오 별명");
         assertThat(jdbc.queryForObject("select count(*) from user_credential", Long.class)).isZero();
+        assertThat(jdbc.queryForMap("select type, target_type, target_id, read_at from notification where receiver_id = ?", id))
+                .containsEntry("type", "WELCOME").containsEntry("target_type", null)
+                .containsEntry("target_id", null).containsEntry("read_at", null);
     }
 
     private long register() { return accountWrites.register(EMAIL, "기존 여행자", passwords.encode(PASSWORD), Instant.now()); }

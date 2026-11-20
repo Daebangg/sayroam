@@ -4,5 +4,6 @@ public enum NotificationType {
     COMPANION_REQUEST,
     COMPANION_ACCEPTED,
     TRIP_INVITE,
-    EXPENSE_ADDED
+    EXPENSE_ADDED,
+    WELCOME
 }

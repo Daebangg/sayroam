@@ -513,7 +513,7 @@ export interface paths {
         };
         /**
          * 내 알림 목록 조회
-         * @description 로그인한 회원의 삭제되지 않은 알림을 ID 내림차순으로 조회합니다. 조회만으로 읽음 처리하지 않습니다. 첫 조회는 beforeId를 생략하고, 다음 조회는 이전 목록의 마지막 알림 ID를 전달합니다. 알림이 없으면 빈 배열을 반환합니다.
+         * @description 로그인한 회원의 삭제되지 않은 알림을 ID 내림차순으로 조회합니다. 조회만으로 읽음 처리하지 않습니다. unreadOnly=true이면 미읽음 알림만 조회합니다. 필터 변경·재접속 시에는 beforeId를 생략하고, 다음 조회는 같은 필터와 이전 목록의 마지막 알림 ID를 전달합니다. 알림이 없으면 빈 배열을 반환합니다.
          */
         get: operations["listMyNotifications"];
         put?: never;
@@ -521,7 +521,11 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        patch?: never;
+        /**
+         * 내 알림 전체 읽음 처리
+         * @description 처리 시점에 존재하는 본인의 미삭제·미읽음 알림을 한 번에 읽음 처리합니다. 이미 읽은 알림의 최초 읽음 시각과 삭제한 알림은 유지합니다. 알림이 없거나 반복 요청해도 204입니다. 이후 도착한 알림은 미읽음으로 남습니다. 본문의 isRead에는 true만 허용합니다.
+         */
+        patch: operations["readAllMyNotifications"];
         trace?: never;
     };
     "/api/notifications/{notificationId}": {
@@ -1474,7 +1478,11 @@ export interface components {
         NotificationTargetType: "COMPANION_REQUEST" | "TRIP" | "ROOM_INVITATION";
         /** @enum {string} */
         NotificationType:
-            "COMPANION_REQUEST" | "COMPANION_ACCEPTED" | "TRIP_INVITE" | "EXPENSE_ADDED";
+            | "COMPANION_REQUEST"
+            | "COMPANION_ACCEPTED"
+            | "TRIP_INVITE"
+            | "EXPENSE_ADDED"
+            | "WELCOME";
         PasswordChangeRequest: {
             /** @description PASSWORD_CHANGE 본인 확인에서 발급한 일회성 증명 */
             accountProof: string;
@@ -1543,6 +1551,14 @@ export interface components {
             hasNext: boolean;
             /** @description 검색된 장소. 축제·여행코스와 좌표가 없는 장소는 제외하므로 한 페이지가 20개보다 적을 수 있음 */
             places: components["schemas"]["PlaceSearchItemResponse"][];
+        };
+        ReadAllNotificationsRequest: {
+            /**
+             * @description 전체 읽음 처리에는 true만 허용
+             * @example true
+             * @constant
+             */
+            isRead: true;
         };
         /** @description 모집에만 저장하는 4문항 점수. 각 점수는 1~5의 정수입니다. */
         RecruitmentTravelStyleRequest: {
@@ -3199,6 +3215,8 @@ export interface operations {
                 beforeId?: number;
                 /** @description 조회할 최대 알림 개수 */
                 size?: number;
+                /** @description true이면 읽지 않은 알림만 조회 */
+                unreadOnly?: boolean;
             };
             header?: never;
             path?: never;
@@ -3214,6 +3232,32 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["NotificationListResponse"];
                 };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            500: components["responses"]["InternalServerError"];
+            503: components["responses"]["AuthenticationUnavailable"];
+        };
+    };
+    readAllMyNotifications: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReadAllNotificationsRequest"];
+            };
+        };
+        responses: {
+            /** @description 전체 읽음 처리 완료 */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             400: components["responses"]["BadRequest"];
             401: components["responses"]["Unauthorized"];
@@ -4064,6 +4108,13 @@ export const apiRoutes = {
         auth: "required",
         csrf: false,
         responses: { "200": true },
+    },
+    readAllMyNotifications: {
+        method: "patch",
+        path: "/api/notifications",
+        auth: "required",
+        csrf: false,
+        responses: { "204": false },
     },
     refresh: {
         method: "post",

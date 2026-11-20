@@ -49,11 +49,11 @@ class SayroamApplicationTests extends DatabaseIntegrationTest {
                 SELECT COUNT(*) FROM information_schema.tables
                 WHERE table_schema = DATABASE() AND table_type = 'BASE TABLE'
                 """, Integer.class)).isEqualTo(22);
-        assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("17");
+        assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("18");
         flyway.validate();
         assertThat(flyway.migrate().migrationsExecuted).isZero();
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM flyway_schema_history WHERE success = 1",
-                Integer.class)).isEqualTo(17);
+                Integer.class)).isEqualTo(18);
     }
 
     @Test
@@ -147,7 +147,7 @@ class SayroamApplicationTests extends DatabaseIntegrationTest {
                     SELECT COUNT(*) FROM companion_search
                     WHERE id = 1 AND show_age = FALSE AND show_gender = FALSE AND introduction = '이전 소개글'
                     """, Integer.class)).isEqualTo(1);
-            assertThat(Flyway.configure().dataSource(dataSource).load().migrate().migrationsExecuted).isEqualTo(1);
+            assertThat(Flyway.configure().dataSource(dataSource).load().migrate().migrationsExecuted).isEqualTo(2);
         }
     }
 
@@ -177,7 +177,7 @@ class SayroamApplicationTests extends DatabaseIntegrationTest {
                     """;
             List<Map<String, Object>> originalNotifications = legacy.queryForList(originalColumns);
 
-            Flyway upgraded = Flyway.configure().dataSource(dataSource).load();
+            Flyway upgraded = Flyway.configure().dataSource(dataSource).target("17").load();
             assertThat(upgraded.migrate().migrationsExecuted).isEqualTo(1);
             assertThat(legacy.queryForList(originalColumns)).isEqualTo(originalNotifications);
             assertThat(legacy.queryForList("SELECT event_key FROM notification ORDER BY id", String.class))
@@ -205,8 +205,18 @@ class SayroamApplicationTests extends DatabaseIntegrationTest {
             assertThatThrownBy(() -> legacy.update(insertNotification, 10))
                     .isInstanceOf(DataIntegrityViolationException.class)
                     .hasMessageContaining("uk_notification_receiver_event");
-            upgraded.validate();
-            assertThat(upgraded.migrate().migrationsExecuted).isZero();
+            List<Map<String, Object>> beforeWelcome = legacy.queryForList("SELECT * FROM notification ORDER BY id");
+            Flyway latest = Flyway.configure().dataSource(dataSource).load();
+            assertThat(latest.migrate().migrationsExecuted).isEqualTo(1);
+            assertThat(legacy.queryForList("SELECT * FROM notification ORDER BY id")).isEqualTo(beforeWelcome);
+            legacy.update("""
+                    INSERT INTO notification (receiver_id, type, event_key, content, created_at, updated_at)
+                    VALUES (10, 'WELCOME', 'account-signup:10', 'Welcome to SayRoam!', NOW(), NOW())
+                    """);
+            assertThat(legacy.queryForObject("SELECT COUNT(*) FROM notification WHERE type = 'WELCOME'",
+                    Integer.class)).isEqualTo(1);
+            latest.validate();
+            assertThat(latest.migrate().migrationsExecuted).isZero();
         }
     }
 

@@ -34,6 +34,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.nullValue;
@@ -70,6 +71,8 @@ class NotificationApiIntegrationTest extends DatabaseIntegrationTest {
     void 인증되지_않은_조회와_상태_변경과_삭제를_거부한다() throws Exception {
         mvc.perform(get(PATH).servletPath(PATH)).andExpect(status().isUnauthorized());
         mvc.perform(get(PATH + "/summary").servletPath(PATH + "/summary")).andExpect(status().isUnauthorized());
+        mvc.perform(patch(PATH).servletPath(PATH).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"isRead\":true}")).andExpect(status().isUnauthorized());
         String resource = PATH + "/1";
         mvc.perform(patch(resource).servletPath(resource).contentType(MediaType.APPLICATION_JSON)
                 .content("{\"isRead\":true}")).andExpect(status().isUnauthorized());
@@ -107,6 +110,88 @@ class NotificationApiIntegrationTest extends DatabaseIntegrationTest {
                 .andExpect(jsonPath("$.notifications[0].id").value(first.getId()));
         assertThat(jdbc.queryForObject("SELECT read_at FROM notification WHERE id = ?",
                 LocalDateTime.class, second.getId())).isNull();
+    }
+
+    @Test
+    void 미읽음_필터는_소유권과_삭제를_적용하고_커서로_이어_조회한다() throws Exception {
+        Notification first = saveNotification(owner.getId(), "filter:first");
+        Notification read = saveNotification(owner.getId(), "filter:read");
+        read.read(LocalDateTime.now());
+        Notification last = saveNotification(owner.getId(), "filter:last");
+        Notification deleted = saveNotification(owner.getId(), "filter:deleted");
+        deleted.delete(LocalDateTime.now());
+        saveNotification(createUser("다른 회원").getId(), "filter:other");
+        flushAndClear();
+
+        mvc.perform(get(PATH).servletPath(PATH).header("Authorization", authorization)
+                        .param("unreadOnly", "true").param("size", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.notifications.length()").value(1))
+                .andExpect(jsonPath("$.notifications[0].id").value(last.getId()))
+                .andExpect(jsonPath("$.notifications[0].isRead").value(false));
+        mvc.perform(get(PATH).servletPath(PATH).header("Authorization", authorization)
+                        .param("unreadOnly", "true").param("beforeId", last.getId().toString()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.notifications.length()").value(1))
+                .andExpect(jsonPath("$.notifications[0].id").value(first.getId()));
+        mvc.perform(get(PATH).servletPath(PATH).header("Authorization", authorization).param("unreadOnly", "false"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.notifications.length()").value(3));
+    }
+
+    @Test
+    void 전체_읽음은_본인_미삭제_미읽음만_변경하고_반복해도_읽음_시각을_유지한다() throws Exception {
+        Notification unread = saveNotification(owner.getId(), "read-all:unread");
+        for (int index = 0; index < 20; index++) {
+            saveNotification(owner.getId(), "read-all:page:" + index);
+        }
+        Notification read = saveNotification(owner.getId(), "read-all:read");
+        LocalDateTime originalReadAt = LocalDateTime.of(2026, 11, 1, 9, 0);
+        read.read(originalReadAt);
+        Notification deleted = saveNotification(owner.getId(), "read-all:deleted");
+        deleted.delete(originalReadAt);
+        Notification other = saveNotification(createUser("다른 회원").getId(), "read-all:other");
+        flushAndClear();
+
+        updateReadStatus(PATH, authorization, "{\"isRead\":true}").andExpect(status().isNoContent());
+        LocalDateTime firstReadAt = jdbc.queryForObject("SELECT read_at FROM notification WHERE id = ?",
+                LocalDateTime.class, unread.getId());
+        assertThat(firstReadAt).isNotNull();
+        assertThat(jdbc.queryForObject("SELECT updated_at FROM notification WHERE id = ?",
+                LocalDateTime.class, unread.getId())).isEqualTo(firstReadAt);
+        updateReadStatus(PATH, authorization, "{\"isRead\":true}").andExpect(status().isNoContent());
+        assertThat(jdbc.queryForObject("SELECT read_at FROM notification WHERE id = ?", LocalDateTime.class,
+                unread.getId())).isEqualTo(firstReadAt);
+        assertThat(jdbc.queryForObject("SELECT read_at FROM notification WHERE id = ?", LocalDateTime.class,
+                read.getId())).isEqualTo(originalReadAt);
+        for (Long id : List.of(deleted.getId(), other.getId())) {
+            assertThat(jdbc.queryForObject("SELECT read_at FROM notification WHERE id = ?",
+                    LocalDateTime.class, id)).isNull();
+        }
+        mvc.perform(get(PATH + "/summary").servletPath(PATH + "/summary").header("Authorization", authorization))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.unreadCount").value(0));
+        mvc.perform(get(PATH).servletPath(PATH).header("Authorization", authorization).param("unreadOnly", "true"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.notifications").isEmpty());
+
+        saveNotification(owner.getId(), "read-all:later");
+        flushAndClear();
+        mvc.perform(get(PATH).servletPath(PATH).header("Authorization", authorization).param("unreadOnly", "true"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.notifications.length()").value(1));
+    }
+
+    @Test
+    void 알림이_없는_회원도_전체_읽음을_반복할_수_있다() throws Exception {
+        updateReadStatus(PATH, authorization, "{\"isRead\":true}").andExpect(status().isNoContent());
+        updateReadStatus(PATH, authorization, "{\"isRead\":true}").andExpect(status().isNoContent());
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"{}", "{\"isRead\":null}", "{\"isRead\":false}", "{\"isRead\":{}}"})
+    void 전체_읽음은_true가_아닌_입력을_거부한다(String body) throws Exception {
+        Notification unread = saveNotification(owner.getId(), "read-all:invalid");
+        flushAndClear();
+        updateReadStatus(PATH, authorization, body).andExpect(status().isBadRequest());
+        assertThat(jdbc.queryForObject("SELECT read_at FROM notification WHERE id = ?",
+                LocalDateTime.class, unread.getId())).isNull();
     }
 
     @Test
@@ -309,6 +394,8 @@ class NotificationApiIntegrationTest extends DatabaseIntegrationTest {
         JsonNode paths = spec.path("paths");
         assertThat(paths.path(PATH).path("get").path("operationId").asString()).isEqualTo("listMyNotifications");
         assertThat(paths.path(PATH).has("post")).isFalse();
+        assertThat(paths.path(PATH).path("patch").path("operationId").asString()).isEqualTo("readAllMyNotifications");
+        assertThat(paths.path(PATH).path("get").path("parameters").toString()).contains("unreadOnly");
         assertThat(paths.path(PATH + "/summary").path("get").path("operationId").asString())
                 .isEqualTo("getMyNotificationSummary");
         assertThat(paths.path(PATH + "/{notificationId}").path("patch").path("operationId").asString())
@@ -324,6 +411,12 @@ class NotificationApiIntegrationTest extends DatabaseIntegrationTest {
                 .path("type").asString()).isEqualTo("integer");
         assertThat(schemas.path("NotificationResponse").path("properties").has("isRead")).isTrue();
         assertThat(schemas.path("UpdateNotificationReadRequest").path("required").toString()).contains("isRead");
+        assertThat(schemas.path("ReadAllNotificationsRequest").path("required").toString()).contains("isRead");
+        JsonNode readAllStatus = schemas.path("ReadAllNotificationsRequest").path("properties").path("isRead");
+        assertThat(readAllStatus.path("type").asString()).isEqualTo("boolean");
+        assertThat(readAllStatus.path("const").isBoolean()).isTrue();
+        assertThat(readAllStatus.path("const").asBoolean()).isTrue();
+        assertThat(schemas.path("NotificationType").path("enum").toString()).contains("WELCOME");
         assertThat(schemas.path("ApiErrorCode").path("enum").toString())
                 .contains("NOTIFICATION_NOT_FOUND", "NOTIFICATION_DELETED");
         Path output = Path.of("build/openapi/openapi.json");

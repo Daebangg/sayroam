@@ -6,7 +6,8 @@ import com.daebangg.sayroam.global.exception.CommonErrorCode;
 public record NotificationListQuery(
         Long receiverId,
         Long beforeId,
-        int size
+        int size,
+        boolean unreadOnly
 ) {
     public static final int MAX_PAGE_SIZE = 100;
 

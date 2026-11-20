@@ -193,7 +193,7 @@ class NotificationJpaRepositoryTest extends DatabaseIntegrationTest {
                 """).setParameter("receiverId", receiverId).executeUpdate();
         flushAndClear();
 
-        assertThat(notifications.findVisibleBefore(receiverId, null, 20)).singleElement()
+        assertThat(notifications.findVisibleBefore(receiverId, null, 20, false)).singleElement()
                 .hasFieldOrPropertyWithValue("eventKey", "legacy:notification:100")
                 .hasFieldOrPropertyWithValue("content", "기존 알림");
     }

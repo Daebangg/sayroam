@@ -7,7 +7,10 @@ import com.daebangg.sayroam.auth.domain.EmailAddress;
 import com.daebangg.sayroam.auth.domain.error.AuthErrorCode;
 import com.daebangg.sayroam.auth.domain.error.AuthException;
 import com.daebangg.sayroam.auth.domain.event.LoginsInvalidated;
+import com.daebangg.sayroam.notification.application.dto.CreateNotificationCommand;
 import com.daebangg.sayroam.notification.application.port.out.NotificationDeletion;
+import com.daebangg.sayroam.notification.application.service.NotificationService;
+import com.daebangg.sayroam.notification.domain.NotificationType;
 import com.daebangg.sayroam.travelstyle.application.port.out.TravelStyleDeletion;
 import com.daebangg.sayroam.user.domain.User;
 import com.daebangg.sayroam.user.domain.UserCredential;
@@ -30,16 +33,19 @@ public class AccountWriteService {
     private final UserRepository users;
     private final TravelStyleDeletion travelStyles;
     private final NotificationDeletion notifications;
+    private final NotificationService notificationService;
     private final ApplicationEventPublisher events;
     private final AccountPersistenceFailures failures;
     private final TransactionTemplate transaction;
 
     public AccountWriteService(UserRepository users, TravelStyleDeletion travelStyles,
                                NotificationDeletion notifications, ApplicationEventPublisher events,
-                               AccountPersistenceFailures failures, PlatformTransactionManager manager) {
+                               AccountPersistenceFailures failures, PlatformTransactionManager manager,
+                               NotificationService notificationService) {
         this.users = users;
         this.travelStyles = travelStyles;
         this.notifications = notifications;
+        this.notificationService = notificationService;
         this.events = events;
         this.failures = failures;
         this.transaction = new TransactionTemplate(manager);
@@ -47,21 +53,26 @@ public class AccountWriteService {
     }
 
     public long register(String email, String nickname, String passwordHash, Instant emailVerifiedAt) {
-        return write(AuthErrorCode.SIGNUP_UNAVAILABLE, () -> {
+        long userId = write(AuthErrorCode.SIGNUP_UNAVAILABLE, () -> {
             User user = User.verifiedEmailMember(email, nickname, LocalDateTime.ofInstant(emailVerifiedAt, ZoneOffset.UTC),
                     passwordHash);
-            return users.saveNewAccount(user).getId();
+            User saved = users.saveNewAccount(user);
+            return saved.getId();
         });
+        createWelcomeNotification(userId);
+        return userId;
     }
 
     public SocialAccountResult registerSocial(SocialIdentity identity, String email, String nickname, Instant verifiedAt) {
-        return write(AuthErrorCode.SOCIAL_AUTH_UNAVAILABLE, () -> {
+        SocialAccountResult account = write(AuthErrorCode.SOCIAL_AUTH_UNAVAILABLE, () -> {
             User user = User.verifiedSocialMember(email, nickname, identity.profileImageUrl(),
                     LocalDateTime.ofInstant(verifiedAt, ZoneOffset.UTC));
             user.linkSocialAccount(identity.provider(), identity.providerUserId(), identity.email());
             User saved = users.saveNewAccount(user);
             return new SocialAccountResult(saved.getId(), saved.getAuthVersion());
         });
+        createWelcomeNotification(account.userId());
+        return account;
     }
 
     public SocialAccountResult linkVerifiedEmail(SocialAccountResult account, SocialIdentity identity) {
@@ -123,6 +134,18 @@ public class AccountWriteService {
         users.flush();
         // 트랜잭션 안에서 발행해야 커밋 후 리스너가 받는다.
         events.publishEvent(new LoginsInvalidated(userId));
+    }
+
+    private void createWelcomeNotification(Long userId) {
+        try {
+            // 회원가입 커밋 후 별도 트랜잭션에서 시도하며 알림 실패가 가입 결과를 바꾸지 않게 한다.
+            transaction.executeWithoutResult(status -> notificationService.create(new CreateNotificationCommand(
+                    userId, NotificationType.WELCOME, null, null, "account-signup:" + userId,
+                    "Welcome to SayRoam! Your next adventure starts here.")));
+        } catch (RuntimeException exception) {
+            log.warn("Welcome notification creation failed for user {}: {}", userId,
+                    exception.getClass().getSimpleName());
+        }
     }
 
     private <T> T write(AuthErrorCode unavailable, Supplier<T> action) {
