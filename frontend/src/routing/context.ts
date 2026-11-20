@@ -1,7 +1,7 @@
 import type { AuthState } from "@/hooks/auth.types";
 import type { ThemePreference } from "@/hooks/useTheme";
 import type { Language } from "@/i18n/locale";
-import type { AccountResult, ProfileDetailsUpdate } from "@/hooks/account.types";
+import type { AccountPurpose, ProfileDetailsUpdate } from "@/hooks/account.types";
 
 export type PageContext = {
     onOpenAuth: () => void;
@@ -14,5 +14,5 @@ export type PageContext = {
     onUploadProfileImage: (dataUrl: string, signal: AbortSignal) => Promise<void>;
     onUpdateProfileImage: (profileImageUrl: string, signal: AbortSignal) => Promise<void>;
     onUpdateNickname: (nickname: string, signal: AbortSignal) => Promise<void>;
-    onAccountResult: (result: AccountResult) => void;
+    onAccountAction: (purpose: AccountPurpose) => void;
 };

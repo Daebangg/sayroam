@@ -37,7 +37,12 @@ export function AccountActionDialog({
     const [confirmation, setConfirmation] = useState("");
     const [agreed, setAgreed] = useState(false);
     const deletion = purpose === "ACCOUNT_DELETION";
-    const verified = stage === "verified" && expiresIn > 0;
+    const visibleMessage =
+        stage === "request" && ["delivery", "unavailable", "uncertain"].includes(message ?? "")
+            ? null
+            : message;
+    const verified = stage === "verified" && (expiresIn > 0 || busy);
+    const codeStage = stage === "code" && (expiresIn > 0 || busy);
     const rules = newPasswordRules(password);
     const canComplete =
         verified && (deletion ? agreed : isValidNewPassword(password) && password === confirmation);
@@ -72,7 +77,7 @@ export function AccountActionDialog({
                     <Icon name="close" variant="outline" />
                 </Button>
             </div>
-            <div className="auth-flow-body">
+            <div className="auth-flow-body" aria-busy={busy || undefined}>
                 {deletion && (
                     <ul className="account-delete-notice">
                         <li>{t("accountAction.deletePersonalData")}</li>
@@ -87,11 +92,14 @@ export function AccountActionDialog({
                         if (busy) return;
                         if (canComplete) {
                             const value = password;
-                            setPassword("");
-                            setConfirmation("");
-                            setCode("");
-                            void onComplete(value, agreed);
-                        } else if (stage === "code" && expiresIn > 0) {
+                            void onComplete(value, agreed).then((success) => {
+                                if (!success) {
+                                    setPassword("");
+                                    setConfirmation("");
+                                    setCode("");
+                                }
+                            });
+                        } else if (codeStage) {
                             void onVerify(code).then((success) => {
                                 if (success) setCode("");
                             });
@@ -99,13 +107,13 @@ export function AccountActionDialog({
                     }}
                 >
                     {!verified && (
-                        <div className="account-linked-email">
+                        <div className="account-linked-email auth-stage-enter">
                             <span>{t("settings.email")}</span>
                             <strong>{email ?? t("settings.noEmail")}</strong>
                             <p>{t("accountAction.linkedEmailHint")}</p>
                         </div>
                     )}
-                    {(sending || (stage === "code" && expiresIn > 0)) && (
+                    {codeStage && (
                         <>
                             <VerificationCode
                                 label={t("auth.codeLabel")}
@@ -132,9 +140,23 @@ export function AccountActionDialog({
                             </div>
                         </>
                     )}
+                    {!verified && (
+                        <>
+                            {stage !== "request" && expiresIn === 0 && !busy && (
+                                <p className="auth-feedback" role="alert">
+                                    {t("accountAction.messages.expired")}
+                                </p>
+                            )}
+                            {visibleMessage && (
+                                <p className="auth-feedback" role="alert">
+                                    {t(`accountAction.messages.${visibleMessage}`)}
+                                </p>
+                            )}
+                        </>
+                    )}
                     {verified && (
                         <>
-                            <p className="auth-success" role="status">
+                            <p className="auth-success auth-stage-enter" role="status">
                                 <Icon name="check" variant="outline" />
                                 {t("accountAction.verified", { seconds: expiresIn })}
                             </p>
@@ -201,38 +223,31 @@ export function AccountActionDialog({
                             )}
                         </>
                     )}
-                    {!sending && stage !== "request" && expiresIn === 0 && (
+                    {verified && visibleMessage && (
                         <p className="auth-feedback" role="alert">
-                            {t("accountAction.messages.expired")}
-                        </p>
-                    )}
-                    {message && (
-                        <p className="auth-feedback" role="alert">
-                            {t(`accountAction.messages.${message}`)}
+                            {t(`accountAction.messages.${visibleMessage}`)}
                         </p>
                     )}
                     <Button
                         variant={verified && deletion ? "danger" : "brand"}
                         type="submit"
-                        loading={blocking}
+                        loading={busy && !sending}
                         disabled={
                             busy ||
                             (verified
                                 ? !canComplete
-                                : stage === "code" && expiresIn > 0
+                                : codeStage
                                   ? !/^\d{6}$/.test(code)
                                   : !email || resendIn > 0)
                         }
                     >
-                        {sending
-                            ? t("accountAction.verifyCode")
-                            : verified
-                              ? t(deletion ? "settings.deleteAccount" : "settings.changePassword")
-                              : stage === "code" && expiresIn > 0
-                                ? t("accountAction.verifyCode")
-                                : resendIn > 0
-                                  ? t("auth.resendAfter", { seconds: resendIn })
-                                  : t("accountAction.sendCode")}
+                        {verified
+                            ? t(deletion ? "settings.deleteAccount" : "settings.changePassword")
+                            : codeStage
+                              ? t("accountAction.verifyCode")
+                              : resendIn > 0
+                                ? t("auth.resendAfter", { seconds: resendIn })
+                                : t("accountAction.sendCode")}
                     </Button>
                 </form>
             </div>

@@ -194,11 +194,13 @@ export function ProfileDetails({
     nicknameEditor,
     imageEditor,
     detailsEditor,
+    travelStyle,
 }: {
     member: Member;
     nicknameEditor: NicknameEditor;
     imageEditor: ProfilePhoto;
     detailsEditor: ProfileEditor<ProfileDetailsUpdate>;
+    travelStyle?: ReactNode;
 }) {
     const { t, i18n } = useTranslation();
     const { previewUrl, changed } = imageEditor;
@@ -366,6 +368,7 @@ export function ProfileDetails({
                             onChange={setBirthDate}
                         />
                     </SettingsRow>
+                    {travelStyle}
                     <SettingsRow label={t("settings.joinedAt")}>
                         <span>{formatDate(i18n.resolvedLanguage ?? "ko", member.createdAt)}</span>
                     </SettingsRow>
@@ -549,57 +552,65 @@ function InlineNickname({
                     ? { error: t(`accountAction.nicknameMessages.${editor.message}`) }
                     : {})}
             />
-            <Button
-                variant="ghost"
-                type="submit"
-                className="settings-edit-button"
-                loading={editor.busy}
-                disabled={editor.busy || draft.trim() === nickname}
-                aria-label={t("accountAction.save")}
-            >
-                <Icon name="check" variant="outline" />
-            </Button>
-            <Button
-                variant="ghost"
-                className="settings-edit-button"
-                onClick={close}
-                disabled={editor.busy}
-                aria-label={t("common.cancel")}
-            >
-                <Icon name="close" variant="outline" />
-            </Button>
+            <Tooltip content={t("accountAction.save")}>
+                <Button
+                    variant="ghost"
+                    type="submit"
+                    className="settings-edit-button"
+                    loading={editor.busy}
+                    disabled={editor.busy || draft.trim() === nickname}
+                    aria-label={t("accountAction.save")}
+                >
+                    <Icon name="check" variant="outline" />
+                </Button>
+            </Tooltip>
+            <Tooltip content={t("common.cancel")}>
+                <Button
+                    variant="ghost"
+                    className="settings-edit-button"
+                    onClick={close}
+                    disabled={editor.busy}
+                    aria-label={t("common.cancel")}
+                >
+                    <Icon name="close" variant="outline" />
+                </Button>
+            </Tooltip>
         </form>
     ) : appearance === "hero" ? (
-        <Button
-            ref={trigger}
-            variant="plain"
-            className="settings-profile__nickname"
-            aria-label={`${t("accountAction.editNickname")}, ${nickname}`}
-            onClick={() => {
-                setDraft(nickname);
-                editor.reset();
-                setEditing(true);
-            }}
-        >
-            <strong>{nickname}</strong>
-            <Icon name="edit" />
-        </Button>
-    ) : (
-        <>
-            <span>{nickname}</span>
+        <Tooltip content={t("accountAction.editNickname")}>
             <Button
                 ref={trigger}
-                variant="ghost"
-                className="settings-edit-button"
-                aria-label={t("accountAction.editNickname")}
+                variant="plain"
+                className="settings-profile__nickname"
+                aria-label={`${t("accountAction.editNickname")}, ${nickname}`}
                 onClick={() => {
                     setDraft(nickname);
                     editor.reset();
                     setEditing(true);
                 }}
             >
+                <strong>{nickname}</strong>
                 <Icon name="edit" />
             </Button>
+        </Tooltip>
+    ) : (
+        <>
+            <span>{nickname}</span>
+            <Tooltip content={t("accountAction.editNickname")}>
+                <Button
+                    ref={trigger}
+                    variant="ghost"
+                    className="settings-edit-button"
+                    aria-label={t("accountAction.editNickname")}
+                    onClick={() => {
+                        setDraft(nickname);
+                        editor.reset();
+                        setEditing(true);
+                    }}
+                >
+                    <Icon name="edit" />
+                </Button>
+            </Tooltip>
         </>
     );
 }

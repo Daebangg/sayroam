@@ -10,6 +10,7 @@ import { Link, NavLink, useNavigate, useLocation, useNavigation } from "react-ro
 import type { ResolvedTheme } from "@/hooks/useTheme";
 
 type AppShellProps = {
+    setupActive?: boolean;
     mockupScreen: MockupScreen | null;
     isHome: boolean;
     theme: ResolvedTheme;
@@ -21,6 +22,7 @@ type AppShellProps = {
 };
 
 export function AppShell({
+    setupActive = false,
     mockupScreen,
     isHome,
     theme,
@@ -78,7 +80,9 @@ export function AppShell({
                         <span className="visually-hidden">{t("pageState.loading.title")}</span>
                     </div>
                 )}
-                <header className={`site-header ${inSettings ? "site-header--settings" : ""}`}>
+                <header
+                    className={`site-header ${inSettings || setupActive ? "site-header--settings" : ""}`}
+                >
                     <Link
                         className="brand-button"
                         to={mockupScreen ? mockupUrl("home") : "/"}
@@ -86,7 +90,7 @@ export function AppShell({
                     >
                         <Brand />
                     </Link>
-                    {!inSettings && (
+                    {!inSettings && !setupActive && (
                         <nav className="desktop-nav" aria-label={t("navigation.main")}>
                             {appNavigation.map((item) => (
                                 <NavLink
@@ -136,7 +140,7 @@ export function AppShell({
                     </div>
                 </header>
                 {children}
-                {!inSettings && (
+                {!inSettings && !setupActive && (
                     <nav className="mobile-nav" aria-label={t("navigation.main")}>
                         {appNavigation.map((item) => (
                             <NavLink

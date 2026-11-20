@@ -15,6 +15,7 @@ type AuthDialogProps = {
     remainingAttempts?: number;
     onRetryProfile: () => void;
     onComplete: (mode: EmailFlowMode) => void;
+    onEmailSent: () => () => void;
 };
 
 function EmailDialog({
@@ -22,11 +23,13 @@ function EmailDialog({
     onClose,
     onLogin,
     onComplete,
+    onEmailSent,
 }: {
     mode: EmailFlowMode;
     onClose: () => void;
     onLogin: () => void;
     onComplete: () => void;
+    onEmailSent: () => () => void;
 }) {
     const flow = useEmailFlow(mode);
     return (
@@ -39,8 +42,14 @@ function EmailDialog({
             expiresIn={flow.expiresIn}
             resendIn={flow.resendIn}
             message={flow.message}
+            messageTarget={flow.messageTarget}
             onEmailChange={flow.invalidate}
-            onRequest={flow.requestCode}
+            onRequest={async (email) => {
+                const dismissNotice = onEmailSent();
+                const success = await flow.requestCode(email);
+                if (!success) dismissNotice();
+                return success;
+            }}
             onVerify={flow.verifyCode}
             onClose={onClose}
             onLogin={onLogin}
@@ -61,6 +70,7 @@ export function AuthDialog(props: AuthDialogProps) {
             <EmailDialog
                 key={mode}
                 mode={mode}
+                onEmailSent={props.onEmailSent}
                 onClose={props.onClose}
                 onLogin={() => setMode("login")}
                 onComplete={() => {
@@ -79,7 +89,11 @@ export function AuthDialog(props: AuthDialogProps) {
                 return social.start(provider, props.message === "socialEmailRequired");
             }}
             busy={props.busy || social.busy}
-            message={social.message ?? props.message}
+            message={
+                (social.message ?? props.message) === "socialCancelled"
+                    ? null
+                    : (social.message ?? props.message)
+            }
             onSubmit={(input) => {
                 social.clearMessage();
                 return props.onSubmit(input);

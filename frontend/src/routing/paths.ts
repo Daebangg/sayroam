@@ -16,6 +16,7 @@ export function isMemberPath(pathname: string): boolean {
     const path = pathname.replace(/\/+$/, "").toLowerCase();
     return [
         pagePaths.trips,
+        pagePaths.matching,
         pagePaths.rooms,
         pagePaths.account,
         pagePaths.profile,

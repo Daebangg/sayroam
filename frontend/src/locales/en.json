@@ -145,7 +145,8 @@
         "profileImageSaved": "Profile picture updated.",
         "profileDetailsSaved": "Profile details saved.",
         "badGateway": "A temporary server error occurred. Please try again shortly.",
-        "socialSignupComplete": "Registration completed."
+        "socialSignupComplete": "Registration completed.",
+        "emailSent": "Verification email requested. Please check your inbox."
     },
     "trips": {
         "heading": "My trips",
@@ -870,5 +871,31 @@
         "subtitle": "Recruit travel mates and manage your posts.",
         "mineAction": "View my posted trips",
         "mineDescription": "View and manage your recruitment posts."
+    },
+    "profileSetup": {
+        "styleTitle": "Travel style",
+        "styleHint": "These preferences will be preselected for your next recruitment. Existing recruitments stay unchanged.",
+        "styleError": "Could not load or save your travel style. Please try again.",
+        "styleSaved": "Travel style saved.",
+        "retry": "Try again",
+        "welcome": "Welcome, {{nickname}}",
+        "genderQuestion": "What is your gender?",
+        "birthdayQuestion": "When is your birthday?",
+        "intro": "Set up your profile. You can change this information in settings anytime.",
+        "finish": "Save and continue",
+        "later": "Set up later",
+        "save": "Save",
+        "leaveTitle": "Finish setting up later?",
+        "leaveHint": "You can set any missing information in your profile anytime.",
+        "leave": "Continue",
+        "birthdayPlaceholder": "Choose your date of birth",
+        "age": "{{count}} years old",
+        "greetingTitle": "Welcome aboard!",
+        "greetingDescription": "Plan your next trip with SayRoam\nand meet travel mates along the way.",
+        "greetingStart": "Start exploring",
+        "editHint": "Choose your profile travel preferences. Existing recruitments stay unchanged.",
+        "backToProfile": "Back to profile",
+        "editStyle": "Edit travel style",
+        "saveStyle": "Save travel style"
     }
 }

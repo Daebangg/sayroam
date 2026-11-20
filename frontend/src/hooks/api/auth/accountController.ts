@@ -82,7 +82,7 @@ export function createAccountController(
             if (completing && revision === getAuthRevision()) {
                 const outcome = accountResultForError(error);
                 if (outcome) {
-                    onResult({ purpose, outcome });
+                    await onResult({ purpose, outcome });
                     return false;
                 }
             }
@@ -94,6 +94,7 @@ export function createAccountController(
                     : 0;
             const reset =
                 completing ||
+                sending ||
                 ["expired", "conflict", "uncertain"].includes(message) ||
                 (error instanceof ApiError &&
                     error.problem?.code === "EMAIL_CODE_ATTEMPTS_EXCEEDED");
@@ -128,7 +129,6 @@ export function createAccountController(
         requestCode(): Promise<boolean> {
             if (pending || Date.now() < state.resendAt) return Promise.resolve(false);
             verification = null;
-            update({ stage: "request", expiresAt: 0 });
             return execute(
                 async (signal) => {
                     const revision = getAuthRevision();
@@ -201,7 +201,7 @@ export function createAccountController(
                         signal,
                     });
                 else await api.call("delete", { body: { accountProof }, signal });
-                onResult({ purpose, outcome: "complete" });
+                await onResult({ purpose, outcome: "complete" });
             }, true);
         },
     };

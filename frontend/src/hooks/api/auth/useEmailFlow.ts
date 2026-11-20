@@ -39,6 +39,7 @@ export type EmailFlow = {
     busy: boolean;
     sending: boolean;
     message: EmailFlowMessage | null;
+    messageTarget: "email" | "verification" | "completion";
     sent: boolean;
     verified: boolean;
     expiresIn: number;
@@ -52,11 +53,13 @@ export type EmailFlow = {
 export function useEmailFlow(mode: EmailFlowMode): EmailFlow {
     const [verification, setVerification] = useState<Verification | null>(null);
     const current = useRef<Verification | null>(null);
+    const generation = useRef(0);
     const [resendAt, setResendAt] = useState(0);
     const [now, setNow] = useState(Date.now);
     const [busy, setBusy] = useState(false);
     const [sending, setSending] = useState(false);
     const [message, setMessage] = useState<FlowMessage | null>(null);
+    const [messageTarget, setMessageTarget] = useState<EmailFlow["messageTarget"]>("completion");
     const pending = useRef<AbortController | null>(null);
 
     function remember(value: Verification | null): void {
@@ -66,16 +69,17 @@ export function useEmailFlow(mode: EmailFlowMode): EmailFlow {
 
     useEffect(
         () => () => {
+            generation.current++;
             pending.current?.abort();
             pending.current = null;
         },
         [],
     );
     useEffect(() => {
-        if (!verification && !resendAt) return;
+        if (busy || (!verification && !resendAt)) return;
         const timer = window.setInterval(() => setNow(Date.now()), 1000);
         return () => window.clearInterval(timer);
-    }, [verification, resendAt]);
+    }, [verification, resendAt, busy]);
 
     async function execute(
         action: (signal: AbortSignal) => Promise<void>,
@@ -88,6 +92,7 @@ export function useEmailFlow(mode: EmailFlowMode): EmailFlow {
         setBusy(true);
         setSending(sending);
         setMessage(null);
+        setMessageTarget(sending ? "email" : completing ? "completion" : "verification");
         try {
             await action(controller.signal);
             return !controller.signal.aborted;
@@ -108,6 +113,7 @@ export function useEmailFlow(mode: EmailFlowMode): EmailFlow {
     }
 
     function invalidate(): void {
+        generation.current++;
         pending.current?.abort();
         pending.current = null;
         setBusy(false);
@@ -117,16 +123,18 @@ export function useEmailFlow(mode: EmailFlowMode): EmailFlow {
         setResendAt(0);
     }
 
-    function requestCode(email: string): Promise<boolean> {
+    async function requestCode(email: string): Promise<boolean> {
         if (pending.current) return Promise.resolve(false);
         if (!isValidEmail(email)) {
+            setMessageTarget("email");
             setMessage("invalidEmail");
             return Promise.resolve(false);
         }
         if (Date.now() < resendAt) return Promise.resolve(false);
         // 재발송 결과가 불확실하면 이전 코드·증명을 재사용하지 않는다.
-        remember(null);
-        return execute(
+        const requestGeneration = ++generation.current;
+        current.current = null;
+        const success = await execute(
             async (signal) => {
                 const issued =
                     mode === "signup"
@@ -143,11 +151,14 @@ export function useEmailFlow(mode: EmailFlowMode): EmailFlow {
             false,
             true,
         );
+        if (!success && requestGeneration === generation.current) remember(null);
+        return success;
     }
 
     function verifyCode(code: string): Promise<boolean> {
         const saved = current.current;
         if (!saved || Date.now() >= saved.expiresAt) {
+            setMessageTarget("verification");
             setMessage("expired");
             return Promise.resolve(false);
         }
@@ -170,9 +181,10 @@ export function useEmailFlow(mode: EmailFlowMode): EmailFlow {
         });
     }
 
-    function complete(input: { nickname: string; password: string }): Promise<boolean> {
+    async function complete(input: { nickname: string; password: string }): Promise<boolean> {
         const saved = current.current;
         if (!saved?.proof || Date.now() >= (saved.proofExpiresAt ?? 0)) {
+            setMessageTarget("verification");
             setMessage("expired");
             return Promise.resolve(false);
         }
@@ -186,8 +198,9 @@ export function useEmailFlow(mode: EmailFlowMode): EmailFlow {
         }
         if (pending.current) return Promise.resolve(false);
         const proof = saved.proof;
-        remember(null);
-        return execute(async (signal) => {
+        const requestGeneration = ++generation.current;
+        current.current = null;
+        const success = await execute(async (signal) => {
             if (mode === "signup")
                 await api.call("signup", {
                     body: {
@@ -204,12 +217,15 @@ export function useEmailFlow(mode: EmailFlowMode): EmailFlow {
                     { signal },
                 );
         }, true);
+        if (!success && requestGeneration === generation.current) remember(null);
+        return success;
     }
 
     return {
         busy,
         sending,
         message,
+        messageTarget,
         sent: !!verification,
         verified: !!verification?.proof && now < (verification.proofExpiresAt ?? 0),
         expiresIn: Math.max(
