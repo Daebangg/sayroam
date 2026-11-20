@@ -19,6 +19,7 @@ public class Notification extends BaseTimeEntity {
 
     private static final int MAX_EVENT_KEY_LENGTH = 150;
     private static final int MAX_CONTENT_LENGTH = 255;
+    private static final String LEGACY_EVENT_KEY_PREFIX = "legacy:notification:";
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -148,6 +149,7 @@ public class Notification extends BaseTimeEntity {
         if (eventKey == null
                 || eventKey.isBlank()
                 || !eventKey.equals(eventKey.strip())
+                || eventKey.regionMatches(true, 0, LEGACY_EVENT_KEY_PREFIX, 0, LEGACY_EVENT_KEY_PREFIX.length())
                 || eventKey.codePointCount(0, eventKey.length()) > MAX_EVENT_KEY_LENGTH) {
             throw new BusinessException(
                     NotificationErrorCode.NOTIFICATION_EVENT_KEY_INVALID

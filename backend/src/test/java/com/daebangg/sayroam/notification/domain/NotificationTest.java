@@ -121,6 +121,16 @@ class NotificationTest {
     }
 
     @ParameterizedTest
+    @ValueSource(strings = {"legacy:notification:", "legacy:notification:100", "LEGACY:NOTIFICATION:100"})
+    void 기존_데이터용_예약_접두사로_새_알림을_생성할_수_없다(String eventKey) {
+        assertThatThrownBy(() -> Notification.create(RECEIVER_ID, NotificationType.TRIP_INVITE,
+                NotificationTargetType.TRIP, TARGET_ID, eventKey, CONTENT))
+                .isInstanceOfSatisfying(BusinessException.class,
+                        exception -> assertThat(exception.getErrorCode())
+                                .isEqualTo(NotificationErrorCode.NOTIFICATION_EVENT_KEY_INVALID));
+    }
+
+    @ParameterizedTest
     @MethodSource("invalidTargets")
     void 연결_대상의_짝이_맞지_않거나_ID가_양수가_아니면_생성을_거부한다(
             NotificationTargetType targetType, Long targetId) {

@@ -32,7 +32,7 @@ public enum NotificationErrorCode implements ErrorCode {
     NOTIFICATION_EVENT_KEY_INVALID(
             ErrorType.INVALID,
             "NOTIFICATION_EVENT_KEY_INVALID",
-            "Event key must not be blank, must have no leading or trailing whitespace, and must be 150 characters or less."
+            "Event key must not be blank, must have no leading or trailing whitespace, must be 150 characters or less, and must not use the reserved legacy:notification: prefix."
     ),
     NOTIFICATION_TARGET_INVALID(
             ErrorType.INVALID,
