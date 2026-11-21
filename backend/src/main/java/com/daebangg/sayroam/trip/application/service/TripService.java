@@ -7,6 +7,7 @@ import com.daebangg.sayroam.place.domain.Coordinate;
 import com.daebangg.sayroam.room.application.service.RoomService;
 import com.daebangg.sayroam.trip.application.dto.AddTripCustomPlaceCommand;
 import com.daebangg.sayroam.trip.application.dto.AddTripPlaceCommand;
+import com.daebangg.sayroam.trip.application.dto.TripPlaceResult;
 import com.daebangg.sayroam.trip.application.dto.TripSummaryResult;
 import com.daebangg.sayroam.trip.application.port.out.TripQueryRepository;
 import com.daebangg.sayroam.trip.domain.Trip;
@@ -81,5 +82,11 @@ public class TripService {
     public TripSummaryResult find(Long userId, Long tripId) {
         return tripQueryRepository.findReadable(userId, tripId)
                 .orElseThrow(() -> new BusinessException(TripErrorCode.TRIP_NOT_FOUND));
+    }
+
+    public List<TripPlaceResult> findPlaces(Long userId, Long tripId) {
+        tripQueryRepository.findReadable(userId, tripId)
+                .orElseThrow(() -> new BusinessException(TripErrorCode.TRIP_NOT_FOUND));
+        return tripQueryRepository.findPlaces(tripId);
     }
 }

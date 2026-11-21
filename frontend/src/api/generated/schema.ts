@@ -764,7 +764,11 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /**
+         * 여행에 담긴 장소 목록 조회
+         * @description 여행에 담긴 장소를 한 번에 조회합니다. 장소 검색으로 추가한 장소(TOUR)와 지도에서 직접 추가한 장소(CUSTOM)를 함께 돌려주며, 일차 순서대로, 일차 미정 장소는 마지막에, 같은 일차 안에서는 추가한 순서로 정렬합니다. 저장된 정보로 응답하고 TourAPI를 다시 호출하지 않습니다. 채팅방이 없는 여행은 만든 회원이, 채팅방이 연결된 여행은 그 방에 참여 중인 멤버가 볼 수 있습니다.
+         */
+        get: operations["listTripPlaces"];
         put?: never;
         /**
          * 여행에 장소 추가
@@ -1756,6 +1760,74 @@ export interface components {
         TripListResponse: {
             /** @description 볼 수 있는 여행. 나중에 만든 여행부터 정렬 */
             trips: components["schemas"]["TripSummaryResponse"][];
+        };
+        TripPlaceListResponse: {
+            /** @description 여행에 담긴 장소. 일차 순서대로, 일차 미정은 마지막, 같은 일차 안에서는 추가한 순서 */
+            places: components["schemas"]["TripPlaceResponse"][];
+        };
+        TripPlaceResponse: {
+            /**
+             * Format: int64
+             * @description 장소를 추가한 회원 ID
+             * @example 1
+             */
+            addedById: number;
+            /**
+             * @description 주소. 직접 추가한 장소이거나 출처에 주소가 없으면 null
+             * @example 부산광역시 해운대구 송정해변로 62
+             */
+            address: string | null;
+            /**
+             * @description 장소 분류. 직접 추가한 장소는 null
+             * @example ATTRACTION
+             * @enum {string|null}
+             */
+            category:
+                | "ATTRACTION"
+                | "CULTURE"
+                | "ACTIVITY"
+                | "LODGING"
+                | "SHOPPING"
+                | "RESTAURANT"
+                | null;
+            /**
+             * Format: int32
+             * @description 일차. 일차 미정이면 null
+             * @example 1
+             */
+            day: number | null;
+            /**
+             * @description 위도(WGS84)
+             * @example 35.1786
+             */
+            latitude: number;
+            /**
+             * @description 경도(WGS84)
+             * @example 129.1997
+             */
+            longitude: number;
+            /**
+             * @description 메모. 없으면 null
+             * @example 오전에 가기
+             */
+            memo: string | null;
+            /**
+             * @description 장소 이름
+             * @example 송정해수욕장
+             */
+            name: string;
+            /**
+             * @description 추가한 방법. TOUR는 장소 검색, CUSTOM은 지도에서 직접 추가
+             * @example TOUR
+             * @enum {string}
+             */
+            source: "TOUR" | "CUSTOM";
+            /**
+             * Format: int64
+             * @description 여행 장소 ID
+             * @example 31
+             */
+            tripPlaceId: number;
         };
         TripSummaryResponse: {
             /**
@@ -3742,6 +3814,36 @@ export interface operations {
             503: components["responses"]["AuthenticationUnavailable"];
         };
     };
+    listTripPlaces: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /**
+                 * @description 여행 ID
+                 * @example 12
+                 */
+                tripId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 여행 장소 목록. 담긴 장소가 없으면 빈 배열 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TripPlaceListResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["TripNotFound"];
+            500: components["responses"]["InternalServerError"];
+            503: components["responses"]["AuthenticationUnavailable"];
+        };
+    };
     addTripPlace: {
         parameters: {
             query?: never;
@@ -4170,6 +4272,13 @@ export const apiRoutes = {
         method: "get",
         path: "/api/auth/social/providers",
         auth: "none",
+        csrf: false,
+        responses: { "200": true },
+    },
+    listTripPlaces: {
+        method: "get",
+        path: "/api/trips/{tripId}/places",
+        auth: "required",
         csrf: false,
         responses: { "200": true },
     },

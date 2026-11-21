@@ -20,6 +20,7 @@ import com.daebangg.sayroam.room.infrastructure.persistence.RoomMemberJpaReposit
 import com.daebangg.sayroam.support.DatabaseIntegrationTest;
 import com.daebangg.sayroam.trip.application.dto.AddTripCustomPlaceCommand;
 import com.daebangg.sayroam.trip.application.dto.AddTripPlaceCommand;
+import com.daebangg.sayroam.trip.application.dto.TripPlaceResult;
 import com.daebangg.sayroam.trip.application.dto.TripSummaryResult;
 import com.daebangg.sayroam.trip.application.service.TripService;
 import com.daebangg.sayroam.trip.domain.Trip;
@@ -52,8 +53,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.clearInvocations;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 
 class TripServiceTest extends DatabaseIntegrationTest {
     private static final LocalDate START_DATE = LocalDate.of(2026, 12, 1);
@@ -655,6 +658,199 @@ class TripServiceTest extends DatabaseIntegrationTest {
                         e -> assertThat(e.getErrorCode()).isEqualTo(TripErrorCode.TRIP_PLACE_MEMO_TOO_LONG));
         assertThat(placeJpaRepository.count()).isZero();
         assertThat(tripPlaceJpaRepository.count()).isZero();
+    }
+
+    @Test
+    void 담긴_장소가_없으면_빈_목록을_돌려준다() {
+        // given
+        Long userId = saveUser();
+        Long tripId = tripService.create(userId, START_DATE, END_DATE);
+
+        // when
+        List<TripPlaceResult> places = tripService.findPlaces(userId, tripId);
+
+        // then
+        assertThat(places).isEmpty();
+    }
+
+    @Test
+    void 없는_여행이면_장소_목록_조회를_TRIP_NOT_FOUND로_거부한다() {
+        // given
+        Long userId = saveUser();
+
+        // when & then
+        assertThatThrownBy(() -> tripService.findPlaces(userId, MISSING_TRIP_ID))
+                .isInstanceOfSatisfying(BusinessException.class,
+                        e -> assertThat(e.getErrorCode()).isEqualTo(TripErrorCode.TRIP_NOT_FOUND));
+    }
+
+    @Test
+    void 다른_회원의_여행이면_장소_목록_조회를_TRIP_NOT_FOUND로_거부한다() {
+        // given
+        Long ownerId = saveUser();
+        Long otherId = saveUser("다른 회원");
+        Long tripId = tripService.create(ownerId, START_DATE, END_DATE);
+
+        // when & then
+        assertThatThrownBy(() -> tripService.findPlaces(otherId, tripId))
+                .isInstanceOfSatisfying(BusinessException.class,
+                        e -> assertThat(e.getErrorCode()).isEqualTo(TripErrorCode.TRIP_NOT_FOUND));
+    }
+
+    @Test
+    void 장소마다_이름_좌표_일차_메모_추가한_회원을_돌려준다() {
+        // given
+        Long userId = saveUser();
+        Long tripId = tripService.create(userId, START_DATE, END_DATE);
+        Long tripPlaceId = tripService.addCustomPlace(userId, tripId, customCommand(2, "체크인 4시"));
+
+        // when
+        List<TripPlaceResult> places = tripService.findPlaces(userId, tripId);
+
+        // then
+        assertThat(places).singleElement()
+                .extracting(TripPlaceResult::tripPlaceId, TripPlaceResult::name, TripPlaceResult::latitude,
+                        TripPlaceResult::longitude, TripPlaceResult::day, TripPlaceResult::memo,
+                        TripPlaceResult::addedById)
+                .containsExactly(tripPlaceId, "숙소", new BigDecimal("33.4996213"), new BigDecimal("126.5311884"),
+                        2, "체크인 4시", userId);
+    }
+
+    @Test
+    void 검색으로_추가한_장소는_출처를_TOUR로_분류와_주소를_함께_돌려준다() {
+        // given
+        Long userId = saveUser();
+        Long tripId = tripService.create(userId, START_DATE, END_DATE);
+        givenTourPlace();
+        tripService.addPlace(userId, tripId, command(1, null));
+
+        // when
+        List<TripPlaceResult> places = tripService.findPlaces(userId, tripId);
+
+        // then
+        assertThat(places).singleElement()
+                .extracting(TripPlaceResult::source, TripPlaceResult::name, TripPlaceResult::category,
+                        TripPlaceResult::address)
+                .containsExactly(PlaceSource.TOUR, "송정해수욕장", PlaceCategory.ATTRACTION, "부산광역시 해운대구 송정해변로 62");
+    }
+
+    @Test
+    void 직접_추가한_장소는_출처를_CUSTOM으로_분류와_주소_없이_돌려준다() {
+        // given
+        Long userId = saveUser();
+        Long tripId = tripService.create(userId, START_DATE, END_DATE);
+        tripService.addCustomPlace(userId, tripId, customCommand(null, null));
+
+        // when
+        List<TripPlaceResult> places = tripService.findPlaces(userId, tripId);
+
+        // then
+        assertThat(places).singleElement()
+                .extracting(TripPlaceResult::source, TripPlaceResult::category, TripPlaceResult::address)
+                .containsExactly(PlaceSource.CUSTOM, null, null);
+    }
+
+    @Test
+    void 담긴_장소를_일차_순서대로_돌려주고_일차_미정은_마지막에_둔다() {
+        // given
+        Long userId = saveUser();
+        Long tripId = tripService.create(userId, START_DATE, END_DATE);
+        tripService.addCustomPlace(userId, tripId, customCommand(null, "미정"));
+        tripService.addCustomPlace(userId, tripId, customCommand(3, "3일차"));
+        tripService.addCustomPlace(userId, tripId, customCommand(1, "1일차"));
+
+        // when
+        List<TripPlaceResult> places = tripService.findPlaces(userId, tripId);
+
+        // then
+        assertThat(places).extracting(TripPlaceResult::memo)
+                .containsExactly("1일차", "3일차", "미정");
+    }
+
+    @Test
+    void 같은_일차의_장소는_추가한_순서대로_돌려준다() {
+        // given
+        Long userId = saveUser();
+        Long tripId = tripService.create(userId, START_DATE, END_DATE);
+        tripService.addCustomPlace(userId, tripId, customCommand(2, "처음"));
+        tripService.addCustomPlace(userId, tripId, customCommand(2, "두 번째"));
+        tripService.addCustomPlace(userId, tripId, customCommand(2, "세 번째"));
+        tripService.addCustomPlace(userId, tripId, customCommand(null, "미정 처음"));
+        tripService.addCustomPlace(userId, tripId, customCommand(null, "미정 두 번째"));
+
+        // when
+        List<TripPlaceResult> places = tripService.findPlaces(userId, tripId);
+
+        // then
+        assertThat(places).extracting(TripPlaceResult::memo)
+                .containsExactly("처음", "두 번째", "세 번째", "미정 처음", "미정 두 번째");
+    }
+
+    @Test
+    void 다른_여행에_담긴_장소는_포함하지_않는다() {
+        // given
+        Long userId = saveUser();
+        Long tripId = tripService.create(userId, START_DATE, END_DATE);
+        Long otherTripId = tripService.create(userId, START_DATE, END_DATE);
+        tripService.addCustomPlace(userId, tripId, customCommand(1, "이 여행"));
+        tripService.addCustomPlace(userId, otherTripId, customCommand(1, "다른 여행"));
+
+        // when
+        List<TripPlaceResult> places = tripService.findPlaces(userId, tripId);
+
+        // then
+        assertThat(places).extracting(TripPlaceResult::memo).containsExactly("이 여행");
+    }
+
+    @Test
+    void 채팅방에_참여_중인_멤버는_장소_목록을_조회할_수_있다() {
+        // given
+        Long ownerId = saveUser();
+        Long memberId = saveUser("멤버");
+        Long tripId = tripService.create(ownerId, START_DATE, END_DATE);
+        Long roomId = tripService.createRoom(ownerId, tripId, ROOM_NAME);
+        joinRoom(roomId, ownerId, memberId);
+        tripService.addCustomPlace(ownerId, tripId, customCommand(1, null));
+
+        // when
+        List<TripPlaceResult> places = tripService.findPlaces(memberId, tripId);
+
+        // then
+        assertThat(places).singleElement()
+                .extracting(TripPlaceResult::addedById)
+                .isEqualTo(ownerId);
+    }
+
+    @Test
+    void 채팅방을_나간_멤버면_장소_목록_조회를_TRIP_NOT_FOUND로_거부한다() {
+        // given
+        Long ownerId = saveUser();
+        Long memberId = saveUser("멤버");
+        Long tripId = tripService.create(ownerId, START_DATE, END_DATE);
+        Long roomId = tripService.createRoom(ownerId, tripId, ROOM_NAME);
+        joinRoom(roomId, ownerId, memberId);
+        roomService.leave(roomId, memberId);
+
+        // when & then
+        assertThatThrownBy(() -> tripService.findPlaces(memberId, tripId))
+                .isInstanceOfSatisfying(BusinessException.class,
+                        e -> assertThat(e.getErrorCode()).isEqualTo(TripErrorCode.TRIP_NOT_FOUND));
+    }
+
+    @Test
+    void 장소_목록을_조회할_때_TourAPI를_호출하지_않는다() {
+        // given
+        Long userId = saveUser();
+        Long tripId = tripService.create(userId, START_DATE, END_DATE);
+        givenTourPlace();
+        tripService.addPlace(userId, tripId, command(1, null));
+        clearInvocations(placeCatalog);
+
+        // when
+        tripService.findPlaces(userId, tripId);
+
+        // then
+        verifyNoInteractions(placeCatalog);
     }
 
     private Long saveUser() {

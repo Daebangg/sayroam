@@ -1,6 +1,7 @@
 package com.daebangg.sayroam.trip.presentation.controller;
 
 import com.daebangg.sayroam.auth.domain.AuthenticatedAccount;
+import com.daebangg.sayroam.trip.application.dto.TripPlaceResult;
 import com.daebangg.sayroam.trip.application.dto.TripSummaryResult;
 import com.daebangg.sayroam.trip.application.service.TripService;
 import com.daebangg.sayroam.trip.presentation.api.TripApi;
@@ -12,6 +13,7 @@ import com.daebangg.sayroam.trip.presentation.dto.CreateTripResponse;
 import com.daebangg.sayroam.trip.presentation.dto.CreateTripRoomRequest;
 import com.daebangg.sayroam.trip.presentation.dto.CreateTripRoomResponse;
 import com.daebangg.sayroam.trip.presentation.dto.TripListResponse;
+import com.daebangg.sayroam.trip.presentation.dto.TripPlaceListResponse;
 import com.daebangg.sayroam.trip.presentation.dto.TripSummaryResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -84,5 +86,13 @@ public class TripController implements TripApi {
                                                     @PathVariable Long tripId) {
         TripSummaryResult result = tripService.find(account.userId(), tripId);
         return ResponseEntity.ok(TripSummaryResponse.from(result));
+    }
+
+    @Override
+    @GetMapping(value = "/api/trips/{tripId}/places", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<TripPlaceListResponse> findPlaces(@AuthenticationPrincipal AuthenticatedAccount account,
+                                                            @PathVariable Long tripId) {
+        List<TripPlaceResult> results = tripService.findPlaces(account.userId(), tripId);
+        return ResponseEntity.ok(TripPlaceListResponse.from(results));
     }
 }
