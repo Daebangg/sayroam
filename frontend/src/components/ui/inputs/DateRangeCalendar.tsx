@@ -18,6 +18,8 @@ type DateRangeCalendarProps = {
     endDate: string;
     onChange: (startDate: string, endDate: string) => void;
     disabled?: boolean;
+    /** 선택 결과를 트리거 등 바깥에서 이미 보여 줄 때 아래 출발일·종료일 요약을 숨긴다. */
+    summary?: boolean;
 };
 
 export function DateRangeCalendar({
@@ -26,6 +28,7 @@ export function DateRangeCalendar({
     endDate,
     onChange,
     disabled = false,
+    summary = true,
 }: DateRangeCalendarProps) {
     const { t, i18n } = useTranslation();
     const locale = i18n.resolvedLanguage === "en" ? "en-US" : "ko-KR";
@@ -260,29 +263,31 @@ export function DateRangeCalendar({
                     );
                 })}
             </div>
-            <div className="ui-range-calendar__summary" aria-live="polite">
-                <span className={`ui-range-calendar__selection${startDate ? "" : " is-empty"}`}>
-                    {startDate ? (
-                        <>
-                            {t("controls.dateRange.start")}{" "}
-                            <strong>{shortFormat.format(parseCalendarDate(startDate))}</strong>
-                        </>
-                    ) : (
-                        t("controls.dateRange.selectStart")
-                    )}
-                </span>
-                <Icon name="arrow" variant="outline" />
-                <span className={`ui-range-calendar__selection${endDate ? "" : " is-empty"}`}>
-                    {endDate ? (
-                        <>
-                            {t("controls.dateRange.end")}{" "}
-                            <strong>{shortFormat.format(parseCalendarDate(endDate))}</strong>
-                        </>
-                    ) : (
-                        t("controls.dateRange.selectEnd")
-                    )}
-                </span>
-            </div>
+            {summary && (
+                <div className="ui-range-calendar__summary" aria-live="polite">
+                    <span className={`ui-range-calendar__selection${startDate ? "" : " is-empty"}`}>
+                        {startDate ? (
+                            <>
+                                {t("controls.dateRange.start")}{" "}
+                                <strong>{shortFormat.format(parseCalendarDate(startDate))}</strong>
+                            </>
+                        ) : (
+                            t("controls.dateRange.selectStart")
+                        )}
+                    </span>
+                    <Icon name="arrow" variant="outline" />
+                    <span className={`ui-range-calendar__selection${endDate ? "" : " is-empty"}`}>
+                        {endDate ? (
+                            <>
+                                {t("controls.dateRange.end")}{" "}
+                                <strong>{shortFormat.format(parseCalendarDate(endDate))}</strong>
+                            </>
+                        ) : (
+                            t("controls.dateRange.selectEnd")
+                        )}
+                    </span>
+                </div>
+            )}
         </div>
     );
 }

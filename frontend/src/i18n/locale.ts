@@ -17,6 +17,15 @@ export function formatDateRange(language: string, start: string, end: string): s
     }).formatRange(new Date(start), new Date(end));
 }
 
+/** 짧은 일정 표시용. 연도를 빼고 월·일만 보여 준다. */
+export function formatMonthDay(language: string, value: string): string {
+    return new Intl.DateTimeFormat(locale(language), {
+        month: "short",
+        day: "numeric",
+        timeZone: "UTC",
+    }).format(new Date(value));
+}
+
 export function formatNumber(language: string, value: number): string {
     return new Intl.NumberFormat(locale(language)).format(value);
 }

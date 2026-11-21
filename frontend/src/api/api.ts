@@ -12,6 +12,7 @@ import {
     validateNotificationList,
     validateNotificationSummary,
 } from "./notifications/notificationResponse.ts";
+import { validateCreatedTrip, validateTripList } from "./trips/tripResponse.ts";
 import { validateCurrentUser, validateLoginMethods } from "./users/userResponse.ts";
 import {
     validateIssued,
@@ -31,6 +32,8 @@ export const api = createApiRouter(apiRoutes, {
     extensions: {
         listMyNotifications: { parseResponse: validateNotificationList },
         getMyNotificationSummary: { parseResponse: validateNotificationSummary },
+        listMyTrips: { parseResponse: validateTripList },
+        createTrip: { parseResponse: validateCreatedTrip },
         listSocialProviders: { parseResponse: validateProviders },
         startSocialLogin: { cookieAction: "oauth", parseResponse: validateAuthorization },
         exchangeSocialLoginResult: {
