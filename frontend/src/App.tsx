@@ -1,4 +1,5 @@
 import { AccountActionFlow } from "@/pages/auth/AccountActionFlow";
+import { NotificationCenter } from "@/pages/notifications/NotificationCenter";
 import { ProfileSetupGate } from "@/pages/onboarding/ProfileSetupGate";
 import { useInputValidation } from "@/hooks/useInputValidation";
 import { useServerErrors } from "@/hooks/useServerErrors";
@@ -55,6 +56,7 @@ export default function App() {
     const [accountResult, setAccountResult] = useState<AccountResult | null>(null);
     const toastSequence = useRef(0);
     useServerErrors((path) => {
+        if (path?.startsWith("/api/notifications")) return;
         if (
             [
                 "/api/auth/email-verifications",
@@ -224,6 +226,14 @@ export default function App() {
         knownPage && auth.status === "unavailable" && auth.message !== "logoutUncertain";
     return (
         <AppShell
+            notificationInbox={
+                auth.user && !mockupScreen ? (
+                    <NotificationCenter
+                        key={auth.user.userId}
+                        enabled={auth.status !== "signingOut"}
+                    />
+                ) : null
+            }
             setupActive={profileSetupActive}
             mockupScreen={mockupScreen}
             isHome={location.pathname === "/"}

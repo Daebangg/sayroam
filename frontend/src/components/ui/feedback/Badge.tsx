@@ -15,11 +15,19 @@ export function Badge({ label, tone = "brand", icon }: BadgeProps) {
     );
 }
 
-export function NotificationBadge({ count, label }: { count: number; label: string }) {
+export function NotificationBadge({
+    count,
+    label,
+    maxCount,
+}: {
+    count: number;
+    label: string;
+    maxCount?: number;
+}) {
     if (count <= 0) return null;
     return (
         <span className="ui-notification-badge" aria-label={label}>
-            {count}
+            {maxCount !== undefined && count > maxCount ? `${maxCount}+` : count}
         </span>
     );
 }

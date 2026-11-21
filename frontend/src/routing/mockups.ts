@@ -5,6 +5,7 @@ export const mockupScreens = [
     "trips",
     "matching",
     "rooms",
+    "notifications",
 ] as const;
 export type MockupScreen = (typeof mockupScreens)[number];
 

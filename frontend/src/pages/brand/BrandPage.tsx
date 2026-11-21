@@ -1,3 +1,5 @@
+import { NotificationInbox } from "@/components/features/notifications/NotificationInbox";
+import { NotificationInboxPreview } from "@/components/features/notifications/NotificationInboxPreview";
 import { TravelStyleChoices } from "@/components/features/matching/TravelStyleChoices";
 import { useOutletContext } from "react-router";
 import type { PageContext } from "@/routing/context";
@@ -87,6 +89,8 @@ const icons = [
     "rooms",
     "search",
     "bell",
+    "conversation",
+    "compass",
     "profile",
     "plan",
     "pin",
@@ -324,6 +328,21 @@ export function BrandPage() {
                     />
                 </div>
             </section>
+            <section className="brand-section" aria-labelledby="brand-inbox-heading">
+                <h2 id="brand-inbox-heading" className="section-label">
+                    {t("brand.inbox.title")}
+                </h2>
+                <div className="brand-inbox-examples">
+                    <div>
+                        <h3 className="settings-section-title">{t("brand.inbox.list")}</h3>
+                        <NotificationInboxPreview inline />
+                    </div>
+                    <div>
+                        <h3 className="settings-section-title">{t("brand.inbox.empty")}</h3>
+                        <NotificationInbox items={[]} inline />
+                    </div>
+                </div>
+            </section>
             <section className="brand-section" aria-labelledby="brand-components-heading">
                 <h2 id="brand-components-heading" className="section-label">
                     {t("brand.components")}
@@ -369,6 +388,11 @@ export function BrandPage() {
                             <Badge label={t("brand.looking")} />
                             <Badge tone="success" icon="check" label={t("mockup.complete")} />
                             <NotificationBadge count={2} label={t("mockup.unread", { count: 2 })} />
+                            <NotificationBadge
+                                count={128}
+                                maxCount={99}
+                                label={t("mockup.unread", { count: 128 })}
+                            />
                         </div>
                     </Card>
                     <Card className="component-example">
