@@ -1670,7 +1670,7 @@ p {
     color: var(--secondary-text);
 }
 .travel-search .ui-input {
-    min-height: 28px;
+    min-height: 24px;
     width: 100%;
     padding: 0;
     border: 0;
@@ -1686,6 +1686,14 @@ p {
 .travel-search__submit {
     min-width: 58px;
     padding: 10px 18px;
+    white-space: nowrap;
+}
+.travel-search-error {
+    width: min(820px, 88%);
+    margin: -12px auto 20px;
+    color: var(--danger);
+    font-size: 12px;
+    text-align: center;
 }
 .travel-shortcuts {
     display: grid;
@@ -2085,6 +2093,11 @@ p {
 .trip-grid--desktop {
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 22px;
+}
+.my-trip-list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
 }
 .trip-mobile-list,
 .room-create-mobile {
@@ -3239,72 +3252,55 @@ p {
 /* Compact search composition uses the same custom inputs on desktop and mobile. */
 .travel-search {
     width: min(820px, 88%);
-    grid-template-columns: 1.2fr 1.15fr 128px auto;
+    grid-template-columns: minmax(0, 1.2fr) minmax(0, 1.15fr) auto;
 }
-.travel-search > .ui-date-picker,
-.travel-search > .ui-number-stepper {
+.travel-search > .travel-search__schedule {
     display: grid;
     align-items: initial;
     gap: 2px;
 }
-.travel-search .ui-date-picker__label,
-.travel-search .ui-number-stepper__label {
+.travel-search__label {
     font-size: 10px;
+    color: var(--secondary-text);
 }
-.travel-search .ui-date-picker__trigger {
-    min-height: 30px;
+.travel-search__schedule-trigger {
+    width: 100%;
+    min-width: 0;
+    min-height: 24px;
     padding: 0;
     border: 0;
     background: transparent;
+    box-shadow: none;
     font-size: 12px;
     gap: 7px;
 }
-.travel-search .ui-date-picker__trigger > .icon:first-child {
+.travel-search__schedule-trigger > .icon:first-child {
     width: 20px;
     height: 20px;
 }
-.travel-search .ui-date-picker__chevron {
-    width: 13px;
-    height: 13px;
-}
-.travel-search .ui-number-stepper__control {
-    padding: 0;
-    border: 0;
-    background: transparent;
-}
-.travel-search .ui-number-stepper__input {
-    min-height: 28px;
-    font-size: 12px;
-}
+
 @media (max-width: 700px) {
     .travel-search {
         width: calc(100% - 20px);
-        grid-template-columns: minmax(0, 1fr) 104px 44px;
+        grid-template-columns: minmax(0, 1fr);
         gap: 4px 6px;
         padding: 8px;
         border-radius: 20px;
     }
-    .travel-search > div:first-child {
+    .travel-search > .travel-search__destination {
         grid-column: 1 / -1;
         padding-bottom: 10px;
         border-bottom: 1px solid var(--border);
     }
-    .travel-search > .ui-date-picker,
-    .travel-search > .ui-number-stepper {
-        display: grid;
-        padding: 0;
+    .travel-search > .travel-search__schedule {
         border: 0;
     }
-    .travel-search .ui-date-picker__value {
+    .travel-search__schedule-trigger {
         font-size: 11px;
     }
-    .travel-search .ui-number-stepper__button {
-        width: 26px;
-        height: 28px;
-        flex-basis: 26px;
-    }
     .travel-search__submit {
-        align-self: end;
+        width: 100%;
+        margin-top: 4px;
     }
 }
 
@@ -3317,26 +3313,6 @@ p {
 .ui-number-stepper__input {
     width: 40px;
     flex: 0 1 40px;
-}
-.travel-search .ui-number-stepper__control {
-    gap: 4px;
-}
-.travel-search .ui-number-stepper__label {
-    line-height: 1.3;
-}
-
-.travel-search .ui-number-stepper__button {
-    border-radius: 8px;
-}
-.travel-search .ui-number-stepper__button .icon {
-    width: 12px;
-    height: 12px;
-}
-.travel-search .ui-number-stepper__input {
-    width: 24px;
-    min-width: 24px;
-    flex-basis: 24px;
-    padding: 0;
 }
 
 /* #86 프로필 기본 아트: 부모 app.css에 통합한다. */
@@ -3411,19 +3387,13 @@ p {
     box-shadow: none;
 }
 .travel-search .ui-input:focus,
-.travel-search .ui-date-picker__trigger:focus-visible,
-.travel-search .ui-number-stepper__input:focus-visible {
+.travel-search__schedule-trigger:focus-visible {
     outline: none;
     box-shadow: none;
 }
-.travel-search .ui-date-picker__trigger:hover:not(:disabled),
-.travel-search .ui-date-picker__trigger[aria-expanded="true"] {
+.travel-search__schedule-trigger:hover:not(:disabled) {
     border: 0;
     background: transparent;
-}
-.travel-search .ui-date-picker,
-.travel-search .ui-number-stepper {
-    padding: 5px 14px;
 }
 .travel-search__destination > .icon {
     width: 24px;
@@ -3431,11 +3401,7 @@ p {
     flex-shrink: 0;
 }
 @media (max-width: 700px) {
-    .travel-search .ui-date-picker,
-    .travel-search .ui-number-stepper {
-        padding: 5px;
-    }
-    .travel-search > div:first-child {
+    .travel-search > .travel-search__destination {
         padding: 5px 8px 10px;
     }
     .travel-search > div::after {
@@ -3456,9 +3422,6 @@ p {
 .travel-search > div:has([aria-expanded="true"]) {
     background: color-mix(in srgb, var(--active-bg) 55%, var(--surface));
 }
-.travel-search .ui-number-stepper__button:focus-visible {
-    outline: none;
-}
 :root[data-theme="dark"] .ui-page-state .ui-loading {
     color: #c3d8ff;
 }
@@ -3476,17 +3439,14 @@ p {
     column-gap: 8px;
 }
 .travel-search > .travel-search__destination,
-.travel-search > .ui-date-picker {
+.travel-search > .travel-search__schedule {
     padding: 2px 14px;
 }
 @media (max-width: 700px) {
     .travel-search {
         column-gap: 6px;
     }
-    .travel-search > .travel-search__destination {
-        padding: 0 8px 6px;
-    }
-    .travel-search > .ui-date-picker {
+    .travel-search > .travel-search__schedule {
         padding: 0 4px;
     }
 }
@@ -4857,21 +4817,6 @@ p {
 .settings-page--profile {
     padding-top: 24px;
 }
-.travel-search > .ui-number-stepper {
-    padding: 2px 12px;
-}
-.travel-search .ui-input,
-.travel-search .ui-date-picker__trigger {
-    min-height: 24px;
-}
-.travel-search .ui-number-stepper__control {
-    min-height: 26px;
-}
-.travel-search .ui-number-stepper__button {
-    width: 26px;
-    height: 26px;
-    flex-basis: 26px;
-}
 @media (max-width: 700px) {
     .profile-page-header {
         grid-template-columns: 1fr auto;
@@ -4883,12 +4828,6 @@ p {
     }
     .profile-page-header .settings-back {
         font-size: 11px;
-    }
-    .travel-search > .ui-number-stepper {
-        padding: 0 4px;
-    }
-    .travel-search .ui-number-stepper__control {
-        min-height: 32px;
     }
 }
 
@@ -6015,6 +5954,19 @@ p {
 }
 .matching-filter-popover .ui-range-calendar .ui-calendar__day {
     border-radius: 50%;
+}
+
+/* 시작일·종료일 옆에 이어질 범위 칸이 없으면(줄 끝·줄 처음·달의 끝) 띠 반쪽을 그리지 않아 동그라미만 남긴다. */
+.ui-range-calendar .ui-calendar__grid td.ui-range-calendar__start:last-child,
+.ui-range-calendar
+    .ui-calendar__grid
+    td.ui-range-calendar__start:has(+ td:not(.ui-range-calendar__between, .ui-range-calendar__end)),
+.ui-range-calendar .ui-calendar__grid td.ui-range-calendar__end:first-child,
+.ui-range-calendar
+    .ui-calendar__grid
+    td:not(.ui-range-calendar__between, .ui-range-calendar__start)
+    + td.ui-range-calendar__end {
+    background-image: none;
 }
 
 .ui-range-calendar .ui-calendar__day:hover:not(:disabled) {
@@ -7465,6 +7417,22 @@ p {
 .matching-filter-popover .ui-range-calendar__summary {
     padding-top: 12px;
     margin-top: 12px;
+}
+
+/* 홈 여행 일정: 이전·다음 버튼을 두 달의 바깥 양끝에 두고 월 이름은 가운데 정렬한다. */
+.travel-search__calendar .ui-calendar__header {
+    justify-content: center;
+}
+.travel-search__calendar .ui-calendar__navigation {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+}
+.travel-search__calendar .ui-calendar--embedded:first-child .ui-calendar__navigation {
+    left: 0;
+}
+.travel-search__calendar .ui-calendar--embedded:last-child .ui-calendar__navigation {
+    right: 0;
 }
 
 .matching-filter-popover:has(.ui-range-selector) {

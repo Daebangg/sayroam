@@ -1,23 +1,19 @@
 import { useState } from "react";
 import { useNavigate, useOutletContext } from "react-router";
 import { useTranslation } from "react-i18next";
-import {
-    Button,
-    ButtonLink,
-    Card,
-    DatePicker,
-    Icon,
-    NumberStepper,
-    TextField,
-} from "@/components/ui";
+import { Button, ButtonLink, Card, DateRangeCalendar, Icon, TextField } from "@/components/ui";
 import {
     FeaturedTrip,
     RoomPreviewRow,
     TravelRow,
 } from "@/components/features/travel/TravelPreview";
 import { PreviewDialog } from "@/components/features/travel/PreviewDialog";
+import { MatchingFilterPopover } from "@/components/features/matching/MatchingFilterPopover";
 import { matchingPreviews, roomPreviews, tripPreviews, type PreviewTrip } from "@/data/preview";
+import { formatMonthDay } from "@/i18n/locale";
+import { useCreateTrip } from "@/hooks/api/trips/useCreateTrip";
 import { usePreviewNavigation } from "@/hooks/usePreviewNavigation";
+import { pagePaths } from "@/routing/paths";
 import type { PageContext } from "@/routing/context";
 
 const shortcuts = [
@@ -28,16 +24,33 @@ const shortcuts = [
 ] as const;
 
 export function HomePage() {
-    const { onOpenAuth } = useOutletContext<PageContext>();
-    const { t } = useTranslation();
+    const { member, onOpenAuth } = useOutletContext<PageContext>();
+    const { t, i18n } = useTranslation();
     const navigate = useNavigate();
     const { isPreview, pathFor } = usePreviewNavigation();
     const [featuredIndex, setFeaturedIndex] = useState(0);
     const [saved, setSaved] = useState<string[]>([]);
     const [selected, setSelected] = useState<PreviewTrip | null>(null);
     const [guide, setGuide] = useState(false);
-    const [departure, setDeparture] = useState("");
-    const [travelers, setTravelers] = useState(2);
+    const [schedule, setSchedule] = useState({ start: "", end: "" });
+    const [scheduleMissing, setScheduleMissing] = useState(false);
+    const creation = useCreateTrip();
+    const language = i18n.resolvedLanguage ?? "ko";
+    const nights = schedule.end
+        ? Math.round((Date.parse(schedule.end) - Date.parse(schedule.start)) / 86_400_000)
+        : 0;
+    const scheduleLabel = !schedule.start
+        ? t("controls.datePicker.placeholder")
+        : !schedule.end
+          ? t("mockup.tripScheduleStart", { start: formatMonthDay(language, schedule.start) })
+          : t("mockup.tripScheduleRange", {
+                start: formatMonthDay(language, schedule.start),
+                end: formatMonthDay(language, schedule.end),
+                duration:
+                    nights === 0
+                        ? t("mockup.dayTrip")
+                        : t("mockup.tripNights", { nights, days: nights + 1 }),
+            });
     const featured = tripPreviews[featuredIndex]!;
     const toggle = (id: string): void =>
         setSaved((values) =>
@@ -80,14 +93,21 @@ export function HomePage() {
                 className="travel-search"
                 onSubmit={(event) => {
                     event.preventDefault();
-                    const form = new FormData(event.currentTarget);
-                    const query = String(form.get("destination") ?? "").trim();
-                    void navigate(
-                        pathFor("trips") +
-                            (isPreview ? "&" : "?") +
-                            "q=" +
-                            encodeURIComponent(query),
-                    );
+                    if (isPreview) {
+                        void navigate(pathFor("trips"));
+                        return;
+                    }
+                    if (!member) {
+                        onOpenAuth();
+                        return;
+                    }
+                    if (!schedule.end) {
+                        setScheduleMissing(true);
+                        return;
+                    }
+                    void creation.create(schedule.start, schedule.end).then((tripId) => {
+                        if (tripId !== null) void navigate(pagePaths.trips);
+                    });
                 }}
             >
                 <div className="travel-search__destination">
@@ -99,28 +119,39 @@ export function HomePage() {
                         maxLength={50}
                     />
                 </div>
-                <DatePicker
-                    label={t("mockup.departure")}
-                    name="departure"
-                    value={departure}
-                    onChange={setDeparture}
-                />
-                <NumberStepper
-                    label={t("mockup.travelers")}
-                    name="travelers"
-                    value={travelers}
-                    onChange={setTravelers}
-                    min={1}
-                    max={20}
-                />
-                <Button
-                    type="submit"
-                    className="travel-search__submit"
-                    aria-label={t("common.search")}
-                >
-                    <Icon name="search" variant="outline" />
+                <div className="travel-search__schedule">
+                    <span className="travel-search__label">{t("mockup.tripSchedule")}</span>
+                    <MatchingFilterPopover
+                        className="travel-search__schedule-trigger"
+                        panelClassName="travel-search__calendar"
+                        placement="top"
+                        icon="calendar"
+                        label={scheduleLabel}
+                    >
+                        {(close) => (
+                            <DateRangeCalendar
+                                label={t("mockup.tripSchedule")}
+                                startDate={schedule.start}
+                                endDate={schedule.end}
+                                summary={false}
+                                onChange={(start, end) => {
+                                    setSchedule({ start, end });
+                                    setScheduleMissing(false);
+                                    if (end) close();
+                                }}
+                            />
+                        )}
+                    </MatchingFilterPopover>
+                </div>
+                <Button type="submit" className="travel-search__submit" loading={creation.busy}>
+                    {t("mockup.planTrip")}
                 </Button>
             </form>
+            {(scheduleMissing || creation.failed) && (
+                <p className="travel-search-error" role="alert">
+                    {t(scheduleMissing ? "mockup.scheduleRequired" : "mockup.planTripFailed")}
+                </p>
+            )}
             <nav className="travel-shortcuts" aria-label={t("mockup.shortcuts")}>
                 {shortcuts.map((item) => {
                     const content = (

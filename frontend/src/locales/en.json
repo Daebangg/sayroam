@@ -156,7 +156,16 @@
         "santorini": "Five days in Santorini",
         "paris": "Five days in Paris, together!",
         "bali": "A Bali workation together",
-        "jeju": "A slow weekend in Jeju"
+        "jeju": "A slow weekend in Jeju",
+        "untitled": "Untitled trip",
+        "solo": "Solo trip",
+        "withRoom": "Group trip",
+        "loading": "Loading your trips",
+        "loadErrorTitle": "Couldn't load your trips",
+        "loadErrorDescription": "Check your connection and try again.",
+        "retry": "Try again",
+        "emptyTitle": "No trips yet",
+        "emptyDescription": "Create a trip to organize your schedule and places."
     },
     "matching": {
         "heading": "Find your people",
@@ -510,7 +519,15 @@
             "twilight": "Twilight",
             "night": "Moonlit night",
             "flight": "Taking flight"
-        }
+        },
+        "tripSchedule": "Trip dates",
+        "tripScheduleStart": "{{start}} –",
+        "tripScheduleRange": "{{start}} – {{end}} ({{duration}})",
+        "tripNights": "{{nights}}N {{days}}D",
+        "dayTrip": "Day trip",
+        "planTrip": "Plan trip",
+        "scheduleRequired": "Choose your trip dates first.",
+        "planTripFailed": "Couldn't create your trip. Please try again shortly."
     },
     "controls": {
         "datePicker": {

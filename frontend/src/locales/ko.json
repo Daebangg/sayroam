@@ -156,7 +156,16 @@
         "santorini": "그리스 산토리니 4박 5일",
         "paris": "파리 5일, 함께 가요!",
         "bali": "발리 워케이션 여행 메이트 구해요",
-        "jeju": "제주에서 보내는 느린 주말"
+        "jeju": "제주에서 보내는 느린 주말",
+        "untitled": "제목 없는 여행",
+        "solo": "혼자 가는 여행",
+        "withRoom": "함께 가는 여행",
+        "loading": "내 여행을 불러오는 중이에요",
+        "loadErrorTitle": "내 여행을 불러오지 못했어요",
+        "loadErrorDescription": "연결 상태를 확인한 후 다시 시도해 주세요.",
+        "retry": "다시 불러오기",
+        "emptyTitle": "아직 만든 여행이 없어요",
+        "emptyDescription": "새 여행을 만들고 일정과 장소를 정리해 보세요."
     },
     "matching": {
         "heading": "여행 메이트 찾기",
@@ -510,7 +519,15 @@
             "twilight": "보랏빛 황혼",
             "night": "달빛 밤",
             "flight": "하늘 여행"
-        }
+        },
+        "tripSchedule": "여행 일정",
+        "tripScheduleStart": "{{start}} ~",
+        "tripScheduleRange": "{{start}} ~ {{end}} ({{duration}})",
+        "tripNights": "{{nights}}박 {{days}}일",
+        "dayTrip": "당일치기",
+        "planTrip": "계획 세우기",
+        "scheduleRequired": "여행 일정을 먼저 골라 주세요.",
+        "planTripFailed": "여행 계획을 만들지 못했어요. 잠시 후 다시 시도해 주세요."
     },
     "controls": {
         "datePicker": {
