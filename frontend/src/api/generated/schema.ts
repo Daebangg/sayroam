@@ -708,7 +708,7 @@ export interface paths {
         put?: never;
         /**
          * 여행 생성
-         * @description 로그인한 회원이 방 없이 혼자 가는 여행을 만듭니다. 기간만 입력받으며 제목은 비어 있는 상태로 만들어집니다.
+         * @description 로그인한 회원이 방 없이 혼자 가는 여행을 만듭니다. 기간과 선택값인 여행 이름을 받습니다. 생성 화면은 고른 목적지로 "제주 여행" 같은 기본 이름을 만들어 보냅니다. 이름을 생략하거나 비우면 이름 없이 만들어집니다.
          */
         post: operations["createTrip"];
         delete?: never;
@@ -1092,6 +1092,7 @@ export interface components {
             | "TRIP_PERIOD_REQUIRED"
             | "TRIP_PLACE_MEMO_TOO_LONG"
             | "TRIP_ROOM_ALREADY_LINKED"
+            | "TRIP_TITLE_TOO_LONG"
             | "UNAUTHENTICATED"
             | "USER_BIRTH_DATE_INVALID"
             | "USER_BIRTH_YEAR_INVALID"
@@ -1277,6 +1278,11 @@ export interface components {
              * @example 2026-12-01
              */
             startDate: string;
+            /**
+             * @description 여행 이름. 생성 화면이 고른 목적지로 기본 이름을 만들어 보낸다. 앞뒤 공백을 지운 뒤 최대 30자(이모지도 한 글자). 생략하거나 비어 있으면 이름 없이 저장
+             * @example 제주 여행
+             */
+            title?: string | null;
         };
         CreateTripResponse: {
             /**
@@ -2451,7 +2457,7 @@ export interface components {
                 "application/problem+json": components["schemas"]["ApiProblem"];
             };
         };
-        /** @description 400: INVALID_INPUT(시작일·종료일 누락, errors 포함), TRAVEL_PERIOD_END_BEFORE_START(종료일이 시작일보다 앞섬) 또는 Spring 요청 오류(날짜 형식 오류). 날짜는 yyyy-MM-dd */
+        /** @description 400: INVALID_INPUT(시작일·종료일 누락, errors 포함), TRAVEL_PERIOD_END_BEFORE_START(종료일이 시작일보다 앞섬), TRIP_TITLE_TOO_LONG(여행 이름 30자 초과) 또는 Spring 요청 오류(날짜 형식 오류). 날짜는 yyyy-MM-dd */
         TripBadRequest: {
             headers: {
                 [name: string]: unknown;

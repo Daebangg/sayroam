@@ -76,7 +76,7 @@ class TripControllerTest {
     @Test
     void 로그인한_회원의_기간으로_여행을_만들고_201과_여행_ID를_응답한다() throws Exception {
         // given
-        given(tripService.create(USER_ID, START_DATE, END_DATE)).willReturn(TRIP_ID);
+        given(tripService.create(USER_ID, START_DATE, END_DATE, null)).willReturn(TRIP_ID);
 
         // when & then
         mvc.perform(createTripRequest("""
@@ -84,6 +84,34 @@ class TripControllerTest {
                         """).with(login()))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.tripId").value(TRIP_ID));
+    }
+
+    @Test
+    void 여행_생성_요청의_제목을_서비스에_전달한다() throws Exception {
+        // given
+        given(tripService.create(USER_ID, START_DATE, END_DATE, "제주 여행")).willReturn(TRIP_ID);
+
+        // when & then
+        mvc.perform(createTripRequest("""
+                        {"startDate": "2026-12-01", "endDate": "2026-12-04", "title": "제주 여행"}
+                        """).with(login()))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.tripId").value(TRIP_ID));
+    }
+
+    @Test
+    void 제목이_30자를_넘으면_400과_에러_코드를_응답한다() throws Exception {
+        // given
+        String title = "가".repeat(31);
+        given(tripService.create(USER_ID, START_DATE, END_DATE, title))
+                .willThrow(new BusinessException(TripErrorCode.TRIP_TITLE_TOO_LONG));
+
+        // when & then
+        mvc.perform(createTripRequest("""
+                        {"startDate": "2026-12-01", "endDate": "2026-12-04", "title": "%s"}
+                        """.formatted(title)).with(login()))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("TRIP_TITLE_TOO_LONG"));
     }
 
     @Test
@@ -126,7 +154,7 @@ class TripControllerTest {
     @Test
     void 종료일이_시작일보다_앞서면_400과_에러_코드를_응답한다() throws Exception {
         // given
-        given(tripService.create(USER_ID, END_DATE, START_DATE))
+        given(tripService.create(USER_ID, END_DATE, START_DATE, null))
                 .willThrow(new BusinessException(TravelPeriodErrorCode.TRAVEL_PERIOD_END_BEFORE_START));
 
         // when & then

@@ -33,9 +33,9 @@ public class TripService {
     private final RoomService roomService;
 
     @Transactional
-    public Long create(Long userId, LocalDate startDate, LocalDate endDate) {
+    public Long create(Long userId, LocalDate startDate, LocalDate endDate, String title) {
         TravelPeriod period = new TravelPeriod(startDate, endDate);
-        Trip trip = tripRepository.save(new Trip(userId, period));
+        Trip trip = tripRepository.save(new Trip(userId, period, title));
         return trip.getId();
     }
 

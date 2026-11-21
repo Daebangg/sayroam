@@ -19,6 +19,7 @@ import lombok.NoArgsConstructor;
 @Table(name = "trip")
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Trip extends BaseTimeEntity {
+    private static final int MAX_TITLE_LENGTH = 30;
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -34,8 +35,8 @@ public class Trip extends BaseTimeEntity {
     @Getter
     private Long roomId;
 
-    // 회원이 직접 붙인 이름. 붙이지 않았으면 NULL
-    @Column(length = 20)
+    // 여행 이름. 생성 화면이 목적지로 기본 이름을 만들어 보낸다. 붙이지 않았으면 NULL
+    @Column(length = MAX_TITLE_LENGTH)
     @Getter
     private String title;
 
@@ -43,12 +44,24 @@ public class Trip extends BaseTimeEntity {
     @Getter
     private TravelPeriod period;
 
-    public Trip(Long createdById, TravelPeriod period) {
+    public Trip(Long createdById, TravelPeriod period, String title) {
         if (period == null) {
             throw new BusinessException(TripErrorCode.TRIP_PERIOD_REQUIRED);
         }
         this.createdById = createdById;
         this.period = period;
+        this.title = normalizeTitle(title);
+    }
+
+    private static String normalizeTitle(String title) {
+        if (title == null || title.isBlank()) {
+            return null;
+        }
+        String stripped = title.strip();
+        if (stripped.codePointCount(0, stripped.length()) > MAX_TITLE_LENGTH) {
+            throw new BusinessException(TripErrorCode.TRIP_TITLE_TOO_LONG);
+        }
+        return stripped;
     }
 
     public boolean isCreatedBy(Long userId) {

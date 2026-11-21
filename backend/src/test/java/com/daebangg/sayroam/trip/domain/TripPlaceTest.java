@@ -15,7 +15,7 @@ class TripPlaceTest {
     private static final Long USER_ID = 1L;
     private static final Long PLACE_ID = 10L;
     private static final Integer DAY = 1;
-    private static final Trip TRIP = new Trip(USER_ID, new TravelPeriod(LocalDate.of(2026, 12, 1), LocalDate.of(2026, 12, 4)));
+    private static final Trip TRIP = new Trip(USER_ID, new TravelPeriod(LocalDate.of(2026, 12, 1), LocalDate.of(2026, 12, 4)), "제주 여행");
 
     @Test
     void 메모_없이_여행_장소를_만들_수_있다() {

@@ -24,7 +24,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 @Tag(name = "Trip")
 public interface TripApi {
     @Operation(operationId = "createTrip", summary = "여행 생성",
-            description = "로그인한 회원이 방 없이 혼자 가는 여행을 만듭니다. 기간만 입력받으며 제목은 비어 있는 상태로 만들어집니다.",
+            description = "로그인한 회원이 방 없이 혼자 가는 여행을 만듭니다. 기간과 선택값인 여행 이름을 받습니다. "
+                    + "생성 화면은 고른 목적지로 \"제주 여행\" 같은 기본 이름을 만들어 보냅니다. 이름을 생략하거나 비우면 이름 없이 만들어집니다.",
             security = @SecurityRequirement(name = "bearerAuth"))
     @ApiResponses({
             @ApiResponse(responseCode = "201", description = "여행 생성 완료"),

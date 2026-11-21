@@ -38,7 +38,7 @@ public class TripController implements TripApi {
     @PostMapping(value = "/api/trips", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<CreateTripResponse> create(@AuthenticationPrincipal AuthenticatedAccount account,
                                                      @Valid @RequestBody CreateTripRequest request) {
-        Long tripId = tripService.create(account.userId(), request.startDate(), request.endDate());
+        Long tripId = tripService.create(account.userId(), request.startDate(), request.endDate(), request.title());
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(new CreateTripResponse(tripId));
     }
