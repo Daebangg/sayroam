@@ -572,6 +572,14 @@
                 },
                 "description": "409: TRIP_ROOM_ALREADY_LINKED. 이미 방이 연결된 여행. 여행을 다시 조회해 roomId로 초대 링크 발급"
             },
+            "TripUpdateBadRequest": {
+                "content": {
+                    "application/problem+json": {
+                        "schema": { "$ref": "#/components/schemas/ApiProblem" }
+                    }
+                },
+                "description": "400: TRIP_TITLE_TOO_LONG(여행 이름 30자 초과) 또는 Spring 요청 오류"
+            },
             "Unauthorized": {
                 "content": {
                     "application/problem+json": {
@@ -2095,6 +2103,17 @@
                     }
                 },
                 "required": ["answers"],
+                "type": "object"
+            },
+            "UpdateTripRequest": {
+                "properties": {
+                    "title": {
+                        "description": "바꿀 여행 이름. 바꿀 때만 보낸다. 보내지 않거나 null이면 그대로 두고, 빈 문자열이면 이름을 지운다. 앞뒤 공백을 지운 뒤 최대 30자(이모지도 한 글자)",
+                        "example": "부산 여행",
+                        "maxLength": 30,
+                        "type": ["string", "null"]
+                    }
+                },
                 "type": "object"
             },
             "UpdateUserProfileRequest": {
@@ -3787,6 +3806,46 @@
                 },
                 "security": [{ "bearerAuth": [] }],
                 "summary": "여행 조회",
+                "tags": ["Trip"]
+            },
+            "patch": {
+                "description": "여행 이름을 바꿉니다. 바꿀 필드만 보내며, 보내지 않은 필드는 그대로 둡니다. 빈 이름을 보내면 이름 없는 여행이 됩니다. 채팅방이 없는 여행은 만든 회원이, 채팅방이 연결된 여행은 그 방에 참여 중인 멤버가 수정할 수 있습니다. 수정할 수 없는 여행은 없는 여행과 같이 404로 응답합니다.",
+                "operationId": "updateTrip",
+                "parameters": [
+                    {
+                        "description": "여행 ID",
+                        "example": 12,
+                        "in": "path",
+                        "name": "tripId",
+                        "required": true,
+                        "schema": { "format": "int64", "type": "integer" }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": { "$ref": "#/components/schemas/UpdateTripRequest" }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/TripSummaryResponse" }
+                            }
+                        },
+                        "description": "여행 수정 완료. 수정된 여행을 응답"
+                    },
+                    "400": { "$ref": "#/components/responses/TripUpdateBadRequest" },
+                    "401": { "$ref": "#/components/responses/Unauthorized" },
+                    "404": { "$ref": "#/components/responses/TripNotFound" },
+                    "500": { "$ref": "#/components/responses/InternalServerError" },
+                    "503": { "$ref": "#/components/responses/AuthenticationUnavailable" }
+                },
+                "security": [{ "bearerAuth": [] }],
+                "summary": "여행 수정",
                 "tags": ["Trip"]
             }
         },

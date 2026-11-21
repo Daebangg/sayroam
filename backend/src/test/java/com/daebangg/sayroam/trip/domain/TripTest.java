@@ -101,6 +101,55 @@ class TripTest {
     }
 
     @Test
+    void 이름을_바꾸면_앞뒤_공백을_지운_새_이름이_된다() {
+        // given
+        Trip trip = newTrip();
+
+        // when
+        trip.rename("  부산 여행 ");
+
+        // then
+        assertThat(trip.getTitle()).isEqualTo("부산 여행");
+    }
+
+    @Test
+    void 이름_없는_여행에도_이름을_붙일_수_있다() {
+        // given
+        Trip trip = new Trip(USER_ID, PERIOD, null);
+
+        // when
+        trip.rename("부산 여행");
+
+        // then
+        assertThat(trip.getTitle()).isEqualTo("부산 여행");
+    }
+
+    @Test
+    void 이름을_비우면_이름_없는_여행이_된다() {
+        // given
+        Trip trip = newTrip();
+
+        // when
+        trip.rename("   ");
+
+        // then
+        assertThat(trip.getTitle()).isNull();
+    }
+
+    @Test
+    void 이름이_30자를_넘으면_바꾸지_않고_기존_이름을_유지한다() {
+        // given
+        Trip trip = newTrip();
+        String title = "가".repeat(31);
+
+        // when & then
+        assertThatThrownBy(() -> trip.rename(title))
+                .isInstanceOfSatisfying(BusinessException.class,
+                        e -> assertThat(e.getErrorCode()).isEqualTo(TripErrorCode.TRIP_TITLE_TOO_LONG));
+        assertThat(trip.getTitle()).isEqualTo(TITLE);
+    }
+
+    @Test
     void 여행을_만든_회원인지_알_수_있다() {
         // given
         Trip trip = newTrip();

@@ -40,6 +40,17 @@ public class TripService {
     }
 
     @Transactional
+    public TripSummaryResult rename(Long userId, Long tripId, String title) {
+        Trip trip = tripRepository.findAccessible(userId, tripId)
+                .orElseThrow(() -> new BusinessException(TripErrorCode.TRIP_NOT_FOUND));
+
+        if (title != null) {
+            trip.rename(title);
+        }
+        return TripSummaryResult.from(trip);
+    }
+
+    @Transactional
     public Long createRoom(Long userId, Long tripId, String roomName) {
         Trip trip = tripRepository.findByIdForUpdate(tripId)
                 .filter(t -> t.isCreatedBy(userId))

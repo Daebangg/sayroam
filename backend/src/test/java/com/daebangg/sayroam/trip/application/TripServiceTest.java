@@ -464,6 +464,109 @@ class TripServiceTest extends DatabaseIntegrationTest {
     }
 
     @Test
+    void 여행을_만든_회원은_채팅방이_없는_여행의_이름을_바꾼다() {
+        // given
+        Long userId = saveUser();
+        Long tripId = tripService.create(userId, START_DATE, END_DATE, TITLE);
+
+        // when
+        TripSummaryResult result = tripService.rename(userId, tripId, "부산 여행");
+
+        // then
+        assertThat(result.title()).isEqualTo("부산 여행");
+        assertThat(findTrip(tripId).getTitle()).isEqualTo("부산 여행");
+    }
+
+    @Test
+    void 채팅방_멤버는_연결된_여행의_이름을_바꾼다() {
+        // given
+        Long ownerId = saveUser();
+        Long memberId = saveUser("멤버");
+        Long tripId = tripService.create(ownerId, START_DATE, END_DATE, TITLE);
+        Long roomId = tripService.createRoom(ownerId, tripId, ROOM_NAME);
+        joinRoom(roomId, ownerId, memberId);
+
+        // when
+        tripService.rename(memberId, tripId, "부산 여행");
+
+        // then
+        assertThat(findTrip(tripId).getTitle()).isEqualTo("부산 여행");
+    }
+
+    @Test
+    void 다른_회원의_여행_이름은_바꿀_수_없다() {
+        // given
+        Long ownerId = saveUser();
+        Long otherId = saveUser("다른 회원");
+        Long tripId = tripService.create(ownerId, START_DATE, END_DATE, TITLE);
+
+        // when
+        assertThatThrownBy(() -> tripService.rename(otherId, tripId, "부산 여행"))
+                .isInstanceOfSatisfying(BusinessException.class,
+                        e -> assertThat(e.getErrorCode()).isEqualTo(TripErrorCode.TRIP_NOT_FOUND));
+
+        // then
+        assertThat(findTrip(tripId).getTitle()).isEqualTo(TITLE);
+    }
+
+    @Test
+    void 채팅방을_나간_멤버는_여행_이름을_바꿀_수_없다() {
+        // given
+        Long ownerId = saveUser();
+        Long memberId = saveUser("멤버");
+        Long tripId = tripService.create(ownerId, START_DATE, END_DATE, TITLE);
+        Long roomId = tripService.createRoom(ownerId, tripId, ROOM_NAME);
+        joinRoom(roomId, ownerId, memberId);
+        roomService.leave(roomId, memberId);
+
+        // when
+        assertThatThrownBy(() -> tripService.rename(memberId, tripId, "부산 여행"))
+                .isInstanceOfSatisfying(BusinessException.class,
+                        e -> assertThat(e.getErrorCode()).isEqualTo(TripErrorCode.TRIP_NOT_FOUND));
+
+        // then
+        assertThat(findTrip(tripId).getTitle()).isEqualTo(TITLE);
+    }
+
+    @Test
+    void 없는_여행의_이름은_바꿀_수_없다() {
+        // given
+        Long userId = saveUser();
+
+        // when & then
+        assertThatThrownBy(() -> tripService.rename(userId, MISSING_TRIP_ID, "부산 여행"))
+                .isInstanceOfSatisfying(BusinessException.class,
+                        e -> assertThat(e.getErrorCode()).isEqualTo(TripErrorCode.TRIP_NOT_FOUND));
+    }
+
+    @Test
+    void 이름을_보내지_않으면_기존_이름을_유지한다() {
+        // given
+        Long userId = saveUser();
+        Long tripId = tripService.create(userId, START_DATE, END_DATE, TITLE);
+
+        // when
+        TripSummaryResult result = tripService.rename(userId, tripId, null);
+
+        // then
+        assertThat(result.title()).isEqualTo(TITLE);
+        assertThat(findTrip(tripId).getTitle()).isEqualTo(TITLE);
+    }
+
+    @Test
+    void 빈_이름을_보내면_이름_없는_여행이_된다() {
+        // given
+        Long userId = saveUser();
+        Long tripId = tripService.create(userId, START_DATE, END_DATE, TITLE);
+
+        // when
+        tripService.rename(userId, tripId, "");
+
+        // then
+        assertThat(findTrip(tripId).getTitle()).isNull();
+    }
+
+    @Test
     void 다른_회원의_여행은_조회할_수_없다() {
         // given
         Long ownerId = saveUser();

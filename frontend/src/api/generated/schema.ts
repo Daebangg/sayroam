@@ -734,7 +734,11 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        patch?: never;
+        /**
+         * 여행 수정
+         * @description 여행 이름을 바꿉니다. 바꿀 필드만 보내며, 보내지 않은 필드는 그대로 둡니다. 빈 이름을 보내면 이름 없는 여행이 됩니다. 채팅방이 없는 여행은 만든 회원이, 채팅방이 연결된 여행은 그 방에 참여 중인 멤버가 수정할 수 있습니다. 수정할 수 없는 여행은 없는 여행과 같이 404로 응답합니다.
+         */
+        patch: operations["updateTrip"];
         trace?: never;
     };
     "/api/trips/{tripId}/custom-places": {
@@ -1869,6 +1873,13 @@ export interface components {
         UpdateTravelStyleRequest: {
             answers: components["schemas"]["Answer"][];
         };
+        UpdateTripRequest: {
+            /**
+             * @description 바꿀 여행 이름. 바꿀 때만 보낸다. 보내지 않거나 null이면 그대로 두고, 빈 문자열이면 이름을 지운다. 앞뒤 공백을 지운 뒤 최대 30자(이모지도 한 글자)
+             * @example 부산 여행
+             */
+            title?: string | null;
+        };
         /** @description 생략한 필드는 유지합니다. 선택 정보의 null은 삭제를 의미합니다. */
         UpdateUserProfileRequest: {
             /**
@@ -2504,6 +2515,15 @@ export interface components {
         };
         /** @description 409: TRIP_ROOM_ALREADY_LINKED. 이미 방이 연결된 여행. 여행을 다시 조회해 roomId로 초대 링크 발급 */
         TripRoomAlreadyLinked: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/problem+json": components["schemas"]["ApiProblem"];
+            };
+        };
+        /** @description 400: TRIP_TITLE_TOO_LONG(여행 이름 30자 초과) 또는 Spring 요청 오류 */
+        TripUpdateBadRequest: {
             headers: {
                 [name: string]: unknown;
             };
@@ -3777,6 +3797,41 @@ export interface operations {
             503: components["responses"]["AuthenticationUnavailable"];
         };
     };
+    updateTrip: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /**
+                 * @description 여행 ID
+                 * @example 12
+                 */
+                tripId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateTripRequest"];
+            };
+        };
+        responses: {
+            /** @description 여행 수정 완료. 수정된 여행을 응답 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TripSummaryResponse"];
+                };
+            };
+            400: components["responses"]["TripUpdateBadRequest"];
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["TripNotFound"];
+            500: components["responses"]["InternalServerError"];
+            503: components["responses"]["AuthenticationUnavailable"];
+        };
+    };
     addTripCustomPlace: {
         parameters: {
             query?: never;
@@ -4402,6 +4457,13 @@ export const apiRoutes = {
     updateProfile: {
         method: "patch",
         path: "/api/users/me",
+        auth: "required",
+        csrf: false,
+        responses: { "200": true },
+    },
+    updateTrip: {
+        method: "patch",
+        path: "/api/trips/{tripId}",
         auth: "required",
         csrf: false,
         responses: { "200": true },

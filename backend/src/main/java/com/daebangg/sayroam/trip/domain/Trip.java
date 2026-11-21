@@ -53,15 +53,8 @@ public class Trip extends BaseTimeEntity {
         this.title = normalizeTitle(title);
     }
 
-    private static String normalizeTitle(String title) {
-        if (title == null || title.isBlank()) {
-            return null;
-        }
-        String stripped = title.strip();
-        if (stripped.codePointCount(0, stripped.length()) > MAX_TITLE_LENGTH) {
-            throw new BusinessException(TripErrorCode.TRIP_TITLE_TOO_LONG);
-        }
-        return stripped;
+    public void rename(String title) {
+        this.title = normalizeTitle(title);
     }
 
     public boolean isCreatedBy(Long userId) {
@@ -85,4 +78,15 @@ public class Trip extends BaseTimeEntity {
         this.roomId = roomId;
     }
 
+    // 생성과 이름 변경이 함께 쓴다. 앞뒤 공백을 지우고 비면 이름 없음(null)으로 두며, 글자 수는 이모지도 한 글자로 센다
+    private static String normalizeTitle(String title) {
+        if (title == null || title.isBlank()) {
+            return null;
+        }
+        String stripped = title.strip();
+        if (stripped.codePointCount(0, stripped.length()) > MAX_TITLE_LENGTH) {
+            throw new BusinessException(TripErrorCode.TRIP_TITLE_TOO_LONG);
+        }
+        return stripped;
+    }
 }

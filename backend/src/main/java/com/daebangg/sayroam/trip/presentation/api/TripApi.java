@@ -11,6 +11,7 @@ import com.daebangg.sayroam.trip.presentation.dto.CreateTripRoomResponse;
 import com.daebangg.sayroam.trip.presentation.dto.TripListResponse;
 import com.daebangg.sayroam.trip.presentation.dto.TripPlaceListResponse;
 import com.daebangg.sayroam.trip.presentation.dto.TripSummaryResponse;
+import com.daebangg.sayroam.trip.presentation.dto.UpdateTripRequest;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -36,6 +37,23 @@ public interface TripApi {
     })
     ResponseEntity<CreateTripResponse> create(@Parameter(hidden = true) @AuthenticationPrincipal AuthenticatedAccount account,
                                               @RequestBody CreateTripRequest request);
+
+    @Operation(operationId = "updateTrip", summary = "여행 수정",
+            description = "여행 이름을 바꿉니다. 바꿀 필드만 보내며, 보내지 않은 필드는 그대로 둡니다. 빈 이름을 보내면 이름 없는 여행이 됩니다. "
+                    + "채팅방이 없는 여행은 만든 회원이, 채팅방이 연결된 여행은 그 방에 참여 중인 멤버가 수정할 수 있습니다. "
+                    + "수정할 수 없는 여행은 없는 여행과 같이 404로 응답합니다.",
+            security = @SecurityRequirement(name = "bearerAuth"))
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "여행 수정 완료. 수정된 여행을 응답"),
+            @ApiResponse(responseCode = "400", ref = "#/components/responses/TripUpdateBadRequest"),
+            @ApiResponse(responseCode = "401", ref = "#/components/responses/Unauthorized"),
+            @ApiResponse(responseCode = "404", ref = "#/components/responses/TripNotFound"),
+            @ApiResponse(responseCode = "503", ref = "#/components/responses/AuthenticationUnavailable"),
+            @ApiResponse(responseCode = "500", ref = "#/components/responses/InternalServerError")
+    })
+    ResponseEntity<TripSummaryResponse> update(@Parameter(hidden = true) @AuthenticationPrincipal AuthenticatedAccount account,
+                                               @Parameter(description = "여행 ID", example = "12") Long tripId,
+                                               @RequestBody UpdateTripRequest request);
 
     @Operation(operationId = "createTripRoom", summary = "여행에 채팅방 만들어 연결",
             description = "방이 없는 여행에 채팅방을 만들고, 요청한 회원을 방장으로 등록한 뒤 여행에 연결합니다. "
