@@ -49,11 +49,11 @@ class SayroamApplicationTests extends DatabaseIntegrationTest {
                 SELECT COUNT(*) FROM information_schema.tables
                 WHERE table_schema = DATABASE() AND table_type = 'BASE TABLE'
                 """, Integer.class)).isEqualTo(22);
-        assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("18");
+        assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("19");
         flyway.validate();
         assertThat(flyway.migrate().migrationsExecuted).isZero();
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM flyway_schema_history WHERE success = 1",
-                Integer.class)).isEqualTo(18);
+                Integer.class)).isEqualTo(19);
     }
 
     @Test
@@ -147,7 +147,8 @@ class SayroamApplicationTests extends DatabaseIntegrationTest {
                     SELECT COUNT(*) FROM companion_search
                     WHERE id = 1 AND show_age = FALSE AND show_gender = FALSE AND introduction = '이전 소개글'
                     """, Integer.class)).isEqualTo(1);
-            assertThat(Flyway.configure().dataSource(dataSource).load().migrate().migrationsExecuted).isEqualTo(2);
+            assertThat(Flyway.configure().dataSource(dataSource).target("18").load().migrate().migrationsExecuted)
+                    .isEqualTo(2);
         }
     }
 
@@ -206,8 +207,8 @@ class SayroamApplicationTests extends DatabaseIntegrationTest {
                     .isInstanceOf(DataIntegrityViolationException.class)
                     .hasMessageContaining("uk_notification_receiver_event");
             List<Map<String, Object>> beforeWelcome = legacy.queryForList("SELECT * FROM notification ORDER BY id");
-            Flyway latest = Flyway.configure().dataSource(dataSource).load();
-            assertThat(latest.migrate().migrationsExecuted).isEqualTo(1);
+            Flyway withWelcome = Flyway.configure().dataSource(dataSource).target("18").load();
+            assertThat(withWelcome.migrate().migrationsExecuted).isEqualTo(1);
             assertThat(legacy.queryForList("SELECT * FROM notification ORDER BY id")).isEqualTo(beforeWelcome);
             legacy.update("""
                     INSERT INTO notification (receiver_id, type, event_key, content, created_at, updated_at)
@@ -215,8 +216,49 @@ class SayroamApplicationTests extends DatabaseIntegrationTest {
                     """);
             assertThat(legacy.queryForObject("SELECT COUNT(*) FROM notification WHERE type = 'WELCOME'",
                     Integer.class)).isEqualTo(1);
-            latest.validate();
-            assertThat(latest.migrate().migrationsExecuted).isZero();
+            withWelcome.validate();
+            assertThat(withWelcome.migrate().migrationsExecuted).isZero();
+        }
+    }
+
+    @Test
+    void upgradesVersionEighteenPreservingTourPlacesAndAllowsCustomPlaces() {
+        try (MySQLContainer mysql = new MySQLContainer("mysql:8.4")
+                .withCommand("--log-bin-trust-function-creators=1")) {
+            mysql.start();
+            DriverManagerDataSource dataSource = new DriverManagerDataSource(
+                    mysql.getJdbcUrl(), mysql.getUsername(), mysql.getPassword());
+            Flyway.configure().dataSource(dataSource).target("18").load().migrate();
+            JdbcTemplate legacy = new JdbcTemplate(dataSource);
+            legacy.update("""
+                    INSERT INTO place (id, source, source_id, name, category, source_category_code, latitude, longitude,
+                        created_at, updated_at)
+                    VALUES (1, 'TOUR', '126081', '송정해수욕장', 'ATTRACTION', '12', 35.1786, 129.1997, NOW(), NOW())
+                    """);
+
+            assertThat(Flyway.configure().dataSource(dataSource).load().migrate().migrationsExecuted).isEqualTo(1);
+            assertThat(legacy.queryForMap("SELECT source, source_id, category, source_category_code FROM place WHERE id = 1"))
+                    .containsEntry("source", "TOUR")
+                    .containsEntry("source_id", "126081")
+                    .containsEntry("category", "ATTRACTION")
+                    .containsEntry("source_category_code", "12");
+
+            String insertCustomPlace = """
+                    INSERT INTO place (source, name, latitude, longitude, created_at, updated_at)
+                    VALUES ('CUSTOM', '숙소', 33.4996213, 126.5311884, NOW(), NOW())
+                    """;
+            legacy.update(insertCustomPlace);
+            legacy.update(insertCustomPlace);
+            assertThat(legacy.queryForObject("SELECT COUNT(*) FROM place WHERE source = 'CUSTOM'", Integer.class))
+                    .isEqualTo(2);
+            assertThatThrownBy(() -> legacy.update("""
+                    INSERT INTO place (source, name, latitude, longitude, created_at, updated_at)
+                    VALUES ('TOUR', '원본 ID 없는 장소', 35.1786, 129.1997, NOW(), NOW())
+                    """)).isInstanceOf(DataAccessException.class).hasMessageContaining("ck_place_source_reference");
+            assertThatThrownBy(() -> legacy.update("""
+                    INSERT INTO place (source, source_id, name, latitude, longitude, created_at, updated_at)
+                    VALUES ('CUSTOM', '126082', '원본 ID가 있는 직접 추가 장소', 35.1786, 129.1997, NOW(), NOW())
+                    """)).isInstanceOf(DataAccessException.class).hasMessageContaining("ck_place_source_reference");
         }
     }
 

@@ -3,6 +3,7 @@ package com.daebangg.sayroam.trip.application;
 import com.daebangg.sayroam.common.domain.TravelPeriod;
 import com.daebangg.sayroam.common.domain.error.TravelPeriodErrorCode;
 import com.daebangg.sayroam.global.exception.BusinessException;
+import com.daebangg.sayroam.global.exception.CommonErrorCode;
 import com.daebangg.sayroam.place.application.port.out.PlaceCatalog;
 import com.daebangg.sayroam.place.domain.Coordinate;
 import com.daebangg.sayroam.place.domain.Place;
@@ -17,10 +18,12 @@ import com.daebangg.sayroam.room.infrastructure.persistence.RoomInvitationJpaRep
 import com.daebangg.sayroam.room.infrastructure.persistence.RoomJpaRepository;
 import com.daebangg.sayroam.room.infrastructure.persistence.RoomMemberJpaRepository;
 import com.daebangg.sayroam.support.DatabaseIntegrationTest;
+import com.daebangg.sayroam.trip.application.dto.AddTripCustomPlaceCommand;
 import com.daebangg.sayroam.trip.application.dto.AddTripPlaceCommand;
 import com.daebangg.sayroam.trip.application.dto.TripSummaryResult;
 import com.daebangg.sayroam.trip.application.service.TripService;
 import com.daebangg.sayroam.trip.domain.Trip;
+import com.daebangg.sayroam.trip.domain.TripPlace;
 import com.daebangg.sayroam.trip.domain.error.TripErrorCode;
 import com.daebangg.sayroam.trip.infrastructure.persistence.TripJpaRepository;
 import com.daebangg.sayroam.trip.infrastructure.persistence.TripPlaceJpaRepository;
@@ -563,6 +566,97 @@ class TripServiceTest extends DatabaseIntegrationTest {
         assertThat(placeJpaRepository.count()).isEqualTo(1);
     }
 
+    @Test
+    void 직접_고른_위치와_이름으로_추가하면_일차와_메모와_추가한_회원이_저장된다() {
+        // given
+        Long userId = saveUser();
+        Long tripId = tripService.create(userId, START_DATE, END_DATE);
+
+        // when
+        Long tripPlaceId = tripService.addCustomPlace(userId, tripId, customCommand(2, "체크인 4시"));
+
+        // then
+        assertThat(tripPlaceJpaRepository.findById(tripPlaceId)).get()
+                .extracting("dayNumber", "memo", "addedById")
+                .containsExactly(2, "체크인 4시", userId);
+        assertThat(placeJpaRepository.countBySource(PlaceSource.CUSTOM)).isEqualTo(1);
+    }
+
+    @Test
+    void 채팅방에_참여_중인_멤버는_장소를_직접_추가할_수_있다() {
+        // given
+        Long ownerId = saveUser();
+        Long memberId = saveUser("멤버");
+        Long tripId = tripService.create(ownerId, START_DATE, END_DATE);
+        Long roomId = tripService.createRoom(ownerId, tripId, ROOM_NAME);
+        joinRoom(roomId, ownerId, memberId);
+
+        // when
+        Long tripPlaceId = tripService.addCustomPlace(memberId, tripId, customCommand(null, null));
+
+        // then
+        assertThat(tripPlaceJpaRepository.findById(tripPlaceId)).get()
+                .extracting("addedById")
+                .isEqualTo(memberId);
+    }
+
+    @Test
+    void 다른_회원의_여행이면_직접_추가를_TRIP_NOT_FOUND로_거부하고_장소를_저장하지_않는다() {
+        // given
+        Long ownerId = saveUser();
+        Long otherId = saveUser("다른 회원");
+        Long tripId = tripService.create(ownerId, START_DATE, END_DATE);
+
+        // when & then
+        assertThatThrownBy(() -> tripService.addCustomPlace(otherId, tripId, customCommand(null, null)))
+                .isInstanceOfSatisfying(BusinessException.class,
+                        e -> assertThat(e.getErrorCode()).isEqualTo(TripErrorCode.TRIP_NOT_FOUND));
+        assertThat(placeJpaRepository.count()).isZero();
+    }
+
+    @Test
+    void 일차가_기간을_벗어나면_직접_추가를_거부하고_장소를_저장하지_않는다() {
+        // given
+        Long userId = saveUser();
+        Long tripId = tripService.create(userId, START_DATE, END_DATE);
+
+        // when & then
+        assertThatThrownBy(() -> tripService.addCustomPlace(userId, tripId, customCommand(5, null)))
+                .isInstanceOfSatisfying(BusinessException.class,
+                        e -> assertThat(e.getErrorCode()).isEqualTo(TripErrorCode.TRIP_DAY_OUT_OF_RANGE));
+        assertThat(placeJpaRepository.count()).isZero();
+    }
+
+    @Test
+    void 좌표가_범위를_벗어나면_직접_추가를_거부하고_장소를_저장하지_않는다() {
+        // given
+        Long userId = saveUser();
+        Long tripId = tripService.create(userId, START_DATE, END_DATE);
+        AddTripCustomPlaceCommand command = new AddTripCustomPlaceCommand(
+                "숙소", new BigDecimal("91"), new BigDecimal("126.5311884"), null, null);
+
+        // when & then
+        assertThatThrownBy(() -> tripService.addCustomPlace(userId, tripId, command))
+                .isInstanceOfSatisfying(BusinessException.class,
+                        e -> assertThat(e.getErrorCode()).isEqualTo(CommonErrorCode.INVALID_INPUT));
+        assertThat(placeJpaRepository.count()).isZero();
+    }
+
+    @Test
+    void 메모가_너무_길면_거부하고_직접_추가한_장소도_남기지_않는다() {
+        // given
+        Long userId = saveUser();
+        Long tripId = tripService.create(userId, START_DATE, END_DATE);
+        String memo = "가".repeat(TripPlace.MAX_MEMO_LENGTH + 1);
+
+        // when & then
+        assertThatThrownBy(() -> tripService.addCustomPlace(userId, tripId, customCommand(null, memo)))
+                .isInstanceOfSatisfying(BusinessException.class,
+                        e -> assertThat(e.getErrorCode()).isEqualTo(TripErrorCode.TRIP_PLACE_MEMO_TOO_LONG));
+        assertThat(placeJpaRepository.count()).isZero();
+        assertThat(tripPlaceJpaRepository.count()).isZero();
+    }
+
     private Long saveUser() {
         return saveUser("여행자");
     }
@@ -583,13 +677,18 @@ class TripServiceTest extends DatabaseIntegrationTest {
 
     // 실제 어댑터처럼 조회할 때마다 새 장소 객체를 돌려준다
     private void givenTourPlace() {
-        given(placeCatalog.find(SOURCE_ID)).willAnswer(invocation -> Optional.of(new Place(
-                PlaceSource.TOUR, SOURCE_ID, new PlaceName("송정해수욕장"), PlaceCategory.ATTRACTION, "12",
+        given(placeCatalog.find(SOURCE_ID)).willAnswer(invocation -> Optional.of(Place.tour(
+                SOURCE_ID, new PlaceName("송정해수욕장"), PlaceCategory.ATTRACTION, "12",
                 "부산광역시 해운대구 송정해변로 62",
                 new Coordinate(new BigDecimal("35.1786"), new BigDecimal("129.1997")))));
     }
 
     private AddTripPlaceCommand command(Integer day, String memo) {
         return new AddTripPlaceCommand(SOURCE_ID, day, memo);
+    }
+
+    private AddTripCustomPlaceCommand customCommand(Integer day, String memo) {
+        return new AddTripCustomPlaceCommand(
+                "숙소", new BigDecimal("33.4996213"), new BigDecimal("126.5311884"), day, memo);
     }
 }

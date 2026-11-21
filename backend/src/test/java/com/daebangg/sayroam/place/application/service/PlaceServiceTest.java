@@ -27,6 +27,7 @@ import static org.mockito.Mockito.verify;
 
 class PlaceServiceTest extends DatabaseIntegrationTest {
     private static final String SOURCE_ID = "126081";
+    private static final Coordinate COORDINATE = new Coordinate(new BigDecimal("35.1786"), new BigDecimal("129.1997"));
 
     @Autowired
     PlaceService placeService;
@@ -81,10 +82,31 @@ class PlaceServiceTest extends DatabaseIntegrationTest {
         assertThat(placeJpaRepository.count()).isZero();
     }
 
+    @Test
+    void 직접_추가한_장소는_출처를_CUSTOM으로_저장한다() {
+        // when
+        Long placeId = placeService.registerCustom("숙소", COORDINATE);
+
+        // then
+        assertThat(placeJpaRepository.findById(placeId)).isPresent();
+        assertThat(placeJpaRepository.countBySource(PlaceSource.CUSTOM)).isEqualTo(1);
+    }
+
+    @Test
+    void 같은_이름과_좌표로_직접_추가해도_장소를_각각_저장한다() {
+        // given
+        Long firstId = placeService.registerCustom("숙소", COORDINATE);
+
+        // when
+        Long secondId = placeService.registerCustom("숙소", COORDINATE);
+
+        // then
+        assertThat(secondId).isNotEqualTo(firstId);
+        assertThat(placeJpaRepository.count()).isEqualTo(2);
+    }
 
     private Place tourPlace(String sourceId) {
-        return new Place(PlaceSource.TOUR, sourceId, new PlaceName("송정해수욕장"),
-                PlaceCategory.ATTRACTION, "12", "부산광역시 해운대구 송정해변로 62",
-                new Coordinate(new BigDecimal("35.1786"), new BigDecimal("129.1997")));
+        return Place.tour(sourceId, new PlaceName("송정해수욕장"),
+                PlaceCategory.ATTRACTION, "12", "부산광역시 해운대구 송정해변로 62", COORDINATE);
     }
 }
