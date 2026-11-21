@@ -1,5 +1,6 @@
 package com.daebangg.sayroam.trip.infrastructure.persistence;
 
+import com.daebangg.sayroam.trip.application.dto.TripPlaceResult;
 import com.daebangg.sayroam.trip.application.dto.TripSummaryResult;
 import com.daebangg.sayroam.trip.application.port.out.TripQueryRepository;
 import com.daebangg.sayroam.trip.domain.Trip;
@@ -36,4 +37,16 @@ public interface TripQueryJpaRepository extends TripQueryRepository, Repository<
                                      and m.status = com.daebangg.sayroam.room.domain.RoomMemberStatus.JOINED))
             """)
     Optional<TripSummaryResult> findReadable(@Param("userId") Long userId, @Param("tripId") Long tripId);
+
+    @Override
+    @Query("""
+            select new com.daebangg.sayroam.trip.application.dto.TripPlaceResult(
+                       tp.id, p.source, p.name.value, p.category, p.address,
+                       p.coordinate.latitude, p.coordinate.longitude, tp.dayNumber, tp.memo, tp.addedById)
+            from TripPlace tp
+            join Place p on p.id = tp.placeId
+            where tp.trip.id = :tripId
+            order by case when tp.dayNumber is null then 1 else 0 end, tp.dayNumber, tp.id
+            """)
+    List<TripPlaceResult> findPlaces(@Param("tripId") Long tripId);
 }

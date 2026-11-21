@@ -8,10 +8,13 @@ import com.daebangg.sayroam.common.domain.error.TravelPeriodErrorCode;
 import com.daebangg.sayroam.global.exception.BusinessException;
 import com.daebangg.sayroam.global.security.ActiveAccountJwtConverter;
 import com.daebangg.sayroam.global.security.SecurityConfig;
+import com.daebangg.sayroam.place.domain.PlaceCategory;
+import com.daebangg.sayroam.place.domain.PlaceSource;
 import com.daebangg.sayroam.place.domain.error.PlaceErrorCode;
 import com.daebangg.sayroam.room.domain.error.RoomErrorCode;
 import com.daebangg.sayroam.trip.application.dto.AddTripCustomPlaceCommand;
 import com.daebangg.sayroam.trip.application.dto.AddTripPlaceCommand;
+import com.daebangg.sayroam.trip.application.dto.TripPlaceResult;
 import com.daebangg.sayroam.trip.application.dto.TripSummaryResult;
 import com.daebangg.sayroam.trip.application.service.TripService;
 import com.daebangg.sayroam.trip.domain.error.TripErrorCode;
@@ -578,6 +581,70 @@ class TripControllerTest {
         then(tripService).shouldHaveNoInteractions();
     }
 
+    @Test
+    void 장소_목록을_조회하면_200과_장소_목록을_응답한다() throws Exception {
+        // given
+        given(tripService.findPlaces(USER_ID, TRIP_ID)).willReturn(List.of(
+                new TripPlaceResult(31L, PlaceSource.TOUR, "송정해수욕장", PlaceCategory.ATTRACTION,
+                        "부산광역시 해운대구 송정해변로 62", new BigDecimal("35.1786"), new BigDecimal("129.1997"),
+                        1, "오전에 가기", USER_ID),
+                new TripPlaceResult(32L, PlaceSource.CUSTOM, "숙소", null, null,
+                        LATITUDE, LONGITUDE, null, null, 2L)));
+
+        // when & then
+        mvc.perform(listTripPlacesRequest(TRIP_ID).with(login()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.places.length()").value(2))
+                .andExpect(jsonPath("$.places[0].tripPlaceId").value(31))
+                .andExpect(jsonPath("$.places[0].source").value("TOUR"))
+                .andExpect(jsonPath("$.places[0].name").value("송정해수욕장"))
+                .andExpect(jsonPath("$.places[0].category").value("ATTRACTION"))
+                .andExpect(jsonPath("$.places[0].address").value("부산광역시 해운대구 송정해변로 62"))
+                .andExpect(jsonPath("$.places[0].latitude").value(35.1786))
+                .andExpect(jsonPath("$.places[0].longitude").value(129.1997))
+                .andExpect(jsonPath("$.places[0].day").value(1))
+                .andExpect(jsonPath("$.places[0].memo").value("오전에 가기"))
+                .andExpect(jsonPath("$.places[0].addedById").value(USER_ID))
+                .andExpect(jsonPath("$.places[1].source").value("CUSTOM"))
+                .andExpect(jsonPath("$.places[1].category").isEmpty())
+                .andExpect(jsonPath("$.places[1].address").isEmpty())
+                .andExpect(jsonPath("$.places[1].day").isEmpty())
+                .andExpect(jsonPath("$.places[1].memo").isEmpty());
+    }
+
+    @Test
+    void 담긴_장소가_없으면_빈_배열을_응답한다() throws Exception {
+        // given
+        given(tripService.findPlaces(USER_ID, TRIP_ID)).willReturn(List.of());
+
+        // when & then
+        mvc.perform(listTripPlacesRequest(TRIP_ID).with(login()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.places").isArray())
+                .andExpect(jsonPath("$.places").isEmpty());
+    }
+
+    @Test
+    void 장소_목록을_조회할_수_없는_여행이면_404와_에러_코드를_응답한다() throws Exception {
+        // given
+        given(tripService.findPlaces(USER_ID, TRIP_ID))
+                .willThrow(new BusinessException(TripErrorCode.TRIP_NOT_FOUND));
+
+        // when & then
+        mvc.perform(listTripPlacesRequest(TRIP_ID).with(login()))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("TRIP_NOT_FOUND"));
+    }
+
+    @Test
+    void 로그인하지_않으면_장소_목록_조회에_401을_응답한다() throws Exception {
+        // when & then
+        mvc.perform(listTripPlacesRequest(TRIP_ID))
+                .andExpect(status().isUnauthorized());
+
+        then(tripService).shouldHaveNoInteractions();
+    }
+
     private MockHttpServletRequestBuilder createTripRequest(String body) {
         return post("/api/trips")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -608,6 +675,10 @@ class TripControllerTest {
 
     private MockHttpServletRequestBuilder getTripRequest(Long tripId) {
         return get("/api/trips/{tripId}", tripId);
+    }
+
+    private MockHttpServletRequestBuilder listTripPlacesRequest(Long tripId) {
+        return get("/api/trips/{tripId}/places", tripId);
     }
 
     private RequestPostProcessor login() {

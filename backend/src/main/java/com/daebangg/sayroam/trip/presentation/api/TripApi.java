@@ -9,6 +9,7 @@ import com.daebangg.sayroam.trip.presentation.dto.CreateTripResponse;
 import com.daebangg.sayroam.trip.presentation.dto.CreateTripRoomRequest;
 import com.daebangg.sayroam.trip.presentation.dto.CreateTripRoomResponse;
 import com.daebangg.sayroam.trip.presentation.dto.TripListResponse;
+import com.daebangg.sayroam.trip.presentation.dto.TripPlaceListResponse;
 import com.daebangg.sayroam.trip.presentation.dto.TripSummaryResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -113,4 +114,20 @@ public interface TripApi {
     })
     ResponseEntity<TripSummaryResponse> find(@Parameter(hidden = true) @AuthenticationPrincipal AuthenticatedAccount account,
                                              @Parameter(description = "여행 ID", example = "12") Long tripId);
+
+    @Operation(operationId = "listTripPlaces", summary = "여행에 담긴 장소 목록 조회",
+            description = "여행에 담긴 장소를 한 번에 조회합니다. 장소 검색으로 추가한 장소(TOUR)와 지도에서 직접 추가한 장소(CUSTOM)를 함께 돌려주며, "
+                    + "일차 순서대로, 일차 미정 장소는 마지막에, 같은 일차 안에서는 추가한 순서로 정렬합니다. "
+                    + "저장된 정보로 응답하고 TourAPI를 다시 호출하지 않습니다. "
+                    + "채팅방이 없는 여행은 만든 회원이, 채팅방이 연결된 여행은 그 방에 참여 중인 멤버가 볼 수 있습니다.",
+            security = @SecurityRequirement(name = "bearerAuth"))
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "여행 장소 목록. 담긴 장소가 없으면 빈 배열"),
+            @ApiResponse(responseCode = "401", ref = "#/components/responses/Unauthorized"),
+            @ApiResponse(responseCode = "404", ref = "#/components/responses/TripNotFound"),
+            @ApiResponse(responseCode = "503", ref = "#/components/responses/AuthenticationUnavailable"),
+            @ApiResponse(responseCode = "500", ref = "#/components/responses/InternalServerError")
+    })
+    ResponseEntity<TripPlaceListResponse> findPlaces(@Parameter(hidden = true) @AuthenticationPrincipal AuthenticatedAccount account,
+                                                     @Parameter(description = "여행 ID", example = "12") Long tripId);
 }
