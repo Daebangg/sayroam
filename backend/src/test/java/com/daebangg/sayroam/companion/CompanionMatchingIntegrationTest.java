@@ -228,7 +228,7 @@ class CompanionMatchingIntegrationTest extends DatabaseIntegrationTest {
         long target = seed(other, destination, today.plusDays(10), today.plusDays(15), "ACTIVE", null, null, null);
         CompanionMatchingClaim claim = matching.claim().orElseThrow();
         doThrow(new IllegalStateException("두 번째 수신자 알림 저장 실패"))
-                .when(notifications).createGroupedIfAbsent(argThat(command -> command.receiverId() == other));
+                .when(notifications).createIfAbsent(argThat(command -> command.receiverId() == other));
         assertThatThrownBy(() -> matching.process(claim)).isInstanceOf(RuntimeException.class);
         assertThat(discoveryCount(source)).isZero();
         assertThat(notificationCount(owner)).isZero();
@@ -354,7 +354,7 @@ class CompanionMatchingIntegrationTest extends DatabaseIntegrationTest {
     }
 
     @Test
-    void groupsSeveralCandidatesAndReverseJobsIntoOneUnreadNoticePerSearch() {
+    void groupsSeveralCandidatesPerJobAndDoesNotNotifyKnownPairsAgain() {
         long owner = member(null, null);
         long firstMember = member(null, null);
         long secondMember = member(null, null);
@@ -364,11 +364,48 @@ class CompanionMatchingIntegrationTest extends DatabaseIntegrationTest {
         drain();
         assertThat(discoveryCount(source)).isEqualTo(2);
         assertThat(notificationCount(owner)).isEqualTo(1);
-        assertThat(notificationCount(firstMember)).isEqualTo(1);
-        assertThat(notificationCount(secondMember)).isEqualTo(1);
+        // 첫 작업의 A-B·A-C 안내와, 다른 작업에서 새로 발견한 B-C 안내는 별개다.
+        assertThat(notificationCount(firstMember)).isEqualTo(2);
+        assertThat(notificationCount(secondMember)).isEqualTo(2);
         searches.update(owner, source, conditions(null, null, null));
         drain();
         assertThat(notificationCount(owner)).isEqualTo(1);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"read", "delete"})
+    void newJobCreatesItsOwnNoticeDespiteAnOlderUnreadNoticeAndKeepsOneAcrossBatches(String action) {
+        long owner = member(null, null);
+        long source = searches.create(owner, conditions(null, null, null)).id();
+        searches.create(member(null, null), conditions(null, null, null));
+        drain();
+        long previousNotice = jdbc.queryForObject("SELECT id FROM notification WHERE receiver_id = ?", Long.class, owner);
+        long other = member(null, null);
+        for (int index = 0; index < 105; index++) {
+            seed(other, destination, today.plusDays(10), today.plusDays(15), "ACTIVE", null, null, null);
+        }
+        searches.update(owner, source, conditions(null, null, null));
+        CompanionMatchingClaim current = matching.claim().orElseThrow();
+        matching.process(current);
+        assertThat(status(current)).isEqualTo("PENDING");
+        assertThat(notificationCount(owner)).isEqualTo(2);
+        String currentKey = "companion-matching-job:" + current.jobId() + ":search:" + source;
+        long currentNotice = jdbc.queryForObject("SELECT id FROM notification WHERE receiver_id = ? AND event_key = ?",
+                Long.class, owner, currentKey);
+        assertThat(currentNotice).isNotEqualTo(previousNotice);
+        if (action.equals("read")) {
+            notifications.read(owner, previousNotice);
+            notifications.read(owner, currentNotice);
+        } else {
+            notifications.delete(owner, previousNotice);
+            notifications.delete(owner, currentNotice);
+        }
+        List<Map<String, Object>> before = jdbc.queryForList("SELECT * FROM notification WHERE receiver_id = ? ORDER BY id", owner);
+        drain();
+        assertThat(status(current)).isEqualTo("SUCCEEDED");
+        assertThat(discoveryCount(source)).isEqualTo(106);
+        assertThat(notificationCount(owner)).isEqualTo(2);
+        assertThat(jdbc.queryForList("SELECT * FROM notification WHERE receiver_id = ? ORDER BY id", owner)).isEqualTo(before);
     }
 
     @Test

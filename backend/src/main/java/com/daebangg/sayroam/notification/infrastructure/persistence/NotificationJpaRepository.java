@@ -2,8 +2,6 @@ package com.daebangg.sayroam.notification.infrastructure.persistence;
 
 import com.daebangg.sayroam.notification.domain.Notification;
 import com.daebangg.sayroam.notification.domain.NotificationRepository;
-import com.daebangg.sayroam.notification.domain.NotificationType;
-import com.daebangg.sayroam.notification.domain.NotificationTargetType;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Limit;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -39,20 +37,6 @@ public interface NotificationJpaRepository extends NotificationRepository, JpaRe
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select n from Notification n where n.id = :id and n.receiverId = :receiverId and " + CURRENT_TYPES)
     Optional<Notification> findByIdAndReceiverId(@Param("id") Long id, @Param("receiverId") Long receiverId);
-
-    @Override
-    @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query("""
-            select n from Notification n
-            where n.receiverId = :receiverId and n.type = :type
-              and n.targetType = :targetType and n.targetId = :targetId
-              and n.readAt is null and n.deletedAt is null
-            order by n.id limit 1
-            """)
-    Optional<Notification> findUnreadByTarget(@Param("receiverId") Long receiverId,
-                                             @Param("type") NotificationType type,
-                                             @Param("targetType") NotificationTargetType targetType,
-                                             @Param("targetId") Long targetId);
 
     @Override
     default List<Notification> findVisibleBefore(

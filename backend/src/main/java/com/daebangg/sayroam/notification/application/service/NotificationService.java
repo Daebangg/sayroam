@@ -35,13 +35,9 @@ public class NotificationService {
     }
 
     @Transactional
-    public void createGroupedIfAbsent(CreateNotificationCommand command) {
+    public void createIfAbsent(CreateNotificationCommand command) {
         Notification notification = Notification.create(command.receiverId(), command.type(), command.targetType(),
                 command.targetId(), command.eventKey(), command.content());
-        if (notifications.findUnreadByTarget(command.receiverId(), command.type(),
-                command.targetType(), command.targetId()).isPresent()) {
-            return;
-        }
         // 이미 알린 작업은 읽음·삭제 여부와 관계없이 다시 만들지 않는다.
         notifications.saveIfAbsent(notification, LocalDateTime.now(ZoneOffset.UTC));
     }

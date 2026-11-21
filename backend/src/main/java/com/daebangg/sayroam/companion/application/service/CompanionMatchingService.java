@@ -110,7 +110,7 @@ public class CompanionMatchingService {
 
     private void notifyDiscovery(CompanionSearch search, String eventKey) {
         String title = search.getTitle() == null ? "your recruitment" : "\"" + search.getTitle() + "\"";
-        notifications.createGroupedIfAbsent(new CreateNotificationCommand(search.getUserId(),
+        notifications.createIfAbsent(new CreateNotificationCommand(search.getUserId(),
                 NotificationType.COMPANION_MATCH_FOUND, NotificationTargetType.COMPANION_SEARCH,
                 search.getId(), eventKey, "New travel companion candidates were found for " + title + "."));
     }

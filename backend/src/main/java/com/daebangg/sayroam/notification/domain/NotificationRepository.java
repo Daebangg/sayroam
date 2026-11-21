@@ -9,9 +9,6 @@ public interface NotificationRepository {
 
     void saveIfAbsent(Notification notification, LocalDateTime now);
 
-    Optional<Notification> findUnreadByTarget(Long receiverId, NotificationType type,
-                                             NotificationTargetType targetType, Long targetId);
-
     Optional<Notification> findByIdAndReceiverId(Long id, Long receiverId);
 
     List<Notification> findVisibleBefore(
