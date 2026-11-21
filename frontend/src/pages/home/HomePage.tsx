@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useId, useState } from "react";
 import { useNavigate, useOutletContext } from "react-router";
 import { useTranslation } from "react-i18next";
 import { Button, ButtonLink, Card, DateRangeCalendar, Icon, TextField } from "@/components/ui";
@@ -23,6 +23,9 @@ const shortcuts = [
     { id: "guide", icon: "guide", screen: null },
 ] as const;
 
+// 여행 이름은 30자까지 저장된다. 영어 기본 이름 "Trip to "(8자)를 붙여도 넘지 않게 목적지를 제한한다.
+const DESTINATION_MAX_LENGTH = 22;
+
 export function HomePage() {
     const { member, onOpenAuth } = useOutletContext<PageContext>();
     const { t, i18n } = useTranslation();
@@ -33,7 +36,9 @@ export function HomePage() {
     const [selected, setSelected] = useState<PreviewTrip | null>(null);
     const [guide, setGuide] = useState(false);
     const [schedule, setSchedule] = useState({ start: "", end: "" });
-    const [scheduleMissing, setScheduleMissing] = useState(false);
+    const [missing, setMissing] = useState<"destination" | "schedule" | null>(null);
+    const searchErrorId = useId();
+    const destinationMissing = missing === "destination";
     const creation = useCreateTrip();
     const language = i18n.resolvedLanguage ?? "ko";
     const nights = schedule.end
@@ -101,11 +106,20 @@ export function HomePage() {
                         onOpenAuth();
                         return;
                     }
-                    if (!schedule.end) {
-                        setScheduleMissing(true);
+                    const destination = String(
+                        new FormData(event.currentTarget).get("destination") ?? "",
+                    ).trim();
+                    if (!destination) {
+                        setMissing("destination");
                         return;
                     }
-                    void creation.create(schedule.start, schedule.end).then((tripId) => {
+                    if (!schedule.end) {
+                        setMissing("schedule");
+                        return;
+                    }
+                    // 목적지는 저장하지 않고 화면 언어로 만든 기본 여행 이름에만 쓴다.
+                    const title = t("mockup.defaultTripTitle", { destination });
+                    void creation.create(schedule.start, schedule.end, title).then((tripId) => {
                         if (tripId !== null) void navigate(pagePaths.trips);
                     });
                 }}
@@ -116,7 +130,12 @@ export function HomePage() {
                         label={t("mockup.destination")}
                         placeholder={t("mockup.destinationPlaceholder")}
                         name="destination"
-                        maxLength={50}
+                        maxLength={DESTINATION_MAX_LENGTH}
+                        aria-invalid={destinationMissing || undefined}
+                        aria-describedby={destinationMissing ? searchErrorId : undefined}
+                        onChange={() => {
+                            if (missing === "destination") setMissing(null);
+                        }}
                     />
                 </div>
                 <div className="travel-search__schedule">
@@ -136,7 +155,7 @@ export function HomePage() {
                                 summary={false}
                                 onChange={(start, end) => {
                                     setSchedule({ start, end });
-                                    setScheduleMissing(false);
+                                    if (missing === "schedule") setMissing(null);
                                     if (end) close();
                                 }}
                             />
@@ -147,9 +166,15 @@ export function HomePage() {
                     {t("mockup.planTrip")}
                 </Button>
             </form>
-            {(scheduleMissing || creation.failed) && (
-                <p className="travel-search-error" role="alert">
-                    {t(scheduleMissing ? "mockup.scheduleRequired" : "mockup.planTripFailed")}
+            {(missing || creation.failed) && (
+                <p id={searchErrorId} className="travel-search-error" role="alert">
+                    {t(
+                        destinationMissing
+                            ? "mockup.destinationRequired"
+                            : missing === "schedule"
+                              ? "mockup.scheduleRequired"
+                              : "mockup.planTripFailed",
+                    )}
                 </p>
             )}
             <nav className="travel-shortcuts" aria-label={t("mockup.shortcuts")}>

@@ -49,11 +49,11 @@ class SayroamApplicationTests extends DatabaseIntegrationTest {
                 SELECT COUNT(*) FROM information_schema.tables
                 WHERE table_schema = DATABASE() AND table_type = 'BASE TABLE'
                 """, Integer.class)).isEqualTo(22);
-        assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("20");
+        assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("21");
         flyway.validate();
         assertThat(flyway.migrate().migrationsExecuted).isZero();
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM flyway_schema_history WHERE success = 1",
-                Integer.class)).isEqualTo(20);
+                Integer.class)).isEqualTo(21);
     }
 
     @Test
@@ -241,7 +241,7 @@ class SayroamApplicationTests extends DatabaseIntegrationTest {
                            (10, 'WELCOME', NULL, NULL, 'account-signup:10', '가입 축하', NULL, NULL, NOW(), NOW())
                     """);
             List<Map<String, Object>> original = legacy.queryForList("SELECT * FROM notification ORDER BY id");
-            Flyway upgraded = Flyway.configure().dataSource(dataSource).load();
+            Flyway upgraded = Flyway.configure().dataSource(dataSource).target("20").load();
             assertThat(upgraded.migrate().migrationsExecuted).isEqualTo(1);
             assertThat(legacy.queryForList("SELECT * FROM notification ORDER BY id")).isEqualTo(original);
             legacy.update("""
@@ -254,6 +254,39 @@ class SayroamApplicationTests extends DatabaseIntegrationTest {
                     Long.class)).isEqualTo(123L);
             upgraded.validate();
             assertThat(upgraded.migrate().migrationsExecuted).isZero();
+        }
+    }
+
+    @Test
+    void upgradesVersionTwentyPreservingTripTitlesAndAllowsThirtyCharacterTitles() {
+        try (MySQLContainer mysql = new MySQLContainer("mysql:8.4")
+                .withCommand("--log-bin-trust-function-creators=1")) {
+            mysql.start();
+            DriverManagerDataSource dataSource = new DriverManagerDataSource(
+                    mysql.getJdbcUrl(), mysql.getUsername(), mysql.getPassword());
+            Flyway.configure().dataSource(dataSource).target("20").load().migrate();
+            JdbcTemplate legacy = new JdbcTemplate(dataSource);
+            legacy.update("""
+                    INSERT INTO users (id, nickname, role, created_at, updated_at)
+                    VALUES (10, '기존 회원', 'USER', NOW(), NOW())
+                    """);
+            legacy.update("""
+                    INSERT INTO trip (id, created_by, title, start_date, end_date, created_at, updated_at)
+                    VALUES (1, 10, '제주 여행', '2026-12-01', '2026-12-04', NOW(), NOW()),
+                           (2, 10, NULL, '2026-12-01', '2026-12-04', NOW(), NOW())
+                    """);
+
+            assertThat(Flyway.configure().dataSource(dataSource).target("21").load().migrate().migrationsExecuted).isEqualTo(1);
+            assertThat(legacy.queryForObject("SELECT title FROM trip WHERE id = 1", String.class)).isEqualTo("제주 여행");
+            assertThat(legacy.queryForObject("SELECT title FROM trip WHERE id = 2", String.class)).isNull();
+
+            String thirtyCharacterTitle = "가".repeat(30);
+            legacy.update("""
+                    INSERT INTO trip (created_by, title, start_date, end_date, created_at, updated_at)
+                    VALUES (10, ?, '2026-12-01', '2026-12-04', NOW(), NOW())
+                    """, thirtyCharacterTitle);
+            assertThat(legacy.queryForObject("SELECT COUNT(*) FROM trip WHERE title = ?",
+                    Integer.class, thirtyCharacterTitle)).isEqualTo(1);
         }
     }
 
@@ -304,7 +337,7 @@ class SayroamApplicationTests extends DatabaseIntegrationTest {
         User user = User.builder().nickname("테스트 회원").role(Role.USER).build();
         entityManager.persist(user);
         TravelPeriod period = new TravelPeriod(LocalDate.of(2026, 12, 1), LocalDate.of(2026, 12, 4));
-        Trip trip = new Trip(user.getId(), period);
+        Trip trip = new Trip(user.getId(), period, "제주 여행");
         entityManager.persist(trip);
         entityManager.flush();
         Object tripId = entityManagerFactory.getPersistenceUnitUtil().getIdentifier(trip);

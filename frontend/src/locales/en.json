@@ -527,7 +527,9 @@
         "dayTrip": "Day trip",
         "planTrip": "Plan trip",
         "scheduleRequired": "Choose your trip dates first.",
-        "planTripFailed": "Couldn't create your trip. Please try again shortly."
+        "planTripFailed": "Couldn't create your trip. Please try again shortly.",
+        "destinationRequired": "Enter your destination.",
+        "defaultTripTitle": "Trip to {{destination}}"
     },
     "controls": {
         "datePicker": {

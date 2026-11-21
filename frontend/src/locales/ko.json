@@ -527,7 +527,9 @@
         "dayTrip": "당일치기",
         "planTrip": "계획 세우기",
         "scheduleRequired": "여행 일정을 먼저 골라 주세요.",
-        "planTripFailed": "여행 계획을 만들지 못했어요. 잠시 후 다시 시도해 주세요."
+        "planTripFailed": "여행 계획을 만들지 못했어요. 잠시 후 다시 시도해 주세요.",
+        "destinationRequired": "목적지를 입력해 주세요.",
+        "defaultTripTitle": "{{destination}} 여행"
     },
     "controls": {
         "datePicker": {
