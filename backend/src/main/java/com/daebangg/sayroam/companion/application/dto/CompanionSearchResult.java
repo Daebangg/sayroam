@@ -1,6 +1,7 @@
 package com.daebangg.sayroam.companion.application.dto;
 
 import com.daebangg.sayroam.companion.domain.AgeRange;
+import com.daebangg.sayroam.companion.domain.CompanionMatchingStatus;
 import com.daebangg.sayroam.companion.domain.CompanionSearch;
 import com.daebangg.sayroam.companion.domain.CompanionSearchStatus;
 import com.daebangg.sayroam.user.domain.Gender;
@@ -22,15 +23,17 @@ public record CompanionSearchResult(
         String introduction,
         boolean showAge,
         boolean showGender,
-        Map<String, Integer> travelStyle
+        Map<String, Integer> travelStyle,
+        long matchingRevision,
+        CompanionMatchingStatus matchingStatus
 ) {
 
-    public static CompanionSearchResult from(CompanionSearch search) {
+    public static CompanionSearchResult from(CompanionSearch search, CompanionMatchingStatus matchingStatus) {
         AgeRange ageRange = search.getPreferredAgeRange();
         return new CompanionSearchResult(search.getId(), search.getDestinationId(), search.getRegion(),
                 search.getPeriod().startDate(), search.getPeriod().endDate(), search.getPreferredGender(),
                 ageRange == null ? null : ageRange.minAge(), ageRange == null ? null : ageRange.maxAge(),
                 search.getStatus(), search.getTitle(), search.getIntroduction(), search.isShowAge(), search.isShowGender(),
-                search.travelStyleAnswers());
+                search.travelStyleAnswers(), search.getMatchingRevision(), matchingStatus);
     }
 }

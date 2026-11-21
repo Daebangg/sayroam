@@ -2,6 +2,7 @@ package com.daebangg.sayroam.companion.presentation.dto;
 
 import com.daebangg.sayroam.companion.application.dto.CompanionSearchResult;
 import com.daebangg.sayroam.companion.domain.CompanionSearchStatus;
+import com.daebangg.sayroam.companion.domain.CompanionMatchingStatus;
 import com.daebangg.sayroam.user.domain.Gender;
 import io.swagger.v3.oas.annotations.media.Schema;
 import org.jspecify.annotations.Nullable;
@@ -27,13 +28,17 @@ public record CompanionSearchResponse(
         boolean showAge,
         boolean showGender,
         @Schema(description = "모집에 저장된 4문항 점수. 기존 미설정 모집은 빈 객체이며 수정으로 보완해야 합니다.")
-        Map<String, Integer> travelStyle
+        Map<String, Integer> travelStyle,
+        @Schema(description = "현재 모집 조건 버전") long matchingRevision,
+        @Schema(description = "현재 조건의 최초 탐색 상태. 후보 목록은 별도 조회합니다.", enumAsRef = true)
+        CompanionMatchingStatus matchingStatus
 ) {
 
     public static CompanionSearchResponse from(CompanionSearchResult result) {
         return new CompanionSearchResponse(result.id(), result.destinationId(), result.legacyRegion(),
                 result.startDate(), result.endDate(), result.preferredGender(),
                 result.preferredMinAge(), result.preferredMaxAge(), result.status(), result.title(),
-                result.introduction(), result.showAge(), result.showGender(), result.travelStyle());
+                result.introduction(), result.showAge(), result.showGender(), result.travelStyle(),
+                result.matchingRevision(), result.matchingStatus());
     }
 }

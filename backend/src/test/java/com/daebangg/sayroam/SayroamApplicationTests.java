@@ -49,11 +49,11 @@ class SayroamApplicationTests extends DatabaseIntegrationTest {
                 SELECT COUNT(*) FROM information_schema.tables
                 WHERE table_schema = DATABASE() AND table_type = 'BASE TABLE'
                 """, Integer.class)).isEqualTo(22);
-        assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("19");
+        assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("20");
         flyway.validate();
         assertThat(flyway.migrate().migrationsExecuted).isZero();
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM flyway_schema_history WHERE success = 1",
-                Integer.class)).isEqualTo(19);
+                Integer.class)).isEqualTo(20);
     }
 
     @Test
@@ -222,6 +222,42 @@ class SayroamApplicationTests extends DatabaseIntegrationTest {
     }
 
     @Test
+    void upgradesVersionNineteenPreservingNotificationsAndSupportsMatchingTargets() {
+        try (MySQLContainer mysql = new MySQLContainer("mysql:8.4")
+                .withCommand("--log-bin-trust-function-creators=1")) {
+            mysql.start();
+            DriverManagerDataSource dataSource = new DriverManagerDataSource(
+                    mysql.getJdbcUrl(), mysql.getUsername(), mysql.getPassword());
+            Flyway.configure().dataSource(dataSource).target("19").load().migrate();
+            JdbcTemplate legacy = new JdbcTemplate(dataSource);
+            legacy.update("""
+                    INSERT INTO users (id, nickname, role, created_at, updated_at)
+                    VALUES (10, '기존 수신자', 'USER', NOW(), NOW())
+                    """);
+            legacy.update("""
+                    INSERT INTO notification
+                        (receiver_id, type, target_type, target_id, event_key, content, read_at, deleted_at, created_at, updated_at)
+                    VALUES (10, 'TRIP_INVITE', 'TRIP', 42, 'trip-invite:42', '기존 알림', NOW(), NOW(), NOW(), NOW()),
+                           (10, 'WELCOME', NULL, NULL, 'account-signup:10', '가입 축하', NULL, NULL, NOW(), NOW())
+                    """);
+            List<Map<String, Object>> original = legacy.queryForList("SELECT * FROM notification ORDER BY id");
+            Flyway upgraded = Flyway.configure().dataSource(dataSource).load();
+            assertThat(upgraded.migrate().migrationsExecuted).isEqualTo(1);
+            assertThat(legacy.queryForList("SELECT * FROM notification ORDER BY id")).isEqualTo(original);
+            legacy.update("""
+                    INSERT INTO notification
+                        (receiver_id, type, target_type, target_id, event_key, content, created_at, updated_at)
+                    VALUES (10, 'COMPANION_MATCH_FOUND', 'COMPANION_SEARCH', 123, 'companion-discovery:123:124',
+                            '새 동행 후보', NOW(), NOW())
+                    """);
+            assertThat(legacy.queryForObject("SELECT target_id FROM notification WHERE type = 'COMPANION_MATCH_FOUND'",
+                    Long.class)).isEqualTo(123L);
+            upgraded.validate();
+            assertThat(upgraded.migrate().migrationsExecuted).isZero();
+        }
+    }
+
+    @Test
     void upgradesVersionEighteenPreservingTourPlacesAndAllowsCustomPlaces() {
         try (MySQLContainer mysql = new MySQLContainer("mysql:8.4")
                 .withCommand("--log-bin-trust-function-creators=1")) {
@@ -236,7 +272,7 @@ class SayroamApplicationTests extends DatabaseIntegrationTest {
                     VALUES (1, 'TOUR', '126081', '송정해수욕장', 'ATTRACTION', '12', 35.1786, 129.1997, NOW(), NOW())
                     """);
 
-            assertThat(Flyway.configure().dataSource(dataSource).load().migrate().migrationsExecuted).isEqualTo(1);
+            assertThat(Flyway.configure().dataSource(dataSource).target("19").load().migrate().migrationsExecuted).isEqualTo(1);
             assertThat(legacy.queryForMap("SELECT source, source_id, category, source_category_code FROM place WHERE id = 1"))
                     .containsEntry("source", "TOUR")
                     .containsEntry("source_id", "126081")

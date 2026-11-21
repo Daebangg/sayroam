@@ -15,12 +15,28 @@ import java.util.List;
 import java.util.Optional;
 
 public interface NotificationJpaRepository extends NotificationRepository, JpaRepository<Notification, Long> {
+    // 이전 DB ENUM 값은 보존하되 현재 서비스에서 지원하는 알림만 노출한다.
+    String CURRENT_TYPES = " n.type in (WELCOME, COMPANION_MATCH_FOUND) ";
+
     @Override
     <S extends Notification> S save(S notification);
 
     @Override
+    @Modifying
+    @Query(value = """
+            INSERT INTO notification
+                (receiver_id, type, target_type, target_id, event_key, content, created_at, updated_at)
+            VALUES (:#{#notification.receiverId}, :#{#notification.type.name()},
+                    :#{#notification.targetType == null ? null : #notification.targetType.name()},
+                    :#{#notification.targetId}, :#{#notification.eventKey}, :#{#notification.content}, :now, :now)
+            ON DUPLICATE KEY UPDATE id = id
+            """, nativeQuery = true)
+    void saveIfAbsent(@Param("notification") Notification notification, @Param("now") LocalDateTime now);
+
+    @Override
     @Lock(LockModeType.PESSIMISTIC_WRITE)
-    Optional<Notification> findByIdAndReceiverId(Long id, Long receiverId);
+    @Query("select n from Notification n where n.id = :id and n.receiverId = :receiverId and " + CURRENT_TYPES)
+    Optional<Notification> findByIdAndReceiverId(@Param("id") Long id, @Param("receiverId") Long receiverId);
 
     @Override
     default List<Notification> findVisibleBefore(
@@ -35,7 +51,9 @@ public interface NotificationJpaRepository extends NotificationRepository, JpaRe
     @Query("""
             select n
             from Notification n
-            where n.receiverId = :receiverId
+            where
+            """ + CURRENT_TYPES + """
+              and n.receiverId = :receiverId
               and n.deletedAt is null
               and (:unreadOnly = false or n.readAt is null)
               and (:beforeId is null or n.id < :beforeId)
@@ -53,7 +71,9 @@ public interface NotificationJpaRepository extends NotificationRepository, JpaRe
             select new com.daebangg.sayroam.notification.domain.NotificationRepository$Counts(
                 count(n.id), count(n.id) - count(n.readAt))
             from Notification n
-            where n.receiverId = :receiverId
+            where
+            """ + CURRENT_TYPES + """
+              and n.receiverId = :receiverId
               and n.deletedAt is null
             """)
     Counts countVisibleByReceiverId(@Param("receiverId") Long receiverId);
@@ -63,7 +83,9 @@ public interface NotificationJpaRepository extends NotificationRepository, JpaRe
     @Query("""
             update Notification n
             set n.readAt = :readAt, n.updatedAt = :readAt
-            where n.receiverId = :receiverId
+            where
+            """ + CURRENT_TYPES + """
+              and n.receiverId = :receiverId
               and n.deletedAt is null
               and n.readAt is null
             """)

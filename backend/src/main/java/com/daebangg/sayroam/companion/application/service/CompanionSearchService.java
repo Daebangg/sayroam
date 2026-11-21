@@ -3,6 +3,7 @@ package com.daebangg.sayroam.companion.application.service;
 import com.daebangg.sayroam.common.domain.TravelPeriod;
 import com.daebangg.sayroam.companion.application.dto.CompanionCandidateResult;
 import com.daebangg.sayroam.companion.application.dto.CompanionSearchResult;
+import com.daebangg.sayroam.companion.application.dto.CompanionMatchingStatusResult;
 import com.daebangg.sayroam.companion.application.dto.PreviewCompanionCandidatesQuery;
 import com.daebangg.sayroam.companion.application.dto.SaveCompanionSearchCommand;
 import com.daebangg.sayroam.companion.application.dto.TravelStyleAnswerResult;
@@ -70,12 +71,35 @@ public class CompanionSearchService {
                 ? findTravelStyleAnswers(userId) : command.travelStyle());
         searches.save(search);
         enqueueMatching(search);
-        return CompanionSearchResult.from(search);
+        return result(search);
     }
 
     @Transactional(readOnly = true)
     public List<CompanionSearchResult> findMine(long userId) {
-        return searches.findByUserIdOrderByIdDesc(userId).stream().map(CompanionSearchResult::from).toList();
+        List<CompanionSearch> mine = searches.findByUserIdOrderByIdDesc(userId);
+        if (mine.isEmpty()) {
+            return List.of();
+        }
+        Map<Long, CompanionMatchingJob> latest = matchingJobs.findLatestBySearchIds(
+                        mine.stream().map(CompanionSearch::getId).toList()).stream()
+                .collect(Collectors.toMap(CompanionMatchingJob::getSearchId, job -> job));
+        LocalDate today = LocalDate.now(KOREA_ZONE);
+        return mine.stream().map(search -> CompanionSearchResult.from(search,
+                search.matchingStatus(latest.get(search.getId()), today))).toList();
+    }
+
+    @Transactional(readOnly = true)
+    public CompanionMatchingStatusResult findMatchingStatus(long userId, long searchId) {
+        CompanionSearch search = searches.findByIdAndUserId(searchId, userId)
+                .orElseThrow(() -> new BusinessException(CompanionSearchErrorCode.COMPANION_SEARCH_NOT_FOUND));
+        CompanionSearchResult result = result(search);
+        return new CompanionMatchingStatusResult(searchId, result.matchingRevision(), result.matchingStatus());
+    }
+
+    private CompanionSearchResult result(CompanionSearch search) {
+        CompanionMatchingJob latest = matchingJobs.findLatestBySearchIds(List.of(search.getId())).stream()
+                .findFirst().orElse(null);
+        return CompanionSearchResult.from(search, search.matchingStatus(latest, LocalDate.now(KOREA_ZONE)));
     }
 
     @Transactional(readOnly = true)
@@ -161,7 +185,7 @@ public class CompanionSearchService {
                 command.preferredGender(), new AgeRange(command.preferredMinAge(), command.preferredMaxAge()),
                 command.title(), command.introduction(), command.showAge(), command.showGender());
         enqueueMatching(search);
-        return CompanionSearchResult.from(search);
+        return result(search);
     }
 
     @Transactional
@@ -179,7 +203,7 @@ public class CompanionSearchService {
         if (reopening) {
             enqueueMatching(search);
         }
-        return CompanionSearchResult.from(search);
+        return result(search);
     }
 
     private void enqueueMatching(CompanionSearch search) {

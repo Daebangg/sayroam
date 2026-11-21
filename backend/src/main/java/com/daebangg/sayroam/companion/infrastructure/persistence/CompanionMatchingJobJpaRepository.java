@@ -10,6 +10,7 @@ import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDateTime;
 import java.util.Optional;
+import java.util.List;
 
 public interface CompanionMatchingJobJpaRepository
         extends CompanionMatchingJobRepository, JpaRepository<CompanionMatchingJob, Long> {
@@ -25,4 +26,12 @@ public interface CompanionMatchingJobJpaRepository
     @Override
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     Optional<CompanionMatchingJob> findForUpdateById(Long id);
+
+    @Override
+    @Query("""
+            select j from CompanionMatchingJob j
+            where j.id in (select max(latest.id) from CompanionMatchingJob latest
+                           where latest.searchId in :searchIds group by latest.searchId)
+            """)
+    List<CompanionMatchingJob> findLatestBySearchIds(@Param("searchIds") List<Long> searchIds);
 }

@@ -7,6 +7,8 @@ import java.util.Optional;
 public interface NotificationRepository {
     <S extends Notification> S save(S notification);
 
+    void saveIfAbsent(Notification notification, LocalDateTime now);
+
     Optional<Notification> findByIdAndReceiverId(Long id, Long receiverId);
 
     List<Notification> findVisibleBefore(

@@ -1,6 +1,8 @@
 package com.daebangg.sayroam.companion;
 
 import com.daebangg.sayroam.auth.application.port.out.AccessTokenIssuer;
+import com.daebangg.sayroam.companion.application.service.CompanionMatchingService;
+import com.daebangg.sayroam.companion.application.dto.CompanionMatchingClaim;
 import com.daebangg.sayroam.support.DatabaseIntegrationTest;
 import com.daebangg.sayroam.user.domain.Role;
 import com.daebangg.sayroam.user.domain.User;
@@ -42,6 +44,7 @@ class CompanionSearchApiIntegrationTest extends DatabaseIntegrationTest {
     @Autowired EntityManager entityManager;
     @Autowired UserRepository users;
     @Autowired AccessTokenIssuer tokens;
+    @Autowired CompanionMatchingService matching;
 
     private String authorization;
     private long seoulId;
@@ -259,6 +262,89 @@ class CompanionSearchApiIntegrationTest extends DatabaseIntegrationTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("DESTINATION_UNAVAILABLE"));
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM companion_search", Integer.class)).isZero();
+    }
+
+    @Test
+    void exposesPendingProcessingRetryAndCompletedWithoutCandidates() throws Exception {
+        jdbc.update("DELETE FROM companion_matching_job");
+        submit(post(PATH), PATH, authorization, conditions(seoulId, "2030-04-21", "2030-04-23", ""))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.matchingRevision").value(2))
+                .andExpect(jsonPath("$.matchingStatus").value("PENDING"));
+        long id = jdbc.queryForObject("SELECT MAX(id) FROM companion_search", Long.class);
+        String path = PATH + "/" + id + "/matching-status";
+        matchingState(path, "PENDING", 2);
+        long jobs = jdbc.queryForObject("SELECT COUNT(*) FROM companion_matching_job", Long.class);
+        matchingState(path, "PENDING", 2);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM companion_matching_job", Long.class)).isEqualTo(jobs);
+        CompanionMatchingClaim claim = matching.claim().orElseThrow();
+        matchingState(path, "PROCESSING", 2);
+        matching.retry(claim);
+        matchingState(path, "RETRY", 2);
+        entityManager.flush();
+        jdbc.update("UPDATE companion_matching_job SET available_at = UTC_TIMESTAMP(6) - INTERVAL 1 SECOND WHERE id = ?", claim.jobId());
+        entityManager.clear();
+        matching.process(matching.claim().orElseThrow());
+        matchingState(path, "SUCCEEDED", 2);
+        String candidates = PATH + "/" + id + "/candidates";
+        mvc.perform(get(candidates).servletPath(candidates).header("Authorization", authorization))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.candidates").isEmpty());
+        mvc.perform(get(MINE).servletPath(MINE).header("Authorization", authorization))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.searches[0].matchingStatus").value("SUCCEEDED"));
+    }
+
+    @Test
+    void matchingStateIsOwnerScopedAndOnlyUsesTheCurrentRevision() throws Exception {
+        jdbc.update("DELETE FROM companion_matching_job");
+        String body = conditions(seoulId, "2030-04-21", "2030-04-23", "");
+        submit(post(PATH), PATH, authorization, body).andExpect(status().isCreated());
+        long id = jdbc.queryForObject("SELECT MAX(id) FROM companion_search", Long.class);
+        String resource = PATH + "/" + id;
+        String path = resource + "/matching-status";
+        mvc.perform(get(path).servletPath(path)).andExpect(status().isUnauthorized());
+        mvc.perform(get(path).servletPath(path).header("Authorization", createAuthorization("상태 조회 타인")))
+                .andExpect(status().isNotFound()).andExpect(jsonPath("$.code").value("COMPANION_SEARCH_NOT_FOUND"));
+        String missing = PATH + "/" + Long.MAX_VALUE + "/matching-status";
+        mvc.perform(get(missing).servletPath(missing).header("Authorization", authorization))
+                .andExpect(status().isNotFound()).andExpect(jsonPath("$.code").value("COMPANION_SEARCH_NOT_FOUND"));
+        CompanionMatchingClaim old = matching.claim().orElseThrow();
+        submit(put(resource), resource, authorization, body).andExpect(status().isOk())
+                .andExpect(jsonPath("$.matchingRevision").value(3))
+                .andExpect(jsonPath("$.matchingStatus").value("PENDING"));
+        matching.process(old);
+        matchingState(path, "PENDING", 3);
+        matching.process(matching.claim().orElseThrow());
+        matchingState(path, "SUCCEEDED", 3);
+        submit(patch(resource), resource, authorization, "{\"status\":\"CLOSED\"}")
+                .andExpect(status().isOk()).andExpect(jsonPath("$.matchingStatus").value("SKIPPED"));
+        matchingState(path, "SKIPPED", 4);
+        submit(patch(resource), resource, authorization, "{\"status\":\"ACTIVE\"}")
+                .andExpect(status().isOk()).andExpect(jsonPath("$.matchingStatus").value("PENDING"));
+        matchingState(path, "PENDING", 5);
+    }
+
+    @Test
+    void distinguishesMissingJobsExpiredAndLegacySearches() throws Exception {
+        submit(post(PATH), PATH, authorization, conditions(seoulId, "2030-04-21", "2030-04-23", ""))
+                .andExpect(status().isCreated());
+        long id = jdbc.queryForObject("SELECT MAX(id) FROM companion_search", Long.class);
+        String path = PATH + "/" + id + "/matching-status";
+        jdbc.update("DELETE FROM companion_matching_job WHERE search_id = ?", id);
+        entityManager.clear();
+        matchingState(path, "NOT_REQUESTED", 2);
+        jdbc.update("UPDATE companion_search SET start_date = '2000-01-01', end_date = '2000-01-02' WHERE id = ?", id);
+        entityManager.clear();
+        matchingState(path, "SKIPPED", 2);
+        jdbc.update("UPDATE companion_search SET start_date = '2030-04-21', end_date = '2030-04-23', destination_id = NULL, region = '기존 지역' WHERE id = ?", id);
+        entityManager.clear();
+        matchingState(path, "SKIPPED", 2);
+    }
+
+    private void matchingState(String path, String state, long revision) throws Exception {
+        mvc.perform(get(path).servletPath(path).header("Authorization", authorization))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.matchingRevision").value(revision))
+                .andExpect(jsonPath("$.status").value(state));
     }
 
     private String createAuthorization(String nickname) {
