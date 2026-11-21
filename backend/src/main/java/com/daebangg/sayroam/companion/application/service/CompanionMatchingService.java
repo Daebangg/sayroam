@@ -25,7 +25,9 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -72,18 +74,27 @@ public class CompanionMatchingService {
         List<CompanionMatchingCandidateResult> matches = candidates.findMatchingCandidates(
                 search, today, job.getCandidateCursor(), BATCH_SIZE);
         LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);
+        Map<Long, CompanionSearch> recipients = new LinkedHashMap<>();
         for (CompanionMatchingCandidateResult candidate : matches) {
-            recordDiscovery(job, search, candidate, today, now);
+            Optional<CompanionSearch> discovered = recordDiscovery(search, candidate, today, now);
+            if (discovered.isPresent()) {
+                CompanionSearch target = discovered.get();
+                recipients.put(search.getId(), search);
+                recipients.put(target.getId(), target);
+            }
+        }
+        for (CompanionSearch recipient : recipients.values()) {
+            notifyDiscovery(recipient, job.notificationEventKey(recipient.getId()));
         }
         long cursor = matches.isEmpty() ? job.getCandidateCursor() : matches.getLast().searchId();
         job.completeBatch(cursor, matches.size() == BATCH_SIZE, now);
     }
 
-    private void recordDiscovery(CompanionMatchingJob job, CompanionSearch source, CompanionMatchingCandidateResult candidate,
-                                 LocalDate today, LocalDateTime now) {
+    private Optional<CompanionSearch> recordDiscovery(CompanionSearch source, CompanionMatchingCandidateResult candidate,
+                                                     LocalDate today, LocalDateTime now) {
         Optional<CompanionSearch> found = searches.findForUpdateById(candidate.searchId());
         if (found.isEmpty() || !found.get().canMatch(candidate.matchingRevision(), today)) {
-            return;
+            return Optional.empty();
         }
         CompanionSearch target = found.get();
         // 프로필 변경·탈퇴와 알림 생성을 직렬화한다. 양방향 작업의 교착은 기존 작업 재시도로 복구한다.
@@ -93,7 +104,7 @@ public class CompanionMatchingService {
                 || users.findForUpdateByIdAndDeletedAtIsNull(secondUserId).isEmpty()
                 || !destinations.existsByIdAndActiveTrue(source.getDestinationId())
                 || !candidates.isMatchingCandidate(source, today, target.getId())) {
-            return;
+            return Optional.empty();
         }
         CompanionDiscovery discovery = CompanionDiscovery.found(source.getId(), source.getMatchingRevision(),
                 target.getId(), target.getMatchingRevision(),
@@ -102,10 +113,7 @@ public class CompanionMatchingService {
         boolean newlyDiscovered = discoveries.findByFirstSearchIdAndSecondSearchId(
                 discovery.getFirstSearchId(), discovery.getSecondSearchId()).isEmpty();
         discoveries.record(discovery);
-        if (newlyDiscovered) {
-            notifyDiscovery(source, job.notificationEventKey(source.getId()));
-            notifyDiscovery(target, job.notificationEventKey(target.getId()));
-        }
+        return newlyDiscovered ? Optional.of(target) : Optional.empty();
     }
 
     private void notifyDiscovery(CompanionSearch search, String eventKey) {

@@ -54,6 +54,8 @@ import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.reset;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 
 class CompanionMatchingIntegrationTest extends DatabaseIntegrationTest {
     @Autowired CompanionSearchService searches;
@@ -139,6 +141,8 @@ class CompanionMatchingIntegrationTest extends DatabaseIntegrationTest {
         assertThat(discoveryCount(source)).isEqualTo(2);
         assertThat(notificationCount(owner)).isEqualTo(1);
         assertThat(notificationCount(other)).isEqualTo(2);
+        verify(notifications, times(1)).createIfAbsent(argThat(command -> command.receiverId() == owner));
+        verify(notifications, times(2)).createIfAbsent(argThat(command -> command.receiverId() == other));
         assertThat(jdbc.queryForList("SELECT second_search_id FROM companion_discovery WHERE first_search_id = ? ORDER BY second_search_id",
                 Long.class, source)).containsExactly(first, second);
         assertThat(jdbc.queryForObject("SELECT overlap_end FROM companion_discovery WHERE first_search_id = ? AND second_search_id = ?",
@@ -212,11 +216,14 @@ class CompanionMatchingIntegrationTest extends DatabaseIntegrationTest {
         assertThat(status(first)).isEqualTo("PENDING");
         assertThat(discoveryCount(source)).isEqualTo(100);
         assertThat(notificationCount(owner)).isEqualTo(1);
+        verify(notifications, times(1)).createIfAbsent(argThat(command -> command.receiverId() == owner));
         long notice = jdbc.queryForObject("SELECT id FROM notification WHERE receiver_id = ?", Long.class, owner);
         notifications.read(owner, notice);
         drain();
         assertThat(discoveryCount(source)).isEqualTo(105);
         assertThat(notificationCount(owner)).isEqualTo(1);
+        // 배치별 호출은 한 번이며, 배치 간에는 같은 작업 사건 키로 저장 중복을 막는다.
+        verify(notifications, times(2)).createIfAbsent(argThat(command -> command.receiverId() == owner));
         assertThat(status(first)).isEqualTo("SUCCEEDED");
     }
 
