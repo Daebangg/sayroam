@@ -4,6 +4,7 @@ import com.daebangg.sayroam.place.domain.PlaceCategory;
 import com.daebangg.sayroam.place.domain.PlaceSource;
 import com.daebangg.sayroam.trip.application.dto.TripPlaceResult;
 import io.swagger.v3.oas.annotations.media.Schema;
+import org.jspecify.annotations.Nullable;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -28,9 +29,8 @@ public record TripPlaceListResponse(
             PlaceSource source,
             @Schema(description = "장소 이름", example = "송정해수욕장")
             String name,
-            @Schema(description = "장소 분류. 직접 추가한 장소는 null", example = "ATTRACTION",
-                    types = {"string", "null"})
-            PlaceCategory category,
+            @Schema(description = "장소 분류. 직접 추가한 장소는 null", enumAsRef = true)
+            @Nullable PlaceCategory category,
             @Schema(description = "주소. 직접 추가한 장소이거나 출처에 주소가 없으면 null",
                     example = "부산광역시 해운대구 송정해변로 62", types = {"string", "null"})
             String address,

@@ -1576,6 +1576,10 @@
                 "required": ["email", "newPassword", "resetProof"],
                 "type": "object"
             },
+            "PlaceCategory": {
+                "enum": ["ATTRACTION", "CULTURE", "ACTIVITY", "LODGING", "SHOPPING", "RESTAURANT"],
+                "type": "string"
+            },
             "PlaceSearchItemResponse": {
                 "properties": {
                     "address": {
@@ -1969,16 +1973,10 @@
                     },
                     "category": {
                         "description": "장소 분류. 직접 추가한 장소는 null",
-                        "enum": [
-                            "ATTRACTION",
-                            "CULTURE",
-                            "ACTIVITY",
-                            "LODGING",
-                            "SHOPPING",
-                            "RESTAURANT"
-                        ],
-                        "example": "ATTRACTION",
-                        "type": ["string", "null"]
+                        "oneOf": [
+                            { "$ref": "#/components/schemas/PlaceCategory" },
+                            { "type": "null" }
+                        ]
                     },
                     "day": {
                         "description": "일차. 일차 미정이면 null",

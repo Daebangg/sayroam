@@ -1562,6 +1562,9 @@ export interface components {
             /** @description 비밀번호 재설정 코드 확인에서 발급한 전용 일회성 증명 */
             resetProof: string;
         };
+        /** @enum {string} */
+        PlaceCategory:
+            "ATTRACTION" | "CULTURE" | "ACTIVITY" | "LODGING" | "SHOPPING" | "RESTAURANT";
         PlaceSearchItemResponse: {
             /**
              * @description 주소. 출처에 없으면 null
@@ -1777,19 +1780,8 @@ export interface components {
              * @example 부산광역시 해운대구 송정해변로 62
              */
             address: string | null;
-            /**
-             * @description 장소 분류. 직접 추가한 장소는 null
-             * @example ATTRACTION
-             * @enum {string|null}
-             */
-            category:
-                | "ATTRACTION"
-                | "CULTURE"
-                | "ACTIVITY"
-                | "LODGING"
-                | "SHOPPING"
-                | "RESTAURANT"
-                | null;
+            /** @description 장소 분류. 직접 추가한 장소는 null */
+            category: components["schemas"]["PlaceCategory"] | null;
             /**
              * Format: int32
              * @description 일차. 일차 미정이면 null
