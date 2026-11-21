@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useId, useState } from "react";
 import { useNavigate, useOutletContext } from "react-router";
 import { useTranslation } from "react-i18next";
 import { Button, ButtonLink, Card, DateRangeCalendar, Icon, TextField } from "@/components/ui";
@@ -37,6 +37,8 @@ export function HomePage() {
     const [guide, setGuide] = useState(false);
     const [schedule, setSchedule] = useState({ start: "", end: "" });
     const [missing, setMissing] = useState<"destination" | "schedule" | null>(null);
+    const searchErrorId = useId();
+    const destinationMissing = missing === "destination";
     const creation = useCreateTrip();
     const language = i18n.resolvedLanguage ?? "ko";
     const nights = schedule.end
@@ -129,6 +131,8 @@ export function HomePage() {
                         placeholder={t("mockup.destinationPlaceholder")}
                         name="destination"
                         maxLength={DESTINATION_MAX_LENGTH}
+                        aria-invalid={destinationMissing || undefined}
+                        aria-describedby={destinationMissing ? searchErrorId : undefined}
                         onChange={() => {
                             if (missing === "destination") setMissing(null);
                         }}
@@ -163,9 +167,9 @@ export function HomePage() {
                 </Button>
             </form>
             {(missing || creation.failed) && (
-                <p className="travel-search-error" role="alert">
+                <p id={searchErrorId} className="travel-search-error" role="alert">
                     {t(
-                        missing === "destination"
+                        destinationMissing
                             ? "mockup.destinationRequired"
                             : missing === "schedule"
                               ? "mockup.scheduleRequired"
