@@ -18,8 +18,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class NotificationTest {
     private static final Long RECEIVER_ID = 7L;
     private static final Long TARGET_ID = 42L;
-    private static final String EVENT_KEY = "trip-invite:42";
-    private static final String CONTENT = "여행에 초대되었습니다.";
+    private static final String EVENT_KEY = "matching-found:42";
+    private static final String CONTENT = "조건에 맞는 동행 후보를 발견했어요.";
     private static final LocalDateTime NOW = LocalDateTime.of(2026, 11, 20, 9, 0);
 
     @Test
@@ -29,14 +29,14 @@ class NotificationTest {
         assertThat(notification.isRead()).isFalse();
         assertThat(notification.isDeleted()).isFalse();
         assertThat(notification).extracting("receiverId", "type", "targetType", "targetId", "eventKey", "content")
-                .containsExactly(RECEIVER_ID, NotificationType.TRIP_INVITE,
-                        NotificationTargetType.TRIP, TARGET_ID, EVENT_KEY, CONTENT);
+                .containsExactly(RECEIVER_ID, NotificationType.COMPANION_MATCH_FOUND,
+                        NotificationTargetType.COMPANION_SEARCH, TARGET_ID, EVENT_KEY, CONTENT);
     }
 
     @Test
     void 연결_대상_타입과_ID를_모두_생략할_수_있다() {
         Notification notification = Notification.create(
-                RECEIVER_ID, NotificationType.TRIP_INVITE, null, null, EVENT_KEY, CONTENT);
+                RECEIVER_ID, NotificationType.COMPANION_MATCH_FOUND, null, null, EVENT_KEY, CONTENT);
 
         assertThat(notification).hasFieldOrPropertyWithValue("targetType", null)
                 .hasFieldOrPropertyWithValue("targetId", null);
@@ -46,8 +46,8 @@ class NotificationTest {
     @NullSource
     @ValueSource(longs = {0, -1})
     void 수신자_ID가_없거나_양수가_아니면_생성을_거부한다(Long receiverId) {
-        assertThatThrownBy(() -> Notification.create(receiverId, NotificationType.TRIP_INVITE,
-                NotificationTargetType.TRIP, TARGET_ID, EVENT_KEY, CONTENT))
+        assertThatThrownBy(() -> Notification.create(receiverId, NotificationType.COMPANION_MATCH_FOUND,
+                NotificationTargetType.COMPANION_SEARCH, TARGET_ID, EVENT_KEY, CONTENT))
                 .isInstanceOf(BusinessException.class)
                 .hasFieldOrPropertyWithValue("errorCode", NotificationErrorCode.NOTIFICATION_RECEIVER_INVALID);
     }
@@ -55,7 +55,7 @@ class NotificationTest {
     @Test
     void 알림_종류가_없으면_생성을_거부한다() {
         assertThatThrownBy(() -> Notification.create(RECEIVER_ID, null,
-                NotificationTargetType.TRIP, TARGET_ID, EVENT_KEY, CONTENT))
+                NotificationTargetType.COMPANION_SEARCH, TARGET_ID, EVENT_KEY, CONTENT))
                 .isInstanceOf(BusinessException.class)
                 .hasFieldOrPropertyWithValue("errorCode", NotificationErrorCode.NOTIFICATION_TYPE_REQUIRED);
     }
@@ -64,8 +64,8 @@ class NotificationTest {
     @NullSource
     @ValueSource(strings = {"", " ", "\t\n", "\u2003"})
     void 내용이_없거나_공백뿐이면_생성을_거부한다(String content) {
-        assertThatThrownBy(() -> Notification.create(RECEIVER_ID, NotificationType.TRIP_INVITE,
-                NotificationTargetType.TRIP, TARGET_ID, EVENT_KEY, content))
+        assertThatThrownBy(() -> Notification.create(RECEIVER_ID, NotificationType.COMPANION_MATCH_FOUND,
+                NotificationTargetType.COMPANION_SEARCH, TARGET_ID, EVENT_KEY, content))
                 .isInstanceOf(BusinessException.class)
                 .hasFieldOrPropertyWithValue("errorCode", NotificationErrorCode.NOTIFICATION_CONTENT_INVALID);
     }
@@ -75,12 +75,12 @@ class NotificationTest {
     void 내용은_이모지를_포함해_255자까지_허용하고_256자는_거부한다(String character) {
         String content = character.repeat(255);
 
-        Notification notification = Notification.create(RECEIVER_ID, NotificationType.TRIP_INVITE,
-                NotificationTargetType.TRIP, TARGET_ID, EVENT_KEY, content);
+        Notification notification = Notification.create(RECEIVER_ID, NotificationType.COMPANION_MATCH_FOUND,
+                NotificationTargetType.COMPANION_SEARCH, TARGET_ID, EVENT_KEY, content);
 
         assertThat(notification).hasFieldOrPropertyWithValue("content", content);
-        assertThatThrownBy(() -> Notification.create(RECEIVER_ID, NotificationType.TRIP_INVITE,
-                NotificationTargetType.TRIP, TARGET_ID, EVENT_KEY, character.repeat(256)))
+        assertThatThrownBy(() -> Notification.create(RECEIVER_ID, NotificationType.COMPANION_MATCH_FOUND,
+                NotificationTargetType.COMPANION_SEARCH, TARGET_ID, EVENT_KEY, character.repeat(256)))
                 .isInstanceOf(BusinessException.class)
                 .hasFieldOrPropertyWithValue("errorCode", NotificationErrorCode.NOTIFICATION_CONTENT_INVALID);
     }
@@ -89,8 +89,8 @@ class NotificationTest {
     void 내용의_앞뒤_공백과_줄바꿈을_유지한다() {
         String content = "  여행에\n초대되었습니다.  ";
 
-        Notification notification = Notification.create(RECEIVER_ID, NotificationType.TRIP_INVITE,
-                NotificationTargetType.TRIP, TARGET_ID, EVENT_KEY, content);
+        Notification notification = Notification.create(RECEIVER_ID, NotificationType.COMPANION_MATCH_FOUND,
+                NotificationTargetType.COMPANION_SEARCH, TARGET_ID, EVENT_KEY, content);
 
         assertThat(notification).hasFieldOrPropertyWithValue("content", content);
     }
@@ -99,8 +99,8 @@ class NotificationTest {
     @NullSource
     @ValueSource(strings = {"", " ", "\t\n", " event:1", "event:1 ", "\nevent:1", "event:1\t"})
     void 사건_식별값이_없거나_공백뿐이거나_앞뒤_공백이_있으면_생성을_거부한다(String eventKey) {
-        assertThatThrownBy(() -> Notification.create(RECEIVER_ID, NotificationType.TRIP_INVITE,
-                NotificationTargetType.TRIP, TARGET_ID, eventKey, CONTENT))
+        assertThatThrownBy(() -> Notification.create(RECEIVER_ID, NotificationType.COMPANION_MATCH_FOUND,
+                NotificationTargetType.COMPANION_SEARCH, TARGET_ID, eventKey, CONTENT))
                 .isInstanceOf(BusinessException.class)
                 .hasFieldOrPropertyWithValue("errorCode", NotificationErrorCode.NOTIFICATION_EVENT_KEY_INVALID);
     }
@@ -110,12 +110,12 @@ class NotificationTest {
     void 사건_식별값은_150자까지_허용하고_151자는_거부한다(String character) {
         String eventKey = character.repeat(150);
 
-        Notification notification = Notification.create(RECEIVER_ID, NotificationType.TRIP_INVITE,
-                NotificationTargetType.TRIP, TARGET_ID, eventKey, CONTENT);
+        Notification notification = Notification.create(RECEIVER_ID, NotificationType.COMPANION_MATCH_FOUND,
+                NotificationTargetType.COMPANION_SEARCH, TARGET_ID, eventKey, CONTENT);
 
         assertThat(notification).hasFieldOrPropertyWithValue("eventKey", eventKey);
-        assertThatThrownBy(() -> Notification.create(RECEIVER_ID, NotificationType.TRIP_INVITE,
-                NotificationTargetType.TRIP, TARGET_ID, character.repeat(151), CONTENT))
+        assertThatThrownBy(() -> Notification.create(RECEIVER_ID, NotificationType.COMPANION_MATCH_FOUND,
+                NotificationTargetType.COMPANION_SEARCH, TARGET_ID, character.repeat(151), CONTENT))
                 .isInstanceOf(BusinessException.class)
                 .hasFieldOrPropertyWithValue("errorCode", NotificationErrorCode.NOTIFICATION_EVENT_KEY_INVALID);
     }
@@ -123,8 +123,8 @@ class NotificationTest {
     @ParameterizedTest
     @ValueSource(strings = {"legacy:notification:", "legacy:notification:100", "LEGACY:NOTIFICATION:100"})
     void 기존_데이터용_예약_접두사로_새_알림을_생성할_수_없다(String eventKey) {
-        assertThatThrownBy(() -> Notification.create(RECEIVER_ID, NotificationType.TRIP_INVITE,
-                NotificationTargetType.TRIP, TARGET_ID, eventKey, CONTENT))
+        assertThatThrownBy(() -> Notification.create(RECEIVER_ID, NotificationType.COMPANION_MATCH_FOUND,
+                NotificationTargetType.COMPANION_SEARCH, TARGET_ID, eventKey, CONTENT))
                 .isInstanceOfSatisfying(BusinessException.class,
                         exception -> assertThat(exception.getErrorCode())
                                 .isEqualTo(NotificationErrorCode.NOTIFICATION_EVENT_KEY_INVALID));
@@ -134,7 +134,7 @@ class NotificationTest {
     @MethodSource("invalidTargets")
     void 연결_대상의_짝이_맞지_않거나_ID가_양수가_아니면_생성을_거부한다(
             NotificationTargetType targetType, Long targetId) {
-        assertThatThrownBy(() -> Notification.create(RECEIVER_ID, NotificationType.TRIP_INVITE,
+        assertThatThrownBy(() -> Notification.create(RECEIVER_ID, NotificationType.COMPANION_MATCH_FOUND,
                 targetType, targetId, EVENT_KEY, CONTENT))
                 .isInstanceOf(BusinessException.class)
                 .hasFieldOrPropertyWithValue("errorCode", NotificationErrorCode.NOTIFICATION_TARGET_INVALID);
@@ -142,10 +142,10 @@ class NotificationTest {
 
     private static Stream<Arguments> invalidTargets() {
         return Stream.of(
-                Arguments.of(NotificationTargetType.TRIP, null),
+                Arguments.of(NotificationTargetType.COMPANION_SEARCH, null),
                 Arguments.of(null, TARGET_ID),
-                Arguments.of(NotificationTargetType.TRIP, 0L),
-                Arguments.of(NotificationTargetType.TRIP, -1L),
+                Arguments.of(NotificationTargetType.COMPANION_SEARCH, 0L),
+                Arguments.of(NotificationTargetType.COMPANION_SEARCH, -1L),
                 Arguments.of(null, 0L),
                 Arguments.of(null, -1L));
     }
@@ -214,8 +214,8 @@ class NotificationTest {
         assertThat(notification).hasFieldOrPropertyWithValue("deletedAt", deletedAt)
                 .hasFieldOrPropertyWithValue("readAt", readBeforeDeletion ? NOW : null);
         assertThat(notification).extracting("receiverId", "type", "targetType", "targetId", "eventKey", "content")
-                .containsExactly(RECEIVER_ID, NotificationType.TRIP_INVITE,
-                        NotificationTargetType.TRIP, TARGET_ID, EVENT_KEY, CONTENT);
+                .containsExactly(RECEIVER_ID, NotificationType.COMPANION_MATCH_FOUND,
+                        NotificationTargetType.COMPANION_SEARCH, TARGET_ID, EVENT_KEY, CONTENT);
     }
 
     @Test
@@ -265,7 +265,7 @@ class NotificationTest {
     }
 
     private Notification createNotification() {
-        return Notification.create(RECEIVER_ID, NotificationType.TRIP_INVITE,
-                NotificationTargetType.TRIP, TARGET_ID, EVENT_KEY, CONTENT);
+        return Notification.create(RECEIVER_ID, NotificationType.COMPANION_MATCH_FOUND,
+                NotificationTargetType.COMPANION_SEARCH, TARGET_ID, EVENT_KEY, CONTENT);
     }
 }

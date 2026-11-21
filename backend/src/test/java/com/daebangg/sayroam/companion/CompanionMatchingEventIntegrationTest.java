@@ -49,6 +49,7 @@ class CompanionMatchingEventIntegrationTest extends DatabaseIntegrationTest {
     @AfterEach
     void cleanUp() {
         for (long member : members) {
+            jdbc.update("DELETE FROM notification WHERE receiver_id = ?", member);
             jdbc.update("DELETE FROM companion_search WHERE user_id = ?", member);
             jdbc.update("DELETE FROM user_travel_style WHERE user_id = ?", member);
             jdbc.update("DELETE FROM users WHERE id = ?", member);
@@ -71,6 +72,10 @@ class CompanionMatchingEventIntegrationTest extends DatabaseIntegrationTest {
             assertThat(jdbc.queryForObject("""
                     SELECT COUNT(*) FROM companion_discovery WHERE first_search_id = ? AND second_search_id = ?
                     """, Long.class, first, second)).isEqualTo(1);
+            assertThat(jdbc.queryForObject("""
+                    SELECT COUNT(*) FROM notification WHERE type = 'COMPANION_MATCH_FOUND'
+                    AND target_type = 'COMPANION_SEARCH' AND target_id IN (?, ?)
+                    """, Long.class, first, second)).isEqualTo(2);
         });
     }
 

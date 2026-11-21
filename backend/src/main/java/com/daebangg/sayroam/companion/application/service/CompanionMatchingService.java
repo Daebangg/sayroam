@@ -11,6 +11,11 @@ import com.daebangg.sayroam.companion.domain.CompanionMatchingJobRepository;
 import com.daebangg.sayroam.companion.domain.CompanionSearch;
 import com.daebangg.sayroam.companion.domain.CompanionSearchRepository;
 import com.daebangg.sayroam.destination.domain.DestinationRepository;
+import com.daebangg.sayroam.notification.application.dto.CreateNotificationCommand;
+import com.daebangg.sayroam.notification.application.service.NotificationService;
+import com.daebangg.sayroam.notification.domain.NotificationTargetType;
+import com.daebangg.sayroam.notification.domain.NotificationType;
+import com.daebangg.sayroam.user.domain.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Isolation;
@@ -35,6 +40,8 @@ public class CompanionMatchingService {
     private final CompanionCandidateQueryRepository candidates;
     private final CompanionDiscoveryRepository discoveries;
     private final DestinationRepository destinations;
+    private final UserRepository users;
+    private final NotificationService notifications;
 
     @Transactional
     public Optional<CompanionMatchingClaim> claim() {
@@ -61,17 +68,51 @@ public class CompanionMatchingService {
             return;
         }
         CompanionSearch search = source.get();
-        // 원본 모집은 잠근 상태로 처리한다. 상대 모집은 조회 시점의 버전과 함께 발견 이력으로 남긴다.
+        // 배치 조회 후 상대 모집·프로필을 다시 확인하고 발견과 양쪽 알림을 함께 커밋한다.
         List<CompanionMatchingCandidateResult> matches = candidates.findMatchingCandidates(
                 search, today, job.getCandidateCursor(), BATCH_SIZE);
         LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);
         for (CompanionMatchingCandidateResult candidate : matches) {
-            discoveries.record(CompanionDiscovery.found(search.getId(), search.getMatchingRevision(),
-                    candidate.searchId(), candidate.matchingRevision(),
-                    new TravelPeriod(candidate.overlapStart(), candidate.overlapEnd()), now));
+            recordDiscovery(job, search, candidate, today, now);
         }
         long cursor = matches.isEmpty() ? job.getCandidateCursor() : matches.getLast().searchId();
         job.completeBatch(cursor, matches.size() == BATCH_SIZE, now);
+    }
+
+    private void recordDiscovery(CompanionMatchingJob job, CompanionSearch source, CompanionMatchingCandidateResult candidate,
+                                 LocalDate today, LocalDateTime now) {
+        Optional<CompanionSearch> found = searches.findForUpdateById(candidate.searchId());
+        if (found.isEmpty() || !found.get().canMatch(candidate.matchingRevision(), today)) {
+            return;
+        }
+        CompanionSearch target = found.get();
+        // 프로필 변경·탈퇴와 알림 생성을 직렬화한다. 양방향 작업의 교착은 기존 작업 재시도로 복구한다.
+        long firstUserId = Math.min(source.getUserId(), target.getUserId());
+        long secondUserId = Math.max(source.getUserId(), target.getUserId());
+        if (users.findForUpdateByIdAndDeletedAtIsNull(firstUserId).isEmpty()
+                || users.findForUpdateByIdAndDeletedAtIsNull(secondUserId).isEmpty()
+                || !destinations.existsByIdAndActiveTrue(source.getDestinationId())
+                || !candidates.isMatchingCandidate(source, today, target.getId())) {
+            return;
+        }
+        CompanionDiscovery discovery = CompanionDiscovery.found(source.getId(), source.getMatchingRevision(),
+                target.getId(), target.getMatchingRevision(),
+                new TravelPeriod(candidate.overlapStart(), candidate.overlapEnd()), now);
+        // 양쪽 모집을 잠근 상태이므로 반대 방향 작업과 신규 발견 판별도 직렬화된다.
+        boolean newlyDiscovered = discoveries.findByFirstSearchIdAndSecondSearchId(
+                discovery.getFirstSearchId(), discovery.getSecondSearchId()).isEmpty();
+        discoveries.record(discovery);
+        if (newlyDiscovered) {
+            notifyDiscovery(source, job.notificationEventKey(source.getId()));
+            notifyDiscovery(target, job.notificationEventKey(target.getId()));
+        }
+    }
+
+    private void notifyDiscovery(CompanionSearch search, String eventKey) {
+        String title = search.getTitle() == null ? "동행" : search.getTitle();
+        notifications.createGroupedIfAbsent(new CreateNotificationCommand(search.getUserId(),
+                NotificationType.COMPANION_MATCH_FOUND, NotificationTargetType.COMPANION_SEARCH,
+                search.getId(), eventKey, "‘" + title + "’ 모집에 조건에 맞는 새로운 동행 후보가 있어요."));
     }
 
     @Transactional

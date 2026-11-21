@@ -81,12 +81,12 @@ class NotificationApiIntegrationTest extends DatabaseIntegrationTest {
 
     @Test
     void 본인의_삭제되지_않은_알림만_최신순으로_조회하고_커서로_이어_조회한다() throws Exception {
-        Notification first = saveNotification(owner.getId(), "trip-invite:1");
-        Notification second = saveNotification(owner.getId(), "trip-invite:2");
-        Notification deleted = saveNotification(owner.getId(), "trip-invite:3");
+        Notification first = saveNotification(owner.getId(), "matching-found:1");
+        Notification second = saveNotification(owner.getId(), "matching-found:2");
+        Notification deleted = saveNotification(owner.getId(), "matching-found:3");
         deleted.delete(LocalDateTime.now());
         User other = createUser("다른 회원");
-        saveNotification(other.getId(), "trip-invite:4");
+        saveNotification(other.getId(), "matching-found:4");
         flushAndClear();
 
         mvc.perform(get(PATH).servletPath(PATH).header("Authorization", authorization)
@@ -94,9 +94,9 @@ class NotificationApiIntegrationTest extends DatabaseIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.notifications.length()").value(1))
                 .andExpect(jsonPath("$.notifications[0].id").value(second.getId()))
-                .andExpect(jsonPath("$.notifications[0].type").value("TRIP_INVITE"))
-                .andExpect(jsonPath("$.notifications[0].content").value("여행에 초대되었습니다."))
-                .andExpect(jsonPath("$.notifications[0].targetType").value("TRIP"))
+                .andExpect(jsonPath("$.notifications[0].type").value("COMPANION_MATCH_FOUND"))
+                .andExpect(jsonPath("$.notifications[0].content").value("조건에 맞는 동행 후보를 발견했어요."))
+                .andExpect(jsonPath("$.notifications[0].targetType").value("COMPANION_SEARCH"))
                 .andExpect(jsonPath("$.notifications[0].targetId").value(42))
                 .andExpect(jsonPath("$.notifications[0].isRead").value(false))
                 .andExpect(jsonPath("$.notifications[0].createdAt").isString())
@@ -197,7 +197,7 @@ class NotificationApiIntegrationTest extends DatabaseIntegrationTest {
     @Test
     void 기본_조회_개수는_20개다() throws Exception {
         for (int index = 0; index < 21; index++) {
-            saveNotification(owner.getId(), "trip-invite:" + index);
+            saveNotification(owner.getId(), "matching-found:" + index);
         }
         flushAndClear();
 
@@ -219,13 +219,13 @@ class NotificationApiIntegrationTest extends DatabaseIntegrationTest {
 
     @Test
     void 요약은_본인_미삭제_알림만_집계하고_읽음과_삭제_변경을_반영한다() throws Exception {
-        Notification read = saveNotification(owner.getId(), "trip-invite:read");
+        Notification read = saveNotification(owner.getId(), "matching-found:read");
         read.read(LocalDateTime.now());
-        Notification unread = saveNotification(owner.getId(), "trip-invite:unread");
-        Notification deleted = saveNotification(owner.getId(), "trip-invite:deleted");
+        Notification unread = saveNotification(owner.getId(), "matching-found:unread");
+        Notification deleted = saveNotification(owner.getId(), "matching-found:deleted");
         deleted.delete(LocalDateTime.now());
         User other = createUser("다른 회원");
-        saveNotification(other.getId(), "trip-invite:other");
+        saveNotification(other.getId(), "matching-found:other");
         flushAndClear();
         String summary = PATH + "/summary";
         String resource = PATH + "/" + unread.getId();
@@ -263,8 +263,8 @@ class NotificationApiIntegrationTest extends DatabaseIntegrationTest {
     void 연결_대상이_없으면_null을_반환하고_알림이_없으면_빈_배열을_반환한다() throws Exception {
         mvc.perform(get(PATH).servletPath(PATH).header("Authorization", authorization))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.notifications").isEmpty());
-        Notification notification = Notification.create(owner.getId(), NotificationType.TRIP_INVITE,
-                null, null, "trip-invite:no-target", "안내 알림입니다.");
+        Notification notification = Notification.create(owner.getId(), NotificationType.COMPANION_MATCH_FOUND,
+                null, null, "matching-found:no-target", "안내 알림입니다.");
         entityManager.persist(notification);
         flushAndClear();
 
@@ -276,7 +276,7 @@ class NotificationApiIntegrationTest extends DatabaseIntegrationTest {
 
     @Test
     void 읽음과_읽지_않음으로_변경하고_반복_읽음은_최초_시각을_유지한다() throws Exception {
-        Notification notification = saveNotification(owner.getId(), "trip-invite:read");
+        Notification notification = saveNotification(owner.getId(), "matching-found:read");
         flushAndClear();
         String resource = PATH + "/" + notification.getId();
 
@@ -300,7 +300,7 @@ class NotificationApiIntegrationTest extends DatabaseIntegrationTest {
 
     @Test
     void 삭제한_알림은_목록에서_제외하고_반복_삭제는_최초_시각을_유지한다() throws Exception {
-        Notification notification = saveNotification(owner.getId(), "trip-invite:delete");
+        Notification notification = saveNotification(owner.getId(), "matching-found:delete");
         flushAndClear();
         String resource = PATH + "/" + notification.getId();
 
@@ -322,7 +322,7 @@ class NotificationApiIntegrationTest extends DatabaseIntegrationTest {
     @ParameterizedTest
     @ValueSource(booleans = {true, false})
     void 삭제한_알림의_읽음_상태는_변경할_수_없다(boolean isRead) throws Exception {
-        Notification notification = saveNotification(owner.getId(), "trip-invite:deleted");
+        Notification notification = saveNotification(owner.getId(), "matching-found:deleted");
         notification.delete(LocalDateTime.now());
         flushAndClear();
 
@@ -332,7 +332,7 @@ class NotificationApiIntegrationTest extends DatabaseIntegrationTest {
 
     @Test
     void 다른_회원의_알림과_없는_알림은_상태_변경과_삭제에서_동일하게_404를_반환한다() throws Exception {
-        Notification notification = saveNotification(owner.getId(), "trip-invite:private");
+        Notification notification = saveNotification(owner.getId(), "matching-found:private");
         String otherAuthorization = authorization(createUser("다른 회원"));
         flushAndClear();
         String resource = PATH + "/" + notification.getId();
@@ -355,7 +355,7 @@ class NotificationApiIntegrationTest extends DatabaseIntegrationTest {
     @ParameterizedTest
     @ValueSource(strings = {"{}", "{\"isRead\":null}", "{\"isRead\":{}}", "{"})
     void 누락되거나_잘못된_읽음_상태_본문을_거부한다(String body) throws Exception {
-        Notification notification = saveNotification(owner.getId(), "trip-invite:invalid-body");
+        Notification notification = saveNotification(owner.getId(), "matching-found:invalid-body");
         flushAndClear();
 
         updateReadStatus(PATH + "/" + notification.getId(), authorization, body)
@@ -433,8 +433,8 @@ class NotificationApiIntegrationTest extends DatabaseIntegrationTest {
     }
 
     private Notification saveNotification(Long receiverId, String eventKey) {
-        Notification notification = Notification.create(receiverId, NotificationType.TRIP_INVITE,
-                NotificationTargetType.TRIP, 42L, eventKey, "여행에 초대되었습니다.");
+        Notification notification = Notification.create(receiverId, NotificationType.COMPANION_MATCH_FOUND,
+                NotificationTargetType.COMPANION_SEARCH, 42L, eventKey, "조건에 맞는 동행 후보를 발견했어요.");
         entityManager.persist(notification);
         return notification;
     }

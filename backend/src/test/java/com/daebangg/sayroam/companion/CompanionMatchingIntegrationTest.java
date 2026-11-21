@@ -1,35 +1,44 @@
 package com.daebangg.sayroam.companion;
 
+import com.daebangg.sayroam.common.domain.TravelPeriod;
 import com.daebangg.sayroam.companion.application.dto.CompanionMatchingCandidateResult;
 import com.daebangg.sayroam.companion.application.dto.CompanionMatchingClaim;
 import com.daebangg.sayroam.companion.application.dto.SaveCompanionSearchCommand;
 import com.daebangg.sayroam.companion.application.port.out.CompanionCandidateQueryRepository;
 import com.daebangg.sayroam.companion.application.service.CompanionMatchingService;
 import com.daebangg.sayroam.companion.application.service.CompanionSearchService;
-import com.daebangg.sayroam.common.domain.TravelPeriod;
 import com.daebangg.sayroam.companion.domain.CompanionDiscovery;
 import com.daebangg.sayroam.companion.domain.CompanionDiscoveryRepository;
+import com.daebangg.sayroam.companion.domain.CompanionSearchRepository;
 import com.daebangg.sayroam.companion.domain.CompanionSearchStatus;
 import com.daebangg.sayroam.companion.presentation.scheduling.CompanionMatchingWorker;
+import com.daebangg.sayroam.notification.application.dto.NotificationListQuery;
+import com.daebangg.sayroam.notification.application.service.NotificationService;
+import com.daebangg.sayroam.notification.domain.NotificationTargetType;
+import com.daebangg.sayroam.notification.domain.NotificationType;
 import com.daebangg.sayroam.support.DatabaseIntegrationTest;
 import com.daebangg.sayroam.user.domain.Gender;
 import com.daebangg.sayroam.user.domain.Role;
 import com.daebangg.sayroam.user.domain.User;
 import com.daebangg.sayroam.user.domain.UserRepository;
+
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
-import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -41,7 +50,9 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
-import static org.mockito.Mockito.doReturn;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.reset;
 
 class CompanionMatchingIntegrationTest extends DatabaseIntegrationTest {
@@ -52,6 +63,8 @@ class CompanionMatchingIntegrationTest extends DatabaseIntegrationTest {
     @Autowired JdbcTemplate jdbc;
     @Autowired PlatformTransactionManager transactions;
     @MockitoSpyBean CompanionCandidateQueryRepository candidates;
+    @MockitoSpyBean NotificationService notifications;
+    @Autowired CompanionSearchRepository searchRepository;
 
     private final List<Long> members = new ArrayList<>();
     private final LocalDate today = LocalDate.now(ZoneId.of("Asia/Seoul"));
@@ -66,8 +79,9 @@ class CompanionMatchingIntegrationTest extends DatabaseIntegrationTest {
 
     @AfterEach
     void cleanUp() {
-        reset(candidates);
+        reset(candidates, notifications);
         for (long member : members) {
+            jdbc.update("DELETE FROM notification WHERE receiver_id = ?", member);
             jdbc.update("DELETE FROM companion_search WHERE user_id = ?", member);
             jdbc.update("DELETE FROM user_travel_style WHERE user_id = ?", member);
             jdbc.update("DELETE FROM users WHERE id = ?", member);
@@ -123,6 +137,8 @@ class CompanionMatchingIntegrationTest extends DatabaseIntegrationTest {
 
         drain();
         assertThat(discoveryCount(source)).isEqualTo(2);
+        assertThat(notificationCount(owner)).isEqualTo(1);
+        assertThat(notificationCount(other)).isEqualTo(2);
         assertThat(jdbc.queryForList("SELECT second_search_id FROM companion_discovery WHERE first_search_id = ? ORDER BY second_search_id",
                 Long.class, source)).containsExactly(first, second);
         assertThat(jdbc.queryForObject("SELECT overlap_end FROM companion_discovery WHERE first_search_id = ? AND second_search_id = ?",
@@ -195,8 +211,12 @@ class CompanionMatchingIntegrationTest extends DatabaseIntegrationTest {
         matching.process(first);
         assertThat(status(first)).isEqualTo("PENDING");
         assertThat(discoveryCount(source)).isEqualTo(100);
+        assertThat(notificationCount(owner)).isEqualTo(1);
+        long notice = jdbc.queryForObject("SELECT id FROM notification WHERE receiver_id = ?", Long.class, owner);
+        notifications.read(owner, notice);
         drain();
         assertThat(discoveryCount(source)).isEqualTo(105);
+        assertThat(notificationCount(owner)).isEqualTo(1);
         assertThat(status(first)).isEqualTo("SUCCEEDED");
     }
 
@@ -207,22 +227,25 @@ class CompanionMatchingIntegrationTest extends DatabaseIntegrationTest {
         long source = searches.create(owner, conditions(null, null, null)).id();
         long target = seed(other, destination, today.plusDays(10), today.plusDays(15), "ACTIVE", null, null, null);
         CompanionMatchingClaim claim = matching.claim().orElseThrow();
-        doReturn(List.of(new CompanionMatchingCandidateResult(target, 0, today.plusDays(10), today.plusDays(15)),
-                new CompanionMatchingCandidateResult(Long.MAX_VALUE, 0, today.plusDays(10), today.plusDays(15))))
-                .when(candidates).findMatchingCandidates(any(), any(), anyLong(), anyInt());
+        doThrow(new IllegalStateException("두 번째 수신자 알림 저장 실패"))
+                .when(notifications).createGroupedIfAbsent(argThat(command -> command.receiverId() == other));
         assertThatThrownBy(() -> matching.process(claim)).isInstanceOf(RuntimeException.class);
         assertThat(discoveryCount(source)).isZero();
+        assertThat(notificationCount(owner)).isZero();
+        assertThat(notificationCount(other)).isZero();
         assertThat(status(claim)).isEqualTo("PROCESSING");
         assertThat(jdbc.queryForObject("SELECT candidate_cursor FROM companion_matching_job WHERE id = ?",
                 Long.class, claim.jobId())).isZero();
         matching.retry(claim);
         assertThat(status(claim)).isEqualTo("RETRY");
         assertThat(matching.claim()).isEmpty();
-        reset(candidates);
+        reset(notifications);
         jdbc.update("UPDATE companion_matching_job SET available_at = UTC_TIMESTAMP(6) - INTERVAL 1 SECOND WHERE id = ?", claim.jobId());
         drain();
         assertThat(discoveryCount(source)).isEqualTo(1);
         assertThat(status(claim)).isEqualTo("SUCCEEDED");
+        assertThat(notificationCount(owner)).isEqualTo(1);
+        assertThat(notificationCount(other)).isEqualTo(1);
     }
 
     @Test
@@ -260,6 +283,8 @@ class CompanionMatchingIntegrationTest extends DatabaseIntegrationTest {
         drain();
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM companion_discovery WHERE first_search_id IN (SELECT id FROM companion_search WHERE user_id = ?)",
                 Long.class, members.getFirst())).isEqualTo(1);
+        assertThat(notificationCount(members.getFirst())).isEqualTo(1);
+        assertThat(notificationCount(members.getLast())).isEqualTo(1);
     }
 
     @Test
@@ -288,6 +313,117 @@ class CompanionMatchingIntegrationTest extends DatabaseIntegrationTest {
         assertThat(discoveryCount(source)).isEqualTo(1);
         assertThat(jdbc.queryForObject("SELECT status FROM companion_matching_job WHERE search_id = ?", String.class, source))
                 .isEqualTo("SUCCEEDED");
+    }
+
+    @Test
+    void notifiesBothOwnersOnceAndKeepsReadDeletedAndSnapshotValuesOnRediscovery() {
+        long owner = member(Gender.MALE, 30);
+        long other = member(Gender.FEMALE, 28);
+        long source = searches.create(owner, conditions(null, null, null)).id();
+        long target = searches.create(other, conditions(null, null, null)).id();
+        drain();
+        assertThat(notificationCount(owner)).isEqualTo(1);
+        assertThat(notificationCount(other)).isEqualTo(1);
+        assertThat(notifications.findAll(new NotificationListQuery(owner, null, 20, false)))
+                .singleElement().satisfies(result -> {
+                    assertThat(result.type()).isEqualTo(NotificationType.COMPANION_MATCH_FOUND);
+                    assertThat(result.targetType()).isEqualTo(NotificationTargetType.COMPANION_SEARCH);
+                    assertThat(result.targetId()).isEqualTo(source);
+                });
+        assertThat(notifications.findAll(new NotificationListQuery(other, null, 20, false)))
+                .singleElement().satisfies(result -> assertThat(result.targetId()).isEqualTo(target));
+        long readId = jdbc.queryForObject("SELECT id FROM notification WHERE receiver_id = ?", Long.class, owner);
+        long deletedId = jdbc.queryForObject("SELECT id FROM notification WHERE receiver_id = ?", Long.class, other);
+        notifications.read(owner, readId);
+        notifications.delete(other, deletedId);
+        List<Map<String, Object>> before = jdbc.queryForList(
+                "SELECT * FROM notification WHERE receiver_id IN (?, ?) ORDER BY id", owner, other);
+        searches.update(owner, source, conditions(null, null, null));
+        searches.changeStatus(other, target, CompanionSearchStatus.CLOSED);
+        searches.changeStatus(other, target, CompanionSearchStatus.ACTIVE);
+        drain();
+        assertThat(jdbc.queryForList("SELECT * FROM notification WHERE receiver_id IN (?, ?) ORDER BY id", owner, other))
+                .isEqualTo(before);
+        assertThat(notifications.findAll(new NotificationListQuery(other, null, 20, false))).isEmpty();
+    }
+
+    @Test
+    void groupsSeveralCandidatesAndReverseJobsIntoOneUnreadNoticePerSearch() {
+        long owner = member(null, null);
+        long firstMember = member(null, null);
+        long secondMember = member(null, null);
+        long source = searches.create(owner, conditions(null, null, null)).id();
+        searches.create(firstMember, conditions(null, null, null));
+        searches.create(secondMember, conditions(null, null, null));
+        drain();
+        assertThat(discoveryCount(source)).isEqualTo(2);
+        assertThat(notificationCount(owner)).isEqualTo(1);
+        assertThat(notificationCount(firstMember)).isEqualTo(1);
+        assertThat(notificationCount(secondMember)).isEqualTo(1);
+        searches.update(owner, source, conditions(null, null, null));
+        drain();
+        assertThat(notificationCount(owner)).isEqualTo(1);
+    }
+
+    @Test
+    void onlyNewCandidatesAfterReadOrDeletionCanCreateAnotherGroupedNotice() {
+        long owner = member(null, null);
+        long source = searches.create(owner, conditions(null, null, null)).id();
+        searches.create(member(null, null), conditions(null, null, null));
+        drain();
+        long firstNotice = jdbc.queryForObject("SELECT id FROM notification WHERE receiver_id = ?", Long.class, owner);
+        notifications.read(owner, firstNotice);
+        searches.update(owner, source, conditions(null, null, null));
+        drain();
+        assertThat(notificationCount(owner)).isEqualTo(1);
+        searches.create(member(null, null), conditions(null, null, null));
+        drain();
+        assertThat(notificationCount(owner)).isEqualTo(2);
+        long secondNotice = jdbc.queryForObject("SELECT MAX(id) FROM notification WHERE receiver_id = ?", Long.class, owner);
+        notifications.delete(owner, secondNotice);
+        searches.update(owner, source, conditions(null, null, null));
+        drain();
+        assertThat(notificationCount(owner)).isEqualTo(2);
+        searches.create(member(null, null), conditions(null, null, null));
+        drain();
+        assertThat(notificationCount(owner)).isEqualTo(3);
+        assertThat(notifications.findAll(new NotificationListQuery(owner, null, 20, true))).hasSize(1);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"revision", "closed", "deleted", "profile", "destination"})
+    void revalidatesCandidatesBeforeSavingDiscoveryAndNotifications(String change) {
+        long owner = member(Gender.MALE, 30);
+        long other = member(Gender.FEMALE, 28);
+        long source = searches.create(owner, conditions(Gender.FEMALE, 25, 35)).id();
+        long target = seed(other, destination, today.plusDays(10), today.plusDays(15), "ACTIVE", "MALE", null, null);
+        List<CompanionMatchingCandidateResult> snapshot = candidates.findMatchingCandidates(
+                searchRepository.findByIdAndUserId(source, owner).orElseThrow(), today, 0, 100);
+        assertThat(snapshot).hasSize(1);
+        doAnswer(invocation -> {
+            switch (change) {
+                case "revision" -> jdbc.update("UPDATE companion_search SET matching_revision = matching_revision + 1 WHERE id = ?", target);
+                case "closed" -> jdbc.update("UPDATE companion_search SET status = 'CLOSED' WHERE id = ?", target);
+                case "deleted" -> jdbc.update("UPDATE users SET deleted_at = UTC_TIMESTAMP(6) WHERE id = ?", other);
+                case "profile" -> jdbc.update("UPDATE users SET gender = 'MALE' WHERE id = ?", other);
+                case "destination" -> jdbc.update("UPDATE destination SET is_active = FALSE WHERE id = ?", destination);
+                default -> throw new AssertionError(change);
+            }
+            return snapshot;
+        }).when(candidates).findMatchingCandidates(any(), any(), anyLong(), anyInt());
+        try {
+            drain();
+            assertThat(discoveryCount(source)).isZero();
+            assertThat(notificationCount(owner)).isZero();
+            assertThat(notificationCount(other)).isZero();
+        } finally {
+            jdbc.update("UPDATE destination SET is_active = TRUE WHERE id = ?", destination);
+        }
+    }
+
+    private long notificationCount(long member) {
+        return jdbc.queryForObject("SELECT COUNT(*) FROM notification WHERE receiver_id = ? AND type = 'COMPANION_MATCH_FOUND'",
+                Long.class, member);
     }
 
     private void processOrRetry(CompanionMatchingClaim claim) {

@@ -12,6 +12,7 @@ import jakarta.persistence.PersistenceContext;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
@@ -22,12 +23,15 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @Transactional
 class NotificationJpaRepositoryTest extends DatabaseIntegrationTest {
-    private static final String EVENT_KEY = "trip-invite:42";
-    private static final String CONTENT = "여행에 초대되었습니다.";
+    private static final String EVENT_KEY = "matching-found:42";
+    private static final String CONTENT = "조건에 맞는 동행 후보를 발견했어요.";
     private static final LocalDateTime NOW = LocalDateTime.of(2026, 11, 20, 9, 0);
 
     @Autowired
     NotificationJpaRepository notifications;
+
+    @Autowired
+    JdbcTemplate jdbc;
 
     @PersistenceContext
     EntityManager entityManager;
@@ -40,8 +44,8 @@ class NotificationJpaRepositoryTest extends DatabaseIntegrationTest {
         Notification found = notifications.findByIdAndReceiverId(id, receiverId).orElseThrow();
 
         assertThat(found).extracting("receiverId", "type", "targetType", "targetId", "eventKey", "content")
-                .containsExactly(receiverId, NotificationType.TRIP_INVITE,
-                        NotificationTargetType.TRIP, 42L, EVENT_KEY, CONTENT);
+                .containsExactly(receiverId, NotificationType.COMPANION_MATCH_FOUND,
+                        NotificationTargetType.COMPANION_SEARCH, 42L, EVENT_KEY, CONTENT);
         assertThat(found.isRead()).isFalse();
         assertThat(found.isDeleted()).isFalse();
         assertThat(found.getCreatedAt()).isNotNull();
@@ -158,15 +162,15 @@ class NotificationJpaRepositoryTest extends DatabaseIntegrationTest {
     void 본인의_미삭제_알림_전체와_미읽음_개수만_집계한다() {
         Long receiverId = createUser("수신자");
         Long otherId = createUser("다른 회원");
-        Notification read = notifications.save(Notification.create(receiverId, NotificationType.TRIP_INVITE,
-                NotificationTargetType.TRIP, 42L, "trip-invite:read", CONTENT));
+        Notification read = notifications.save(Notification.create(receiverId, NotificationType.COMPANION_MATCH_FOUND,
+                NotificationTargetType.COMPANION_SEARCH, 42L, "matching-found:read", CONTENT));
         read.read(NOW);
         saveNotification(receiverId);
-        Notification deletedUnread = notifications.save(Notification.create(receiverId, NotificationType.TRIP_INVITE,
-                NotificationTargetType.TRIP, 42L, "trip-invite:deleted-unread", CONTENT));
+        Notification deletedUnread = notifications.save(Notification.create(receiverId, NotificationType.COMPANION_MATCH_FOUND,
+                NotificationTargetType.COMPANION_SEARCH, 42L, "matching-found:deleted-unread", CONTENT));
         deletedUnread.delete(NOW);
-        Notification deletedRead = notifications.save(Notification.create(receiverId, NotificationType.TRIP_INVITE,
-                NotificationTargetType.TRIP, 42L, "trip-invite:deleted-read", CONTENT));
+        Notification deletedRead = notifications.save(Notification.create(receiverId, NotificationType.COMPANION_MATCH_FOUND,
+                NotificationTargetType.COMPANION_SEARCH, 42L, "matching-found:deleted-read", CONTENT));
         deletedRead.read(NOW);
         deletedRead.delete(NOW);
         saveNotification(otherId);
@@ -189,13 +193,68 @@ class NotificationJpaRepositoryTest extends DatabaseIntegrationTest {
         Long receiverId = createUser("수신자");
         entityManager.createNativeQuery("""
                 INSERT INTO notification (receiver_id, type, event_key, content, created_at, updated_at)
-                VALUES (:receiverId, 'TRIP_INVITE', 'legacy:notification:100', '기존 알림', UTC_TIMESTAMP(6), UTC_TIMESTAMP(6))
+                VALUES (:receiverId, 'WELCOME', 'legacy:notification:100', '기존 알림', UTC_TIMESTAMP(6), UTC_TIMESTAMP(6))
                 """).setParameter("receiverId", receiverId).executeUpdate();
         flushAndClear();
 
         assertThat(notifications.findVisibleBefore(receiverId, null, 20, false)).singleElement()
                 .hasFieldOrPropertyWithValue("eventKey", "legacy:notification:100")
                 .hasFieldOrPropertyWithValue("content", "기존 알림");
+    }
+
+    @Test
+    void 사건이_중복되면_최초_내용과_읽음_삭제_시각을_그대로_유지한다() {
+        Long receiverId = createUser("멱등 수신자");
+        Notification original = Notification.create(receiverId, NotificationType.WELCOME,
+                null, null, "account-signup:idempotent", "최초 안내");
+        notifications.saveIfAbsent(original, NOW);
+        entityManager.clear();
+        Notification saved = notifications.findVisibleBefore(receiverId, null, 20, false).getFirst();
+        saved.read(NOW.plusMinutes(1));
+        saved.delete(NOW.plusMinutes(2));
+        flushAndClear();
+        Notification duplicate = Notification.create(receiverId, NotificationType.COMPANION_MATCH_FOUND,
+                NotificationTargetType.COMPANION_SEARCH, 42L, "account-signup:idempotent", "변경된 안내");
+        notifications.saveIfAbsent(duplicate, NOW.plusDays(1));
+        entityManager.clear();
+        assertThat(notifications.findByIdAndReceiverId(saved.getId(), receiverId).orElseThrow())
+                .hasFieldOrPropertyWithValue("content", "최초 안내")
+                .hasFieldOrPropertyWithValue("type", NotificationType.WELCOME)
+                .hasFieldOrPropertyWithValue("targetType", null)
+                .hasFieldOrPropertyWithValue("readAt", NOW.plusMinutes(1))
+                .hasFieldOrPropertyWithValue("deletedAt", NOW.plusMinutes(2));
+        assertThat(notifications.findVisibleBefore(receiverId, null, 20, false)).isEmpty();
+    }
+
+    @Test
+    void 중복_외의_저장_오류는_무시하지_않는다() {
+        Notification missingReceiver = Notification.create(Long.MAX_VALUE, NotificationType.WELCOME,
+                null, null, "account-signup:missing", "없는 수신자");
+        assertThatThrownBy(() -> notifications.saveIfAbsent(missingReceiver, NOW))
+                .isInstanceOf(DataIntegrityViolationException.class);
+    }
+
+    @Test
+    void 미사용_과거_유형은_보존하되_목록_개수_상태변경에서_제외한다() {
+        Long receiverId = createUser("과거 유형 수신자");
+        Long currentId = saveNotification(receiverId);
+        jdbc.update("""
+                INSERT INTO notification
+                    (receiver_id, type, target_type, target_id, event_key, content, created_at, updated_at)
+                VALUES (?, 'TRIP_INVITE', 'TRIP', 7, 'retired:trip:7', '기존 안내', NOW(), NOW())
+                """, receiverId);
+        Long retiredId = jdbc.queryForObject("SELECT id FROM notification WHERE event_key = 'retired:trip:7'", Long.class);
+        flushAndClear();
+        assertThat(notifications.findVisibleBefore(receiverId, null, 20, false))
+                .extracting(Notification::getId).containsExactly(currentId);
+        assertThat(notifications.countVisibleByReceiverId(receiverId))
+                .isEqualTo(new NotificationRepository.Counts(1, 1));
+        assertThat(notifications.findByIdAndReceiverId(retiredId, receiverId)).isEmpty();
+        assertThat(notifications.markAllVisibleUnreadAsRead(receiverId, NOW)).isEqualTo(1);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM notification WHERE id = ? AND read_at IS NULL",
+                Long.class, retiredId)).isEqualTo(1);
+        assertThat(jdbc.queryForObject("SELECT type FROM notification WHERE id = ?", String.class, retiredId))
+                .isEqualTo("TRIP_INVITE");
     }
 
     private Long createUser(String nickname) {
@@ -212,8 +271,8 @@ class NotificationJpaRepositoryTest extends DatabaseIntegrationTest {
     }
 
     private Notification newNotification(Long receiverId) {
-        return Notification.create(receiverId, NotificationType.TRIP_INVITE,
-                NotificationTargetType.TRIP, 42L, EVENT_KEY, CONTENT);
+        return Notification.create(receiverId, NotificationType.COMPANION_MATCH_FOUND,
+                NotificationTargetType.COMPANION_SEARCH, 42L, EVENT_KEY, CONTENT);
     }
 
     private void flushAndClear() {

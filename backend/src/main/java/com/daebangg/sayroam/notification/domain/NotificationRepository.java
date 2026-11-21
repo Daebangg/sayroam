@@ -7,6 +7,11 @@ import java.util.Optional;
 public interface NotificationRepository {
     <S extends Notification> S save(S notification);
 
+    void saveIfAbsent(Notification notification, LocalDateTime now);
+
+    Optional<Notification> findUnreadByTarget(Long receiverId, NotificationType type,
+                                             NotificationTargetType targetType, Long targetId);
+
     Optional<Notification> findByIdAndReceiverId(Long id, Long receiverId);
 
     List<Notification> findVisibleBefore(

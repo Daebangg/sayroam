@@ -19,6 +19,8 @@ public interface CompanionCandidateQueryRepository {
     List<CompanionMatchingCandidateResult> findMatchingCandidates(CompanionSearch source, LocalDate today,
                                                                 long afterId, int limit);
 
+    boolean isMatchingCandidate(CompanionSearch source, LocalDate today, long candidateId);
+
     List<TravelStyleAnswerResult> findTravelStyleAnswers(List<Long> userIds);
 
     record CandidateQuery(long ownerId, long destinationId, TravelPeriod period, Gender preferredGender,

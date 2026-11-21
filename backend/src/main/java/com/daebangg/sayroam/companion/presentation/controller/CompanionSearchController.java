@@ -8,6 +8,7 @@ import com.daebangg.sayroam.companion.presentation.dto.ChangeCompanionSearchStat
 import com.daebangg.sayroam.companion.presentation.dto.CompanionCandidateListResponse;
 import com.daebangg.sayroam.companion.presentation.dto.CompanionSearchListResponse;
 import com.daebangg.sayroam.companion.presentation.dto.CompanionSearchResponse;
+import com.daebangg.sayroam.companion.presentation.dto.CompanionMatchingStatusResponse;
 import com.daebangg.sayroam.companion.presentation.dto.SaveCompanionSearchRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -44,6 +45,14 @@ public class CompanionSearchController implements CompanionSearchApi {
     public ResponseEntity<CompanionSearchListResponse> findMine(@AuthenticationPrincipal AuthenticatedAccount account) {
         return ResponseEntity.ok(new CompanionSearchListResponse(service.findMine(account.userId()).stream()
                 .map(CompanionSearchResponse::from).toList()));
+    }
+
+    @Override
+    @GetMapping("/{searchId}/matching-status")
+    public ResponseEntity<CompanionMatchingStatusResponse> findMatchingStatus(
+            @AuthenticationPrincipal AuthenticatedAccount account, @PathVariable long searchId) {
+        return ResponseEntity.ok(CompanionMatchingStatusResponse.from(
+                service.findMatchingStatus(account.userId(), searchId)));
     }
 
     @Override

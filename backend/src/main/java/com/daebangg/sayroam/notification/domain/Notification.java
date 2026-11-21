@@ -27,6 +27,7 @@ public class Notification extends BaseTimeEntity {
     private Long id;
 
     @Column(name = "receiver_id", nullable = false)
+    @Getter
     private Long receiverId;
 
     @Enumerated(EnumType.STRING)
@@ -44,6 +45,7 @@ public class Notification extends BaseTimeEntity {
     private Long targetId;
 
     @Column(name = "event_key", nullable = false, length = MAX_EVENT_KEY_LENGTH, updatable = false)
+    @Getter
     private String eventKey;
 
     // 만든 시점의 문구를 저장해 닉네임 변경·탈퇴와 무관하게 그대로 보여준다

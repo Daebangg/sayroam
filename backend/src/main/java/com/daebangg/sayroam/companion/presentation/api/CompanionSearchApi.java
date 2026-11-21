@@ -7,6 +7,7 @@ import com.daebangg.sayroam.companion.presentation.dto.ChangeCompanionSearchStat
 import com.daebangg.sayroam.companion.presentation.dto.CompanionCandidateListResponse;
 import com.daebangg.sayroam.companion.presentation.dto.CompanionSearchListResponse;
 import com.daebangg.sayroam.companion.presentation.dto.CompanionSearchResponse;
+import com.daebangg.sayroam.companion.presentation.dto.CompanionMatchingStatusResponse;
 import com.daebangg.sayroam.companion.presentation.dto.SaveCompanionSearchRequest;
 import com.daebangg.sayroam.companion.domain.CompanionSearch;
 import io.swagger.v3.oas.annotations.Operation;
@@ -35,6 +36,17 @@ public interface CompanionSearchApi {
     @ApiResponse(responseCode = "200", description = "본인 등록 목록")
     @ApiResponse(responseCode = "401", ref = "#/components/responses/Unauthorized")
     ResponseEntity<CompanionSearchListResponse> findMine(@Parameter(hidden = true) AuthenticatedAccount account);
+
+    @Operation(operationId = "getCompanionMatchingStatus", summary = "본인 모집의 후보 탐색 상태 조회",
+            description = "현재 모집 조건 버전의 최초 탐색 상태를 조회하며 작업을 새로 실행하지 않습니다. "
+                    + "SUCCEEDED는 탐색 완료로 후보가 없을 수도 있습니다. 현재 후보와 공개 프로필은 후보 조회 API로 확인합니다. "
+                    + "종료·만료·기존 자유 입력 지역은 SKIPPED, 현재 버전의 작업이 없으면 NOT_REQUESTED입니다.")
+    @ApiResponse(responseCode = "200", description = "현재 조건 버전과 탐색 상태")
+    @ApiResponse(responseCode = "400", ref = "#/components/responses/BadRequest")
+    @ApiResponse(responseCode = "401", ref = "#/components/responses/Unauthorized")
+    @ApiResponse(responseCode = "404", ref = "#/components/responses/CompanionSearchNotFound")
+    ResponseEntity<CompanionMatchingStatusResponse> findMatchingStatus(
+            @Parameter(hidden = true) AuthenticatedAccount account, long searchId);
 
     @Operation(operationId = "listCompanionCandidates", summary = "동행 매칭 후보 조회",
             description = "등록한 두 여행 기간이 하루 이상 겹치고 양쪽의 희망 나이·성별 조건을 충족하는 후보를 조회합니다. "

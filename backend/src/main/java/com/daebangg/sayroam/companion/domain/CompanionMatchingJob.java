@@ -34,6 +34,7 @@ public class CompanionMatchingJob extends BaseTimeEntity {
     private long candidateCursor;
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
+    @Getter
     private CompanionMatchingJobStatus status;
     @Column(nullable = false)
     private int attempts;
@@ -71,6 +72,10 @@ public class CompanionMatchingJob extends BaseTimeEntity {
         status = CompanionMatchingJobStatus.SKIPPED;
         availableAt = null;
         release();
+    }
+
+    public String notificationEventKey(long targetSearchId) {
+        return "companion-matching-job:" + id + ":search:" + targetSearchId;
     }
 
     public void retry(LocalDateTime now) {

@@ -159,6 +159,33 @@ interface CompanionCandidateQueryJpaRepository
             @Param("limit") int limit);
 
     @Override
+    default boolean isMatchingCandidate(CompanionSearch source, LocalDate today, long candidateId) {
+        AgeRange ages = source.getPreferredAgeRange();
+        return isMatchingCandidate(source.getUserId(), source.getDestinationId(), source.getPeriod().startDate(),
+                source.getPeriod().endDate(), source.getPreferredGender(), ages == null ? null : ages.minAge(),
+                ages == null ? null : ages.maxAge(), today, candidateId);
+    }
+
+    @Query("""
+            select count(c.id) > 0
+            from CompanionSearch c
+            join User owner on owner.id = :ownerId and owner.deletedAt is null
+            join User candidate on candidate.id = c.userId and candidate.deletedAt is null
+            """ + ELIGIBLE_CANDIDATES + """
+              and c.id = :candidateId and least(c.period.endDate, :endDate) >= :ageReferenceDate
+            """)
+    boolean isMatchingCandidate(
+            @Param("ownerId") long ownerId,
+            @Param("destinationId") long destinationId,
+            @Param("startDate") LocalDate startDate,
+            @Param("endDate") LocalDate endDate,
+            @Param("preferredGender") Gender preferredGender,
+            @Param("preferredMinAge") Integer preferredMinAge,
+            @Param("preferredMaxAge") Integer preferredMaxAge,
+            @Param("ageReferenceDate") LocalDate today,
+            @Param("candidateId") long candidateId);
+
+    @Override
     @Query("""
             select new com.daebangg.sayroam.companion.application.dto.TravelStyleAnswerResult(
                 answer.userId, question.code, answer.score)

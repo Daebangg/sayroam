@@ -188,6 +188,16 @@ public class CompanionSearch extends BaseTimeEntity {
                 && destinationId != null && !period.endDate().isBefore(today);
     }
 
+    public CompanionMatchingStatus matchingStatus(@Nullable CompanionMatchingJob job, LocalDate today) {
+        if (!canMatch(matchingRevision, today)) {
+            return CompanionMatchingStatus.SKIPPED;
+        }
+        if (job == null || job.getSearchId() != id || job.getMatchingRevision() != matchingRevision) {
+            return CompanionMatchingStatus.NOT_REQUESTED;
+        }
+        return CompanionMatchingStatus.from(job.getStatus());
+    }
+
     public void validateCandidateSearch() {
         if (status == CompanionSearchStatus.CLOSED) {
             throw new BusinessException(CompanionSearchErrorCode.COMPANION_SEARCH_CLOSED);
