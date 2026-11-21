@@ -330,3 +330,127 @@ test("잘못된 알림 ID·정렬·개수·날짜 응답을 화면 상태에 넣
         invalid,
     );
 });
+
+test("최신 페이지가 기존 페이지와 끊기면 커서를 새로 잡아 중간 알림을 빠뜨리지 않음", async (t) => {
+    const records = (count: number): Notification[] =>
+        Array.from({ length: count }, (_, index) => notification(count - index));
+    const { controller, replace, calls } = server(t, records(25));
+    controller.connect(true);
+    await settle();
+    controller.setOpen(true);
+    await settle();
+    await controller.loadMore();
+    assert.equal(controller.getSnapshot().hasMore, false);
+    replace(records(50));
+    t.mock.timers.tick(30_000);
+    await settle();
+    assert.equal(controller.getSnapshot().notifications.length, 20);
+    assert.equal(controller.getSnapshot().hasMore, true);
+    await controller.loadMore();
+    assert.equal(calls.at(-1)?.url.searchParams.get("beforeId"), "31");
+    assert.deepEqual(
+        controller.getSnapshot().notifications.map((item) => item.id),
+        records(50)
+            .slice(0, 40)
+            .map((item) => item.id),
+    );
+});
+
+test("다른 기기의 이전 페이지 삭제·읽음 변경을 폴링 후 재조회에 반영", async (t) => {
+    const records = Array.from({ length: 40 }, (_, index) => notification(40 - index));
+    const { controller, replace } = server(t, records);
+    controller.connect(true);
+    await settle();
+    controller.setOpen(true);
+    await settle();
+    await controller.loadMore();
+    replace(
+        records
+            .filter((item) => item.id !== 5)
+            .map((item) => (item.id === 6 ? { ...item, isRead: true } : item)),
+    );
+    t.mock.timers.tick(30_000);
+    await settle();
+    assert.equal(controller.getSnapshot().notifications.length, 20);
+    await controller.loadMore();
+    const items = controller.getSnapshot().notifications;
+    assert.equal(
+        items.some((item) => item.id === 5),
+        false,
+    );
+    assert.equal(items.find((item) => item.id === 6)?.isRead, true);
+});
+
+test("개수가 같은 이전 페이지 변경도 수동 새로고침 후 재조회로 확인", async (t) => {
+    const records = Array.from({ length: 40 }, (_, index) =>
+        notification(40 - index, 40 - index === 5),
+    );
+    const { controller, replace } = server(t, records);
+    controller.connect(true);
+    await settle();
+    controller.setOpen(true);
+    await settle();
+    await controller.loadMore();
+    replace(
+        records.map((item) =>
+            [5, 6].includes(item.id) ? { ...item, isRead: !item.isRead } : item,
+        ),
+    );
+    controller.reload();
+    await settle();
+    await controller.loadMore();
+    const items = controller.getSnapshot().notifications;
+    assert.equal(items.find((item) => item.id === 5)?.isRead, false);
+    assert.equal(items.find((item) => item.id === 6)?.isRead, true);
+});
+
+test("읽음 유지 항목이 있어도 더 보기 커서는 마지막 서버 응답을 사용", async (t) => {
+    const records = Array.from({ length: 20 }, (_, index) => notification(20 - index));
+    const { controller, replace, calls } = server(t, records);
+    controller.connect(true);
+    await settle();
+    controller.setOpen(true);
+    await settle();
+    controller.setUnreadOnly(true);
+    await settle();
+    await controller.readAll();
+    await settle();
+    assert.equal(controller.getSnapshot().notifications.length, 20);
+    replace(Array.from({ length: 25 }, (_, index) => notification(45 - index)));
+    // 개수 응답 직후 새 알림이 생겨 목록 응답에 먼저 나타나는 경합을 재현한다.
+    const originalFetch = globalThis.fetch;
+    t.mock.method(globalThis, "fetch", async (path: unknown, options?: RequestInit) =>
+        String(path).includes("/summary")
+            ? Response.json({ totalCount: 20, unreadCount: 0 })
+            : originalFetch(String(path), options),
+    );
+    t.mock.timers.tick(30_000);
+    await settle();
+    assert(controller.getSnapshot().notifications.some((item) => item.id === 1 && item.isRead));
+    await controller.loadMore();
+    assert.equal(calls.at(-1)?.url.searchParams.get("beforeId"), "26");
+    assert.deepEqual(
+        controller
+            .getSnapshot()
+            .notifications.filter((item) => !item.isRead)
+            .map((item) => item.id),
+        Array.from({ length: 25 }, (_, index) => 45 - index),
+    );
+});
+
+test("변경 없는 폴링에서는 펼친 100개 목록과 마지막 서버 커서를 유지", async (t) => {
+    const records = Array.from({ length: 100 }, (_, index) => notification(100 - index));
+    const { controller, calls } = server(t, records);
+    controller.connect(true);
+    await settle();
+    controller.setOpen(true);
+    await settle();
+    for (let page = 0; page < 4; page++) await controller.loadMore();
+    assert.equal(controller.getSnapshot().notifications.length, 100);
+    t.mock.timers.tick(30_000);
+    await settle();
+    assert.equal(controller.getSnapshot().notifications.length, 100);
+    await controller.loadMore();
+    assert.equal(calls.at(-1)?.url.searchParams.get("beforeId"), "1");
+    assert.equal(controller.getSnapshot().hasMore, false);
+});

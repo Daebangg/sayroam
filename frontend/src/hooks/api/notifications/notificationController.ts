@@ -41,7 +41,10 @@ export function createNotificationController() {
     let highestId: number | null = null;
     let queued = false;
     let queuedList = false;
+    let queuedReset = false;
     let replaceList = false;
+    let pageCursor: number | undefined;
+    let headSnapshot: readonly Notification[] = [];
     const retainedReads = new Map<number, Notification>();
     const listeners = new Set<() => void>();
 
@@ -64,6 +67,7 @@ export function createNotificationController() {
         query = null;
         queued = false;
         queuedList = false;
+        queuedReset = false;
         update({ loading: false, loadingMore: false });
     }
     function schedule(delay?: number): void {
@@ -86,21 +90,39 @@ export function createNotificationController() {
         }
         highestId = Math.max(highestId ?? 0, latest);
     }
-    function mergeHead(items: Notification[]): void {
+    function mergeHead(items: Notification[], invalidate: boolean): void {
+        const headChanged =
+            items.length !== headSnapshot.length ||
+            items.some((item, index) => {
+                const previous = headSnapshot[index];
+                return (
+                    !previous ||
+                    item.id !== previous.id ||
+                    item.isRead !== previous.isRead ||
+                    item.content !== previous.content ||
+                    item.type !== previous.type ||
+                    item.targetId !== previous.targetId ||
+                    item.targetType !== previous.targetType ||
+                    item.createdAt !== previous.createdAt
+                );
+            });
+        const reset = replaceList || invalidate || headChanged;
         const oldest = items.at(-1)?.id ?? 0;
         const older =
-            !replaceList && items.length === NOTIFICATION_POLLING.pageSize
-                ? state.notifications.filter((item) => item.id < oldest)
+            !reset && items.length === NOTIFICATION_POLLING.pageSize
+                ? state.notifications.filter(
+                      (item) => item.id < oldest && !retainedReads.has(item.id),
+                  )
                 : [];
+        // 표시용 읽음 유지 항목은 서버 페이지 커서와 분리한다.
+        const resetCursor = reset || items.length < NOTIFICATION_POLLING.pageSize;
+        if (resetCursor) pageCursor = items.at(-1)?.id;
+        headSnapshot = items;
         const merged = new Map([...older, ...items].map((item) => [item.id, item]));
         if (state.unreadOnly) retainedReads.forEach((item, id) => merged.set(id, item));
         update({
             notifications: [...merged.values()].sort((a, b) => b.id - a.id),
-            hasMore:
-                items.length === NOTIFICATION_POLLING.pageSize &&
-                (replaceList ||
-                    state.hasMore ||
-                    state.notifications.length <= NOTIFICATION_POLLING.pageSize),
+            hasMore: resetCursor ? items.length === NOTIFICATION_POLLING.pageSize : state.hasMore,
             listLoaded: true,
         });
         replaceList = false;
@@ -123,18 +145,26 @@ export function createNotificationController() {
         update({ loading: false, loadingMore: false });
         if (queued) {
             const force = queuedList;
+            const reset = queuedReset;
             queued = false;
             queuedList = false;
-            void refresh(force);
+            queuedReset = false;
+            void refresh(force, reset);
         } else schedule();
     }
-    async function refresh(forceList = false): Promise<void> {
+    async function refresh(forceList = false, resetPages = false): Promise<void> {
         if (!live() || !available) return;
         if (query || mutation) {
             queued = true;
             queuedList ||= forceList;
+            queuedReset ||= resetPages;
             return;
         }
+        forceList ||= queuedList;
+        resetPages ||= queuedReset;
+        queued = false;
+        queuedList = false;
+        queuedReset = false;
         clearTimer();
         const controller = new AbortController();
         query = controller;
@@ -159,7 +189,10 @@ export function createNotificationController() {
             if (!valid(controller)) return;
             if (head) {
                 observe(head.notifications);
-                if (visibleList || !state.unreadOnly) mergeHead(head.notifications);
+                const invalidate = changed || resetPages;
+                if (invalidate) retainedReads.clear();
+                if (visibleList || !state.unreadOnly) mergeHead(head.notifications, invalidate);
+                else if (invalidate) replaceList = true;
             }
             failures = 0;
             lastSuccess = Date.now();
@@ -188,6 +221,8 @@ export function createNotificationController() {
         nextAttempt = 0;
         lastSuccess = 0;
         replaceList = false;
+        pageCursor = undefined;
+        headSnapshot = [];
         update(initialState());
     }
     async function change(
@@ -250,7 +285,7 @@ export function createNotificationController() {
             if (state.open === value) return;
             update({ open: value });
             clearTimer();
-            if (value) void refresh(true);
+            if (value) void refresh(true, true);
             else schedule();
         },
         setUnreadOnly(value: boolean): void {
@@ -264,11 +299,11 @@ export function createNotificationController() {
         },
         reload(): void {
             update({ error: null });
-            void refresh(true);
+            void refresh(true, true);
         },
         async loadMore(): Promise<void> {
             if (!live() || !available || query || mutation || !state.hasMore) return;
-            const beforeId = state.notifications.at(-1)?.id;
+            const beforeId = pageCursor;
             if (beforeId === undefined) return;
             clearTimer();
             const controller = new AbortController();
@@ -277,6 +312,7 @@ export function createNotificationController() {
             try {
                 const result = await list(controller.signal, state.unreadOnly, beforeId);
                 if (!valid(controller)) return;
+                pageCursor = result.notifications.at(-1)?.id;
                 const merged = new Map(
                     [...state.notifications, ...result.notifications].map((item) => [
                         item.id,
