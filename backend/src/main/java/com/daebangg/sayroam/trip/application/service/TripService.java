@@ -41,7 +41,8 @@ public class TripService {
 
     @Transactional
     public TripSummaryResult rename(Long userId, Long tripId, String title) {
-        Trip trip = tripRepository.findAccessible(userId, tripId)
+        // 잠금 없이 읽으면 동시에 커밋된 방 연결을 이전 값으로 덮어쓴다
+        Trip trip = tripRepository.findAccessibleForUpdate(userId, tripId)
                 .orElseThrow(() -> new BusinessException(TripErrorCode.TRIP_NOT_FOUND));
 
         if (title != null) {

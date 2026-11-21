@@ -251,15 +251,15 @@ class TripServiceTest extends DatabaseIntegrationTest {
     }
 
     private List<Throwable> runTwiceConcurrently(Callable<?> action) throws Exception {
+        return runConcurrently(action, action);
+    }
+
+    private List<Throwable> runConcurrently(Callable<?> first, Callable<?> second) throws Exception {
         CountDownLatch ready = new CountDownLatch(2);
         CountDownLatch start = new CountDownLatch(1);
         try (ExecutorService pool = Executors.newVirtualThreadPerTaskExecutor()) {
-            Callable<Object> gated = () -> {
-                ready.countDown();
-                start.await(10, TimeUnit.SECONDS);
-                return action.call();
-            };
-            List<Future<Object>> futures = List.of(pool.submit(gated), pool.submit(gated));
+            List<Future<Object>> futures = List.of(
+                    pool.submit(gate(first, ready, start)), pool.submit(gate(second, ready, start)));
             assertThat(ready.await(10, TimeUnit.SECONDS)).isTrue();
             start.countDown();
 
@@ -273,6 +273,14 @@ class TripServiceTest extends DatabaseIntegrationTest {
             }
             return failures;
         }
+    }
+
+    private Callable<Object> gate(Callable<?> action, CountDownLatch ready, CountDownLatch start) {
+        return () -> {
+            ready.countDown();
+            start.await(10, TimeUnit.SECONDS);
+            return action.call();
+        };
     }
 
     @Test
@@ -491,6 +499,27 @@ class TripServiceTest extends DatabaseIntegrationTest {
 
         // then
         assertThat(findTrip(tripId).getTitle()).isEqualTo("부산 여행");
+    }
+
+    @Test
+    void 채팅방_생성과_이름_변경을_동시에_요청해도_채팅방_연결과_새_이름이_모두_남는다() throws Exception {
+        // 두 요청의 실행 순서는 매번 달라 경쟁 상황을 여러 번 만든다
+        for (int attempt = 0; attempt < 20; attempt++) {
+            // given
+            Long userId = saveUser("회원" + attempt);
+            Long tripId = tripService.create(userId, START_DATE, END_DATE, TITLE);
+
+            // when
+            List<Throwable> failures = runConcurrently(
+                    () -> tripService.createRoom(userId, tripId, ROOM_NAME),
+                    () -> tripService.rename(userId, tripId, "부산 여행"));
+
+            // then
+            assertThat(failures).isEmpty();
+            Trip trip = findTrip(tripId);
+            assertThat(trip.getRoomId()).isNotNull();
+            assertThat(trip.getTitle()).isEqualTo("부산 여행");
+        }
     }
 
     @Test

@@ -19,7 +19,7 @@ import lombok.NoArgsConstructor;
 @Table(name = "trip")
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Trip extends BaseTimeEntity {
-    private static final int MAX_TITLE_LENGTH = 30;
+    public static final int MAX_TITLE_LENGTH = 30;
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
