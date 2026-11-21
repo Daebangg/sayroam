@@ -8,6 +8,10 @@ import { validateToken } from "./auth/tokenResponse.ts";
 import type { AccessTokenSnapshot } from "./auth/tokenStore.ts";
 import { apiRoutes } from "./generated/schema.ts";
 import { createApiRouter } from "./router.ts";
+import {
+    validateNotificationList,
+    validateNotificationSummary,
+} from "./notifications/notificationResponse.ts";
 import { validateCurrentUser, validateLoginMethods } from "./users/userResponse.ts";
 import {
     validateIssued,
@@ -25,6 +29,8 @@ function recoverSession(revision: number): Promise<AccessTokenSnapshot> {
 export const api = createApiRouter(apiRoutes, {
     recover: recoverSession,
     extensions: {
+        listMyNotifications: { parseResponse: validateNotificationList },
+        getMyNotificationSummary: { parseResponse: validateNotificationSummary },
         listSocialProviders: { parseResponse: validateProviders },
         startSocialLogin: { cookieAction: "oauth", parseResponse: validateAuthorization },
         exchangeSocialLoginResult: {

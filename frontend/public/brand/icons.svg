@@ -50,11 +50,12 @@
 </symbol>
 <symbol id="search-outline" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="6.5"/><path d="m15 15 6 6"/></symbol>
 <symbol id="bell" viewBox="0 0 24 24" fill="none" stroke="none">
-<circle cx="12" cy="20.4" r="2.5" fill="url(#icon-sand)"/>
-<path d="M3.5 18q2.2-2.7 2.2-8.2a6.3 6.3 0 0 1 12.6 0q0 5.5 2.2 8.2Z" fill="url(#icon-sky)"/>
-<path d="M3.5 18h17l-1.3-3.5H4.8Z" fill="url(#icon-blue)"/>
-<path d="M12 3.5a6.3 6.3 0 0 1 6.3 6.3q0 2.7.5 4.7H12Z" fill="#598fe1" opacity=".35"/>
-<circle cx="19.1" cy="3.7" r="2.7" fill="url(#icon-sand)" stroke="#fff9ef" stroke-width=".7"/>
+<path d="M10.6 4V2.8a1.4 1.4 0 0 1 2.8 0V4" stroke="#315b9d" stroke-width="1.6" stroke-linecap="round"/>
+<path d="M3.3 17.7c1.7-2.2 2-4.6 2-7.6a6.7 6.7 0 0 1 13.4 0c0 3 .3 5.4 2 7.6Z" fill="url(#icon-blue)"/>
+<path d="M12 3.4a6.7 6.7 0 0 1 6.7 6.7c0 3 .3 5.4 2 7.6H12Z" fill="url(#icon-sky)"/>
+<path d="m5.3 11.3 6.7-4v10.4H3.3c1.5-1.9 1.9-4 2-6.4Z" fill="#76a7ef"/>
+<path d="M2.8 17.1h18.4l.6 2.2H2.2Z" fill="#315b9d"/>
+<path d="M9.4 20h5.2a2.6 2.6 0 0 1-5.2 0Z" fill="url(#icon-sand)"/>
 </symbol>
 <symbol id="bell-outline" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 17c2-2 2-4 2-7a5 5 0 0 1 10 0c0 3 0 5 2 7H5Zm5 4h4M12 3V2"/></symbol>
 <symbol id="profile" viewBox="0 0 24 24" fill="none" stroke="none">
@@ -216,4 +217,22 @@
 <symbol id="journey-register" viewBox="0 0 24 24" fill="none"><path d="M6 2h9l5 5v13a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2Z" fill="url(#icon-sky)"/><path d="M15 2v5h5Z" fill="url(#icon-sand)"/><path d="m4 20 16-13v13a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2Z" fill="url(#icon-blue)"/><path d="m8 14 3 3 6-7" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/></symbol>
 <symbol id="journey-register-outline" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 2h10l5 5v15H5Zm10 0v6h5M8 14l3 3 6-7"/></symbol>
 <symbol id="journey-list" viewBox="0 0 24 24" fill="none"><circle cx="4" cy="5" r="2" fill="url(#icon-blue)"/><circle cx="4" cy="12" r="2" fill="url(#icon-sky)"/><circle cx="4" cy="19" r="2" fill="url(#icon-sand)"/><path d="M9 5h12M9 12h9M9 19h12" stroke="#315b9d" stroke-width="2" stroke-linecap="round"/></symbol><symbol id="journey-list-outline" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 5h1m5 0h12M3 12h1m5 0h12M3 19h1m5 0h12"/></symbol>
+<symbol id="conversation" viewBox="0 0 24 24" fill="none" stroke="none">
+<path d="M10 2h10a3 3 0 0 1 3 3v6a3 3 0 0 1-3 3h-1v3l-4-3h-5a3 3 0 0 1-3-3V5a3 3 0 0 1 3-3Z" fill="url(#icon-sand)"/>
+<path d="M4 7h11a3 3 0 0 1 3 3v7a3 3 0 0 1-3 3H8l-4 3v-3a3 3 0 0 1-3-3v-7a3 3 0 0 1 3-3Z" fill="url(#icon-blue)"/>
+<path d="M4 7h11a3 3 0 0 1 3 3v1.5L1 18v-8a3 3 0 0 1 3-3Z" fill="url(#icon-sky)"/>
+<path d="m8 20 10-8.5V17a3 3 0 0 1-3 3Z" fill="#315b9d" opacity=".32"/>
+<path d="M5 13h9m-9 3.5h5.5" stroke="#315b9d" stroke-width="1.5" stroke-linecap="round"/>
+</symbol>
+<symbol id="conversation-outline" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6V5a3 3 0 0 1 3-3h8a3 3 0 0 1 3 3v6a3 3 0 0 1-3 3m-2-3v6a3 3 0 0 1-3 3H8l-5 3v-3a2 2 0 0 1-2-2v-7a3 3 0 0 1 3-3h10a3 3 0 0 1 3 3Z"/><path d="M5 13h8m-8 3h5"/></symbol>
+<symbol id="compass" viewBox="0 0 24 24" fill="none" stroke="none">
+<circle cx="12" cy="12" r="10.5" fill="url(#icon-sky)"/>
+<path d="m4.6 19.4 14.8-14.8a10.5 10.5 0 0 1-14.8 14.8Z" fill="url(#icon-sand)"/>
+<circle cx="12" cy="12" r="7.8" fill="url(#icon-blue)"/>
+<path d="m6.5 17.5 11-11a7.8 7.8 0 0 1-11 11Z" fill="#315b9d" opacity=".4"/>
+<path d="m16.5 6.4-1.9 8.2-5.2-5.2Z" fill="#eef6ff"/>
+<path d="m7.5 17.6 1.9-8.2 5.2 5.2Z" fill="url(#icon-sand)"/>
+<circle cx="12" cy="12" r="1.2" fill="#315b9d"/>
+</symbol>
+<symbol id="compass-outline" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9.5"/><path d="m16.5 6.5-2 8-7 3 2-8Z"/><path d="m9.5 9.5 5 5"/></symbol>
 </svg>

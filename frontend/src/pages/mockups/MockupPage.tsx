@@ -72,7 +72,7 @@ export function MockupPage({ screen }: { screen: MockupScreen }) {
                         </div>
                     </div>
                 </main>
-            ) : screen === "home" ? (
+            ) : screen === "home" || screen === "notifications" ? (
                 <HomePage />
             ) : screen === "trips" ? (
                 <TripsPage />

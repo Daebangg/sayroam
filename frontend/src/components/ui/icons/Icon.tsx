@@ -12,6 +12,8 @@ export type IconName =
     | "edit"
     | "grid"
     | "bell"
+    | "conversation"
+    | "compass"
     | "search"
     | "bookmark"
     | "plus"

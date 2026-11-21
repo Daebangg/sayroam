@@ -14,9 +14,10 @@
 | 방 목록        | `pages/rooms/RoomsPage.tsx`                                                   | 여행 일러스트·이름·최근 메시지·시간·읽지 않은 개수                                                                                                                                                |
 | 인증 모달      | `components/features/auth/LoginModal.tsx`, `EmailFlowModal.tsx`, 공용 `Modal` | 380/400px의 간결한 폭·닫기·중앙 제목·포커스·본문 내부 스크롤                                                                                                                                      |
 | 브랜드·공용 UI | `pages/brand/BrandPage.tsx`                                                   | 실제 로고·팔레트·아이콘·공용 컨트롤과 상태 예시                                                                                                                                                   |
-| 목업 탐색      | `pages/mockups/MockupPage.tsx`, `routing/mockups.ts`                          | `/brand?preview=welcome\|onboarding\|home\|trips\|matching\|rooms`의 예시 데이터 탐색                                                                                                             |
+| 목업 탐색      | `pages/mockups/MockupPage.tsx`, `routing/mockups.ts`                          | `/brand?preview=welcome\|onboarding\|home\|trips\|matching\|rooms\|notifications`의 예시 데이터 탐색                                                                                              |
 
 여행·동행·방의 목록·일정·인원·메시지는 #60의 정적 예시입니다. 인증 모달은 #72에 통합한 로그인·회원가입·비밀번호 재설정의 실제 API를 연결합니다.
+회원 알림함은 실제 REST 조회·읽음·삭제 API에 연결하며 목업의 알림은 예시 데이터로 분리합니다.
 화면은 실제 주소로 이동하고 언어·테마 선택은 브라우저에 저장합니다. 여행·채팅 업무 API 연결은 별도 범위입니다.
 앱 바깥에 둥근 카드 프레임을 두지 않습니다. 히어로·콘텐츠 카드에는 22px 곡률을 적용하고,
 404에는 같은 면 분할 계열의 황혼 일러스트를 배경 카드로 사용합니다.

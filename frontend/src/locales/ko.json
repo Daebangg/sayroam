@@ -301,7 +301,12 @@
             "preview": "{{background}}의 {{layout}}",
             "download": "{{variant}} {{layout}} {{format}} 다운로드"
         },
-        "divider": "구분선"
+        "divider": "구분선",
+        "inbox": {
+            "title": "알림함",
+            "list": "목록 · 읽음 · 삭제",
+            "empty": "빈 알림함"
+        }
     },
     "profile": {
         "settings": "설정",
@@ -350,7 +355,8 @@
             "home": "홈",
             "trips": "여행",
             "matching": "여행 메이트 찾기",
-            "rooms": "내 방"
+            "rooms": "내 방",
+            "notifications": "알림함"
         },
         "destination": "목적지",
         "destinationPlaceholder": "어디로 떠날까요?",
@@ -479,7 +485,9 @@
             "style-budget-careful": "아껴 쓰는 편",
             "style-budget-moderate": "적당히 쓰기",
             "style-budget-worthwhile": "쓸 땐 쓰기",
-            "style-budget-experiences": "돈보다 경험"
+            "style-budget-experiences": "돈보다 경험",
+            "conversation": "대화",
+            "compass": "나침반"
         },
         "saveTrip": "{{title}} 북마크",
         "customControls": "여행 입력",
@@ -897,5 +905,74 @@
         "backToProfile": "프로필로 돌아가기",
         "editStyle": "여행 스타일 수정",
         "saveStyle": "여행 스타일 저장하기"
+    },
+    "inbox": {
+        "trigger": "알림, 읽지 않은 알림 {{count}}개",
+        "close": "알림함 닫기",
+        "filter": "알림 필터",
+        "all": "전체",
+        "unread": "읽지 않음",
+        "readAll": "모두 읽음 처리",
+        "markRead": "읽음으로 표시",
+        "markUnread": "읽지 않음으로 표시",
+        "delete": "삭제",
+        "today": "오늘",
+        "earlier": "이전 알림",
+        "unreadSummary": "읽지 않은 알림 {{count}}개",
+        "allRead": "모든 알림을 읽었습니다.",
+        "caughtUp": "모든 알림을 읽었습니다.",
+        "emptyTitle": "알림함이 비어 있습니다.",
+        "time": {
+            "fiveMinutes": "5분 전",
+            "halfHour": "30분 전",
+            "oneHour": "1시간 전",
+            "yesterday": "어제",
+            "justNow": "방금"
+        },
+        "samples": {
+            "match": {
+                "title": "함께할 여행 동행을 찾았어요",
+                "content": "서로의 여행 계획에 닮은 점이 있어요. 어떤 여정을 함께할 수 있을지 확인해 보세요.",
+                "context": "주말에 떠나는 제주 여행"
+            },
+            "trip": {
+                "title": "여행이 세상에 공개됐어요",
+                "content": "여행이 성공적으로 게시됐어요. 함께할 사람들과 다음 모험을 준비해 보세요.",
+                "context": "주말에 떠나는 제주 여행"
+            },
+            "chat": {
+                "title": "새로운 대화가 시작됐어요",
+                "content": "채팅방이 준비됐어요. 가벼운 인사와 함께 우리만의 여행 이야기를 시작해 보세요.",
+                "context": "우리의 속도로, 제주"
+            },
+            "listing": {
+                "title": "새로운 동행을 만날 준비가 됐어요",
+                "content": "매칭이 등록됐어요. 함께 떠날 동행을 발견하면 새로운 소식을 알려드릴게요.",
+                "context": "제주를 함께 걸을 동행 찾기"
+            }
+        },
+        "messages": {
+            "welcome": {
+                "title": "SayRoam에 오신 것을 환영해요!",
+                "content": "가입을 축하해요! 새로운 여행을 SayRoam과 함께 시작해 보세요."
+            },
+            "COMPANION_REQUEST": {
+                "title": "새 동행 요청"
+            },
+            "COMPANION_ACCEPTED": {
+                "title": "동행 요청 수락"
+            },
+            "TRIP_INVITE": {
+                "title": "여행 초대"
+            },
+            "EXPENSE_ADDED": {
+                "title": "새 경비 등록"
+            }
+        },
+        "loadError": "알림을 불러오지 못했습니다.",
+        "changeError": "변경 결과를 확인하지 못했습니다. 목록을 새로고침해 주세요.",
+        "retry": "새로고침",
+        "loading": "불러오는 중",
+        "loadMore": "더 보기"
     }
 }

@@ -1,8 +1,8 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
 import { ProfileMenu } from "@/components/features/profile/ProfileMenu";
 import { useTranslation } from "react-i18next";
-import { Brand, Button, Icon, Tooltip } from "@/components/ui";
-import { PreviewDialog } from "@/components/features/travel/PreviewDialog";
+import { Brand, Icon } from "@/components/ui";
+import { NotificationInboxPreview } from "@/components/features/notifications/NotificationInboxPreview";
 import { mockupUrl, type MockupScreen } from "@/routing/mockups";
 import { appNavigation } from "@/data/preview";
 import { pagePaths } from "@/routing/paths";
@@ -10,6 +10,7 @@ import { Link, NavLink, useNavigate, useLocation, useNavigation } from "react-ro
 import type { ResolvedTheme } from "@/hooks/useTheme";
 
 type AppShellProps = {
+    notificationInbox: ReactNode;
     setupActive?: boolean;
     mockupScreen: MockupScreen | null;
     isHome: boolean;
@@ -22,6 +23,7 @@ type AppShellProps = {
 };
 
 export function AppShell({
+    notificationInbox,
     setupActive = false,
     mockupScreen,
     isHome,
@@ -35,9 +37,9 @@ export function AppShell({
     const navigate = useNavigate();
     const navigation = useNavigation();
     const { t, i18n } = useTranslation();
-    const [notificationsOpen, setNotificationsOpen] = useState(false);
     const { pathname } = useLocation();
     const inSettings = /^\/settings(?:\/|$)/i.test(pathname);
+    const activeMockupScreen = mockupScreen === "notifications" ? "home" : mockupScreen;
 
     useEffect(() => {
         const shortcut = (event: KeyboardEvent) => {
@@ -99,13 +101,13 @@ export function AppShell({
                                     end={item.to === "/"}
                                     aria-current={
                                         mockupScreen
-                                            ? mockupScreen === item.icon
+                                            ? activeMockupScreen === item.icon
                                                 ? "page"
                                                 : false
                                             : undefined
                                     }
                                     className={({ isActive }) =>
-                                        `nav-item ${(mockupScreen ? mockupScreen === item.icon : isActive) ? "is-active" : ""}`
+                                        `nav-item ${(mockupScreen ? activeMockupScreen === item.icon : isActive) ? "is-active" : ""}`
                                     }
                                 >
                                     <Icon name={item.icon} />
@@ -115,17 +117,13 @@ export function AppShell({
                         </nav>
                     )}
                     <div className="header-actions">
-                        {member && (
-                            <Tooltip content={t("common.notifications")}>
-                                <Button
-                                    variant="ghost"
-                                    className="icon-button notification-trigger"
-                                    aria-label={t("common.notifications")}
-                                    onClick={() => setNotificationsOpen(true)}
-                                >
-                                    <Icon name="bell" />
-                                </Button>
-                            </Tooltip>
+                        {mockupScreen ? (
+                            <NotificationInboxPreview
+                                key={mockupScreen}
+                                simulateArrival={mockupScreen === "notifications"}
+                            />
+                        ) : (
+                            notificationInbox
                         )}
                         <ProfileMenu
                             member={member}
@@ -149,13 +147,13 @@ export function AppShell({
                                 end={item.to === "/"}
                                 aria-current={
                                     mockupScreen
-                                        ? mockupScreen === item.icon
+                                        ? activeMockupScreen === item.icon
                                             ? "page"
                                             : false
                                         : undefined
                                 }
                                 className={({ isActive }) =>
-                                    `mobile-nav__item ${(mockupScreen ? mockupScreen === item.icon : isActive) ? "is-active" : ""}`
+                                    `mobile-nav__item ${(mockupScreen ? activeMockupScreen === item.icon : isActive) ? "is-active" : ""}`
                                 }
                                 aria-label={t(item.label)}
                             >
@@ -175,13 +173,6 @@ export function AppShell({
                         />
                     </nav>
                 )}
-                <PreviewDialog
-                    open={member !== null && notificationsOpen}
-                    title={t("common.notifications")}
-                    description={t("mockup.notificationsEmpty")}
-                    scene="island"
-                    onClose={() => setNotificationsOpen(false)}
-                />
             </div>
         </div>
     );

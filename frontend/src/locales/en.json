@@ -301,7 +301,12 @@
             "preview": "{{layout}} on {{background}}",
             "download": "Download {{layout}}, {{variant}}, {{format}}"
         },
-        "divider": "Divider"
+        "divider": "Divider",
+        "inbox": {
+            "title": "Notification inbox",
+            "list": "List · read status · delete",
+            "empty": "Empty inbox"
+        }
     },
     "profile": {
         "settings": "Settings",
@@ -350,7 +355,8 @@
             "home": "Home",
             "trips": "Trips",
             "matching": "Find companions",
-            "rooms": "My rooms"
+            "rooms": "My rooms",
+            "notifications": "Notification inbox"
         },
         "destination": "Destination",
         "destinationPlaceholder": "Where shall we go?",
@@ -479,7 +485,9 @@
             "style-budget-careful": "Usually keep it cheap",
             "style-budget-moderate": "Spend moderately",
             "style-budget-worthwhile": "Spend when it counts",
-            "style-budget-experiences": "Experiences come first"
+            "style-budget-experiences": "Experiences come first",
+            "conversation": "Chat",
+            "compass": "Compass"
         },
         "saveTrip": "Bookmark {{title}}",
         "customControls": "Travel controls",
@@ -897,5 +905,74 @@
         "backToProfile": "Back to profile",
         "editStyle": "Edit travel style",
         "saveStyle": "Save travel style"
+    },
+    "inbox": {
+        "trigger": "Notifications, {{count}} unread",
+        "close": "Close notifications",
+        "filter": "Filter notifications",
+        "all": "All",
+        "unread": "Unread",
+        "readAll": "Mark all as read",
+        "markRead": "Mark as read",
+        "markUnread": "Mark as unread",
+        "delete": "Delete",
+        "today": "Today",
+        "earlier": "Earlier",
+        "unreadSummary": "{{count}} unread",
+        "allRead": "All notifications read.",
+        "caughtUp": "All notifications read.",
+        "emptyTitle": "No notifications.",
+        "time": {
+            "fiveMinutes": "5 min ago",
+            "halfHour": "30 min ago",
+            "oneHour": "1 hr ago",
+            "yesterday": "Yesterday",
+            "justNow": "Just now"
+        },
+        "samples": {
+            "match": {
+                "title": "A travel companion found you",
+                "content": "Your travel plans have something in common. Take a look and see where the journey could lead.",
+                "context": "A weekend in Jeju"
+            },
+            "trip": {
+                "title": "Your trip is out in the world",
+                "content": "Your trip has been published. You’re one step closer to your next adventure.",
+                "context": "A weekend in Jeju"
+            },
+            "chat": {
+                "title": "A new conversation begins",
+                "content": "Your chat room is ready. Say hello and start planning something good together.",
+                "context": "Jeju, at our own pace"
+            },
+            "listing": {
+                "title": "You’re ready to meet someone new",
+                "content": "Your matching post is live. We’ll let you know when a travel companion comes along.",
+                "context": "Looking for a Jeju companion"
+            }
+        },
+        "messages": {
+            "welcome": {
+                "title": "Welcome to SayRoam!",
+                "content": "Welcome to SayRoam! Your next adventure starts here."
+            },
+            "COMPANION_REQUEST": {
+                "title": "New companion request"
+            },
+            "COMPANION_ACCEPTED": {
+                "title": "Companion request accepted"
+            },
+            "TRIP_INVITE": {
+                "title": "Trip invitation"
+            },
+            "EXPENSE_ADDED": {
+                "title": "New expense"
+            }
+        },
+        "loadError": "Could not load notifications.",
+        "changeError": "Could not confirm the change. Refresh the list.",
+        "retry": "Refresh",
+        "loading": "Loading",
+        "loadMore": "Load more"
     }
 }
