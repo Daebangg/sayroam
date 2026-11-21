@@ -319,7 +319,9 @@ class CompanionMatchingIntegrationTest extends DatabaseIntegrationTest {
     void notifiesBothOwnersOnceAndKeepsReadDeletedAndSnapshotValuesOnRediscovery() {
         long owner = member(Gender.MALE, 30);
         long other = member(Gender.FEMALE, 28);
-        long source = searches.create(owner, conditions(null, null, null)).id();
+        long source = searches.create(owner, new SaveCompanionSearchCommand(destination,
+                today.plusDays(10), today.plusDays(15), null, null, null,
+                "제주 동행", null, null, null)).id();
         long target = searches.create(other, conditions(null, null, null)).id();
         drain();
         assertThat(notificationCount(owner)).isEqualTo(1);
@@ -329,9 +331,13 @@ class CompanionMatchingIntegrationTest extends DatabaseIntegrationTest {
                     assertThat(result.type()).isEqualTo(NotificationType.COMPANION_MATCH_FOUND);
                     assertThat(result.targetType()).isEqualTo(NotificationTargetType.COMPANION_SEARCH);
                     assertThat(result.targetId()).isEqualTo(source);
+                    assertThat(result.content()).isEqualTo("New travel companion candidates were found for \"제주 동행\".");
                 });
         assertThat(notifications.findAll(new NotificationListQuery(other, null, 20, false)))
-                .singleElement().satisfies(result -> assertThat(result.targetId()).isEqualTo(target));
+                .singleElement().satisfies(result -> {
+                    assertThat(result.targetId()).isEqualTo(target);
+                    assertThat(result.content()).isEqualTo("New travel companion candidates were found for your recruitment.");
+                });
         long readId = jdbc.queryForObject("SELECT id FROM notification WHERE receiver_id = ?", Long.class, owner);
         long deletedId = jdbc.queryForObject("SELECT id FROM notification WHERE receiver_id = ?", Long.class, other);
         notifications.read(owner, readId);

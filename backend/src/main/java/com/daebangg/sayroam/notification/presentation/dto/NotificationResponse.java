@@ -15,7 +15,7 @@ public record NotificationResponse(
         Long id,
         @Schema(description = "알림 종류", enumAsRef = true)
         NotificationType type,
-        @Schema(description = "알림 생성 시 저장한 문구", example = "등록한 모집에 조건에 맞는 동행 후보가 있어요.")
+        @Schema(description = "알림 생성 시 저장한 문구", example = "New travel companion candidates were found for your recruitment.")
         String content,
         @Schema(description = "연결 대상 종류. 연결 대상이 없으면 null", enumAsRef = true)
         @Nullable NotificationTargetType targetType,
