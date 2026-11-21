@@ -41,6 +41,7 @@ export function createNotificationController() {
     let highestId: number | null = null;
     let queued = false;
     let queuedList = false;
+    let replaceList = false;
     const retainedReads = new Map<number, Notification>();
     const listeners = new Set<() => void>();
 
@@ -88,7 +89,7 @@ export function createNotificationController() {
     function mergeHead(items: Notification[]): void {
         const oldest = items.at(-1)?.id ?? 0;
         const older =
-            items.length === NOTIFICATION_POLLING.pageSize
+            !replaceList && items.length === NOTIFICATION_POLLING.pageSize
                 ? state.notifications.filter((item) => item.id < oldest)
                 : [];
         const merged = new Map([...older, ...items].map((item) => [item.id, item]));
@@ -97,9 +98,12 @@ export function createNotificationController() {
             notifications: [...merged.values()].sort((a, b) => b.id - a.id),
             hasMore:
                 items.length === NOTIFICATION_POLLING.pageSize &&
-                (state.hasMore || state.notifications.length <= NOTIFICATION_POLLING.pageSize),
+                (replaceList ||
+                    state.hasMore ||
+                    state.notifications.length <= NOTIFICATION_POLLING.pageSize),
             listLoaded: true,
         });
+        replaceList = false;
     }
     async function list(signal: AbortSignal, unreadOnly: boolean, beforeId?: number) {
         return api.call("listMyNotifications", {
@@ -134,7 +138,7 @@ export function createNotificationController() {
         clearTimer();
         const controller = new AbortController();
         query = controller;
-        update({ loading: state.open && !state.listLoaded });
+        update({ loading: state.open });
         try {
             // 열려 있을 때 목록과 개수는 독립적으로 병렬 조회한다.
             const [summary, visibleList] = await Promise.all([
@@ -183,6 +187,7 @@ export function createNotificationController() {
         failures = 0;
         nextAttempt = 0;
         lastSuccess = 0;
+        replaceList = false;
         update(initialState());
     }
     async function change(
@@ -252,7 +257,9 @@ export function createNotificationController() {
             if (state.unreadOnly === value) return;
             cancelQuery();
             retainedReads.clear();
-            update({ unreadOnly: value, notifications: [], listLoaded: false, hasMore: false });
+            replaceList = true;
+            // 조회 중에는 기존 내용을 유지하고, 새 필터 응답으로 목록을 교체한다.
+            update({ unreadOnly: value, hasMore: false });
             void refresh(true);
         },
         reload(): void {

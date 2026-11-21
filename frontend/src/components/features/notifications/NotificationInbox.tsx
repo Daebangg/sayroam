@@ -282,7 +282,7 @@ export function NotificationInbox({
                             key={`${unreadOnly}-${loaded}`}
                         >
                             {loading && !loaded ? (
-                                <div className="notification-inbox__empty">
+                                <div className="notification-inbox__loading">
                                     <Spinner label={t("inbox.loading")} />
                                 </div>
                             ) : !loaded ? null : visibleItems.length === 0 ? (

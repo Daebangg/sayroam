@@ -8722,6 +8722,12 @@ p {
     background: var(--danger-bg);
     color: var(--danger);
 }
+.notification-inbox__loading {
+    display: grid;
+    place-items: center;
+    min-height: 100px;
+    padding: 24px;
+}
 .notification-inbox__empty {
     display: grid;
     justify-items: center;

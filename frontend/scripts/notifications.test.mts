@@ -183,6 +183,42 @@ test("오프라인 첫 진입은 빈 알림으로 오인하지 않고 복귀 후
     assert.equal(controller.getSnapshot().error, null);
 });
 
+test("필터 변경·다시 열기 중 캐시를 유지하고 새 필터 응답이 오면 교체", async (t) => {
+    const { controller } = server(t, [notification(2), notification(1, true)]);
+    controller.connect(true);
+    await settle();
+    controller.setOpen(true);
+    await settle();
+    let release!: (value: Response) => void;
+    t.mock.method(globalThis, "fetch", async (path: unknown) => {
+        if (String(path).includes("/summary"))
+            return Response.json({ totalCount: 2, unreadCount: 1 });
+        return new Promise<Response>((resolve) => {
+            release = resolve;
+        });
+    });
+    controller.setUnreadOnly(true);
+    await settle();
+    assert.equal(controller.getSnapshot().loading, true);
+    assert.equal(controller.getSnapshot().listLoaded, true);
+    assert.deepEqual(
+        controller.getSnapshot().notifications.map((item) => item.id),
+        [2, 1],
+    );
+    controller.setOpen(false);
+    controller.setOpen(true);
+    assert.equal(controller.getSnapshot().listLoaded, true);
+    assert.equal(controller.getSnapshot().notifications.length, 2);
+    controller.setOpen(false);
+    release(Response.json({ notifications: [notification(2)] }));
+    await settle();
+    assert.deepEqual(
+        controller.getSnapshot().notifications.map((item) => item.id),
+        [2],
+    );
+    assert.equal(controller.getSnapshot().arrivalVersion, 0);
+});
+
 test("느린 요청 중 타이머·열기·갱신이 겹쳐도 조회를 동시에 시작하지 않음", async (t) => {
     const { controller, calls } = server(t);
     controller.connect(true);
