@@ -4,6 +4,7 @@ import com.daebangg.sayroam.auth.domain.AuthenticatedAccount;
 import com.daebangg.sayroam.trip.application.dto.TripSummaryResult;
 import com.daebangg.sayroam.trip.application.service.TripService;
 import com.daebangg.sayroam.trip.presentation.api.TripApi;
+import com.daebangg.sayroam.trip.presentation.dto.AddTripCustomPlaceRequest;
 import com.daebangg.sayroam.trip.presentation.dto.AddTripPlaceRequest;
 import com.daebangg.sayroam.trip.presentation.dto.AddTripPlaceResponse;
 import com.daebangg.sayroam.trip.presentation.dto.CreateTripRequest;
@@ -56,6 +57,16 @@ public class TripController implements TripApi {
                                                          @PathVariable Long tripId,
                                                          @Valid @RequestBody AddTripPlaceRequest request) {
         Long tripPlaceId = tripService.addPlace(account.userId(), tripId, request.toCommand());
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(new AddTripPlaceResponse(tripPlaceId));
+    }
+
+    @Override
+    @PostMapping(value = "/api/trips/{tripId}/custom-places", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<AddTripPlaceResponse> addCustomPlace(@AuthenticationPrincipal AuthenticatedAccount account,
+                                                               @PathVariable Long tripId,
+                                                               @Valid @RequestBody AddTripCustomPlaceRequest request) {
+        Long tripPlaceId = tripService.addCustomPlace(account.userId(), tripId, request.toCommand());
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(new AddTripPlaceResponse(tripPlaceId));
     }

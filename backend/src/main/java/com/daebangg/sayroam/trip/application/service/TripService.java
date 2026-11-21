@@ -3,7 +3,9 @@ package com.daebangg.sayroam.trip.application.service;
 import com.daebangg.sayroam.common.domain.TravelPeriod;
 import com.daebangg.sayroam.global.exception.BusinessException;
 import com.daebangg.sayroam.place.application.service.PlaceService;
+import com.daebangg.sayroam.place.domain.Coordinate;
 import com.daebangg.sayroam.room.application.service.RoomService;
+import com.daebangg.sayroam.trip.application.dto.AddTripCustomPlaceCommand;
 import com.daebangg.sayroam.trip.application.dto.AddTripPlaceCommand;
 import com.daebangg.sayroam.trip.application.dto.TripSummaryResult;
 import com.daebangg.sayroam.trip.application.port.out.TripQueryRepository;
@@ -49,10 +51,25 @@ public class TripService {
 
     @Transactional
     public Long addPlace(Long userId, Long tripId, AddTripPlaceCommand command) {
+        Trip trip = findPlaceAddableTrip(userId, tripId, command.day());
+        Long placeId = placeService.register(command.sourceId());
+        TripPlace tripPlace = new TripPlace(trip, placeId, userId, command.day(), command.memo());
+        return tripPlaceRepository.save(tripPlace).getId();
+    }
+
+    // 장소를 저장하기 전에 추가 권한과 일차를 먼저 확인해 거부될 요청이 외부 조회나 저장을 하지 않게 한다.
+    private Trip findPlaceAddableTrip(Long userId, Long tripId, Integer day) {
         Trip trip = tripRepository.findAccessible(userId, tripId)
                 .orElseThrow(() -> new BusinessException(TripErrorCode.TRIP_NOT_FOUND));
-        trip.ensurePlaceAddable(command.day());
-        Long placeId = placeService.register(command.sourceId());
+        trip.ensurePlaceAddable(day);
+        return trip;
+    }
+
+    @Transactional
+    public Long addCustomPlace(Long userId, Long tripId, AddTripCustomPlaceCommand command) {
+        Trip trip = findPlaceAddableTrip(userId, tripId, command.day());
+        Long placeId = placeService.registerCustom(command.name(),
+                new Coordinate(command.latitude(), command.longitude()));
         TripPlace tripPlace = new TripPlace(trip, placeId, userId, command.day(), command.memo());
         return tripPlaceRepository.save(tripPlace).getId();
     }

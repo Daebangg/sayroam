@@ -226,6 +226,7 @@ public class OpenApiConfig {
                 .addResponses("CompanionCandidateSearchUnavailable", problemResponse(
                         "409: COMPANION_SEARCH_CLOSED(종료), COMPANION_SEARCH_DESTINATION_REQUIRED(기준 여행지 선택 필요), TRAVEL_STYLE_REQUIRED(STYLE 정렬에 4문항 응답 필요)"))
                 .addResponses("TripPlaceBadRequest", problemResponse("400: INVALID_INPUT(장소 ID 누락, 1보다 작은 일차, 255자 초과 메모, errors 포함), TRIP_DAY_OUT_OF_RANGE(여행 기간을 벗어난 일차) 또는 Spring 요청 오류"))
+                .addResponses("TripCustomPlaceBadRequest", problemResponse("400: INVALID_INPUT(이름 누락·100자 초과, 위도·경도 누락 또는 범위 초과, 1보다 작은 일차, 255자 초과 메모, errors 포함), TRIP_DAY_OUT_OF_RANGE(여행 기간을 벗어난 일차) 또는 Spring 요청 오류"))
                 .addResponses("TripPlaceNotFound", problemResponse("404: TRIP_NOT_FOUND(없는 여행이거나 장소를 추가할 수 없는 여행. 둘을 구분하지 않음) 또는 PLACE_NOT_FOUND(TourAPI에 없거나 여행에 담을 수 없는 장소)"))
                 .addResponses("TripRoomAlreadyLinked", problemResponse("409: TRIP_ROOM_ALREADY_LINKED. 이미 방이 연결된 여행. 여행을 다시 조회해 roomId로 초대 링크 발급"))
                 .addResponses("PlaceSearchBadRequest", problemResponse("400: INVALID_INPUT(검색어 누락·100자 초과, 없는 분류, 1보다 작은 페이지, errors 포함)"))

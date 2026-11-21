@@ -737,6 +737,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/trips/{tripId}/custom-places": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 지도에서 고른 장소를 여행에 직접 추가
+         * @description 장소 검색에 없는 곳을 회원이 지도에서 고른 위치(WGS84 위도·경도)와 직접 입력한 이름으로 여행에 추가합니다. 서버는 외부 서비스에서 이름이나 주소를 채우지 않습니다. 직접 추가한 장소는 이 여행에만 담기고 장소 검색 결과에는 나오지 않으며, 같은 위치와 이름으로 다시 추가해도 따로 저장됩니다. 추가 권한과 일차·메모 기준은 여행에 장소 추가와 같습니다.
+         */
+        post: operations["addTripCustomPlace"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/trips/{tripId}/places": {
         parameters: {
             query?: never;
@@ -925,6 +945,34 @@ export interface components {
             resendAfterSeconds: number;
             /** @description 확인 요청을 식별하는 UUID */
             verificationId: string;
+        };
+        AddTripCustomPlaceRequest: {
+            /**
+             * Format: int32
+             * @description 일차. 1부터 여행의 마지막 날까지. 생략하면 일차 미정
+             * @example 2
+             */
+            day?: number | null;
+            /**
+             * @description 지도에서 고른 위치의 위도(WGS84)
+             * @example 33.4996213
+             */
+            latitude: number;
+            /**
+             * @description 지도에서 고른 위치의 경도(WGS84)
+             * @example 126.5311884
+             */
+            longitude: number;
+            /**
+             * @description 메모. 선택값이며 255자 이내
+             * @example 체크인 4시
+             */
+            memo?: string | null;
+            /**
+             * @description 회원이 직접 입력한 장소 이름. 100자 이내
+             * @example 숙소 (에어비앤비)
+             */
+            name: string;
         };
         AddTripPlaceRequest: {
             /**
@@ -2348,6 +2396,15 @@ export interface components {
                 "application/problem+json": components["schemas"]["ApiProblem"];
             };
         };
+        /** @description 400: INVALID_INPUT(이름 누락·100자 초과, 위도·경도 누락 또는 범위 초과, 1보다 작은 일차, 255자 초과 메모, errors 포함), TRIP_DAY_OUT_OF_RANGE(여행 기간을 벗어난 일차) 또는 Spring 요청 오류 */
+        TripCustomPlaceBadRequest: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/problem+json": components["schemas"]["ApiProblem"];
+            };
+        };
         /** @description 404: TRIP_NOT_FOUND. 없는 여행이거나 접근할 수 없는 여행. 둘을 구분하지 않음 */
         TripNotFound: {
             headers: {
@@ -3650,6 +3707,41 @@ export interface operations {
             503: components["responses"]["AuthenticationUnavailable"];
         };
     };
+    addTripCustomPlace: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /**
+                 * @description 여행 ID
+                 * @example 12
+                 */
+                tripId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AddTripCustomPlaceRequest"];
+            };
+        };
+        responses: {
+            /** @description 여행 장소 추가 완료 */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AddTripPlaceResponse"];
+                };
+            };
+            400: components["responses"]["TripCustomPlaceBadRequest"];
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["TripNotFound"];
+            500: components["responses"]["InternalServerError"];
+            503: components["responses"]["AuthenticationUnavailable"];
+        };
+    };
     addTripPlace: {
         parameters: {
             query?: never;
@@ -3878,6 +3970,13 @@ export interface operations {
 
 /** operationId별 공통 실행 정보. 브라우저 이동용 콜백은 제외합니다. 직접 수정하지 않습니다. */
 export const apiRoutes = {
+    addTripCustomPlace: {
+        method: "post",
+        path: "/api/trips/{tripId}/custom-places",
+        auth: "required",
+        csrf: false,
+        responses: { "201": true },
+    },
     addTripPlace: {
         method: "post",
         path: "/api/trips/{tripId}/places",

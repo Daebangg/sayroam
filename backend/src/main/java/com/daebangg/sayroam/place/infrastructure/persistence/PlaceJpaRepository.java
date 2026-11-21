@@ -13,4 +13,6 @@ public interface PlaceJpaRepository extends PlaceRepository, JpaRepository<Place
 
     @Override
     Optional<Place> findBySourceAndSourceId(PlaceSource source, String sourceId);
+
+    long countBySource(PlaceSource source);
 }

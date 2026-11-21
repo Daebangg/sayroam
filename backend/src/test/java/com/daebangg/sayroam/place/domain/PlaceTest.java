@@ -14,7 +14,6 @@ import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class PlaceTest {
-    private static final PlaceSource SOURCE = PlaceSource.TOUR;
     private static final String SOURCE_ID = "126081";
     private static final PlaceName NAME = new PlaceName("송정해수욕장");
     private static final PlaceCategory CATEGORY = PlaceCategory.ATTRACTION;
@@ -25,29 +24,21 @@ class PlaceTest {
     @Test
     void 필수_값이_있으면_장소를_만들_수_있다() {
         // when & then
-        assertThatCode(() -> new Place(SOURCE, SOURCE_ID, NAME, CATEGORY, SOURCE_CATEGORY_CODE, ADDRESS, COORDINATE))
+        assertThatCode(() -> Place.tour(SOURCE_ID, NAME, CATEGORY, SOURCE_CATEGORY_CODE, ADDRESS, COORDINATE))
                 .doesNotThrowAnyException();
     }
 
     @Test
     void 주소가_없어도_장소를_만들_수_있다() {
         // when & then
-        assertThatCode(() -> new Place(SOURCE, SOURCE_ID, NAME, CATEGORY, SOURCE_CATEGORY_CODE, null, COORDINATE))
+        assertThatCode(() -> Place.tour(SOURCE_ID, NAME, CATEGORY, SOURCE_CATEGORY_CODE, null, COORDINATE))
                 .doesNotThrowAnyException();
-    }
-
-    @Test
-    void 출처가_없으면_장소를_만들_수_없다() {
-        // when & then
-        assertThatThrownBy(() -> new Place(null, SOURCE_ID, NAME, CATEGORY, SOURCE_CATEGORY_CODE, ADDRESS, COORDINATE))
-                .isInstanceOfSatisfying(BusinessException.class,
-                        e -> assertThat(e.getErrorCode()).isEqualTo(CommonErrorCode.INVALID_INPUT));
     }
 
     @Test
     void 이름이_없으면_장소를_만들_수_없다() {
         // when & then
-        assertThatThrownBy(() -> new Place(SOURCE, SOURCE_ID, null, CATEGORY, SOURCE_CATEGORY_CODE, ADDRESS, COORDINATE))
+        assertThatThrownBy(() -> Place.tour(SOURCE_ID, null, CATEGORY, SOURCE_CATEGORY_CODE, ADDRESS, COORDINATE))
                 .isInstanceOfSatisfying(BusinessException.class,
                         e -> assertThat(e.getErrorCode()).isEqualTo(CommonErrorCode.INVALID_INPUT));
     }
@@ -55,7 +46,7 @@ class PlaceTest {
     @Test
     void 분류가_없으면_장소를_만들_수_없다() {
         // when & then
-        assertThatThrownBy(() -> new Place(SOURCE, SOURCE_ID, NAME, null, SOURCE_CATEGORY_CODE, ADDRESS, COORDINATE))
+        assertThatThrownBy(() -> Place.tour(SOURCE_ID, NAME, null, SOURCE_CATEGORY_CODE, ADDRESS, COORDINATE))
                 .isInstanceOfSatisfying(BusinessException.class,
                         e -> assertThat(e.getErrorCode()).isEqualTo(CommonErrorCode.INVALID_INPUT));
     }
@@ -63,7 +54,7 @@ class PlaceTest {
     @Test
     void 좌표가_없으면_장소를_만들_수_없다() {
         // when & then
-        assertThatThrownBy(() -> new Place(SOURCE, SOURCE_ID, NAME, CATEGORY, SOURCE_CATEGORY_CODE, ADDRESS, null))
+        assertThatThrownBy(() -> Place.tour(SOURCE_ID, NAME, CATEGORY, SOURCE_CATEGORY_CODE, ADDRESS, null))
                 .isInstanceOfSatisfying(BusinessException.class,
                         e -> assertThat(e.getErrorCode()).isEqualTo(CommonErrorCode.INVALID_INPUT));
     }
@@ -73,7 +64,7 @@ class PlaceTest {
     @ValueSource(strings = {" "})
     void 원본_ID가_비어_있으면_장소를_만들_수_없다(String sourceId) {
         // when & then
-        assertThatThrownBy(() -> new Place(SOURCE, sourceId, NAME, CATEGORY, SOURCE_CATEGORY_CODE, ADDRESS, COORDINATE))
+        assertThatThrownBy(() -> Place.tour(sourceId, NAME, CATEGORY, SOURCE_CATEGORY_CODE, ADDRESS, COORDINATE))
                 .isInstanceOfSatisfying(BusinessException.class,
                         e -> assertThat(e.getErrorCode()).isEqualTo(CommonErrorCode.INVALID_INPUT));
     }
@@ -84,7 +75,7 @@ class PlaceTest {
         String sourceId = "1".repeat(Place.MAX_SOURCE_ID_LENGTH + 1);
 
         // when & then
-        assertThatThrownBy(() -> new Place(SOURCE, sourceId, NAME, CATEGORY, SOURCE_CATEGORY_CODE, ADDRESS, COORDINATE))
+        assertThatThrownBy(() -> Place.tour(sourceId, NAME, CATEGORY, SOURCE_CATEGORY_CODE, ADDRESS, COORDINATE))
                 .isInstanceOfSatisfying(BusinessException.class,
                         e -> assertThat(e.getErrorCode()).isEqualTo(CommonErrorCode.INVALID_INPUT));
     }
@@ -94,7 +85,7 @@ class PlaceTest {
     @ValueSource(strings = {" "})
     void 원본_분류_코드가_비어_있으면_장소를_만들_수_없다(String sourceCategoryCode) {
         // when & then
-        assertThatThrownBy(() -> new Place(SOURCE, SOURCE_ID, NAME, CATEGORY, sourceCategoryCode, ADDRESS, COORDINATE))
+        assertThatThrownBy(() -> Place.tour(SOURCE_ID, NAME, CATEGORY, sourceCategoryCode, ADDRESS, COORDINATE))
                 .isInstanceOfSatisfying(BusinessException.class,
                         e -> assertThat(e.getErrorCode()).isEqualTo(CommonErrorCode.INVALID_INPUT));
     }
@@ -105,7 +96,7 @@ class PlaceTest {
         String sourceCategoryCode = "1".repeat(Place.MAX_SOURCE_CATEGORY_CODE_LENGTH + 1);
 
         // when & then
-        assertThatThrownBy(() -> new Place(SOURCE, SOURCE_ID, NAME, CATEGORY, sourceCategoryCode, ADDRESS, COORDINATE))
+        assertThatThrownBy(() -> Place.tour(SOURCE_ID, NAME, CATEGORY, sourceCategoryCode, ADDRESS, COORDINATE))
                 .isInstanceOfSatisfying(BusinessException.class,
                         e -> assertThat(e.getErrorCode()).isEqualTo(CommonErrorCode.INVALID_INPUT));
     }
@@ -116,7 +107,7 @@ class PlaceTest {
         String address = "가".repeat(Place.MAX_ADDRESS_LENGTH);
 
         // when & then
-        assertThatCode(() -> new Place(SOURCE, SOURCE_ID, NAME, CATEGORY, SOURCE_CATEGORY_CODE, address, COORDINATE))
+        assertThatCode(() -> Place.tour(SOURCE_ID, NAME, CATEGORY, SOURCE_CATEGORY_CODE, address, COORDINATE))
                 .doesNotThrowAnyException();
     }
 
@@ -126,7 +117,30 @@ class PlaceTest {
         String address = "가".repeat(Place.MAX_ADDRESS_LENGTH + 1);
 
         // when & then
-        assertThatThrownBy(() -> new Place(SOURCE, SOURCE_ID, NAME, CATEGORY, SOURCE_CATEGORY_CODE, address, COORDINATE))
+        assertThatThrownBy(() -> Place.tour(SOURCE_ID, NAME, CATEGORY, SOURCE_CATEGORY_CODE, address, COORDINATE))
+                .isInstanceOfSatisfying(BusinessException.class,
+                        e -> assertThat(e.getErrorCode()).isEqualTo(CommonErrorCode.INVALID_INPUT));
+    }
+
+    @Test
+    void 직접_추가하는_장소는_이름과_좌표만으로_만들_수_있다() {
+        // when & then
+        assertThatCode(() -> Place.custom(NAME, COORDINATE))
+                .doesNotThrowAnyException();
+    }
+
+    @Test
+    void 직접_추가하는_장소는_이름이_없으면_만들_수_없다() {
+        // when & then
+        assertThatThrownBy(() -> Place.custom(null, COORDINATE))
+                .isInstanceOfSatisfying(BusinessException.class,
+                        e -> assertThat(e.getErrorCode()).isEqualTo(CommonErrorCode.INVALID_INPUT));
+    }
+
+    @Test
+    void 직접_추가하는_장소는_좌표가_없으면_만들_수_없다() {
+        // when & then
+        assertThatThrownBy(() -> Place.custom(NAME, null))
                 .isInstanceOfSatisfying(BusinessException.class,
                         e -> assertThat(e.getErrorCode()).isEqualTo(CommonErrorCode.INVALID_INPUT));
     }

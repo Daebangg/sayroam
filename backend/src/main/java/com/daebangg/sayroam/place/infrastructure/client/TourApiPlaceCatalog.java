@@ -9,7 +9,6 @@ import com.daebangg.sayroam.place.domain.Coordinate;
 import com.daebangg.sayroam.place.domain.Place;
 import com.daebangg.sayroam.place.domain.PlaceCategory;
 import com.daebangg.sayroam.place.domain.PlaceName;
-import com.daebangg.sayroam.place.domain.PlaceSource;
 import com.daebangg.sayroam.place.domain.error.PlaceErrorCode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -98,8 +97,7 @@ public class TourApiPlaceCatalog implements PlaceCatalog {
     // 출처 데이터가 장소 규칙(원본 ID·주소 길이 등)을 어기면 회원 입력 오류가 아니라 담을 수 없는 장소로 본다.
     private Optional<Place> toPlace(PlaceSearchItem found, JsonNode item) {
         try {
-            return Optional.of(new Place(
-                    PlaceSource.TOUR,
+            return Optional.of(Place.tour(
                     found.sourceId(),
                     new PlaceName(found.name()),
                     found.category(),

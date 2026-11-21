@@ -4,6 +4,9 @@ import com.daebangg.sayroam.global.exception.BusinessException;
 import com.daebangg.sayroam.place.application.dto.PlaceSearchQuery;
 import com.daebangg.sayroam.place.application.dto.PlaceSearchResult;
 import com.daebangg.sayroam.place.application.port.out.PlaceCatalog;
+import com.daebangg.sayroam.place.domain.Coordinate;
+import com.daebangg.sayroam.place.domain.Place;
+import com.daebangg.sayroam.place.domain.PlaceName;
 import com.daebangg.sayroam.place.domain.PlaceRepository;
 import com.daebangg.sayroam.place.domain.PlaceSource;
 import com.daebangg.sayroam.place.domain.error.PlaceErrorCode;
@@ -27,5 +30,10 @@ public class PlaceService {
                 .orElseGet(() -> placeRepository.save(placeCatalog.find(sourceId)
                         .orElseThrow(() -> new BusinessException(PlaceErrorCode.PLACE_NOT_FOUND))))
                 .getId();
+    }
+
+    @Transactional
+    public Long registerCustom(String name, Coordinate coordinate) {
+        return placeRepository.save(Place.custom(PlaceName.from(name), coordinate)).getId();
     }
 }

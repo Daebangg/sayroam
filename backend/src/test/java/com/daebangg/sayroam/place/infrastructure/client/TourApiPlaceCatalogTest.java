@@ -8,7 +8,6 @@ import com.daebangg.sayroam.place.domain.Coordinate;
 import com.daebangg.sayroam.place.domain.Place;
 import com.daebangg.sayroam.place.domain.PlaceCategory;
 import com.daebangg.sayroam.place.domain.PlaceName;
-import com.daebangg.sayroam.place.domain.PlaceSource;
 import com.daebangg.sayroam.place.domain.error.PlaceErrorCode;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -375,7 +374,7 @@ class TourApiPlaceCatalogTest {
         assertThat(place).get()
                 .usingRecursiveComparison()
                 .ignoringFields("id", "createdAt", "updatedAt")
-                .isEqualTo(new Place(PlaceSource.TOUR, "126081", new PlaceName("송정해수욕장"),
+                .isEqualTo(Place.tour("126081", new PlaceName("송정해수욕장"),
                         PlaceCategory.ATTRACTION, "12", "부산광역시 해운대구 송정해변로 62",
                         new Coordinate(new BigDecimal("35.1786"), new BigDecimal("129.1997"))));
     }

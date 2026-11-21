@@ -10,6 +10,7 @@ import com.daebangg.sayroam.global.security.ActiveAccountJwtConverter;
 import com.daebangg.sayroam.global.security.SecurityConfig;
 import com.daebangg.sayroam.place.domain.error.PlaceErrorCode;
 import com.daebangg.sayroam.room.domain.error.RoomErrorCode;
+import com.daebangg.sayroam.trip.application.dto.AddTripCustomPlaceCommand;
 import com.daebangg.sayroam.trip.application.dto.AddTripPlaceCommand;
 import com.daebangg.sayroam.trip.application.dto.TripSummaryResult;
 import com.daebangg.sayroam.trip.application.service.TripService;
@@ -29,6 +30,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 
@@ -52,6 +54,8 @@ class TripControllerTest {
     private static final Long ROOM_ID = 7L;
     private static final String SOURCE_ID = "126081";
     private static final Long TRIP_PLACE_ID = 31L;
+    private static final BigDecimal LATITUDE = new BigDecimal("33.4996213");
+    private static final BigDecimal LONGITUDE = new BigDecimal("126.5311884");
     private static final TravelPeriod PERIOD = new TravelPeriod(START_DATE, END_DATE);
 
     @Autowired
@@ -337,6 +341,181 @@ class TripControllerTest {
     }
 
     @Test
+    void 지도에서_고른_장소를_직접_추가하면_201과_여행_장소_ID를_응답한다() throws Exception {
+        // given
+        given(tripService.addCustomPlace(USER_ID, TRIP_ID,
+                new AddTripCustomPlaceCommand("숙소", LATITUDE, LONGITUDE, 2, "체크인 4시")))
+                .willReturn(TRIP_PLACE_ID);
+
+        // when & then
+        mvc.perform(addTripCustomPlaceRequest(TRIP_ID, """
+                        {"name": "숙소", "latitude": 33.4996213, "longitude": 126.5311884, "day": 2, "memo": "체크인 4시"}
+                        """).with(login()))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.tripPlaceId").value(TRIP_PLACE_ID));
+    }
+
+    @Test
+    void 일차와_메모_없이_이름과_좌표만_보내도_장소를_직접_추가한다() throws Exception {
+        // given
+        given(tripService.addCustomPlace(USER_ID, TRIP_ID,
+                new AddTripCustomPlaceCommand("숙소", LATITUDE, LONGITUDE, null, null)))
+                .willReturn(TRIP_PLACE_ID);
+
+        // when & then
+        mvc.perform(addTripCustomPlaceRequest(TRIP_ID, """
+                        {"name": "숙소", "latitude": 33.4996213, "longitude": 126.5311884}
+                        """).with(login()))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.tripPlaceId").value(TRIP_PLACE_ID));
+    }
+
+    @Test
+    void 이름이_비어_있으면_400과_에러_코드를_응답하고_장소를_직접_추가하지_않는다() throws Exception {
+        // when & then
+        mvc.perform(addTripCustomPlaceRequest(TRIP_ID, """
+                        {"name": " ", "latitude": 33.4996213, "longitude": 126.5311884}
+                        """).with(login()))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("INVALID_INPUT"))
+                .andExpect(jsonPath("$.errors[0].field").value("name"));
+
+        then(tripService).shouldHaveNoInteractions();
+    }
+
+    @Test
+    void 이름이_100자를_넘으면_400과_에러_코드를_응답하고_장소를_직접_추가하지_않는다() throws Exception {
+        // when & then
+        mvc.perform(addTripCustomPlaceRequest(TRIP_ID, """
+                        {"name": "%s", "latitude": 33.4996213, "longitude": 126.5311884}
+                        """.formatted("가".repeat(101))).with(login()))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("INVALID_INPUT"))
+                .andExpect(jsonPath("$.errors[0].field").value("name"));
+
+        then(tripService).shouldHaveNoInteractions();
+    }
+
+    @Test
+    void 위도가_없으면_400과_에러_코드를_응답하고_장소를_직접_추가하지_않는다() throws Exception {
+        // when & then
+        mvc.perform(addTripCustomPlaceRequest(TRIP_ID, """
+                        {"name": "숙소", "longitude": 126.5311884}
+                        """).with(login()))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("INVALID_INPUT"))
+                .andExpect(jsonPath("$.errors[0].field").value("latitude"));
+
+        then(tripService).shouldHaveNoInteractions();
+    }
+
+    @Test
+    void 경도가_없으면_400과_에러_코드를_응답하고_장소를_직접_추가하지_않는다() throws Exception {
+        // when & then
+        mvc.perform(addTripCustomPlaceRequest(TRIP_ID, """
+                        {"name": "숙소", "latitude": 33.4996213}
+                        """).with(login()))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("INVALID_INPUT"))
+                .andExpect(jsonPath("$.errors[0].field").value("longitude"));
+
+        then(tripService).shouldHaveNoInteractions();
+    }
+
+    @Test
+    void 위도가_범위를_벗어나면_400과_에러_코드를_응답하고_장소를_직접_추가하지_않는다() throws Exception {
+        // when & then
+        mvc.perform(addTripCustomPlaceRequest(TRIP_ID, """
+                        {"name": "숙소", "latitude": 90.0000001, "longitude": 126.5311884}
+                        """).with(login()))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("INVALID_INPUT"))
+                .andExpect(jsonPath("$.errors[0].field").value("latitude"));
+
+        then(tripService).shouldHaveNoInteractions();
+    }
+
+    @Test
+    void 경도가_범위를_벗어나면_400과_에러_코드를_응답하고_장소를_직접_추가하지_않는다() throws Exception {
+        // when & then
+        mvc.perform(addTripCustomPlaceRequest(TRIP_ID, """
+                        {"name": "숙소", "latitude": 33.4996213, "longitude": -180.0000001}
+                        """).with(login()))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("INVALID_INPUT"))
+                .andExpect(jsonPath("$.errors[0].field").value("longitude"));
+
+        then(tripService).shouldHaveNoInteractions();
+    }
+
+    @Test
+    void 직접_추가할_때_일차가_1보다_작으면_400과_에러_코드를_응답한다() throws Exception {
+        // when & then
+        mvc.perform(addTripCustomPlaceRequest(TRIP_ID, """
+                        {"name": "숙소", "latitude": 33.4996213, "longitude": 126.5311884, "day": 0}
+                        """).with(login()))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("INVALID_INPUT"))
+                .andExpect(jsonPath("$.errors[0].field").value("day"));
+
+        then(tripService).shouldHaveNoInteractions();
+    }
+
+    @Test
+    void 직접_추가할_때_메모가_255자를_넘으면_400과_에러_코드를_응답한다() throws Exception {
+        // when & then
+        mvc.perform(addTripCustomPlaceRequest(TRIP_ID, """
+                        {"name": "숙소", "latitude": 33.4996213, "longitude": 126.5311884, "memo": "%s"}
+                        """.formatted("가".repeat(256))).with(login()))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("INVALID_INPUT"))
+                .andExpect(jsonPath("$.errors[0].field").value("memo"));
+
+        then(tripService).shouldHaveNoInteractions();
+    }
+
+    @Test
+    void 직접_추가할_때_일차가_여행_기간을_벗어나면_400과_에러_코드를_응답한다() throws Exception {
+        // given
+        given(tripService.addCustomPlace(USER_ID, TRIP_ID,
+                new AddTripCustomPlaceCommand("숙소", LATITUDE, LONGITUDE, 5, null)))
+                .willThrow(new BusinessException(TripErrorCode.TRIP_DAY_OUT_OF_RANGE));
+
+        // when & then
+        mvc.perform(addTripCustomPlaceRequest(TRIP_ID, """
+                        {"name": "숙소", "latitude": 33.4996213, "longitude": 126.5311884, "day": 5}
+                        """).with(login()))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("TRIP_DAY_OUT_OF_RANGE"));
+    }
+
+    @Test
+    void 장소를_직접_추가할_수_없는_여행이면_404와_에러_코드를_응답한다() throws Exception {
+        // given
+        given(tripService.addCustomPlace(USER_ID, TRIP_ID,
+                new AddTripCustomPlaceCommand("숙소", LATITUDE, LONGITUDE, null, null)))
+                .willThrow(new BusinessException(TripErrorCode.TRIP_NOT_FOUND));
+
+        // when & then
+        mvc.perform(addTripCustomPlaceRequest(TRIP_ID, """
+                        {"name": "숙소", "latitude": 33.4996213, "longitude": 126.5311884}
+                        """).with(login()))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("TRIP_NOT_FOUND"));
+    }
+
+    @Test
+    void 로그인하지_않으면_401을_응답하고_장소를_직접_추가하지_않는다() throws Exception {
+        // when & then
+        mvc.perform(addTripCustomPlaceRequest(TRIP_ID, """
+                        {"name": "숙소", "latitude": 33.4996213, "longitude": 126.5311884}
+                        """))
+                .andExpect(status().isUnauthorized());
+
+        then(tripService).shouldHaveNoInteractions();
+    }
+
+    @Test
     void 내_여행_목록을_조회하면_200과_여행_목록을_응답한다() throws Exception {
         // given
         given(tripService.findMine(USER_ID)).willReturn(List.of(
@@ -413,6 +592,12 @@ class TripControllerTest {
 
     private MockHttpServletRequestBuilder addTripPlaceRequest(Long tripId, String body) {
         return post("/api/trips/{tripId}/places", tripId)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(body);
+    }
+
+    private MockHttpServletRequestBuilder addTripCustomPlaceRequest(Long tripId, String body) {
+        return post("/api/trips/{tripId}/custom-places", tripId)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(body);
     }

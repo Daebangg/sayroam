@@ -17,8 +17,9 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
-// 회원이 여행에 담은 외부 장소. 출처(source)와 원본 ID(sourceId)로 같은 장소를 한 번만 저장하고,
+// 회원이 여행에 담은 장소. 외부 장소는 출처(source)와 원본 ID(sourceId)로 같은 장소를 한 번만 저장하고,
 // 원본 분류 코드를 남겨 서비스 분류를 바꿀 때 다시 분류할 수 있게 한다.
+// 회원이 지도에서 직접 고른 장소(CUSTOM)는 원본 정보 없이 이름과 좌표만 가지며 추가할 때마다 새로 저장한다.
 @Entity
 @Table(
         name = "place",
@@ -39,17 +40,20 @@ public class Place extends BaseTimeEntity {
     @Column(nullable = false, length = 20)
     private PlaceSource source;
 
-    @Column(name = "source_id", nullable = false, length = MAX_SOURCE_ID_LENGTH)
+    // 직접 고른 장소(CUSTOM)는 NULL
+    @Column(name = "source_id", length = MAX_SOURCE_ID_LENGTH)
     private String sourceId;
 
     @Embedded
     private PlaceName name;
 
+    // 직접 고른 장소(CUSTOM)는 NULL
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 20)
+    @Column(length = 20)
     private PlaceCategory category;
 
-    @Column(name = "source_category_code", nullable = false, length = MAX_SOURCE_CATEGORY_CODE_LENGTH)
+    // 직접 고른 장소(CUSTOM)는 NULL
+    @Column(name = "source_category_code", length = MAX_SOURCE_CATEGORY_CODE_LENGTH)
     private String sourceCategoryCode;
 
     // 출처에 주소가 없으면 NULL
@@ -59,14 +63,9 @@ public class Place extends BaseTimeEntity {
     @Embedded
     private Coordinate coordinate;
 
-    public Place(PlaceSource source, String sourceId, PlaceName name, PlaceCategory category,
-                 String sourceCategoryCode, String address, Coordinate coordinate) {
-        if (source == null || name == null || category == null || coordinate == null) {
-            throw new BusinessException(CommonErrorCode.INVALID_INPUT);
-        }
-        requireText(sourceId, MAX_SOURCE_ID_LENGTH);
-        requireText(sourceCategoryCode, MAX_SOURCE_CATEGORY_CODE_LENGTH);
-        if (address != null && address.length() > MAX_ADDRESS_LENGTH) {
+    private Place(PlaceSource source, String sourceId, PlaceName name, PlaceCategory category,
+                  String sourceCategoryCode, String address, Coordinate coordinate) {
+        if (name == null || coordinate == null) {
             throw new BusinessException(CommonErrorCode.INVALID_INPUT);
         }
         this.source = source;
@@ -78,10 +77,27 @@ public class Place extends BaseTimeEntity {
         this.coordinate = coordinate;
     }
 
+    public static Place tour(String sourceId, PlaceName name, PlaceCategory category,
+                             String sourceCategoryCode, String address, Coordinate coordinate) {
+        if (category == null) {
+            throw new BusinessException(CommonErrorCode.INVALID_INPUT);
+        }
+        requireText(sourceId, MAX_SOURCE_ID_LENGTH);
+        requireText(sourceCategoryCode, MAX_SOURCE_CATEGORY_CODE_LENGTH);
+        if (address != null && address.length() > MAX_ADDRESS_LENGTH) {
+            throw new BusinessException(CommonErrorCode.INVALID_INPUT);
+        }
+        return new Place(PlaceSource.TOUR, sourceId, name, category, sourceCategoryCode, address, coordinate);
+    }
+
     private static void requireText(String value, int maxLength) {
         if (value == null || value.isBlank() || value.length() > maxLength) {
             throw new BusinessException(CommonErrorCode.INVALID_INPUT);
         }
+    }
+
+    public static Place custom(PlaceName name, Coordinate coordinate) {
+        return new Place(PlaceSource.CUSTOM, null, name, null, null, null, coordinate);
     }
 
 }

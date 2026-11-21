@@ -532,6 +532,14 @@
                 },
                 "description": "400: INVALID_INPUT(시작일·종료일 누락, errors 포함), TRAVEL_PERIOD_END_BEFORE_START(종료일이 시작일보다 앞섬) 또는 Spring 요청 오류(날짜 형식 오류). 날짜는 yyyy-MM-dd"
             },
+            "TripCustomPlaceBadRequest": {
+                "content": {
+                    "application/problem+json": {
+                        "schema": { "$ref": "#/components/schemas/ApiProblem" }
+                    }
+                },
+                "description": "400: INVALID_INPUT(이름 누락·100자 초과, 위도·경도 누락 또는 범위 초과, 1보다 작은 일차, 255자 초과 메모, errors 포함), TRIP_DAY_OUT_OF_RANGE(여행 기간을 벗어난 일차) 또는 Spring 요청 오류"
+            },
             "TripNotFound": {
                 "content": {
                     "application/problem+json": {
@@ -668,6 +676,47 @@
                     }
                 },
                 "required": ["expiresInSeconds", "purpose", "resendAfterSeconds", "verificationId"],
+                "type": "object"
+            },
+            "AddTripCustomPlaceRequest": {
+                "properties": {
+                    "day": {
+                        "description": "일차. 1부터 여행의 마지막 날까지. 생략하면 일차 미정",
+                        "example": 2,
+                        "format": "int32",
+                        "minimum": 1,
+                        "type": ["integer", "null"]
+                    },
+                    "latitude": {
+                        "description": "지도에서 고른 위치의 위도(WGS84)",
+                        "example": 33.4996213,
+                        "maximum": 90,
+                        "minimum": -90,
+                        "type": "number"
+                    },
+                    "longitude": {
+                        "description": "지도에서 고른 위치의 경도(WGS84)",
+                        "example": 126.5311884,
+                        "maximum": 180,
+                        "minimum": -180,
+                        "type": "number"
+                    },
+                    "memo": {
+                        "description": "메모. 선택값이며 255자 이내",
+                        "example": "체크인 4시",
+                        "maxLength": 255,
+                        "minLength": 0,
+                        "type": ["string", "null"]
+                    },
+                    "name": {
+                        "description": "회원이 직접 입력한 장소 이름. 100자 이내",
+                        "example": "숙소 (에어비앤비)",
+                        "maxLength": 100,
+                        "minLength": 1,
+                        "type": "string"
+                    }
+                },
+                "required": ["latitude", "longitude", "name"],
                 "type": "object"
             },
             "AddTripPlaceRequest": {
@@ -3644,6 +3693,48 @@
                 },
                 "security": [{ "bearerAuth": [] }],
                 "summary": "여행 조회",
+                "tags": ["Trip"]
+            }
+        },
+        "/api/trips/{tripId}/custom-places": {
+            "post": {
+                "description": "장소 검색에 없는 곳을 회원이 지도에서 고른 위치(WGS84 위도·경도)와 직접 입력한 이름으로 여행에 추가합니다. 서버는 외부 서비스에서 이름이나 주소를 채우지 않습니다. 직접 추가한 장소는 이 여행에만 담기고 장소 검색 결과에는 나오지 않으며, 같은 위치와 이름으로 다시 추가해도 따로 저장됩니다. 추가 권한과 일차·메모 기준은 여행에 장소 추가와 같습니다.",
+                "operationId": "addTripCustomPlace",
+                "parameters": [
+                    {
+                        "description": "여행 ID",
+                        "example": 12,
+                        "in": "path",
+                        "name": "tripId",
+                        "required": true,
+                        "schema": { "format": "int64", "type": "integer" }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": { "$ref": "#/components/schemas/AddTripCustomPlaceRequest" }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "201": {
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/AddTripPlaceResponse" }
+                            }
+                        },
+                        "description": "여행 장소 추가 완료"
+                    },
+                    "400": { "$ref": "#/components/responses/TripCustomPlaceBadRequest" },
+                    "401": { "$ref": "#/components/responses/Unauthorized" },
+                    "404": { "$ref": "#/components/responses/TripNotFound" },
+                    "500": { "$ref": "#/components/responses/InternalServerError" },
+                    "503": { "$ref": "#/components/responses/AuthenticationUnavailable" }
+                },
+                "security": [{ "bearerAuth": [] }],
+                "summary": "지도에서 고른 장소를 여행에 직접 추가",
                 "tags": ["Trip"]
             }
         },
