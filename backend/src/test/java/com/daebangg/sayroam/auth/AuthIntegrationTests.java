@@ -354,6 +354,20 @@ class AuthIntegrationTests extends DatabaseIntegrationTest {
     }
 
     @Test
+    void profileSetupViewPersistsAcrossLoginsWithoutProfileAnswers() throws Exception {
+        String email = register();
+        Login first = login(email, PASSWORD);
+        String path = "/api/users/me";
+        assertThat(json(call(HttpMethod.GET, path, null, first.access())).get("profileSetupSeen").booleanValue()).isFalse();
+        for (int attempt = 0; attempt < 2; attempt++) {
+            assertStatus(call(HttpMethod.PATCH, path, Map.of("profileSetupSeen", true), first.access()), 200);
+        }
+        assertStatus(call(HttpMethod.PATCH, path, Map.of("profileSetupSeen", false), first.access()), 400);
+        Login second = login(email, PASSWORD);
+        assertThat(json(call(HttpMethod.GET, path, null, second.access())).get("profileSetupSeen").booleanValue()).isTrue();
+    }
+
+    @Test
     void profileLifecyclePersistsPartialChangesAndDeletionRevokesAccess() throws Exception {
         String email = register();
         Login login = login(email, PASSWORD);

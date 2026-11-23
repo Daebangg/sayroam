@@ -160,9 +160,10 @@ React는 같은 상태를 구독하므로 첫 화면과 앱 실행 후 테마를
 [브랜드 자산 목록](public/brand/README.md)에서 세 형태의 테마별 투명·배경 포함 SVG/PNG 24개를 제공합니다.
 로그아웃은 익명 실루엣을, 로그인 계정의 사진 없음·불러오기 실패는 `coast` 아바타를 사용합니다.
 
-`/brand?preview=welcome|onboarding|home|trips|matching|matching-searching|matching-found|matching-empty|matching-delayed|rooms|notifications`에서 각 값을 하나씩 지정해
+`/brand?preview=welcome|onboarding|profile-setup|home|trips|matching|matching-searching|matching-found|matching-empty|matching-delayed|rooms|notifications`에서 각 값을 하나씩 지정해
 시작·온보딩·홈·여행·동행·내 방 목업을 탐색합니다. 목업의 검색·필터·저장·모달은 예시 상태이며
 여행 저장·검색·채팅 API의 완료를 뜻하지 않습니다. 기존 실제 로그인 흐름과 보호 경로는 유지합니다.
+`/brand?preview=profile-setup`에서 초기 프로필 입력과 건너뛰기 확인 모달을 체험할 수 있습니다. 예시 입력은 현재 화면에서만 유지합니다.
 브랜드 페이지에는 같은 공용 날짜 선택기·인원 증감·드롭다운·토스트·모달·단축키 캡슐을 사용합니다.
 알림함은 `/brand`의 알림함 섹션에서 목록·빈 상태를 비교하거나
 `/brand?preview=notifications`에서 목록을 바로 확인합니다. 상단 벨 버튼으로도 열 수 있습니다. 미리보기의 예시 알림으로
@@ -512,6 +513,10 @@ CI 통합은 [#57](https://github.com/Daebangg/sayroam/issues/57),
 다국어·테마 전환은 [#59](https://github.com/Daebangg/sayroam/issues/59)에서 진행합니다.
 
 ### 설정·프로필 화면 (#98)
+
+신규 회원에게 초기 프로필 안내의 첫 질문이 표시되면 계정에 열람 이력을 저장합니다.
+답변을 입력하지 않고 창을 닫아도 다음 로그인부터는 다른 브라우저에서도 안내를 생략합니다.
+V22 마이그레이션 적용 전에 가입한 회원은 처음부터 안내를 생략합니다.
 
 일반(`/settings`)은 언어, 화면(`/settings/appearance`)은 시스템·라이트·다크 테마를 선택합니다.
 키보드(`/settings/keyboard`)는 설정 열기(`⌘/Ctrl+,`)와 프로필 열기(`⌘/Ctrl+Shift+P`) 단축키를 표시합니다.

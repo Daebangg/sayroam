@@ -22,7 +22,7 @@ import java.time.format.DateTimeParseException;
         additionalProperties = Schema.AdditionalPropertiesValue.FALSE)
 public final class UpdateUserProfileRequest {
     private static final Set<String> ALLOWED_FIELDS =
-            Set.of("nickname", "profileImageUrl", "gender", "birthYear", "birthDate");
+            Set.of("nickname", "profileImageUrl", "gender", "birthYear", "birthDate", "profileSetupSeen");
 
     @Schema(description = "앞뒤 공백 제거 후 1~50자. 제어·숨김 문자와 null 불가",
             example = "제주 여행자", minLength = 1, maxLength = Nickname.MAX_LENGTH, pattern = Nickname.PATTERN,
@@ -46,6 +46,10 @@ public final class UpdateUserProfileRequest {
     @Schema(description = "생일(YYYY-MM-DD), 오늘 이하의 실제 날짜. null이면 제거. birthYear와 동시에 전달할 수 없습니다.", types = {"string", "null"}, format = "date", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
     private final LocalDate birthDate;
 
+    @Schema(description = "초기 프로필 안내를 열면 true를 전달합니다. 한 번 기록하면 되돌릴 수 없습니다.",
+            requiredMode = Schema.RequiredMode.NOT_REQUIRED)
+    private final boolean profileSetupSeen;
+
     @JsonIgnore
     @Getter(AccessLevel.NONE)
     @Schema(hidden = true)
@@ -61,9 +65,14 @@ public final class UpdateUserProfileRequest {
         providedFields = Set.copyOf(body.propertyNames());
         if (!ALLOWED_FIELDS.containsAll(providedFields)) {
             throw new IllegalArgumentException(
-                    "Only nickname, profileImageUrl, gender, birthYear and birthDate can be updated");
+                    "Unsupported profile update field");
         }
 
+        JsonNode seen = body.get("profileSetupSeen");
+        if (seen != null && (!seen.isBoolean() || !seen.booleanValue())) {
+            throw new IllegalArgumentException("profileSetupSeen must be true");
+        }
+        profileSetupSeen = seen != null;
         nickname = nullableString(body.get("nickname"), "nickname");
         profileImageUrl = nullableString(body.get("profileImageUrl"), "profileImageUrl");
         gender = nullableGender(body.get("gender"));
@@ -111,7 +120,8 @@ public final class UpdateUserProfileRequest {
                 fieldUpdate("profileImageUrl", profileImageUrl),
                 fieldUpdate("gender", gender),
                 fieldUpdate("birthYear", birthYear),
-                fieldUpdate("birthDate", birthDate));
+                fieldUpdate("birthDate", birthDate),
+                profileSetupSeen);
     }
 
     private <T> FieldUpdate<T> fieldUpdate(String field, T value) {

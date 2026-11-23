@@ -6501,7 +6501,7 @@ p {
     font-size: 11px;
     color: var(--secondary-text);
 }
-.matching-confirm__submit {
+.step-action-button {
     justify-self: center;
     border-radius: var(--radius-pill);
     padding-inline: var(--space-6);
@@ -8145,6 +8145,9 @@ p {
     width: min(100%, 800px);
     text-align: center;
     animation: page-content-enter 240ms ease both;
+}
+.profile-onboarding__content > .step-action-button {
+    margin-top: var(--space-4);
 }
 .profile-onboarding__eyebrow {
     color: var(--primary);

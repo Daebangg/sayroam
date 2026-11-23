@@ -40,7 +40,7 @@ public interface UserApi {
             @Parameter(hidden = true) AuthenticatedAccount account);
 
     @Operation(summary = "내 프로필 부분 수정",
-            description = "닉네임·프로필 이미지·성별·생일·출생연도만 변경할 수 있습니다. 생략한 필드는 유지하고, "
+            description = "닉네임·프로필 이미지·성별·생일·출생연도를 변경하거나 초기 안내 열람을 기록할 수 있습니다. 생략한 필드는 유지하고, "
                     + "선택 정보에 null을 전달하면 제거합니다. 닉네임은 null로 변경할 수 없습니다. "
                     + "회원 ID·이메일·권한 등 허용하지 않은 필드를 포함하면 요청을 거절합니다.")
     @SecurityRequirement(name = "bearerAuth")

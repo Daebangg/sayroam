@@ -844,7 +844,7 @@ export interface paths {
         head?: never;
         /**
          * 내 프로필 부분 수정
-         * @description 닉네임·프로필 이미지·성별·생일·출생연도만 변경할 수 있습니다. 생략한 필드는 유지하고, 선택 정보에 null을 전달하면 제거합니다. 닉네임은 null로 변경할 수 없습니다. 회원 ID·이메일·권한 등 허용하지 않은 필드를 포함하면 요청을 거절합니다.
+         * @description 닉네임·프로필 이미지·성별·생일·출생연도를 변경하거나 초기 안내 열람을 기록할 수 있습니다. 생략한 필드는 유지하고, 선택 정보에 null을 전달하면 제거합니다. 닉네임은 null로 변경할 수 없습니다. 회원 ID·이메일·권한 등 허용하지 않은 필드를 포함하면 요청을 거절합니다.
          */
         patch: operations["updateProfile"];
         trace?: never;
@@ -1376,6 +1376,8 @@ export interface components {
             /** @example 여행자 */
             nickname: string;
             profileImageUrl: string | null;
+            /** @description 초기 프로필 안내를 이미 본 회원인지 여부 */
+            profileSetupSeen: boolean;
             /** @enum {string} */
             role: "USER" | "ADMIN";
             /**
@@ -1937,6 +1939,8 @@ export interface components {
             nickname?: string;
             /** @description HTTP(S) 이미지 URL 또는 기본 아바타 경로(/brand/avatars/{preset}.svg). null이면 제거 */
             profileImageUrl?: string | null;
+            /** @description 초기 프로필 안내를 열면 true를 전달합니다. 한 번 기록하면 되돌릴 수 없습니다. */
+            profileSetupSeen?: boolean;
         };
         /** @description JPEG 또는 PNG의 Base64 data URL. 디코딩 후 최대 2MB, 가로·세로 최대 4096px. */
         UploadProfileImageRequest: {

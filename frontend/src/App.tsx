@@ -223,7 +223,10 @@ export default function App() {
     const normalizedPath = location.pathname.replace(/\/+$/, "").toLowerCase() || "/";
     const knownPage = Object.values(pagePaths).some((path) => path === normalizedPath);
     const showAuthFailure =
-        knownPage && auth.status === "unavailable" && auth.message !== "logoutUncertain";
+        !mockupScreen &&
+        knownPage &&
+        auth.status === "unavailable" &&
+        auth.message !== "logoutUncertain";
     return (
         <AppShell
             notificationInbox={
@@ -234,7 +237,7 @@ export default function App() {
                     />
                 ) : null
             }
-            setupActive={profileSetupActive}
+            setupActive={profileSetupActive || mockupScreen === "profile-setup"}
             mockupScreen={mockupScreen}
             isHome={location.pathname === "/"}
             theme={theme.resolved}
@@ -244,6 +247,7 @@ export default function App() {
             onLogout={logout}
         >
             {auth.message &&
+                !mockupScreen &&
                 !authOpen &&
                 !modalOnlyAuthMessage &&
                 !showAuthFailure &&
@@ -275,7 +279,7 @@ export default function App() {
                 />
             ) : (
                 <ProfileSetupBoundary
-                    member={auth.user}
+                    member={mockupScreen ? null : auth.user}
                     onUpdate={auth.updateProfileDetails}
                     onActivity={setProfileSetupActive}
                 >

@@ -29,6 +29,7 @@
         "disabled": "Coming soon",
         "removeTag": "Remove {{name}} tag",
         "dismissNotification": "Dismiss notification",
+        "confirm": "Confirm",
         "cancel": "Cancel"
     },
     "home": {
@@ -461,6 +462,7 @@
         "screens": {
             "welcome": "Welcome",
             "onboarding": "Onboarding",
+            "profile-setup": "Initial profile setup",
             "home": "Home",
             "trips": "Trips",
             "matching": "Find companions",
@@ -1026,6 +1028,7 @@
         "mineDescription": "View and manage your posts."
     },
     "profileSetup": {
+        "visitError": "We couldn’t save that you’ve seen this introduction.",
         "styleTitle": "Travel style",
         "styleHint": "These preferences will be preselected for your next recruitment. Existing recruitments stay unchanged.",
         "styleError": "Could not load or save your travel style. Please try again.",

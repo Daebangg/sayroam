@@ -1087,7 +1087,7 @@ function MatchingWorkspace({
                                             <Button
                                                 type="submit"
                                                 variant="brand"
-                                                className="matching-confirm__submit"
+                                                className="step-action-button"
                                                 disabled={
                                                     !valid ||
                                                     !canManage ||

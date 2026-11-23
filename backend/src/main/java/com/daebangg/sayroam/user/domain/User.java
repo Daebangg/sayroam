@@ -77,6 +77,10 @@ public class User extends BaseTimeEntity {
     private LocalDate birthDate;
 
     @Getter
+    @Column(nullable = false)
+    private boolean profileSetupSeen;
+
+    @Getter
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private Role role;
@@ -207,6 +211,10 @@ public class User extends BaseTimeEntity {
             profileImage.replace(content);
         }
         profileImageUrl = profileImage.url();
+    }
+
+    public void markProfileSetupSeen() {
+        profileSetupSeen = true;
     }
 
     public void changeGender(Gender gender) {

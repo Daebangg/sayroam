@@ -11,7 +11,8 @@ public record UpdateUserProfileCommand(
         FieldUpdate<String> profileImageUrl,
         FieldUpdate<Gender> gender,
         FieldUpdate<Integer> birthYear,
-        FieldUpdate<LocalDate> birthDate) {
+        FieldUpdate<LocalDate> birthDate,
+        boolean profileSetupSeen) {
 
     public UpdateUserProfileCommand {
         Objects.requireNonNull(nickname, "nickname");

@@ -36,7 +36,7 @@ export type NicknameEditor = {
 
 export type ProfileDetailsUpdate = Pick<
     components["schemas"]["UpdateUserProfileRequest"],
-    "gender" | "birthDate"
+    "gender" | "birthDate" | "profileSetupSeen"
 >;
 export type ProfileEditor<T> = {
     busy: boolean;
