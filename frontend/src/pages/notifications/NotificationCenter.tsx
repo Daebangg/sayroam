@@ -6,15 +6,7 @@ import {
 import { useNotifications } from "@/hooks/api/notifications/useNotifications";
 import { localizeNotificationContent } from "@/i18n/notification";
 import { formatDate } from "@/i18n/locale";
-import type { Notification } from "@/hooks/notification.types";
-
-const icons = {
-    WELCOME: "compass",
-    COMPANION_REQUEST: "matching",
-    COMPANION_ACCEPTED: "matching",
-    TRIP_INVITE: "trips",
-    EXPENSE_ADDED: "plan",
-} as const satisfies Record<Notification["type"], InboxItem["icon"]>;
+import { recruitmentResultsUrl } from "@/routing/paths";
 
 export function NotificationCenter({ enabled }: { enabled: boolean }) {
     const inbox = useNotifications(enabled);
@@ -22,13 +14,23 @@ export function NotificationCenter({ enabled }: { enabled: boolean }) {
     const now = new Date();
     const items: InboxItem[] = inbox.notifications.map((item) => {
         const date = new Date(item.createdAt);
+        const match = item.type === "COMPANION_MATCH_FOUND";
+        const context = match
+            ? /^New travel companion candidates were found for "([\s\S]+)"\.$/.exec(
+                  item.content,
+              )?.[1]
+            : undefined;
         return {
             id: String(item.id),
-            title: t(`inbox.messages.${item.type === "WELCOME" ? "welcome" : item.type}.title`),
+            title: t(match ? "inbox.messages.match.title" : "inbox.messages.welcome.title"),
             content: localizeNotificationContent(item, t),
             time: formatDate(i18n.resolvedLanguage ?? "ko", item.createdAt),
             section: date.toDateString() === now.toDateString() ? "today" : "earlier",
-            icon: icons[item.type],
+            icon: match ? "matching" : "compass",
+            ...(match && item.targetType === "COMPANION_SEARCH" && item.targetId !== null
+                ? { action: { to: recruitmentResultsUrl(item.targetId) } }
+                : {}),
+            ...(context && { context }),
             isRead: item.isRead,
         };
     });

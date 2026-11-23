@@ -20,15 +20,8 @@ function notification(value: unknown): value is Notification {
         typeof value.createdAt === "string" &&
         value.createdAt.endsWith("Z") &&
         Number.isFinite(Date.parse(value.createdAt)) &&
-        [
-            "COMPANION_REQUEST",
-            "COMPANION_ACCEPTED",
-            "TRIP_INVITE",
-            "EXPENSE_ADDED",
-            "WELCOME",
-        ].includes(String(value.type)) &&
-        (value.targetType === null ||
-            ["COMPANION_REQUEST", "TRIP", "ROOM_INVITATION"].includes(String(value.targetType))) &&
+        (value.type === "WELCOME" || value.type === "COMPANION_MATCH_FOUND") &&
+        (value.targetType === null || value.targetType === "COMPANION_SEARCH") &&
         (value.targetId === null || integer(value.targetId, 1))
     );
 }

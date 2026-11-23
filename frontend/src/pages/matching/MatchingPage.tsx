@@ -1,10 +1,14 @@
-import { useState } from "react";
+import { recruitmentResultsUrl, pagePaths } from "@/routing/paths";
+import { useMatchedRecruitments } from "@/hooks/api/matching/useRecruitmentResults";
+import { RecruitmentResultsPage } from "./RecruitmentResultsPage";
+import { RecruitmentTextAction } from "@/components/features/matching/RecruitmentTextAction";
+import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useOutletContext } from "react-router";
+import { Navigate, useLocation, useNavigate, useOutletContext } from "react-router";
 import {
     Button,
+    PageState,
     Card,
-    Badge,
     DateRangeCalendar,
     Autocomplete,
     DropdownMenu,
@@ -22,10 +26,17 @@ import {
     useCompanionMatching,
     type MatchingConditions,
 } from "@/hooks/api/matching/useCompanionMatching";
-import { EndRecruitmentDialog } from "@/components/features/matching/EndRecruitmentDialog";
+import { PageLeaveDialog } from "@/components/layout/PageLeaveDialog";
+import {
+    RecruitmentActionDialog,
+    type RecruitmentAction,
+} from "@/components/features/matching/RecruitmentActionDialog";
+import { RecruitmentStatusBadge } from "@/components/features/matching/RecruitmentStatusBadge";
 import { RecruitmentDetailsPanel } from "@/components/features/matching/RecruitmentDetailsPanel";
 import { TravelStyleChoices } from "@/components/features/matching/TravelStyleChoices";
+import { RoamDiscoveryLandscape } from "@/components/features/matching/RoamDiscoveryLandscape";
 import { MatchingFilterPopover } from "@/components/features/matching/MatchingFilterPopover";
+import type { MatchingRegistration } from "@/hooks/matching.types";
 import type { PageContext } from "@/routing/context";
 
 type MatchingDraft = {
@@ -36,28 +47,127 @@ type MatchingDraft = {
     minAge: string;
     maxAge: string;
     anyAge: boolean;
-    view: "entry" | "find";
 };
 
-export function MatchingPage() {
+const emptyDraft: MatchingDraft = {
+    destinationQuery: "",
+    startDate: "",
+    endDate: "",
+    gender: "",
+    minAge: "20",
+    maxAge: "40",
+    anyAge: true,
+};
+
+type MatchingData = Omit<
+    ReturnType<typeof useCompanionMatching>,
+    "preview" | "clearCandidates" | "candidates" | "activeCount"
+>;
+export type RecruitmentPreview = {
+    data: MatchingData;
+    matchedIds: ReadonlySet<number>;
+    openResults: (id: number) => void;
+    startDiscovery: (id: number, origin: "create" | "edit" | "resume") => void;
+};
+
+export function MatchingPage({ preview }: { preview?: RecruitmentPreview }) {
+    const { member } = useOutletContext<PageContext>();
+    return <MatchingSession key={member?.userId ?? "guest"} preview={preview} />;
+}
+
+function MatchingSession({ preview }: { preview: RecruitmentPreview | undefined }) {
     const { t, i18n } = useTranslation();
     const { member, onOpenAuth } = useOutletContext<PageContext>();
-    const [draft, setDraft] = useState<MatchingDraft>({
-        destinationQuery: "",
-        startDate: "",
-        endDate: "",
-        gender: "",
-        minAge: "20",
-        maxAge: "40",
-        anyAge: true,
-        view: "entry",
-    });
+    const [draft, setDraft] = useState<MatchingDraft>(emptyDraft);
+    const location = useLocation();
+    const [notice, setNotice] = useState<"updated" | "saved">();
+    const live = useCompanionMatching(preview ? undefined : member?.userId);
+    const matching = preview?.data ?? live;
+    const navigate = useNavigate();
+    const resultsParam = preview ? null : new URLSearchParams(location.search).get("searchId");
+    const available = useMatchedRecruitments(
+        live.searches,
+        !preview && !!member && location.state?.matchingView === "mine" && resultsParam === null,
+    );
+    const openResults = (id: number, from: "create" | "edit" | "resume" | "list") =>
+        void navigate(recruitmentResultsUrl(id), {
+            replace: from === "create" || from === "edit",
+            state: { resultsFrom: from },
+        });
+    if (resultsParam !== null && member) {
+        if (live.catalogLoading) return <Spinner label={t("matchingFlow.loading")} />;
+        const post = live.searches.find((item) => String(item.id) === resultsParam);
+        if (live.catalogFailed) {
+            return (
+                <PageState
+                    kind="error"
+                    title={t("matchingFlow.resultsUnavailable")}
+                    description={t("matchingFlow.resultsRetryHint")}
+                    actions={
+                        <>
+                            <Button onClick={live.reload}>{t("inbox.retry")}</Button>
+                            <Button
+                                variant="soft"
+                                onClick={() =>
+                                    void navigate(pagePaths.matching, {
+                                        replace: true,
+                                        state: { matchingView: "mine" },
+                                    })
+                                }
+                            >
+                                {t("matchingEntry.mineTitle")}
+                            </Button>
+                        </>
+                    }
+                />
+            );
+        }
+        if (
+            !post ||
+            post.status !== "ACTIVE" ||
+            post.matchingStatus === "SKIPPED" ||
+            !post.destinationId
+        ) {
+            return <Navigate to={pagePaths.matching} replace state={{ matchingView: "mine" }} />;
+        }
+        return (
+            <RecruitmentResultsPage
+                key={`${location.key}-${post.id}-${post.matchingRevision}`}
+                post={post}
+                from={location.state?.resultsFrom}
+                destination={
+                    live.destinations.find((d) => d.id === post.destinationId)?.name ??
+                    post.legacyRegion ??
+                    ""
+                }
+                reloadPost={live.reload}
+                close={live.close}
+                busy={live.busy}
+                failed={live.failed}
+            />
+        );
+    }
+    const editId: unknown =
+        location.state?.matchingView === "find" ? location.state.editId : undefined;
+    const registration = matching.searches.find((post) => post.id === editId);
+    if (editId !== undefined && matching.catalogLoading)
+        return <Spinner label={t("matchingFlow.loading")} />;
     return (
         <MatchingWorkspace
-            key={member?.userId ?? "guest"}
-            userId={member?.userId}
+            key={location.state?.matchingView === "mine" ? "mine" : (registration?.id ?? "new")}
+            canManage={preview !== undefined || member?.userId !== undefined}
+            matching={matching}
+            matchedIds={preview?.matchedIds ?? available.matchedIds}
+            openResults={preview?.openResults ?? ((id) => openResults(id, "list"))}
+            startDiscovery={preview?.startDiscovery ?? openResults}
+            resultsCheckFailed={!preview && available.failed}
+            registration={registration}
             profile={member}
             initialDraft={draft}
+            notice={notice}
+            dismissNotice={() => setNotice(undefined)}
+            onSave={setNotice}
+            onDiscard={() => setDraft(emptyDraft)}
             onLogin={(next) => {
                 setDraft(next);
                 onOpenAuth();
@@ -69,8 +179,18 @@ export function MatchingPage() {
 }
 
 type MatchingWorkspaceProps = {
-    userId: number | undefined;
+    canManage: boolean;
+    matching: MatchingData;
+    matchedIds: RecruitmentPreview["matchedIds"];
+    openResults: RecruitmentPreview["openResults"];
+    startDiscovery: RecruitmentPreview["startDiscovery"];
+    resultsCheckFailed: boolean;
+    registration: MatchingRegistration | undefined;
     profile: PageContext["member"];
+    notice: "updated" | "saved" | undefined;
+    dismissNotice: () => void;
+    onSave: (message: "updated" | "saved") => void;
+    onDiscard: () => void;
     onLogin: (draft: MatchingDraft) => void;
     initialDraft: MatchingDraft;
     language: string;
@@ -119,10 +239,20 @@ const questionKeys = [
 ] as const;
 
 function MatchingWorkspace({
-    userId,
+    canManage,
+    matching,
+    matchedIds,
+    openResults,
+    startDiscovery,
+    resultsCheckFailed,
+    registration,
     profile,
     onLogin,
     initialDraft,
+    notice,
+    dismissNotice,
+    onSave,
+    onDiscard,
     language,
     title,
 }: MatchingWorkspaceProps) {
@@ -138,26 +268,50 @@ function MatchingWorkspace({
           Number(profile.birthDate.slice(0, 4)) -
           (today.slice(5) < profile.birthDate.slice(5) ? 1 : 0)
         : null;
-    const matching = useCompanionMatching(userId);
     const [step, setStep] = useState(0);
-    const [view, setView] = useState<string>(initialDraft.view);
-    const [destinationId, setDestinationId] = useState("");
+    const location = useLocation();
+    const navigate = useNavigate();
+    const section: unknown = location.state?.matchingView;
+    const view = section === "mine" || section === "find" ? section : "entry";
+    const savedDeparture = useRef(false);
+    function setView(next: "mine" | "find", editId?: number): void {
+        void navigate(
+            { pathname: location.pathname, search: location.search, hash: location.hash },
+            {
+                replace: view !== "entry" && editId === undefined,
+                state: { matchingView: next, editId },
+            },
+        );
+    }
+    const [destinationId, setDestinationId] = useState(String(registration?.destinationId ?? ""));
     const [destinationQuery, setDestinationQuery] = useState(initialDraft.destinationQuery);
-    const [startDate, setStartDate] = useState(initialDraft.startDate);
-    const [endDate, setEndDate] = useState(initialDraft.endDate);
-    const [registrationTitle, setRegistrationTitle] = useState("");
-    const [introduction, setIntroduction] = useState("");
-    const [showAge, setShowAge] = useState(false);
-    const [showGender, setShowGender] = useState(false);
-    const [titleEdited, setTitleEdited] = useState(false);
-    const [gender, setGender] = useState(initialDraft.gender);
-    const [minAge, setMinAge] = useState(initialDraft.minAge || "20");
-    const [anyAge, setAnyAge] = useState(initialDraft.anyAge);
-    const [maxAge, setMaxAge] = useState(initialDraft.maxAge || "40");
-    const [editingId, setEditingId] = useState<number>();
-    const [styles, setStyles] = useState<Record<string, string>>({});
-    const [saved, setSaved] = useState(false);
-    const [savedEdit, setSavedEdit] = useState(false);
+    const [startDate, setStartDate] = useState(registration?.startDate ?? initialDraft.startDate);
+    const [endDate, setEndDate] = useState(registration?.endDate ?? initialDraft.endDate);
+    const [registrationTitle, setRegistrationTitle] = useState(registration?.title ?? "");
+    const [introduction, setIntroduction] = useState(registration?.introduction ?? "");
+    const [showAge, setShowAge] = useState(registration?.showAge ?? false);
+    const [showGender, setShowGender] = useState(registration?.showGender ?? false);
+    const [titleEdited, setTitleEdited] = useState(Boolean(registration?.title));
+    const [gender, setGender] = useState(registration?.preferredGender ?? initialDraft.gender);
+    const [minAge, setMinAge] = useState(
+        String(registration?.preferredMinAge ?? (initialDraft.minAge || "20")),
+    );
+    const [anyAge, setAnyAge] = useState(
+        registration
+            ? registration.preferredMinAge === null && registration.preferredMaxAge === null
+            : initialDraft.anyAge,
+    );
+    const [maxAge, setMaxAge] = useState(
+        String(registration?.preferredMaxAge ?? (initialDraft.maxAge || "40")),
+    );
+    const editingId = registration?.id;
+    const [styles, setStyles] = useState<Record<string, string>>(() =>
+        Object.fromEntries(
+            styleQuestions
+                .map((name) => [name, String(registration?.travelStyle[styleCodes[name]] ?? "")])
+                .filter(([, value]) => value !== ""),
+        ),
+    );
     const [myPage, setMyPage] = useState(0);
     const [animatePanelLayout, setAnimatePanelLayout] = useState(false);
     const [mySearchQuery, setMySearchQuery] = useState("");
@@ -174,6 +328,9 @@ function MatchingWorkspace({
             day: "numeric",
             timeZone: "UTC",
         }).format(new Date(`${value}T00:00:00Z`));
+    function listingStatus(post: MatchingRegistration) {
+        return post.status === "ACTIVE" && matchedIds.has(post.id) ? "MATCHED" : post.status;
+    }
     const normalizedMyQuery = mySearchQuery.trim().toLocaleLowerCase();
     const filteredSearches = matching.searches.filter((registration) => {
         const destination = matching.destinations.find(
@@ -196,7 +353,7 @@ function MatchingWorkspace({
             matchesAge &&
             (!myDestinationFilter || String(registration.destinationId) === myDestinationFilter) &&
             (!myGenderFilter || registration.preferredGender === myGenderFilter) &&
-            (myStatusFilter === "all" || registration.status === myStatusFilter)
+            (myStatusFilter === "all" || listingStatus(registration) === myStatusFilter)
         );
     });
     const myPageSize = 9;
@@ -206,13 +363,12 @@ function MatchingWorkspace({
         currentPage * myPageSize,
         (currentPage + 1) * myPageSize,
     );
-    const [endingId, setEndingId] = useState<number>();
-    const [statusAction, setStatusAction] = useState<"close" | "resume">("close");
+    const [pendingAction, setPendingAction] = useState<{ id: number; action: RecruitmentAction }>();
     const [statusNotice, setStatusNotice] = useState<
         "closedNotice" | "resumedNotice" | "activeLimit" | "travelStyleRequired"
     >();
     const [endFailed, setEndFailed] = useState(false);
-    const endingRegistration = matching.searches.find((item) => item.id === endingId);
+    const pendingRegistration = matching.searches.find((item) => item.id === pendingAction?.id);
     const [selectedRegistrationId, setSelectedRegistrationId] = useState<number>();
     const selectedRegistration = matching.searches.find(
         (registration) => registration.id === selectedRegistrationId,
@@ -304,56 +460,59 @@ function MatchingWorkspace({
         if (!registration?.destinationId || matching.busy) return;
         setSelectedRegistrationId(undefined);
 
-        setDestinationId(String(registration.destinationId));
+        setView("find", id);
+    }
+    function discardDraft(): void {
+        onDiscard();
+        setDestinationId("");
         setDestinationQuery("");
-        setStartDate(registration.startDate);
-        setEndDate(registration.endDate);
-        setGender(registration.preferredGender ?? "");
-        setAnyAge(registration.preferredMinAge === null && registration.preferredMaxAge === null);
-        setMinAge(String(Math.max(19, Math.min(100, registration.preferredMinAge ?? 20))));
-        setMaxAge(String(Math.max(19, Math.min(100, registration.preferredMaxAge ?? 40))));
-        setRegistrationTitle(registration.title ?? "");
-        setIntroduction(registration.introduction ?? "");
-        setShowAge(registration.showAge);
-        setShowGender(registration.showGender);
-        setStyles(
-            Object.fromEntries(
-                styleQuestions.map((name) => [
-                    name,
-                    String(registration.travelStyle[styleCodes[name]] ?? 0),
-                ]),
-            ),
-        );
-        setTitleEdited(Boolean(registration.title));
-        setEditingId(registration.id);
-        setSaved(false);
-        setView("find");
+        setStartDate("");
+        setEndDate("");
+        setRegistrationTitle("");
+        setIntroduction("");
+        setShowAge(false);
+        setShowGender(false);
+        setTitleEdited(false);
+        setGender("");
+        setMinAge("20");
+        setMaxAge("40");
+        setAnyAge(true);
+        setStyles({});
+        dismissNotice();
         goTo(0);
     }
-    function requestEnd(id: number, action: "close" | "resume" = "close"): void {
+    function requestAction(id: number, action: RecruitmentAction): void {
+        if (matching.busy) return;
+        if (action === "edit" && !matchedIds.has(id)) {
+            editRegistration(id);
+            return;
+        }
         if (action === "resume" && matching.limitReached) {
             setStatusNotice("activeLimit");
             return;
         }
         if (action === "resume" && !matching.canCreate) return;
-        setStatusAction(action);
         setEndFailed(false);
-        setEndingId(id);
+        setPendingAction({ id, action });
     }
-    async function confirmEnd(): Promise<void> {
-        if (endingId === undefined || matching.busy) return;
-        const ok =
-            statusAction === "resume"
-                ? await matching.resume(endingId)
-                : await matching.close(endingId);
+    async function confirmAction(): Promise<void> {
+        if (!pendingAction || matching.busy) return;
+        const { id, action } = pendingAction;
+        if (action === "edit") {
+            setPendingAction(undefined);
+            editRegistration(id);
+            return;
+        }
+        const ok = action === "resume" ? await matching.resume(id) : await matching.close(id);
         if (ok) {
-            setEndingId(undefined);
-            setStatusNotice(statusAction === "resume" ? "resumedNotice" : "closedNotice");
+            setPendingAction(undefined);
+            if (action === "resume") startDiscovery(id, "resume");
+            else setStatusNotice("closedNotice");
         } else if (
             matching.getFailureReason() === "matchingFlow.activeLimit" ||
             matching.getFailureReason() === "matchingFlow.travelStyleRequired"
         ) {
-            setEndingId(undefined);
+            setPendingAction(undefined);
             setStatusNotice(
                 matching.getFailureReason() === "matchingFlow.activeLimit"
                     ? "activeLimit"
@@ -370,7 +529,6 @@ function MatchingWorkspace({
             minAge,
             maxAge,
             anyAge,
-            view: "find",
         });
     }
     return (
@@ -379,7 +537,7 @@ function MatchingWorkspace({
             tabIndex={-1}
             className={`matching-workspace${view === "entry" ? " matching-workspace--entry" : ""}${view === "mine" ? " matching-workspace--mine" : ""}${view === "mine" && animatePanelLayout ? " matching-workspace--panel-transition" : ""}${view === "mine" && selectedRegistration ? " matching-workspace--details" : ""}`}
         >
-            <div className="settings-landscape matching-entry__landscape" aria-hidden="true" />
+            <RoamDiscoveryLandscape subtle />
             <div key={view} className="matching-view page-enter">
                 {view !== "entry" && (
                     <div className="matching-section-nav">
@@ -387,17 +545,7 @@ function MatchingWorkspace({
                             variant="plain"
                             className="settings-back matching-back"
                             disabled={matching.busy}
-                            onClick={() => {
-                                if (view === "mine") {
-                                    setMyPage(0);
-                                    setSelectedRegistrationId(undefined);
-                                }
-                                setView(
-                                    view === "find" && editingId !== undefined ? "mine" : "entry",
-                                );
-                                setEditingId(undefined);
-                                setSaved(false);
-                            }}
+                            onClick={() => void navigate(-1)}
                         >
                             <Icon name="arrow" className="matching-back-arrow" variant="outline" />
                             {t("matchingEntry.back")}
@@ -420,7 +568,7 @@ function MatchingWorkspace({
                                 className="matching-entry__choice"
                                 disabled={
                                     matching.busy ||
-                                    (userId !== undefined &&
+                                    (canManage &&
                                         (matching.catalogLoading || matching.catalogFailed))
                                 }
                                 onClick={() => {
@@ -428,15 +576,10 @@ function MatchingWorkspace({
                                         setStatusNotice("activeLimit");
                                         return;
                                     }
-                                    if (userId !== undefined && !matching.canCreate) return;
-                                    setEditingId(undefined);
-                                    setTitleEdited(false);
-                                    setIntroduction("");
-                                    setShowAge(false);
-                                    setShowGender(false);
-                                    setStyles({});
+                                    if (canManage && !matching.canCreate) return;
+                                    discardDraft();
+                                    savedDeparture.current = false;
                                     setView("find");
-                                    goTo(0);
                                 }}
                             >
                                 <Icon name="journey-register" />
@@ -451,12 +594,7 @@ function MatchingWorkspace({
                             <Button
                                 variant="plain"
                                 className="matching-entry__choice"
-                                onClick={() => {
-                                    setMyPage(0);
-                                    setSelectedRegistrationId(undefined);
-                                    setAnimatePanelLayout(false);
-                                    setView("mine");
-                                }}
+                                onClick={() => setView("mine")}
                             >
                                 <Icon name="journey-list" />
                                 <strong>{t("matchingEntry.mineTitle")}</strong>
@@ -566,11 +704,13 @@ function MatchingWorkspace({
                                 }
                                 void matching.save(conditions, editingId).then((ok) => {
                                     if (ok) {
-                                        setSavedEdit(editingId !== undefined);
-                                        setSaved(true);
+                                        savedDeparture.current = true;
+                                        onSave(editingId !== undefined ? "updated" : "saved");
                                         setMyPage(0);
-                                        setView("mine");
-                                        setEditingId(undefined);
+                                        startDiscovery(
+                                            ok.id,
+                                            editingId === undefined ? "create" : "edit",
+                                        );
                                     } else if (
                                         matching.getFailureReason() ===
                                             "matchingFlow.activeLimit" ||
@@ -610,7 +750,7 @@ function MatchingWorkspace({
                                 <div className="matching-question__content">
                                     {step === 0 && (
                                         <div className="matching-input-group matching-destination-input">
-                                            {userId === undefined ? (
+                                            {!canManage ? (
                                                 <div className="matching-login">
                                                     <p>{t("matchingFlow.loginHint")}</p>
                                                     <Button variant="brand" onClick={login}>
@@ -944,7 +1084,7 @@ function MatchingWorkspace({
                                                 className="matching-confirm__submit"
                                                 disabled={
                                                     !valid ||
-                                                    userId === undefined ||
+                                                    !canManage ||
                                                     (editingId === undefined &&
                                                         (matching.catalogLoading ||
                                                             matching.catalogFailed))
@@ -1005,7 +1145,7 @@ function MatchingWorkspace({
                                         aria-busy={matching.busy || undefined}
                                         disabled={
                                             !canContinue ||
-                                            userId === undefined ||
+                                            !canManage ||
                                             matching.busy ||
                                             (editingId === undefined &&
                                                 (matching.catalogLoading || matching.catalogFailed))
@@ -1025,18 +1165,14 @@ function MatchingWorkspace({
                         className="matching-content matching-content--mine"
                         aria-label={t("matchingFlow.mine")}
                     >
-                        {saved && (
+                        {notice && (
                             <Toast
-                                message={t(
-                                    savedEdit ? "matchingFlow.updated" : "matchingFlow.saved",
-                                )}
+                                message={t(`matchingFlow.${notice}`)}
                                 tone="success"
-                                onDismiss={() => setSaved(false)}
+                                onDismiss={dismissNotice}
                             />
                         )}
-                        {userId === undefined && (
-                            <Button onClick={login}>{t("matchingFlow.login")}</Button>
-                        )}
+                        {!canManage && <Button onClick={login}>{t("matchingFlow.login")}</Button>}
                         {matching.catalogLoading && <Spinner label={t("matchingFlow.loading")} />}
                         {(matching.catalogFailed ||
                             (matching.failed &&
@@ -1050,6 +1186,11 @@ function MatchingWorkspace({
                             className={`matching-recruitments${selectedRegistration ? " matching-recruitments--with-panel" : ""}`}
                         >
                             <div className="matching-recruitments__list">
+                                {resultsCheckFailed && (
+                                    <p role="status" className="matching-error">
+                                        {t("matchingFlow.resultsRetryHint")}
+                                    </p>
+                                )}
                                 <header className="matching-recruitments__heading">
                                     <h2>
                                         <Icon name="journey-list" />
@@ -1057,7 +1198,7 @@ function MatchingWorkspace({
                                     </h2>
                                     {!matching.catalogLoading &&
                                         !matching.catalogFailed &&
-                                        userId !== undefined && (
+                                        canManage && (
                                             <p>
                                                 {t("matchingFlow.myPostsCount", {
                                                     count: filteredSearches.length,
@@ -1109,6 +1250,10 @@ function MatchingWorkspace({
                                                     {
                                                         value: "ACTIVE",
                                                         label: t("matchingFlow.active"),
+                                                    },
+                                                    {
+                                                        value: "MATCHED",
+                                                        label: t("roamMatePreview.matched"),
                                                     },
                                                     {
                                                         value: "CLOSED",
@@ -1221,6 +1366,7 @@ function MatchingWorkspace({
                                                 setMyDestinationFilter("");
                                                 setMyGenderFilter("");
                                                 setMyAgeFilter(false);
+                                                setMyAgeRange([20, 40]);
                                                 setMyStartFilter("");
                                                 setMyEndFilter("");
                                                 setMyStatusFilter("all");
@@ -1234,7 +1380,7 @@ function MatchingWorkspace({
                                 </header>
                                 {!matching.catalogLoading &&
                                     !matching.catalogFailed &&
-                                    userId !== undefined &&
+                                    canManage &&
                                     filteredSearches.length === 0 && (
                                         <div className="matching-filter-empty" role="status">
                                             <div
@@ -1260,6 +1406,7 @@ function MatchingWorkspace({
                                                 <Button
                                                     variant="brand"
                                                     onClick={() => {
+                                                        savedDeparture.current = false;
                                                         setView("find");
                                                         goTo(0);
                                                     }}
@@ -1277,21 +1424,12 @@ function MatchingWorkspace({
                                 >
                                     {visibleSearches.map((registration) => (
                                         <Card
-                                            className={`matching-registration${selectedRegistrationId === registration.id ? " is-selected" : ""}`}
+                                            className={`matching-registration${listingStatus(registration) === "MATCHED" ? " matching-registration--has-results" : ""}${selectedRegistrationId === registration.id ? " is-selected" : ""}`}
                                             key={registration.id}
                                         >
                                             <div>
-                                                <Badge
-                                                    tone={
-                                                        registration.status === "ACTIVE"
-                                                            ? "brand"
-                                                            : "neutral"
-                                                    }
-                                                    label={t(
-                                                        registration.status === "ACTIVE"
-                                                            ? "matchingFlow.active"
-                                                            : "matchingFlow.closed",
-                                                    )}
+                                                <RecruitmentStatusBadge
+                                                    status={listingStatus(registration)}
                                                 />
                                                 <h3>
                                                     <Button
@@ -1337,28 +1475,36 @@ function MatchingWorkspace({
                                             </div>
                                             {registration.status === "ACTIVE" && (
                                                 <div className="matching-registration__actions">
-                                                    <Button
-                                                        variant="plain"
-                                                        className="matching-text-action"
+                                                    {listingStatus(registration) === "MATCHED" && (
+                                                        <Button
+                                                            variant="brand"
+                                                            className="matching-results-link"
+                                                            onClick={() =>
+                                                                openResults(registration.id)
+                                                            }
+                                                        >
+                                                            <Icon name="matching" />
+                                                            {t("roamMatePreview.viewResults")}
+                                                            <Icon name="arrow" variant="outline" />
+                                                        </Button>
+                                                    )}
+                                                    <RecruitmentTextAction
+                                                        action="edit"
                                                         disabled={
                                                             matching.busy ||
                                                             !registration.destinationId
                                                         }
                                                         onClick={() =>
-                                                            editRegistration(registration.id)
+                                                            requestAction(registration.id, "edit")
                                                         }
-                                                    >
-                                                        <Icon name="edit" />
-                                                        {t("matchingFlow.edit")}
-                                                    </Button>
-                                                    <Button
-                                                        variant="plain"
-                                                        className="matching-text-action"
+                                                    />
+                                                    <RecruitmentTextAction
+                                                        action="close"
                                                         disabled={matching.busy}
-                                                        onClick={() => requestEnd(registration.id)}
-                                                    >
-                                                        {t("matchingFlow.close")}
-                                                    </Button>
+                                                        onClick={() =>
+                                                            requestAction(registration.id, "close")
+                                                        }
+                                                    />
                                                 </div>
                                             )}
                                             {registration.status === "CLOSED" && (
@@ -1374,9 +1520,8 @@ function MatchingWorkspace({
                                                                 : "matchingFlow.resume",
                                                         )}
                                                     >
-                                                        <Button
-                                                            variant="plain"
-                                                            className="matching-text-action"
+                                                        <RecruitmentTextAction
+                                                            action="resume"
                                                             disabled={
                                                                 matching.busy ||
                                                                 matching.catalogLoading ||
@@ -1388,14 +1533,12 @@ function MatchingWorkspace({
                                                                 )
                                                             }
                                                             onClick={() =>
-                                                                requestEnd(
+                                                                requestAction(
                                                                     registration.id,
                                                                     "resume",
                                                                 )
                                                             }
-                                                        >
-                                                            {t("matchingFlow.resume")}
-                                                        </Button>
+                                                        />
                                                     </Tooltip>
                                                 </div>
                                             )}
@@ -1438,51 +1581,75 @@ function MatchingWorkspace({
                                     </nav>
                                 )}
                             </div>
-                            {selectedRegistration && (
-                                <RecruitmentDetailsPanel
-                                    registration={selectedRegistration}
-                                    destination={
-                                        matching.destinations.find(
-                                            (destination) =>
-                                                destination.id ===
-                                                selectedRegistration.destinationId,
-                                        )?.name ||
-                                        selectedRegistration.legacyRegion ||
-                                        ""
-                                    }
-                                    busy={matching.busy}
-                                    failed={
-                                        matching.failed &&
-                                        matching.errorKey !== "matchingFlow.activeLimit" &&
-                                        matching.errorKey !== "matchingFlow.travelStyleRequired"
-                                    }
-                                    onClose={() => setSelectedRegistrationId(undefined)}
-                                    onEdit={() => editRegistration(selectedRegistration.id)}
-                                    onFinish={() => requestEnd(selectedRegistration.id)}
-                                    onResume={() => requestEnd(selectedRegistration.id, "resume")}
-                                    resumeDisabled={
-                                        matching.catalogLoading ||
-                                        matching.catalogFailed ||
-                                        !matching.destinations.some(
-                                            (item) =>
-                                                item.id === selectedRegistration.destinationId,
-                                        )
-                                    }
-                                    resumeHint={t(
-                                        !matching.destinations.some(
-                                            (item) =>
-                                                item.id === selectedRegistration.destinationId,
-                                        )
-                                            ? "matchingFlow.resumeDestinationUnavailable"
-                                            : "matchingFlow.resume",
-                                    )}
-                                    errorMessage={t(matching.errorKey)}
-                                />
-                            )}
+                            <RecruitmentDetailsPanel
+                                details={
+                                    selectedRegistration
+                                        ? {
+                                              registration: selectedRegistration,
+                                              destination:
+                                                  matching.destinations.find(
+                                                      (destination) =>
+                                                          destination.id ===
+                                                          selectedRegistration.destinationId,
+                                                  )?.name ||
+                                                  selectedRegistration.legacyRegion ||
+                                                  "",
+                                              busy: matching.busy,
+                                              failed:
+                                                  matching.failed &&
+                                                  matching.errorKey !==
+                                                      "matchingFlow.activeLimit" &&
+                                                  matching.errorKey !==
+                                                      "matchingFlow.travelStyleRequired",
+                                              onClose: () => setSelectedRegistrationId(undefined),
+                                              ...(listingStatus(selectedRegistration) ===
+                                                  "MATCHED" && {
+                                                  onViewResults: () =>
+                                                      openResults(selectedRegistration.id),
+                                              }),
+                                              onEdit: () =>
+                                                  requestAction(selectedRegistration.id, "edit"),
+                                              onFinish: () =>
+                                                  requestAction(selectedRegistration.id, "close"),
+                                              onResume: () =>
+                                                  requestAction(selectedRegistration.id, "resume"),
+                                              resumeDisabled:
+                                                  matching.catalogLoading ||
+                                                  matching.catalogFailed ||
+                                                  !matching.destinations.some(
+                                                      (item) =>
+                                                          item.id ===
+                                                          selectedRegistration.destinationId,
+                                                  ),
+                                              resumeHint: t(
+                                                  !matching.destinations.some(
+                                                      (item) =>
+                                                          item.id ===
+                                                          selectedRegistration.destinationId,
+                                                  )
+                                                      ? "matchingFlow.resumeDestinationUnavailable"
+                                                      : "matchingFlow.resume",
+                                              ),
+                                              errorMessage: t(matching.errorKey),
+                                          }
+                                        : undefined
+                                }
+                            />
                         </div>
                     </section>
                 )}
             </div>
+            {view === "find" && (
+                <PageLeaveDialog
+                    shouldBlock={() => !savedDeparture.current}
+                    title={t("matchingFlow.discardTitle")}
+                    description={t("matchingFlow.discardHint")}
+                    stayLabel={t("matchingFlow.keepEditing")}
+                    leaveLabel={t("profileSetup.leave")}
+                    leaveDisabled={matching.busy}
+                    onLeave={discardDraft}
+                />
+            )}
             {statusNotice && (
                 <Toast
                     message={t(`matchingFlow.${statusNotice}`)}
@@ -1494,17 +1661,18 @@ function MatchingWorkspace({
                     onDismiss={() => setStatusNotice(undefined)}
                 />
             )}
-            {endingRegistration && (
-                <EndRecruitmentDialog
-                    title={endingRegistration.title || t("matchingFlow.untitled")}
+            {view === "mine" && pendingAction && pendingRegistration && (
+                <RecruitmentActionDialog
+                    title={pendingRegistration.title || t("matchingFlow.untitled")}
                     busy={matching.busy}
-                    action={statusAction}
+                    action={pendingAction.action}
+                    hasMatches={listingStatus(pendingRegistration) === "MATCHED"}
                     errorMessage={t(matching.errorKey)}
                     failed={endFailed}
                     onCancel={() => {
-                        if (!matching.busy) setEndingId(undefined);
+                        if (!matching.busy) setPendingAction(undefined);
                     }}
-                    onConfirm={() => void confirmEnd()}
+                    onConfirm={() => void confirmAction()}
                 />
             )}
         </main>

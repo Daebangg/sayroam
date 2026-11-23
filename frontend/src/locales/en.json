@@ -6,7 +6,7 @@
     "navigation": {
         "plaza": "Plaza",
         "trips": "Trips",
-        "matching": "Matching",
+        "matching": "Roam Mate",
         "rooms": "Rooms",
         "home": "Go home",
         "main": "Main navigation",
@@ -231,6 +231,7 @@
             }
         },
         "buttons": "Buttons",
+        "highlightButton": "Highlighted action",
         "primaryButton": "Primary",
         "secondaryButton": "Secondary",
         "delete": "Delete",
@@ -315,7 +316,8 @@
             "title": "Notification inbox",
             "list": "List · read status · delete",
             "empty": "Empty inbox"
-        }
+        },
+        "livingCoast": "Living Coast"
     },
     "profile": {
         "settings": "Settings",
@@ -365,7 +367,11 @@
             "trips": "Trips",
             "matching": "Find companions",
             "rooms": "My rooms",
-            "notifications": "Notification inbox"
+            "notifications": "Notification inbox",
+            "matching-searching": "Roam Mate · Discovery flow",
+            "matching-found": "Roam Mate · Candidates found",
+            "matching-delayed": "Roam Mate · Delayed search",
+            "matching-empty": "Roam Mate · No candidates"
         },
         "destination": "Destination",
         "destinationPlaceholder": "Where shall we go?",
@@ -379,7 +385,7 @@
             },
             "company": {
                 "title": "Find companions",
-                "description": "Meet your next travel mates"
+                "description": "Meet your next Roam Mates"
             },
             "destinations": {
                 "title": "Popular places",
@@ -391,7 +397,7 @@
             }
         },
         "popularTrips": "Popular trips right now",
-        "recruiting": "Find your next travel mates",
+        "recruiting": "Find your next Roam Mates",
         "myRooms": "My travel rooms",
         "popular": "Popular",
         "viewTrips": "View all trips",
@@ -415,13 +421,13 @@
         },
         "searchResults": "{{count}} sample trips for “{{query}}”",
         "noResults": "No sample trips match your search",
-        "createTripDescription": "Choose where and when to go, then invite your travel mates. The trip planning flow is currently a design preview.",
+        "createTripDescription": "Choose where and when to go, then invite your Roam Mates. The trip planning flow is currently a design preview.",
         "together": "Better stories, together",
-        "myCompanions": "My companions",
+        "myCompanions": "My posts",
         "matchingEmptyTitle": "Find someone to share your next journey",
         "matchingEmptyDescription": "Meet people who dream of the same places and make new memories together.",
         "stayConnected": "Keep the travel stories going",
-        "roomPreviewDescription": "A place to share plans and stories with your travel mates. These messages are sample content; live chat is not connected.",
+        "roomPreviewDescription": "A place to share plans and stories with your Roam Mates. These messages are sample content; live chat is not connected.",
         "createRoomDescription": "Preview the new room flow for your travel group. Live room creation will be connected separately.",
         "notificationsEmpty": "No new notifications yet. Your next travel updates will appear here.",
         "continue": "Get started",
@@ -473,7 +479,7 @@
             "journey-pace": "Travel pace",
             "journey-together": "Time together",
             "journey-budget": "Travel budget",
-            "journey-register": "Recruitment",
+            "journey-register": "Find a Roam Mate",
             "journey-list": "My posts",
             "style-plan-essential": "A plan is a must",
             "style-plan-usual": "I like to plan",
@@ -685,17 +691,17 @@
         "statusFilter": "Recruitment status",
         "allPosts": "All",
         "noFilteredPosts": "No posts match your filters.",
-        "myPosts": "My recruitment posts",
+        "myPosts": "My posts",
         "myPostsCount": "{{count}} posts",
         "signature": "Matching",
         "intro": "Find a travel companion.\nShare your style.\nExplore together.",
         "find": "Find companions",
-        "mine": "My registrations",
+        "mine": "My posts",
         "progress": "Matching steps",
         "conditions": "Trip details",
         "style": "Travel style",
         "results": "Matches",
-        "register": "Register your trip",
+        "register": "Find a Roam Mate",
         "heading0": "Tell us about your trip",
         "description0": "Choose where and when you want to travel to find companions with overlapping dates.",
         "heading1": "How do you like to travel?",
@@ -730,7 +736,7 @@
         "validation": "Choose a destination and valid travel dates. Ages must be whole numbers from 1 to 120, with the minimum no greater than the maximum.",
         "previous": "Back",
         "nextStyle": "Next: travel style",
-        "save": "Save registration",
+        "save": "Find Roam Mates",
         "stylePreview": "Travel style preview only. Your choices are not saved or used to find or sort candidates.",
         "showResults": "Next: matches",
         "untitled": "Looking for a travel companion",
@@ -794,7 +800,7 @@
             "pace": "What is your travel pace?",
             "together": "How much time would you spend together?",
             "spending": "How do you budget for travel?",
-            "title": "Tell travel mates about your trip.",
+            "title": "Tell Roam Mates about your trip.",
             "privacy": "Review your profile details."
         },
         "noDestinations": "No matching destinations",
@@ -806,6 +812,9 @@
         "detailsOpen": "Looking for someone to travel with.",
         "detailsClosed": "This trip is no longer accepting companions.",
         "pagination": "Recruitment pages",
+        "editMatchedConfirmation": "Edit this matched post?",
+        "editMatchedWarning": "“{{title}}” already has matches. Saving new preferences may change which Roam Mates appear.",
+        "endMatchedWarning": "“{{title}}” already has matches. Closing the post stops the search and hides its matches from your recruitment list.",
         "endConfirmation": "Close this recruitment?",
         "endFailed": "Could not close the recruitment. Check its status in your listings before trying again.",
         "placeFilter": "All destinations",
@@ -833,7 +842,7 @@
         "dateRangeStart": "{{start}} ~",
         "pagePosition": "{{page}} / {{total}}",
         "privacy": "My details",
-        "privacyHint": "Choose which details to share with other travel mates. Unchecked details stay private.",
+        "privacyHint": "Choose which details to share with other Roam Mates. Unchecked details stay private.",
         "genderVisibilityLabel": "My gender",
         "ageVisibilityLabel": "My age",
         "shareGender": "Share my gender",
@@ -842,7 +851,7 @@
         "private": "Private",
         "privacySummary": "Gender: {{gender}} · Age: {{age}}",
         "introduction": "Introduction (optional)",
-        "introductionPlaceholder": "Describe your plans or what you would like your travel mate to know.",
+        "introductionPlaceholder": "Describe your plans or what you would like your Roam Mate to know.",
         "introductionCount": "{{count}} / {{max}} characters",
         "reviewConditions": "Review recruitment preferences",
         "styleDegrees": {
@@ -878,26 +887,45 @@
         "profileMissing": "Not set",
         "myAge": "Age",
         "styleEditHint": "These preferences belong to this recruitment. Changes only apply to this recruitment.",
-        "styleSelectionHint": "Your profile preferences are preselected. Adjust them for this trip if needed."
+        "styleSelectionHint": "Your profile preferences are preselected. Adjust them for this trip if needed.",
+        "styleMine": "Your style · {{value}}",
+        "styleMatchScore": "{{score}} match",
+        "styleUnavailable": "Travel style comparison unavailable",
+        "styleSimilarity": {
+            "SAME": "same",
+            "SIMILAR": "similar",
+            "SOMEWHAT_DIFFERENT": "somewhat different",
+            "DIFFERENT": "different"
+        },
+        "styleMatchLabel": "Travel style match",
+        "styleNoData": "Style info unavailable",
+        "discussOne": "Discuss {{topic}}",
+        "discussMultiple": "Discuss {{topic}} +{{count}}",
+        "discardTitle": "Leave this recruitment form?",
+        "discardHint": "If you leave now, the details and preferences you entered in this form will be discarded.",
+        "keepEditing": "Keep editing",
+        "resultsUnavailable": "Match results are unavailable",
+        "resultsOffline": "You’re offline. We’ll check your matches when you reconnect.",
+        "resultsRetryHint": "We couldn’t load the candidates. Please try again shortly."
     },
     "matchingEntry": {
         "heading": "How would you like to find companions?",
-        "registerTitle": "Register a trip",
-        "registerDescription": "Choose your destination and dates to find someone to join you.",
+        "registerTitle": "Find a Roam Mate",
+        "registerDescription": "Set your destination and dates to find a Roam Mate.",
         "searchTitle": "Search companions",
         "searchDescription": "Search posted trips by destination and dates.",
-        "mineTitle": "My travel mates",
+        "mineTitle": "My posts",
         "back": "Back to previous page",
         "moreFilters": "Gender and age filters",
         "searchAction": "Search companions",
         "searchError": "Could not find companions. Check your conditions and try again.",
-        "eyebrow": "Travel companions · Explore together",
+        "eyebrow": "Roam Mate · Travel together",
         "headingBefore": "Find a ",
-        "headingAccent": "travel companion",
+        "headingAccent": "Roam Mate",
         "headingAfter": " for your next trip",
-        "subtitle": "Recruit travel mates and manage your posts.",
-        "mineAction": "View my posted trips",
-        "mineDescription": "View and manage your recruitment posts."
+        "subtitle": "Recruit Roam Mates and manage your posts.",
+        "mineAction": "My posts",
+        "mineDescription": "View and manage your posts."
     },
     "profileSetup": {
         "styleTitle": "Travel style",
@@ -918,7 +946,7 @@
         "birthdayPlaceholder": "Choose your date of birth",
         "age": "{{count}} years old",
         "greetingTitle": "Welcome aboard!",
-        "greetingDescription": "Plan your next trip with SayRoam\nand meet travel mates along the way.",
+        "greetingDescription": "Plan your next trip with SayRoam\nand meet Roam Mates along the way.",
         "greetingStart": "Start exploring",
         "editHint": "Choose your profile travel preferences. Existing recruitments stay unchanged.",
         "backToProfile": "Back to profile",
@@ -932,6 +960,7 @@
         "all": "All",
         "unread": "Unread",
         "readAll": "Mark all as read",
+        "goToPage": "Open",
         "markRead": "Mark as read",
         "markUnread": "Mark as unread",
         "delete": "Delete",
@@ -950,24 +979,7 @@
         },
         "samples": {
             "match": {
-                "title": "A travel companion found you",
-                "content": "Your travel plans have something in common. Take a look and see where the journey could lead.",
-                "context": "A weekend in Jeju"
-            },
-            "trip": {
-                "title": "Your trip is out in the world",
-                "content": "Your trip has been published. You’re one step closer to your next adventure.",
-                "context": "A weekend in Jeju"
-            },
-            "chat": {
-                "title": "A new conversation begins",
-                "content": "Your chat room is ready. Say hello and start planning something good together.",
-                "context": "Jeju, at our own pace"
-            },
-            "listing": {
-                "title": "You’re ready to meet someone new",
-                "content": "Your matching post is live. We’ll let you know when a travel companion comes along.",
-                "context": "Looking for a Jeju companion"
+                "context": "A slow walk along the coast of Jeju"
             }
         },
         "messages": {
@@ -975,17 +987,9 @@
                 "title": "Welcome to SayRoam!",
                 "content": "Welcome to SayRoam! Your next adventure starts here."
             },
-            "COMPANION_REQUEST": {
-                "title": "New companion request"
-            },
-            "COMPANION_ACCEPTED": {
-                "title": "Companion request accepted"
-            },
-            "TRIP_INVITE": {
-                "title": "Trip invitation"
-            },
-            "EXPENSE_ADDED": {
-                "title": "New expense"
+            "match": {
+                "title": "New Roam Mate candidates found",
+                "content": "New candidates match your post. Take a look at your latest results."
             }
         },
         "loadError": "Could not load notifications.",
@@ -993,5 +997,40 @@
         "retry": "Refresh",
         "loading": "Loading",
         "loadMore": "Load more"
+    },
+    "roamMatePreview": {
+        "delayed": {
+            "title": "Taking a Little Longer",
+            "description": "We’re still looking for a Roam Mate. Keep recruiting and we’ll let you know when we find a match."
+        },
+        "searching": {
+            "title": "Finding Roam Mates…",
+            "description": "Finding Roam Mates to share your journey.",
+            "leaveTitle": "View your matches later?",
+            "leaveHint": "If you leave now, you’ll miss the results on this screen. You can find them later under My posts in Roam Mate.",
+            "stay": "Stay for results"
+        },
+        "found": {
+            "title": "Meet Your Matches",
+            "description": "We found travelers for your trip",
+            "similar": "Similar travel styles",
+            "discussion": "Worth discussing",
+            "region": "Destination",
+            "jeju": "Jeju",
+            "filterLabel": "Filter matches by travel style",
+            "filterSimilar": "Similar styles",
+            "filterDiscussion": "Worth discussing",
+            "filterCount": "{{label}} {{count}}"
+        },
+        "empty": {
+            "title": "No matches yet",
+            "description": "Keep your post open and we’ll let you know when we find a Roam Mate",
+            "edit": "Edit matching preferences?",
+            "close": "Close recruitment",
+            "keep": "Keep recruiting"
+        },
+        "viewResults": "View matching results",
+        "matched": "Matched",
+        "openMatches": "See your matched Roam Mates"
     }
 }

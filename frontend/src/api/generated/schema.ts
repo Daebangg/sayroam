@@ -464,6 +464,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/companion-searches/{searchId}/matching-status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 본인 모집의 후보 탐색 상태 조회
+         * @description 현재 모집 조건 버전의 최초 탐색 상태를 조회하며 작업을 새로 실행하지 않습니다. SUCCEEDED는 탐색 완료로 후보가 없을 수도 있습니다. 현재 후보와 공개 프로필은 후보 조회 API로 확인합니다. 종료·만료·기존 자유 입력 지역은 SKIPPED, 현재 버전의 작업이 없으면 NOT_REQUESTED입니다.
+         */
+        get: operations["getCompanionMatchingStatus"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/companion-searches/me": {
         parameters: {
             query?: never;
@@ -1212,6 +1232,20 @@ export interface components {
             candidates: components["schemas"]["Candidate"][];
             hasNext: boolean;
         };
+        /** @enum {string} */
+        CompanionMatchingStatus:
+            "NOT_REQUESTED" | "PENDING" | "PROCESSING" | "RETRY" | "SUCCEEDED" | "SKIPPED";
+        CompanionMatchingStatusResponse: {
+            /**
+             * Format: int64
+             * @description 현재 모집 조건 버전. 이전 버전의 완료 응답과 구분합니다.
+             */
+            matchingRevision: number;
+            /** Format: int64 */
+            searchId: number;
+            /** @description 최초 탐색 상태. SUCCEEDED는 탐색 완료이며 후보 존재나 동행 확정을 의미하지 않습니다. NOT_REQUESTED는 현재 조건의 작업 없음, SKIPPED는 종료·만료·기존 지역 등으로 탐색 불가입니다. */
+            status: components["schemas"]["CompanionMatchingStatus"];
+        };
         CompanionSearchListResponse: {
             searches: components["schemas"]["CompanionSearchResponse"][];
         };
@@ -1228,6 +1262,13 @@ export interface components {
             introduction: string | null;
             /** @description 기존 자유 입력 등록의 지역명 */
             legacyRegion: string | null;
+            /**
+             * Format: int64
+             * @description 현재 모집 조건 버전
+             */
+            matchingRevision?: number;
+            /** @description 현재 조건의 최초 탐색 상태. 후보 목록은 별도 조회합니다. */
+            matchingStatus?: components["schemas"]["CompanionMatchingStatus"];
             preferredGender: components["schemas"]["Gender"] | null;
             /** Format: int32 */
             preferredMaxAge: number | null;
@@ -1491,7 +1532,7 @@ export interface components {
         NotificationResponse: {
             /**
              * @description 알림 생성 시 저장한 문구
-             * @example 여행에 초대되었습니다.
+             * @example New travel companion candidates were found for your recruitment.
              */
             content: string;
             /**
@@ -1537,14 +1578,9 @@ export interface components {
             unreadCount: number;
         };
         /** @enum {string} */
-        NotificationTargetType: "COMPANION_REQUEST" | "TRIP" | "ROOM_INVITATION";
+        NotificationTargetType: "COMPANION_SEARCH";
         /** @enum {string} */
-        NotificationType:
-            | "COMPANION_REQUEST"
-            | "COMPANION_ACCEPTED"
-            | "TRIP_INVITE"
-            | "EXPENSE_ADDED"
-            | "WELCOME";
+        NotificationType: "WELCOME" | "COMPANION_MATCH_FOUND";
         PasswordChangeRequest: {
             /** @description PASSWORD_CHANGE 본인 확인에서 발급한 일회성 증명 */
             accountProof: string;
@@ -3304,6 +3340,31 @@ export interface operations {
             409: components["responses"]["CompanionCandidateSearchUnavailable"];
         };
     };
+    getCompanionMatchingStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                searchId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 현재 조건 버전과 탐색 상태 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CompanionMatchingStatusResponse"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["CompanionSearchNotFound"];
+        };
+    };
     listMyCompanionSearches: {
         parameters: {
             query?: never;
@@ -4247,6 +4308,13 @@ export const apiRoutes = {
     findAfter: {
         method: "get",
         path: "/api/rooms/{roomId}/messages",
+        auth: "required",
+        csrf: false,
+        responses: { "200": true },
+    },
+    getCompanionMatchingStatus: {
+        method: "get",
+        path: "/api/companion-searches/{searchId}/matching-status",
         auth: "required",
         csrf: false,
         responses: { "200": true },

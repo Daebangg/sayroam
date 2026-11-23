@@ -1,6 +1,14 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Button, Icon, NotificationBadge, Spinner, Tooltip, type IconName } from "@/components/ui";
+import {
+    Button,
+    ButtonLink,
+    Icon,
+    NotificationBadge,
+    Spinner,
+    Tooltip,
+    type IconName,
+} from "@/components/ui";
 import type { NotificationSummary } from "@/hooks/notification.types";
 
 export type InboxItem = {
@@ -12,6 +20,7 @@ export type InboxItem = {
     section: "today" | "earlier";
     icon: IconName;
     isRead: boolean;
+    action?: { to: string };
 };
 
 type NotificationInboxProps = {
@@ -306,7 +315,8 @@ export function NotificationInbox({
                                             <h3>{t(`inbox.${section}`)}</h3>
                                             <ul>
                                                 {sectionItems.map((item) => {
-                                                    const expanded = expandedId === item.id;
+                                                    const expanded =
+                                                        !item.action && expandedId === item.id;
                                                     return (
                                                         <li
                                                             key={item.id}
@@ -322,13 +332,19 @@ export function NotificationInbox({
                                                                 <Button
                                                                     variant="plain"
                                                                     className="notification-inbox__message"
-                                                                    aria-expanded={expanded}
+                                                                    aria-describedby={`${id}-meta-${item.id}`}
+                                                                    aria-expanded={
+                                                                        item.action
+                                                                            ? undefined
+                                                                            : expanded
+                                                                    }
                                                                     onClick={() => {
-                                                                        setExpandedId(
-                                                                            expanded
-                                                                                ? null
-                                                                                : item.id,
-                                                                        );
+                                                                        if (!item.action)
+                                                                            setExpandedId(
+                                                                                expanded
+                                                                                    ? null
+                                                                                    : item.id,
+                                                                            );
                                                                         if (
                                                                             !expanded &&
                                                                             !item.isRead &&
@@ -341,7 +357,9 @@ export function NotificationInbox({
                                                                     }}
                                                                 >
                                                                     <span className="notification-inbox__item-title">
-                                                                        {item.title}
+                                                                        <span className="notification-inbox__title-text">
+                                                                            {item.title}
+                                                                        </span>
                                                                         {!item.isRead && (
                                                                             <span
                                                                                 className="notification-inbox__unread-dot"
@@ -354,7 +372,12 @@ export function NotificationInbox({
                                                                     <span className="notification-inbox__content">
                                                                         {item.content}
                                                                     </span>
-                                                                    <span className="notification-inbox__meta">
+                                                                </Button>
+                                                                <div className="notification-inbox__item-footer">
+                                                                    <span
+                                                                        className="notification-inbox__meta"
+                                                                        id={`${id}-meta-${item.id}`}
+                                                                    >
                                                                         {item.context && (
                                                                             <span>
                                                                                 {item.context}
@@ -362,78 +385,116 @@ export function NotificationInbox({
                                                                         )}
                                                                         <span>{item.time}</span>
                                                                     </span>
-                                                                </Button>
-                                                                <div className="notification-inbox__item-actions">
-                                                                    <Tooltip
-                                                                        content={t(
-                                                                            item.isRead
-                                                                                ? "inbox.markUnread"
-                                                                                : "inbox.markRead",
+                                                                    <div className="notification-inbox__item-actions">
+                                                                        {item.action && (
+                                                                            <ButtonLink
+                                                                                variant="plain"
+                                                                                className="notification-inbox__action notification-inbox__go"
+                                                                                to={item.action.to}
+                                                                                onClick={(
+                                                                                    event,
+                                                                                ) => {
+                                                                                    if (
+                                                                                        !inline &&
+                                                                                        !event.metaKey &&
+                                                                                        !event.ctrlKey &&
+                                                                                        !event.shiftKey &&
+                                                                                        !event.altKey
+                                                                                    )
+                                                                                        setOpen(
+                                                                                            false,
+                                                                                        );
+                                                                                }}
+                                                                            >
+                                                                                {t(
+                                                                                    "inbox.goToPage",
+                                                                                )}
+                                                                                <Icon
+                                                                                    name="arrow"
+                                                                                    variant="outline"
+                                                                                />
+                                                                            </ButtonLink>
                                                                         )}
-                                                                    >
-                                                                        <Button
-                                                                            variant="plain"
-                                                                            className="notification-inbox__action"
-                                                                            aria-label={t(
+                                                                        <Tooltip
+                                                                            content={t(
                                                                                 item.isRead
                                                                                     ? "inbox.markUnread"
                                                                                     : "inbox.markRead",
                                                                             )}
-                                                                            disabled={
-                                                                                busy ||
-                                                                                !onReadChange
-                                                                            }
-                                                                            onClick={() => {
-                                                                                panel.current?.focus(
-                                                                                    {
-                                                                                        preventScroll: true,
-                                                                                    },
-                                                                                );
-                                                                                onReadChange?.(
-                                                                                    item.id,
-                                                                                    !item.isRead,
-                                                                                );
-                                                                                setExpandedId(null);
-                                                                            }}
                                                                         >
-                                                                            <Icon
-                                                                                name={
+                                                                            <Button
+                                                                                variant="plain"
+                                                                                className="notification-inbox__action"
+                                                                                aria-label={t(
                                                                                     item.isRead
-                                                                                        ? "mail"
-                                                                                        : "check"
+                                                                                        ? "inbox.markUnread"
+                                                                                        : "inbox.markRead",
+                                                                                )}
+                                                                                disabled={
+                                                                                    busy ||
+                                                                                    !onReadChange
                                                                                 }
-                                                                                variant="outline"
-                                                                            />
-                                                                        </Button>
-                                                                    </Tooltip>
-                                                                    <Tooltip
-                                                                        content={t("inbox.delete")}
-                                                                    >
-                                                                        <Button
-                                                                            variant="plain"
-                                                                            className="notification-inbox__action notification-inbox__delete"
-                                                                            aria-label={t(
+                                                                                onClick={() => {
+                                                                                    panel.current?.focus(
+                                                                                        {
+                                                                                            preventScroll: true,
+                                                                                        },
+                                                                                    );
+                                                                                    onReadChange?.(
+                                                                                        item.id,
+                                                                                        !item.isRead,
+                                                                                    );
+                                                                                    setExpandedId(
+                                                                                        null,
+                                                                                    );
+                                                                                }}
+                                                                            >
+                                                                                <Icon
+                                                                                    name={
+                                                                                        item.isRead
+                                                                                            ? "mail"
+                                                                                            : "check"
+                                                                                    }
+                                                                                    variant="outline"
+                                                                                />
+                                                                            </Button>
+                                                                        </Tooltip>
+                                                                        <Tooltip
+                                                                            content={t(
                                                                                 "inbox.delete",
                                                                             )}
-                                                                            disabled={
-                                                                                busy || !onDelete
-                                                                            }
-                                                                            onClick={() => {
-                                                                                panel.current?.focus(
-                                                                                    {
-                                                                                        preventScroll: true,
-                                                                                    },
-                                                                                );
-                                                                                setExpandedId(null);
-                                                                                onDelete?.(item.id);
-                                                                            }}
                                                                         >
-                                                                            <Icon
-                                                                                name="close"
-                                                                                variant="outline"
-                                                                            />
-                                                                        </Button>
-                                                                    </Tooltip>
+                                                                            <Button
+                                                                                variant="plain"
+                                                                                className="notification-inbox__action notification-inbox__delete"
+                                                                                aria-label={t(
+                                                                                    "inbox.delete",
+                                                                                )}
+                                                                                disabled={
+                                                                                    busy ||
+                                                                                    !onDelete
+                                                                                }
+                                                                                onClick={() => {
+                                                                                    panel.current?.focus(
+                                                                                        {
+                                                                                            preventScroll: true,
+                                                                                        },
+                                                                                    );
+                                                                                    setExpandedId(
+                                                                                        null,
+                                                                                    );
+                                                                                    onDelete?.(
+                                                                                        item.id,
+                                                                                    );
+                                                                                }}
+                                                                            >
+                                                                                <Icon
+                                                                                    name="close"
+                                                                                    variant="outline"
+                                                                                />
+                                                                            </Button>
+                                                                        </Tooltip>
+                                                                    </div>
                                                                 </div>
                                                             </div>
                                                         </li>

@@ -33,3 +33,7 @@ export function legacyPageUrl(url: URL): string | null {
     result.searchParams.delete("view");
     return result.pathname + result.search + result.hash;
 }
+
+export function recruitmentResultsUrl(searchId: number): string {
+    return `${pagePaths.matching}?searchId=${searchId}`;
+}

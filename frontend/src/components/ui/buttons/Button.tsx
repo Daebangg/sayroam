@@ -5,7 +5,16 @@ type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
 } & (
         | { variant: "plain"; loading?: never }
         | {
-              variant?: "primary" | "brand" | "soft" | "outline" | "ghost" | "danger";
+              variant?:
+                  | "primary"
+                  | "brand"
+                  | "highlight"
+                  | "soft"
+                  | "dismiss"
+                  | "outline"
+                  | "ghost"
+                  | "danger"
+                  | "danger-soft";
               loading?: boolean;
           }
     );

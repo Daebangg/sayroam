@@ -1017,6 +1017,26 @@
                 "required": ["candidates", "hasNext"],
                 "type": "object"
             },
+            "CompanionMatchingStatus": {
+                "enum": ["NOT_REQUESTED", "PENDING", "PROCESSING", "RETRY", "SUCCEEDED", "SKIPPED"],
+                "type": "string"
+            },
+            "CompanionMatchingStatusResponse": {
+                "properties": {
+                    "matchingRevision": {
+                        "description": "현재 모집 조건 버전. 이전 버전의 완료 응답과 구분합니다.",
+                        "format": "int64",
+                        "type": "integer"
+                    },
+                    "searchId": { "format": "int64", "type": "integer" },
+                    "status": {
+                        "$ref": "#/components/schemas/CompanionMatchingStatus",
+                        "description": "최초 탐색 상태. SUCCEEDED는 탐색 완료이며 후보 존재나 동행 확정을 의미하지 않습니다. NOT_REQUESTED는 현재 조건의 작업 없음, SKIPPED는 종료·만료·기존 지역 등으로 탐색 불가입니다."
+                    }
+                },
+                "required": ["matchingRevision", "searchId", "status"],
+                "type": "object"
+            },
             "CompanionSearchListResponse": {
                 "properties": {
                     "searches": {
@@ -1040,6 +1060,15 @@
                     "legacyRegion": {
                         "description": "기존 자유 입력 등록의 지역명",
                         "type": ["string", "null"]
+                    },
+                    "matchingRevision": {
+                        "description": "현재 모집 조건 버전",
+                        "format": "int64",
+                        "type": "integer"
+                    },
+                    "matchingStatus": {
+                        "$ref": "#/components/schemas/CompanionMatchingStatus",
+                        "description": "현재 조건의 최초 탐색 상태. 후보 목록은 별도 조회합니다."
                     },
                     "preferredGender": {
                         "oneOf": [{ "$ref": "#/components/schemas/Gender" }, { "type": "null" }]
@@ -1445,7 +1474,7 @@
                 "properties": {
                     "content": {
                         "description": "알림 생성 시 저장한 문구",
-                        "example": "여행에 초대되었습니다.",
+                        "example": "New travel companion candidates were found for your recruitment.",
                         "type": "string"
                     },
                     "createdAt": {
@@ -1510,20 +1539,8 @@
                 "required": ["totalCount", "unreadCount"],
                 "type": "object"
             },
-            "NotificationTargetType": {
-                "enum": ["COMPANION_REQUEST", "TRIP", "ROOM_INVITATION"],
-                "type": "string"
-            },
-            "NotificationType": {
-                "enum": [
-                    "COMPANION_REQUEST",
-                    "COMPANION_ACCEPTED",
-                    "TRIP_INVITE",
-                    "EXPENSE_ADDED",
-                    "WELCOME"
-                ],
-                "type": "string"
-            },
+            "NotificationTargetType": { "enum": ["COMPANION_SEARCH"], "type": "string" },
+            "NotificationType": { "enum": ["WELCOME", "COMPANION_MATCH_FOUND"], "type": "string" },
             "PasswordChangeRequest": {
                 "properties": {
                     "accountProof": {
@@ -3240,6 +3257,38 @@
                 },
                 "security": [{ "bearerAuth": [] }],
                 "summary": "동행 매칭 후보 조회",
+                "tags": ["CompanionSearch"]
+            }
+        },
+        "/api/companion-searches/{searchId}/matching-status": {
+            "get": {
+                "description": "현재 모집 조건 버전의 최초 탐색 상태를 조회하며 작업을 새로 실행하지 않습니다. SUCCEEDED는 탐색 완료로 후보가 없을 수도 있습니다. 현재 후보와 공개 프로필은 후보 조회 API로 확인합니다. 종료·만료·기존 자유 입력 지역은 SKIPPED, 현재 버전의 작업이 없으면 NOT_REQUESTED입니다.",
+                "operationId": "getCompanionMatchingStatus",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "searchId",
+                        "required": true,
+                        "schema": { "format": "int64", "type": "integer" }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/CompanionMatchingStatusResponse"
+                                }
+                            }
+                        },
+                        "description": "현재 조건 버전과 탐색 상태"
+                    },
+                    "400": { "$ref": "#/components/responses/BadRequest" },
+                    "401": { "$ref": "#/components/responses/Unauthorized" },
+                    "404": { "$ref": "#/components/responses/CompanionSearchNotFound" }
+                },
+                "security": [{ "bearerAuth": [] }],
+                "summary": "본인 모집의 후보 탐색 상태 조회",
                 "tags": ["CompanionSearch"]
             }
         },

@@ -39,7 +39,11 @@ export function AppShell({
     const { t, i18n } = useTranslation();
     const { pathname } = useLocation();
     const inSettings = /^\/settings(?:\/|$)/i.test(pathname);
-    const activeMockupScreen = mockupScreen === "notifications" ? "home" : mockupScreen;
+    const activeMockupScreen = mockupScreen?.startsWith("matching-")
+        ? "matching"
+        : mockupScreen === "notifications"
+          ? "home"
+          : mockupScreen;
 
     useEffect(() => {
         const shortcut = (event: KeyboardEvent) => {
