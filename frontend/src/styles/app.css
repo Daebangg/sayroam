@@ -790,6 +790,10 @@ p {
         sans-serif;
     pointer-events: none;
 }
+.ui-tooltip-content > span:first-child {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
 :root[data-theme="dark"] .ui-tooltip-content {
     background: #f1f2f5;
     color: #22262d;
