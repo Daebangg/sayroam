@@ -207,6 +207,7 @@
         "addFailed": "Couldn't add the place. Please try again.",
         "focusPlace": "Show {{name}} on the map",
         "map": "Itinerary map",
+        "mapUnavailable": "Couldn't load the map. You can still view the itinerary.",
         "layers": "Days shown on the map",
         "layersAll": "All days",
         "layersNone": "Days hidden",

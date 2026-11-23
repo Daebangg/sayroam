@@ -10069,7 +10069,7 @@ body:has(.matching-details-panel) .mockup-toolbar {
 }
 .trip-map {
     position: relative;
-    /* Leaflet 내부 레이어의 z-index(최대 1000)가 머리글·dock·패널 위로 올라오지 않게 지도 안에 가둔다. */
+    /* 지도 내부 레이어의 z-index가 머리글·dock·패널 위로 올라오지 않게 지도 안에 가둔다. */
     isolation: isolate;
     order: 2;
     min-height: 0;
@@ -10080,8 +10080,27 @@ body:has(.matching-details-panel) .mockup-toolbar {
     background: #dcecff;
     font-family: inherit;
 }
-.trip-map--picking .trip-map__canvas {
-    cursor: crosshair;
+.trip-map__notice {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    z-index: 1;
+    max-width: calc(100% - 48px);
+    margin: 0;
+    transform: translate(-50%, -50%);
+    padding: 10px 16px;
+    border-radius: var(--radius-pill);
+    background: var(--button-bg);
+    color: var(--button-text);
+    font-size: 13px;
+    font-weight: 600;
+    text-align: center;
+    box-shadow: 0 6px 18px #14263b30;
+}
+/* 고급 마커는 내용의 아래 가운데를 좌표에 맞춘다. 기울인 핀의 끝이 상자 아래로 약 6px 나오므로 그만큼 띄운다. */
+.trip-map-marker {
+    display: block;
+    padding-bottom: 6px;
 }
 .trip-map__hint {
     position: absolute;
@@ -10123,15 +10142,20 @@ body:has(.matching-details-panel) .mockup-toolbar {
     color: #576782;
     font-size: 12px;
 }
-.trip-map-popup span:first-child {
+.trip-map-popup__label {
+    color: #576782;
     font-size: 11px;
     font-weight: 700;
 }
 .trip-map-picked {
-    fill: #2563eb;
-    fill-opacity: 0.35;
-    stroke: #2563eb;
-    stroke-width: 2;
+    display: block;
+    width: 20px;
+    height: 20px;
+    border: 2px solid #2563eb;
+    border-radius: 999px;
+    background: #2563eb59;
+    /* 고급 마커의 기준점(아래 가운데)이 원의 중심에 오도록 내린다. */
+    transform: translateY(50%);
 }
 .trip-map-layers {
     position: absolute;
@@ -10443,14 +10467,21 @@ body:has(.matching-details-panel) .mockup-toolbar {
         flex-direction: column;
         height: auto;
     }
-    .trip-map {
+    /* 좁은 화면은 제목 → 지도 → 일정 순서로 쌓는다. 패널 상자를 풀어 제목과 일정 사이에 지도를 둔다. */
+    .trip-detail__panel {
+        display: contents;
+    }
+    .trip-detail__panel > .trip-title {
         order: 0;
+        margin: 20px 24px 16px;
+    }
+    .trip-map {
+        order: 1;
         height: 42svh;
     }
-    .trip-detail__panel {
-        overflow: visible;
-        padding: 24px 24px 110px;
-        border-right: 0;
+    .trip-detail__panel > .trip-itinerary {
+        order: 2;
+        padding: 28px 24px 110px;
     }
     .trip-day-dock {
         top: auto;
