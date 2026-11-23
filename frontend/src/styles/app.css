@@ -9423,9 +9423,17 @@ p {
 }
 @media (min-width: 701px) {
     .roam-match-list {
-        --match-column-width: clamp(320px, calc((100vw - 96px) / 3), 376px);
-        grid-template-columns: repeat(auto-fill, min(100%, var(--match-column-width)));
         grid-auto-rows: 1fr;
+    }
+    @container (min-width: 520px) {
+        .roam-match-list {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+    }
+    @container (min-width: 750px) {
+        .roam-match-list {
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
     }
 }
 .roam-match-list > li {
@@ -9449,11 +9457,20 @@ p {
 .roam-match-card__person {
     display: grid;
     grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-areas:
+        "avatar name badge"
+        "avatar profile profile";
     align-items: center;
-    gap: 8px;
+    gap: 2px 8px;
+}
+.roam-match-card__person .ui-avatar {
+    grid-area: avatar;
 }
 .roam-match-card__person strong {
-    display: block;
+    grid-area: name;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 .roam-match-card__profile,
 .roam-match-card__profile > span {
@@ -9462,6 +9479,7 @@ p {
     gap: 3px;
 }
 .roam-match-card__profile {
+    grid-area: profile;
     gap: 8px;
     color: var(--secondary-text);
     font-size: 12px;
@@ -9471,6 +9489,7 @@ p {
     height: 14px;
 }
 .roam-match-card__person > div {
+    display: contents;
     line-height: 1.25;
 }
 .roam-match-card.is-selected {
@@ -9487,7 +9506,7 @@ p {
 }
 
 .roam-match-card__person .ui-badge {
-    margin-inline-start: auto;
+    grid-area: badge;
 }
 .roam-match-card h2 {
     margin: 12px 0 4px;
