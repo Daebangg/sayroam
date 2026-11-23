@@ -1,4 +1,5 @@
 import { useEffect, type ReactNode } from "react";
+import { RoamDiscoveryLandscape } from "@/components/features/matching/RoamDiscoveryLandscape";
 import { ProfileMenu } from "@/components/features/profile/ProfileMenu";
 import { useTranslation } from "react-i18next";
 import { Brand, Icon } from "@/components/ui";
@@ -6,7 +7,7 @@ import { NotificationInboxPreview } from "@/components/features/notifications/No
 import { mockupUrl, type MockupScreen } from "@/routing/mockups";
 import { appNavigation } from "@/data/preview";
 import { pagePaths } from "@/routing/paths";
-import { Link, NavLink, useNavigate, useLocation, useNavigation } from "react-router";
+import { Link, NavLink, useNavigate, useLocation, useMatch, useNavigation } from "react-router";
 import type { ResolvedTheme } from "@/hooks/useTheme";
 
 type AppShellProps = {
@@ -37,9 +38,17 @@ export function AppShell({
     const navigate = useNavigate();
     const navigation = useNavigation();
     const { t, i18n } = useTranslation();
-    const { pathname } = useLocation();
+    const { pathname, search } = useLocation();
+    const matchingRoute = useMatch(pagePaths.matching);
+    const previewDiscovery = mockupScreen?.startsWith("matching-");
+    const discoveryActive =
+        previewDiscovery ||
+        (matchingRoute &&
+            (member || authBusy) &&
+            !setupActive &&
+            new URLSearchParams(search).has("searchId"));
     const inSettings = /^\/settings(?:\/|$)/i.test(pathname);
-    const activeMockupScreen = mockupScreen?.startsWith("matching-")
+    const activeMockupScreen = previewDiscovery
         ? "matching"
         : mockupScreen === "notifications"
           ? "home"
@@ -79,8 +88,9 @@ export function AppShell({
                 {t("navigation.skip")}
             </a>
             <div
-                className={`app-shell ${isHome ? "app-shell--home" : ""} ${mockupScreen === "welcome" || mockupScreen === "onboarding" ? "app-shell--intro" : ""}`}
+                className={`app-shell ${discoveryActive ? "app-shell--discovery" : ""} ${isHome ? "app-shell--home" : ""} ${mockupScreen === "welcome" || mockupScreen === "onboarding" ? "app-shell--intro" : ""}`}
             >
+                {discoveryActive && <RoamDiscoveryLandscape />}
                 {navigation.state !== "idle" && (
                     <div className="route-progress" role="status">
                         <span className="visually-hidden">{t("pageState.loading.title")}</span>

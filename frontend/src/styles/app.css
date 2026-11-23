@@ -9169,15 +9169,16 @@ p {
     }
 }
 
-.app-shell:has(.roam-preview--discovery) .site-header::before {
-    background: none;
-    backdrop-filter: none;
-    mask-image: none;
+.app-shell--discovery {
+    isolation: isolate;
 }
-.app-shell:has(.roam-preview--discovery) .site-header .nav-item {
+.app-shell--discovery .site-header::before {
+    content: none;
+}
+.app-shell--discovery .site-header .nav-item {
     color: var(--scenery-wordmark);
 }
-.app-shell:has(.roam-preview--discovery) .site-header .nav-item.is-active {
+.app-shell--discovery .site-header .nav-item.is-active {
     background: color-mix(in srgb, var(--sky) 20%, var(--surface));
 }
 
@@ -9320,7 +9321,7 @@ p {
         visibility: visible;
     }
 }
-:root:has(.roam-preview--discovery) {
+:root:has(.app-shell--discovery) {
     scrollbar-gutter: auto;
 }
 .matching-details-style-value {

@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { PageLeaveDialog } from "@/components/layout/PageLeaveDialog";
 import { Button, Icon, DiscoveryWordmark, FilterChips } from "@/components/ui";
-import { RoamDiscoveryLandscape } from "@/components/features/matching/RoamDiscoveryLandscape";
 import { RecruitmentActionDialog } from "@/components/features/matching/RecruitmentActionDialog";
 import { RecruitmentDetailsPanel } from "@/components/features/matching/RecruitmentDetailsPanel";
 import { RoamMatchCard } from "@/components/features/matching/RoamMatchCard";
@@ -86,7 +85,6 @@ export function RecruitmentDiscovery({
             tabIndex={-1}
             className={`roam-preview roam-preview--discovery${phase === "found" ? " roam-preview--found" : ""}${phase === "empty" ? " roam-preview--empty" : ""}${selected ? " roam-preview--with-panel" : ""}`}
         >
-            <RoamDiscoveryLandscape />
             <div key={phase} className="roam-discovery-stage">
                 {(phase === "found" || phase === "empty") && (
                     <Button
