@@ -1,7 +1,8 @@
 import { useTranslation } from "react-i18next";
-import { Badge, Card, Icon, TravelArtwork } from "@/components/ui";
+import { Badge, ButtonLink, Card, Icon, TravelArtwork } from "@/components/ui";
 import { formatDateRange } from "@/i18n/locale";
 import type { MyTrip } from "@/hooks/trip.types";
+import { tripDetailPath } from "@/routing/paths";
 
 type MyTripListProps = { trips: MyTrip[] };
 
@@ -38,12 +39,22 @@ export function MyTripList({ trips }: MyTripListProps) {
                 {trips.map((trip) => (
                     <li key={trip.tripId}>
                         <Card className="destination-card">
-                            <div className="destination-card__cover">
+                            <ButtonLink
+                                variant="plain"
+                                to={tripDetailPath(trip.tripId)}
+                                className="destination-card__cover"
+                                tabIndex={-1}
+                                aria-hidden="true"
+                            >
                                 <TravelArtwork scene={sceneOf(trip)} />
                                 {trip.roomId !== null && <Badge label={t("trips.withRoom")} />}
-                            </div>
+                            </ButtonLink>
                             <div className="destination-card__body">
-                                <h2>{trip.title ?? t("trips.untitled")}</h2>
+                                <h2>
+                                    <ButtonLink variant="plain" to={tripDetailPath(trip.tripId)}>
+                                        {trip.title ?? t("trips.untitled")}
+                                    </ButtonLink>
+                                </h2>
                                 <TripMeta trip={trip} />
                             </div>
                         </Card>
@@ -53,13 +64,17 @@ export function MyTripList({ trips }: MyTripListProps) {
             <ul className="trip-mobile-list my-trip-list" aria-label={t("trips.heading")}>
                 {trips.map((trip) => (
                     <li key={trip.tripId} className="travel-row">
-                        <span className="travel-row__main">
+                        <ButtonLink
+                            variant="plain"
+                            to={tripDetailPath(trip.tripId)}
+                            className="travel-row__main"
+                        >
                             <TravelArtwork scene={sceneOf(trip)} />
                             <span className="travel-row__body">
                                 <strong>{trip.title ?? t("trips.untitled")}</strong>
                                 <TripMeta trip={trip} />
                             </span>
-                        </span>
+                        </ButtonLink>
                     </li>
                 ))}
             </ul>
