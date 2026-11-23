@@ -9571,14 +9571,21 @@ p {
         flex-direction: column;
         height: auto;
     }
-    .trip-map {
+    /* 좁은 화면은 제목 → 지도 → 일정 순서로 쌓는다. 패널 상자를 풀어 제목과 일정 사이에 지도를 둔다. */
+    .trip-detail__panel {
+        display: contents;
+    }
+    .trip-detail__panel > .trip-title {
         order: 0;
+        margin: 20px 24px 16px;
+    }
+    .trip-map {
+        order: 1;
         height: 42svh;
     }
-    .trip-detail__panel {
-        overflow: visible;
-        padding: 24px 24px 110px;
-        border-right: 0;
+    .trip-detail__panel > .trip-itinerary {
+        order: 2;
+        padding: 28px 24px 110px;
     }
     .trip-day-dock {
         top: auto;
