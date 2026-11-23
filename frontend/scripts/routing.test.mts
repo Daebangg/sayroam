@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { isMemberPath, legacyPageUrl } from "../src/routing/paths.ts";
 
-test("여행·여행 메이트·내 방·계정·프로필은 보호하고 대소문자·끝 슬래시를 처리", () => {
+test("여행·여행 상세·여행 메이트·내 방·계정·프로필은 보호하고 대소문자·끝 슬래시를 처리", () => {
     for (const path of [
         "/trips",
         "/matching",
@@ -13,18 +13,33 @@ test("여행·여행 메이트·내 방·계정·프로필은 보호하고 대�
         "/settings/account",
         "/settings/keyboard",
         "/Settings/Profile/",
+        "/trips/12",
+        "/TRIPS/12/",
+        "/join",
     ])
         assert.equal(isMemberPath(path), true);
     for (const path of [
         "/",
         "/brand",
         "/rooms/unknown",
+        "/trips/0",
+        "/trips/abc",
+        "/trips/12/places",
         "//external.test/trips",
         "/settings",
         "/settings/appearance",
         "/settings/account/unknown",
     ])
         assert.equal(isMemberPath(path), false);
+});
+
+test("초대 링크는 코드를 해시에 담고 해시에서 다시 읽음", async () => {
+    const { invitationCode, invitationUrl } = await import("../src/routing/paths.ts");
+    const url = invitationUrl("https://sayroam.test", "k3Xv9qLm2Tz8RwYb7NfA");
+    assert.equal(url, "https://sayroam.test/join#code=k3Xv9qLm2Tz8RwYb7NfA");
+    assert.equal(invitationCode(new URL(url).hash), "k3Xv9qLm2Tz8RwYb7NfA");
+    for (const hash of ["", "#", "#code=", "#code=%20", "#other=1"])
+        assert.equal(invitationCode(hash), null);
 });
 
 test("기존 화면 미리보기 URL을 동일한 화면 경로로 바꾸고 설정·해시 유지", () => {

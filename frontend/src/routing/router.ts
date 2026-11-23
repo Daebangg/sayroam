@@ -33,6 +33,13 @@ export const router = createBrowserRouter([
                         }),
                     },
                     {
+                        path: `${pagePaths.trips}/:tripId`,
+                        lazy: async () => ({
+                            Component: (await import("@/pages/trips/TripDetailPage"))
+                                .TripDetailPage,
+                        }),
+                    },
+                    {
                         path: pagePaths.matching,
                         lazy: async () => ({
                             Component: (await import("@/pages/matching/MatchingPage")).MatchingPage,
@@ -42,6 +49,12 @@ export const router = createBrowserRouter([
                         path: pagePaths.rooms,
                         lazy: async () => ({
                             Component: (await import("@/pages/rooms/RoomsPage")).RoomsPage,
+                        }),
+                    },
+                    {
+                        path: pagePaths.join,
+                        lazy: async () => ({
+                            Component: (await import("@/pages/rooms/JoinRoomPage")).JoinRoomPage,
                         }),
                     },
                     {

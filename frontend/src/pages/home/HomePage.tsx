@@ -13,7 +13,7 @@ import { matchingPreviews, roomPreviews, tripPreviews, type PreviewTrip } from "
 import { formatMonthDay } from "@/i18n/locale";
 import { useCreateTrip } from "@/hooks/api/trips/useCreateTrip";
 import { usePreviewNavigation } from "@/hooks/usePreviewNavigation";
-import { pagePaths } from "@/routing/paths";
+import { tripDetailPath } from "@/routing/paths";
 import type { PageContext } from "@/routing/context";
 
 const shortcuts = [
@@ -120,7 +120,7 @@ export function HomePage() {
                     // 목적지는 저장하지 않고 화면 언어로 만든 기본 여행 이름에만 쓴다.
                     const title = t("mockup.defaultTripTitle", { destination });
                     void creation.create(schedule.start, schedule.end, title).then((tripId) => {
-                        if (tripId !== null) void navigate(pagePaths.trips);
+                        if (tripId !== null) void navigate(tripDetailPath(tripId));
                     });
                 }}
             >
