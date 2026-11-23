@@ -1,16 +1,34 @@
-import { useEffect, useEffectEvent, useRef, type ReactNode } from "react";
+import { useEffect, useEffectEvent, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import L from "leaflet";
-import "leaflet/dist/leaflet.css";
+import { useTheme } from "@/hooks/useTheme";
 import type { PickedLocation, TripPlace } from "@/hooks/trip.types";
+import {
+    loadGoogleMaps,
+    mapId,
+    onGoogleMapsAuthFailure,
+    type GoogleMapsLibraries,
+} from "./googleMapsLoader";
 import type { TripSection } from "./tripDays";
 
-// 개발·소량 트래픽용 OSM 공식 타일이다. 운영 배포 전에 키를 쓰는 타일 제공자로 바꾼다.
-const TILE_URL = "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
-const TILE_ATTRIBUTION =
-    '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
 // 장소가 없을 때 대한민국 전체가 보이도록 맞춘다.
-const KOREA_BOUNDS = L.latLngBounds([33.0, 124.6], [38.7, 131.0]);
+const KOREA_BOUNDS: google.maps.LatLngBoundsLiteral = {
+    south: 33.0,
+    west: 124.6,
+    north: 38.7,
+    east: 131.0,
+};
+const FIT_PADDING = 60;
+// 장소가 하나뿐이어도 지나치게 확대되지 않도록 맞춤 후 확대를 이 값으로 제한한다.
+const MAX_FIT_ZOOM = 15;
+const FOCUS_ZOOM = 15;
+
+type MapStatus = "loading" | "ready" | "unavailable";
+
+type PlaceMarker = {
+    marker: google.maps.marker.AdvancedMarkerElement;
+    label: string;
+    content: HTMLElement;
+};
 
 type TripMapProps = {
     sections: TripSection[];
@@ -25,32 +43,52 @@ type TripMapProps = {
     children?: ReactNode;
 };
 
-function pinIcon(section: TripSection, order: number): L.DivIcon {
+function pinElement(section: TripSection, order: number): HTMLElement {
     const tone = section.tone === null ? "trip-pin--unscheduled" : `trip-pin--tone-${section.tone}`;
-    return L.divIcon({
-        className: "",
-        html: `<span class="trip-pin ${tone}"><span>${section.day === null ? "·" : order}</span></span>`,
-        iconSize: [30, 30],
-        iconAnchor: [4, 30],
-        popupAnchor: [11, -28],
-    });
+    const root = document.createElement("span");
+    root.className = "trip-map-marker";
+    const pin = document.createElement("span");
+    pin.className = `trip-pin ${tone}`;
+    const label = document.createElement("span");
+    label.textContent = section.day === null ? "·" : String(order);
+    pin.append(label);
+    root.append(pin);
+    return root;
 }
 
 // 장소 이름은 회원 입력일 수 있으므로 HTML 문자열로 합치지 않고 텍스트 노드로 넣는다.
-function popupContent(place: TripPlace, label: string): HTMLElement {
+function popupContent(place: TripPlace): HTMLElement {
     const root = document.createElement("div");
     root.className = "trip-map-popup";
-    const meta = document.createElement("span");
-    meta.textContent = label;
     const name = document.createElement("strong");
     name.textContent = place.name;
-    root.append(meta, name);
+    root.append(name);
     const detail = place.memo ?? place.address;
     if (detail) {
         const note = document.createElement("span");
         note.textContent = detail;
         root.append(note);
     }
+    return root;
+}
+
+// 팝업 머리글(닫기 버튼 줄)이 비지 않도록 일차 이름을 머리글에 둔다.
+function openPopup(
+    popup: google.maps.InfoWindow,
+    instance: google.maps.Map,
+    target: PlaceMarker,
+): void {
+    const header = document.createElement("span");
+    header.className = "trip-map-popup__label";
+    header.textContent = target.label;
+    popup.setHeaderContent(header);
+    popup.setContent(target.content);
+    popup.open({ anchor: target.marker, map: instance });
+}
+
+function pickedElement(): HTMLElement {
+    const root = document.createElement("span");
+    root.className = "trip-map-picked";
     return root;
 }
 
@@ -64,49 +102,87 @@ export function TripMap({
     onPick,
     children,
 }: TripMapProps) {
-    const { t } = useTranslation();
+    const { t, i18n } = useTranslation();
+    const { resolved } = useTheme();
+    const [status, setStatus] = useState<MapStatus>("loading");
     const host = useRef<HTMLDivElement>(null);
-    const map = useRef<L.Map | null>(null);
-    const layer = useRef<L.LayerGroup | null>(null);
-    const markers = useRef(new Map<number, L.Marker>());
-    const pickedMarker = useRef<L.CircleMarker | null>(null);
+    const libraries = useRef<GoogleMapsLibraries | null>(null);
+    const map = useRef<google.maps.Map | null>(null);
+    const infoWindow = useRef<google.maps.InfoWindow | null>(null);
+    const markers = useRef(new Map<number, PlaceMarker>());
+    const pickedMarker = useRef<google.maps.marker.AdvancedMarkerElement | null>(null);
+    // 지도는 화면에 들어올 때 한 번만 만든다. 다시 만들 때마다 지도 로드가 과금되므로
+    // 언어·테마는 만들 때의 값을 쓰고, 이후 바뀌어도 지도를 다시 만들지 않는다.
+    const initial = useRef({ language: i18n.resolvedLanguage ?? "ko", theme: resolved });
     const selectPlace = useEffectEvent(onSelectPlace);
     const pick = useEffectEvent(onPick);
     const pickingNow = useRef(picking);
 
     useEffect(() => {
         pickingNow.current = picking;
-    }, [picking]);
+        map.current?.setOptions({ draggableCursor: picking ? "crosshair" : null });
+    }, [picking, status]);
 
     useEffect(() => {
         const element = host.current;
         if (!element) return;
-        const instance = L.map(element, { zoomControl: false });
-        L.control.zoom({ position: "bottomright" }).addTo(instance);
-        L.tileLayer(TILE_URL, { maxZoom: 19, attribution: TILE_ATTRIBUTION }).addTo(instance);
-        instance.fitBounds(KOREA_BOUNDS);
-        instance.on("click", (event: L.LeafletMouseEvent) => {
-            if (pickingNow.current)
-                pick({ latitude: event.latlng.lat, longitude: event.latlng.lng });
-        });
-        layer.current = L.layerGroup().addTo(instance);
-        map.current = instance;
-        const observer = new ResizeObserver(() => instance.invalidateSize());
-        observer.observe(element);
+        const placeMarkers = markers.current;
+        let cancelled = false;
+        let clickListener: google.maps.MapsEventListener | null = null;
+        const stopAuthFailure = onGoogleMapsAuthFailure(() => setStatus("unavailable"));
+        loadGoogleMaps(initial.current.language)
+            .then((loaded) => {
+                if (cancelled) return;
+                const instance = new loaded.maps.Map(element, {
+                    mapId: mapId ?? null,
+                    colorScheme: initial.current.theme === "dark" ? "DARK" : "LIGHT",
+                    disableDefaultUI: true,
+                    zoomControl: true,
+                    zoomControlOptions: { position: google.maps.ControlPosition.RIGHT_BOTTOM },
+                    // 지도에 기본으로 보이는 장소는 아직 일정에 추가할 수 없으므로 눌러도 반응하지 않는다.
+                    clickableIcons: false,
+                    gestureHandling: "greedy",
+                });
+                instance.fitBounds(KOREA_BOUNDS);
+                clickListener = instance.addListener(
+                    "click",
+                    (event: google.maps.MapMouseEvent) => {
+                        if (pickingNow.current && event.latLng)
+                            pick({ latitude: event.latLng.lat(), longitude: event.latLng.lng() });
+                    },
+                );
+                libraries.current = loaded;
+                map.current = instance;
+                infoWindow.current = new loaded.maps.InfoWindow();
+                setStatus("ready");
+            })
+            .catch(() => {
+                if (!cancelled) setStatus("unavailable");
+            });
         return () => {
-            observer.disconnect();
-            instance.remove();
+            cancelled = true;
+            stopAuthFailure();
+            clickListener?.remove();
+            infoWindow.current?.close();
+            for (const { marker } of placeMarkers.values()) marker.map = null;
+            placeMarkers.clear();
+            if (pickedMarker.current) pickedMarker.current.map = null;
+            pickedMarker.current = null;
+            infoWindow.current = null;
+            libraries.current = null;
             map.current = null;
-            layer.current = null;
         };
     }, []);
 
     useEffect(() => {
         const instance = map.current;
-        const group = layer.current;
-        if (!instance || !group) return;
-        group.clearLayers();
+        const loaded = libraries.current;
+        const popup = infoWindow.current;
+        if (status !== "ready" || !instance || !loaded || !popup) return;
+        popup.close();
+        for (const { marker } of markers.current.values()) marker.map = null;
         markers.current.clear();
+        const bounds = new google.maps.LatLngBounds();
         for (const section of sections) {
             if (!visible.has(section.key)) continue;
             const label =
@@ -114,44 +190,56 @@ export function TripMap({
                     ? t("tripDetail.unscheduled")
                     : t("tripDetail.dayTitle", { day: section.day });
             section.places.forEach((place, index) => {
-                const marker = L.marker([place.latitude, place.longitude], {
-                    icon: pinIcon(section, index + 1),
+                const position = { lat: place.latitude, lng: place.longitude };
+                const marker = new loaded.marker.AdvancedMarkerElement({
+                    map: instance,
+                    position,
+                    content: pinElement(section, index + 1),
                     title: place.name,
-                    riseOnHover: true,
-                })
-                    .bindPopup(popupContent(place, label))
-                    .on("click", () => selectPlace(place.tripPlaceId))
-                    .addTo(group);
-                markers.current.set(place.tripPlaceId, marker);
+                    gmpClickable: true,
+                });
+                const target = { marker, label, content: popupContent(place) };
+                marker.addListener("click", () => {
+                    openPopup(popup, instance, target);
+                    selectPlace(place.tripPlaceId);
+                });
+                markers.current.set(place.tripPlaceId, target);
+                bounds.extend(position);
             });
         }
-        const points = [...markers.current.values()].map((marker) => marker.getLatLng());
-        if (points.length > 0)
-            instance.fitBounds(L.latLngBounds(points), { padding: [60, 60], maxZoom: 15 });
-    }, [sections, visible, t]);
+        if (markers.current.size === 0) return;
+        instance.fitBounds(bounds, FIT_PADDING);
+        google.maps.event.addListenerOnce(instance, "idle", () => {
+            if ((instance.getZoom() ?? 0) > MAX_FIT_ZOOM) instance.setZoom(MAX_FIT_ZOOM);
+        });
+    }, [status, sections, visible, t]);
 
     useEffect(() => {
         const instance = map.current;
-        const marker = focus ? markers.current.get(focus.placeId) : undefined;
-        if (!instance || !marker) return;
-        instance.setView(marker.getLatLng(), Math.max(instance.getZoom(), 15), { animate: true });
-        marker.openPopup();
+        const popup = infoWindow.current;
+        const target = focus ? markers.current.get(focus.placeId) : undefined;
+        if (!instance || !popup || !target?.marker.position) return;
+        instance.panTo(target.marker.position);
+        instance.setZoom(Math.max(instance.getZoom() ?? 0, FOCUS_ZOOM));
+        openPopup(popup, instance, target);
     }, [focus]);
 
     useEffect(() => {
         const instance = map.current;
-        if (!instance) return;
-        pickedMarker.current?.remove();
-        pickedMarker.current = picked
-            ? L.circleMarker([picked.latitude, picked.longitude], {
-                  radius: 10,
-                  className: "trip-map-picked",
-              }).addTo(instance)
-            : null;
-    }, [picked]);
+        const loaded = libraries.current;
+        if (pickedMarker.current) pickedMarker.current.map = null;
+        pickedMarker.current =
+            status === "ready" && instance && loaded && picked
+                ? new loaded.marker.AdvancedMarkerElement({
+                      map: instance,
+                      position: { lat: picked.latitude, lng: picked.longitude },
+                      content: pickedElement(),
+                  })
+                : null;
+    }, [status, picked]);
 
     return (
-        <div className={`trip-map${picking ? " trip-map--picking" : ""}`}>
+        <div className="trip-map">
             {children}
             <div
                 ref={host}
@@ -159,6 +247,11 @@ export function TripMap({
                 role="region"
                 aria-label={t("tripDetail.map")}
             />
+            {status === "unavailable" && (
+                <p className="trip-map__notice" role="status">
+                    {t("tripDetail.mapUnavailable")}
+                </p>
+            )}
         </div>
     );
 }

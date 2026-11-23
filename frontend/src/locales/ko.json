@@ -206,6 +206,7 @@
         "addFailed": "장소를 추가하지 못했어요. 다시 시도해 주세요.",
         "focusPlace": "{{name}} 지도에서 보기",
         "map": "일정 지도",
+        "mapUnavailable": "지도를 불러오지 못했어요. 일정은 그대로 볼 수 있어요.",
         "layers": "지도에 표시할 일정",
         "layersAll": "전체 일정",
         "layersNone": "일정 숨김",
