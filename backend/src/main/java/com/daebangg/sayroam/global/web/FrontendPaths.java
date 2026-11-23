@@ -5,14 +5,17 @@ import org.springframework.http.HttpMethod;
 
 import java.util.Locale;
 import java.util.Set;
+import java.util.regex.Pattern;
 
 /** 화면 URL과 서버·정적 자원 URL의 경계를 MVC와 Security에서 공유한다. */
 public final class FrontendPaths {
     private static final String RESERVED_NAMES = "api|ws|assets|brand|fonts|images|error|actuator|swagger-ui|v3|webjars|login|logout|oauth2";
     public static final String PAGE_SEGMENT = "{page:(?!(?:" + RESERVED_NAMES + ")$)[^.]+}";
     private static final Set<String> RESERVED = Set.of(RESERVED_NAMES.split("\\|"));
-    private static final Set<String> PAGES = Set.of("/", "/trips", "/matching", "/rooms", "/brand",
+    private static final Set<String> PAGES = Set.of("/", "/trips", "/matching", "/rooms", "/join", "/brand",
             "/settings", "/settings/appearance", "/settings/keyboard", "/settings/account", "/settings/profile");
+    // 여행 상세는 화면이 여행 ID로 열고, 없는 여행은 화면이 조회 결과로 안내한다.
+    private static final Pattern TRIP_DETAIL = Pattern.compile("/trips/[1-9][0-9]{0,15}");
 
     private FrontendPaths() {
     }
@@ -37,6 +40,6 @@ public final class FrontendPaths {
         String lowered = path.toLowerCase(Locale.ROOT);
         String normalized = lowered.endsWith("/") && lowered.length() > 1
                 ? lowered.substring(0, lowered.length() - 1) : lowered;
-        return PAGES.contains(normalized);
+        return PAGES.contains(normalized) || TRIP_DETAIL.matcher(normalized).matches();
     }
 }

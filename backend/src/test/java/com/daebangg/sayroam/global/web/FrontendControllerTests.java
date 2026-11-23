@@ -42,7 +42,7 @@ class FrontendControllerTests {
     @ValueSource(strings = {"/trips", "/trips/", "/matching", "/rooms", "/brand", "/brand/",
             "/TRIPS", "/Trips/", "/MATCHING", "/ROOMS/", "/BRAND", "/Brand/",
             "/settings", "/settings/appearance", "/settings/keyboard", "/settings/account", "/settings/profile",
-            "/SETTINGS/", "/Settings/Account/"})
+            "/SETTINGS/", "/Settings/Account/", "/trips/123", "/TRIPS/123/", "/join", "/JOIN/"})
     void 화면_직접_접속은_인증_없이_앱_셸을_제공한다(String path) throws Exception {
         mvc.perform(get(path).accept(MediaType.TEXT_HTML))
                 .andExpect(status().isOk())
@@ -51,7 +51,7 @@ class FrontendControllerTests {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"/unknown-page", "/unknown-page/nested", "/trips/123", "/matching/123", "/rooms/123/chat",
+    @ValueSource(strings = {"/unknown-page", "/unknown-page/nested", "/trips/0", "/trips/abc", "/trips/123/places", "/join/abc", "/matching/123", "/rooms/123/chat",
             "/settings/unknown", "/settings/account/unknown"})
     void 없는_화면은_404_상태와_앱_셸을_제공한다(String path) throws Exception {
         mvc.perform(get(path).accept(MediaType.TEXT_HTML))
