@@ -80,7 +80,6 @@ function MatchingSession({ preview }: { preview: RecruitmentPreview | undefined 
     const { member, onOpenAuth } = useOutletContext<PageContext>();
     const [draft, setDraft] = useState<MatchingDraft>(emptyDraft);
     const location = useLocation();
-    const [notice, setNotice] = useState<"updated" | "saved">();
     const live = useCompanionMatching(preview ? undefined : member?.userId);
     const matching = preview?.data ?? live;
     const navigate = useNavigate();
@@ -164,9 +163,6 @@ function MatchingSession({ preview }: { preview: RecruitmentPreview | undefined 
             registration={registration}
             profile={member}
             initialDraft={draft}
-            notice={notice}
-            dismissNotice={() => setNotice(undefined)}
-            onSave={setNotice}
             onDiscard={() => setDraft(emptyDraft)}
             onLogin={(next) => {
                 setDraft(next);
@@ -187,9 +183,6 @@ type MatchingWorkspaceProps = {
     resultsCheckFailed: boolean;
     registration: MatchingRegistration | undefined;
     profile: PageContext["member"];
-    notice: "updated" | "saved" | undefined;
-    dismissNotice: () => void;
-    onSave: (message: "updated" | "saved") => void;
     onDiscard: () => void;
     onLogin: (draft: MatchingDraft) => void;
     initialDraft: MatchingDraft;
@@ -249,9 +242,6 @@ function MatchingWorkspace({
     profile,
     onLogin,
     initialDraft,
-    notice,
-    dismissNotice,
-    onSave,
     onDiscard,
     language,
     title,
@@ -294,7 +284,7 @@ function MatchingWorkspace({
     const [titleEdited, setTitleEdited] = useState(Boolean(registration?.title));
     const [gender, setGender] = useState(registration?.preferredGender ?? initialDraft.gender);
     const [minAge, setMinAge] = useState(
-        String(registration?.preferredMinAge ?? (initialDraft.minAge || "20")),
+        registration ? String(registration.preferredMinAge ?? "") : initialDraft.minAge,
     );
     const [anyAge, setAnyAge] = useState(
         registration
@@ -302,8 +292,12 @@ function MatchingWorkspace({
             : initialDraft.anyAge,
     );
     const [maxAge, setMaxAge] = useState(
-        String(registration?.preferredMaxAge ?? (initialDraft.maxAge || "40")),
+        registration ? String(registration.preferredMaxAge ?? "") : initialDraft.maxAge,
     );
+    const lowerAge = Number(minAge || 19);
+    const upperAge = Number(maxAge || 100);
+    const ageLabel = (age: string) =>
+        age ? t("matchingFlow.ageValue", { count: Number(age) }) : t("matchingFlow.any");
     const editingId = registration?.id;
     const [styles, setStyles] = useState<Record<string, string>>(() =>
         Object.fromEntries(
@@ -478,7 +472,6 @@ function MatchingWorkspace({
         setMaxAge("40");
         setAnyAge(true);
         setStyles({});
-        dismissNotice();
         goTo(0);
     }
     function requestAction(id: number, action: RecruitmentAction): void {
@@ -705,7 +698,6 @@ function MatchingWorkspace({
                                 void matching.save(conditions, editingId).then((ok) => {
                                     if (ok) {
                                         savedDeparture.current = true;
-                                        onSave(editingId !== undefined ? "updated" : "saved");
                                         setMyPage(0);
                                         startDiscovery(
                                             ok.id,
@@ -842,28 +834,42 @@ function MatchingWorkspace({
                                             <Checkbox
                                                 label={t("matchingFlow.anyAge")}
                                                 checked={anyAge}
-                                                onChange={(event) =>
-                                                    setAnyAge(event.target.checked)
-                                                }
+                                                onChange={(event) => {
+                                                    setAnyAge(event.target.checked);
+                                                    if (
+                                                        !event.target.checked &&
+                                                        !minAge &&
+                                                        !maxAge
+                                                    ) {
+                                                        setMinAge(emptyDraft.minAge);
+                                                        setMaxAge(emptyDraft.maxAge);
+                                                    }
+                                                }}
                                             />
                                             <RangeSelector
                                                 label={t("matchingFlow.age")}
-                                                lowerLabel={t("matchingFlow.minAge")}
-                                                upperLabel={t("matchingFlow.maxAge")}
-                                                lowerValueLabel={t("matchingFlow.ageValue", {
-                                                    count: Number(minAge || 20),
-                                                })}
-                                                upperValueLabel={t("matchingFlow.ageValue", {
-                                                    count: Number(maxAge || 40),
-                                                })}
-                                                value={[Number(minAge || 20), Number(maxAge || 40)]}
+                                                lowerLabel={t(
+                                                    minAge || anyAge
+                                                        ? "matchingFlow.minAge"
+                                                        : "matchingFlow.noMinAge",
+                                                )}
+                                                upperLabel={t(
+                                                    maxAge || anyAge
+                                                        ? "matchingFlow.maxAge"
+                                                        : "matchingFlow.noMaxAge",
+                                                )}
+                                                lowerValueLabel={ageLabel(minAge)}
+                                                upperValueLabel={ageLabel(maxAge)}
+                                                value={[lowerAge, upperAge]}
                                                 min={19}
                                                 max={100}
                                                 disabled={anyAge}
                                                 ticks={[19, 30, 40, 50, 60, 70, 80, 90, 100]}
                                                 onChange={([lower, upper]) => {
-                                                    setMinAge(String(lower));
-                                                    setMaxAge(String(upper));
+                                                    if (lower !== lowerAge)
+                                                        setMinAge(String(lower));
+                                                    if (upper !== upperAge)
+                                                        setMaxAge(String(upper));
                                                 }}
                                             />
                                         </div>
@@ -1021,7 +1027,7 @@ function MatchingWorkspace({
                                                             <dd>
                                                                 {anyAge
                                                                     ? t("matchingFlow.anyAge")
-                                                                    : `${t("matchingFlow.ageValue", { count: Number(minAge) })} ~ ${t("matchingFlow.ageValue", { count: Number(maxAge) })}`}
+                                                                    : `${ageLabel(minAge)} ~ ${ageLabel(maxAge)}`}
                                                             </dd>
                                                         </div>
                                                         {styleQuestions.map((name) => {
@@ -1165,13 +1171,6 @@ function MatchingWorkspace({
                         className="matching-content matching-content--mine"
                         aria-label={t("matchingFlow.mine")}
                     >
-                        {notice && (
-                            <Toast
-                                message={t(`matchingFlow.${notice}`)}
-                                tone="success"
-                                onDismiss={dismissNotice}
-                            />
-                        )}
                         {!canManage && <Button onClick={login}>{t("matchingFlow.login")}</Button>}
                         {matching.catalogLoading && <Spinner label={t("matchingFlow.loading")} />}
                         {(matching.catalogFailed ||

@@ -9678,6 +9678,15 @@ body:has(.matching-details-panel) .mockup-toolbar {
     filter: none;
 }
 
+.roam-preview--discovery:has(.roam-discovery-actions) {
+    overflow-y: auto;
+    overscroll-behavior-y: contain;
+}
+@media (max-width: 700px) {
+    .roam-preview--discovery:has(.roam-discovery-actions) {
+        padding-bottom: calc(136px + env(safe-area-inset-bottom));
+    }
+}
 .roam-preview--empty {
     --roam-cards-ready: 1s;
 }
