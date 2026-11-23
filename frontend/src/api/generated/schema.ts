@@ -1112,6 +1112,8 @@ export interface components {
             | "TRAVEL_PERIOD_END_BEFORE_START"
             | "TRAVEL_STYLE_REQUIRED"
             | "TRIP_DAY_OUT_OF_RANGE"
+            | "TRIP_DESTINATION_REQUIRED"
+            | "TRIP_DESTINATION_UNAVAILABLE"
             | "TRIP_NOT_FOUND"
             | "TRIP_PERIOD_REQUIRED"
             | "TRIP_PLACE_MEMO_TOO_LONG"
@@ -1311,6 +1313,12 @@ export interface components {
             roomId: number;
         };
         CreateTripRequest: {
+            /**
+             * Format: int64
+             * @description 국내 여행지 목록(GET /api/destinations)에서 고른 여행지 ID
+             * @example 3
+             */
+            destinationId: number;
             /**
              * Format: date
              * @description 여행 종료일. 시작일과 같거나 이후
@@ -1871,6 +1879,37 @@ export interface components {
         };
         TripSummaryResponse: {
             /**
+             * @description 영역의 동쪽 끝 경도
+             * @example 129.305605
+             */
+            boundsEast: number;
+            /**
+             * @description 영역의 북쪽 끝 위도
+             * @example 35.389041
+             */
+            boundsNorth: number;
+            /**
+             * @description 지도에 여행지 전체를 맞춰 보여 줄 영역의 남쪽 끝 위도. 먼 섬은 제외
+             * @example 34.932748
+             */
+            boundsSouth: number;
+            /**
+             * @description 영역의 서쪽 끝 경도
+             * @example 128.761718
+             */
+            boundsWest: number;
+            /**
+             * Format: int64
+             * @description 여행을 만들 때 고른 여행지 ID. 지도 초기 위치에만 쓰며 담을 장소의 지역을 제한하지 않는다
+             * @example 2
+             */
+            destinationId: number;
+            /**
+             * @description 여행지 이름
+             * @example 부산
+             */
+            destinationName: string;
+            /**
              * Format: date
              * @description 여행 종료일
              * @example 2026-12-04
@@ -1917,6 +1956,19 @@ export interface components {
              * @example 부산 여행
              */
             title?: string | null;
+        };
+        UpdateTripResponse: {
+            /**
+             * @description 저장된 여행 이름. 앞뒤 공백을 지운 값이며 비웠으면 null
+             * @example 부산 여행
+             */
+            title: string | null;
+            /**
+             * Format: int64
+             * @description 여행 ID
+             * @example 12
+             */
+            tripId: number;
         };
         /** @description 생략한 필드는 유지합니다. 선택 정보의 null은 삭제를 의미합니다. */
         UpdateUserProfileRequest: {
@@ -2508,7 +2560,7 @@ export interface components {
                 "application/problem+json": components["schemas"]["ApiProblem"];
             };
         };
-        /** @description 400: INVALID_INPUT(시작일·종료일 누락, errors 포함), TRAVEL_PERIOD_END_BEFORE_START(종료일이 시작일보다 앞섬), TRIP_TITLE_TOO_LONG(여행 이름 30자 초과) 또는 Spring 요청 오류(날짜 형식 오류). 날짜는 yyyy-MM-dd */
+        /** @description 400: INVALID_INPUT(여행지·시작일·종료일 누락, errors 포함), TRIP_DESTINATION_UNAVAILABLE(목록에 없거나 비활성인 여행지), TRAVEL_PERIOD_END_BEFORE_START(종료일이 시작일보다 앞섬), TRIP_TITLE_TOO_LONG(여행 이름 30자 초과) 또는 Spring 요청 오류(날짜 형식 오류). 날짜는 yyyy-MM-dd */
         TripBadRequest: {
             headers: {
                 [name: string]: unknown;
@@ -3881,13 +3933,13 @@ export interface operations {
             };
         };
         responses: {
-            /** @description 여행 수정 완료. 수정된 여행을 응답 */
+            /** @description 여행 수정 완료. 여행 ID와 저장된 이름을 응답 */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["TripSummaryResponse"];
+                    "application/json": components["schemas"]["UpdateTripResponse"];
                 };
             };
             400: components["responses"]["TripUpdateBadRequest"];

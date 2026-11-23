@@ -10,13 +10,6 @@ import {
 } from "./googleMapsLoader";
 import type { TripSection } from "./tripDays";
 
-// 장소가 없을 때 대한민국 전체가 보이도록 맞춘다.
-const KOREA_BOUNDS: google.maps.LatLngBoundsLiteral = {
-    south: 33.0,
-    west: 124.6,
-    north: 38.7,
-    east: 131.0,
-};
 const FIT_PADDING = 60;
 // 장소가 하나뿐이어도 지나치게 확대되지 않도록 맞춤 후 확대를 이 값으로 제한한다.
 const MAX_FIT_ZOOM = 15;
@@ -31,6 +24,8 @@ type PlaceMarker = {
 };
 
 type TripMapProps = {
+    /** 여행을 만들 때 고른 여행지의 영역. 담은 장소가 없으면 이 영역을 보여 준다. */
+    destination: google.maps.LatLngBoundsLiteral;
     sections: TripSection[];
     visible: ReadonlySet<string>;
     /** 목록에서 고른 장소. seq가 바뀔 때마다 그 장소로 이동한다. */
@@ -93,6 +88,7 @@ function pickedElement(): HTMLElement {
 }
 
 export function TripMap({
+    destination,
     sections,
     visible,
     focus,
@@ -113,7 +109,11 @@ export function TripMap({
     const pickedMarker = useRef<google.maps.marker.AdvancedMarkerElement | null>(null);
     // 지도는 화면에 들어올 때 한 번만 만든다. 다시 만들 때마다 지도 로드가 과금되므로
     // 언어·테마는 만들 때의 값을 쓰고, 이후 바뀌어도 지도를 다시 만들지 않는다.
-    const initial = useRef({ language: i18n.resolvedLanguage ?? "ko", theme: resolved });
+    const initial = useRef({
+        language: i18n.resolvedLanguage ?? "ko",
+        theme: resolved,
+        destination,
+    });
     const selectPlace = useEffectEvent(onSelectPlace);
     const pick = useEffectEvent(onPick);
     const pickingNow = useRef(picking);
@@ -143,7 +143,8 @@ export function TripMap({
                     clickableIcons: false,
                     gestureHandling: "greedy",
                 });
-                instance.fitBounds(KOREA_BOUNDS);
+                // 장소를 불러오기 전에도 빈 지도가 보이지 않게 여행지 영역으로 먼저 그린다.
+                instance.fitBounds(initial.current.destination);
                 clickListener = instance.addListener(
                     "click",
                     (event: google.maps.MapMouseEvent) => {
@@ -207,12 +208,17 @@ export function TripMap({
                 bounds.extend(position);
             });
         }
-        if (markers.current.size === 0) return;
+        if (markers.current.size === 0) {
+            // 담은 장소가 없으면 여행지 영역을 보여 준다. 장소는 있는데 일차를 모두 숨긴 경우에는 보던 위치를 유지한다.
+            if (sections.every((section) => section.places.length === 0))
+                instance.fitBounds(destination);
+            return;
+        }
         instance.fitBounds(bounds, FIT_PADDING);
         google.maps.event.addListenerOnce(instance, "idle", () => {
             if ((instance.getZoom() ?? 0) > MAX_FIT_ZOOM) instance.setZoom(MAX_FIT_ZOOM);
         });
-    }, [status, sections, visible, t]);
+    }, [status, sections, visible, t, destination]);
 
     // 지도를 불러오는 중에 고른 장소도 지도가 준비되어 핀을 만든 뒤 이동한다.
     // 핀을 만드는 효과보다 뒤에 두어 같은 렌더에서 핀이 먼저 만들어지게 한다.

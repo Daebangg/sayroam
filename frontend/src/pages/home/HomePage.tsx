@@ -1,7 +1,7 @@
 import { useId, useState } from "react";
 import { useNavigate, useOutletContext } from "react-router";
 import { useTranslation } from "react-i18next";
-import { Button, ButtonLink, Card, DateRangeCalendar, Icon, TextField } from "@/components/ui";
+import { Autocomplete, Button, ButtonLink, Card, DateRangeCalendar, Icon } from "@/components/ui";
 import {
     FeaturedTrip,
     RoomPreviewRow,
@@ -12,6 +12,7 @@ import { MatchingFilterPopover } from "@/components/features/matching/MatchingFi
 import { matchingPreviews, roomPreviews, tripPreviews, type PreviewTrip } from "@/data/preview";
 import { formatMonthDay } from "@/i18n/locale";
 import { useCreateTrip } from "@/hooks/api/trips/useCreateTrip";
+import { useDestinations } from "@/hooks/api/destinations/useDestinations";
 import { usePreviewNavigation } from "@/hooks/usePreviewNavigation";
 import { tripDetailPath } from "@/routing/paths";
 import type { PageContext } from "@/routing/context";
@@ -23,9 +24,6 @@ const shortcuts = [
     { id: "guide", icon: "guide", screen: null },
 ] as const;
 
-// 여행 이름은 30자까지 저장된다. 영어 기본 이름 "Trip to "(8자)를 붙여도 넘지 않게 목적지를 제한한다.
-const DESTINATION_MAX_LENGTH = 22;
-
 export function HomePage() {
     const { member, onOpenAuth } = useOutletContext<PageContext>();
     const { t, i18n } = useTranslation();
@@ -36,10 +34,14 @@ export function HomePage() {
     const [selected, setSelected] = useState<PreviewTrip | null>(null);
     const [guide, setGuide] = useState(false);
     const [schedule, setSchedule] = useState({ start: "", end: "" });
+    const [destinationQuery, setDestinationQuery] = useState("");
+    const [destinationId, setDestinationId] = useState("");
     const [missing, setMissing] = useState<"destination" | "schedule" | null>(null);
     const searchErrorId = useId();
     const destinationMissing = missing === "destination";
     const creation = useCreateTrip();
+    const catalog = useDestinations(member?.userId);
+    const destination = catalog.destinations.find((item) => String(item.id) === destinationId);
     const language = i18n.resolvedLanguage ?? "ko";
     const nights = schedule.end
         ? Math.round((Date.parse(schedule.end) - Date.parse(schedule.start)) / 86_400_000)
@@ -106,9 +108,7 @@ export function HomePage() {
                         onOpenAuth();
                         return;
                     }
-                    const destination = String(
-                        new FormData(event.currentTarget).get("destination") ?? "",
-                    ).trim();
+                    // 목록에서 고르지 않고 글자만 입력했으면 여행지를 특정할 수 없어 만들지 않는다.
                     if (!destination) {
                         setMissing("destination");
                         return;
@@ -117,23 +117,40 @@ export function HomePage() {
                         setMissing("schedule");
                         return;
                     }
-                    // 목적지는 저장하지 않고 화면 언어로 만든 기본 여행 이름에만 쓴다.
-                    const title = t("mockup.defaultTripTitle", { destination });
-                    void creation.create(schedule.start, schedule.end, title).then((tripId) => {
-                        if (tripId !== null) void navigate(tripDetailPath(tripId));
-                    });
+                    // 고른 여행지로 화면 언어의 기본 여행 이름을 만든다. 여행지는 상세 지도의 첫 화면에 쓰인다.
+                    const title = t("mockup.defaultTripTitle", { destination: destination.name });
+                    void creation
+                        .create(destination.id, schedule.start, schedule.end, title)
+                        .then((tripId) => {
+                            if (tripId !== null) void navigate(tripDetailPath(tripId));
+                        });
                 }}
             >
                 <div className="travel-search__destination">
                     <Icon name="pin" />
-                    <TextField
+                    <Autocomplete
                         label={t("mockup.destination")}
                         placeholder={t("mockup.destinationPlaceholder")}
-                        name="destination"
-                        maxLength={DESTINATION_MAX_LENGTH}
-                        aria-invalid={destinationMissing || undefined}
-                        aria-describedby={destinationMissing ? searchErrorId : undefined}
-                        onChange={() => {
+                        value={destinationId}
+                        query={destinationQuery}
+                        options={catalog.destinations.map((item) => ({
+                            value: String(item.id),
+                            label: item.name,
+                        }))}
+                        emptyLabel={t(
+                            !member
+                                ? "mockup.destinationSignIn"
+                                : catalog.status === "failed"
+                                  ? "mockup.destinationsUnavailable"
+                                  : "mockup.noDestinations",
+                        )}
+                        onQueryChange={(value) => {
+                            setDestinationQuery(value);
+                            setDestinationId("");
+                        }}
+                        onSelect={(option) => {
+                            setDestinationId(option.value);
+                            setDestinationQuery(option.label);
                             if (missing === "destination") setMissing(null);
                         }}
                     />

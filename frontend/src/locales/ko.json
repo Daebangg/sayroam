@@ -635,7 +635,10 @@
         "planTrip": "계획 세우기",
         "scheduleRequired": "여행 일정을 먼저 골라 주세요.",
         "planTripFailed": "여행 계획을 만들지 못했어요. 잠시 후 다시 시도해 주세요.",
-        "destinationRequired": "목적지를 입력해 주세요.",
+        "destinationRequired": "목록에서 목적지를 골라 주세요.",
+        "noDestinations": "일치하는 여행지가 없어요",
+        "destinationSignIn": "로그인하면 여행지를 고를 수 있어요",
+        "destinationsUnavailable": "여행지 목록을 불러오지 못했어요",
         "defaultTripTitle": "{{destination}} 여행"
     },
     "controls": {
