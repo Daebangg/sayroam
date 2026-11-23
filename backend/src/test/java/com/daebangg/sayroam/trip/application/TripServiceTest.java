@@ -62,6 +62,7 @@ class TripServiceTest extends DatabaseIntegrationTest {
     private static final LocalDate START_DATE = LocalDate.of(2026, 12, 1);
     private static final LocalDate END_DATE = LocalDate.of(2026, 12, 4);
     private static final String ROOM_NAME = "제주 여행";
+    private static final String TITLE = "제주 여행";
     private static final Long MISSING_TRIP_ID = 999_999L;
     private static final String SOURCE_ID = "126081";
 
@@ -112,11 +113,52 @@ class TripServiceTest extends DatabaseIntegrationTest {
         Long userId = saveUser();
 
         // when
-        Long tripId = tripService.create(userId, START_DATE, END_DATE);
+        Long tripId = tripService.create(userId, START_DATE, END_DATE, TITLE);
 
         // then
         assertThat(tripJpaRepository.findById(tripId)).isPresent();
         assertThat(tripJpaRepository.count()).isEqualTo(1);
+    }
+
+    @Test
+    void 제목을_붙여_만들면_앞뒤_공백을_지운_제목이_저장된다() {
+        // given
+        Long userId = saveUser();
+
+        // when
+        Long tripId = tripService.create(userId, START_DATE, END_DATE, "  제주 여행 ");
+
+        // then
+        assertThat(tripJpaRepository.findById(tripId))
+                .hasValueSatisfying(trip -> assertThat(trip.getTitle()).isEqualTo("제주 여행"));
+    }
+
+    @Test
+    void 공백뿐인_제목으로_만들면_제목_없이_저장된다() {
+        // given
+        Long userId = saveUser();
+
+        // when
+        Long tripId = tripService.create(userId, START_DATE, END_DATE, "   ");
+
+        // then
+        assertThat(tripJpaRepository.findById(tripId))
+                .hasValueSatisfying(trip -> assertThat(trip.getTitle()).isNull());
+    }
+
+    @Test
+    void 제목이_30자를_넘으면_여행을_저장하지_않는다() {
+        // given
+        Long userId = saveUser();
+        String title = "가".repeat(31);
+
+        // when
+        assertThatThrownBy(() -> tripService.create(userId, START_DATE, END_DATE, title))
+                .isInstanceOfSatisfying(BusinessException.class,
+                        e -> assertThat(e.getErrorCode()).isEqualTo(TripErrorCode.TRIP_TITLE_TOO_LONG));
+
+        // then
+        assertThat(tripJpaRepository.count()).isZero();
     }
 
     @Test
@@ -125,7 +167,7 @@ class TripServiceTest extends DatabaseIntegrationTest {
         Long userId = saveUser();
 
         // when
-        assertThatThrownBy(() -> tripService.create(userId, END_DATE, START_DATE))
+        assertThatThrownBy(() -> tripService.create(userId, END_DATE, START_DATE, TITLE))
                 .isInstanceOfSatisfying(BusinessException.class,
                         e -> assertThat(e.getErrorCode()).isEqualTo(TravelPeriodErrorCode.TRAVEL_PERIOD_END_BEFORE_START));
 
@@ -137,7 +179,7 @@ class TripServiceTest extends DatabaseIntegrationTest {
     void 채팅방이_없는_여행에서_채팅방을_만들면_방장과_함께_만들어지고_여행에_연결된다() {
         // given
         Long userId = saveUser();
-        Long tripId = tripService.create(userId, START_DATE, END_DATE);
+        Long tripId = tripService.create(userId, START_DATE, END_DATE, TITLE);
 
         // when
         Long roomId = tripService.createRoom(userId, tripId, ROOM_NAME);
@@ -153,7 +195,7 @@ class TripServiceTest extends DatabaseIntegrationTest {
     void 이미_채팅방이_연결된_여행이면_409로_거부하고_새_채팅방을_만들지_않는다() {
         // given
         Long userId = saveUser();
-        Long tripId = tripService.create(userId, START_DATE, END_DATE);
+        Long tripId = tripService.create(userId, START_DATE, END_DATE, TITLE);
         Long roomId = tripService.createRoom(userId, tripId, ROOM_NAME);
 
         // when & then
@@ -169,7 +211,7 @@ class TripServiceTest extends DatabaseIntegrationTest {
         // given
         Long ownerId = saveUser();
         Long otherId = saveUser();
-        Long tripId = tripService.create(ownerId, START_DATE, END_DATE);
+        Long tripId = tripService.create(ownerId, START_DATE, END_DATE, TITLE);
 
         // when & then
 
@@ -196,7 +238,7 @@ class TripServiceTest extends DatabaseIntegrationTest {
     void 같은_여행으로_동시에_요청하면_채팅방은_하나만_생긴다() throws Exception {
         // given
         Long userId = saveUser();
-        Long tripId = tripService.create(userId, START_DATE, END_DATE);
+        Long tripId = tripService.create(userId, START_DATE, END_DATE, TITLE);
 
         // when
         List<Throwable> failures = runTwiceConcurrently(() -> tripService.createRoom(userId, tripId, ROOM_NAME));
@@ -209,15 +251,15 @@ class TripServiceTest extends DatabaseIntegrationTest {
     }
 
     private List<Throwable> runTwiceConcurrently(Callable<?> action) throws Exception {
+        return runConcurrently(action, action);
+    }
+
+    private List<Throwable> runConcurrently(Callable<?> first, Callable<?> second) throws Exception {
         CountDownLatch ready = new CountDownLatch(2);
         CountDownLatch start = new CountDownLatch(1);
         try (ExecutorService pool = Executors.newVirtualThreadPerTaskExecutor()) {
-            Callable<Object> gated = () -> {
-                ready.countDown();
-                start.await(10, TimeUnit.SECONDS);
-                return action.call();
-            };
-            List<Future<Object>> futures = List.of(pool.submit(gated), pool.submit(gated));
+            List<Future<Object>> futures = List.of(
+                    pool.submit(gate(first, ready, start)), pool.submit(gate(second, ready, start)));
             assertThat(ready.await(10, TimeUnit.SECONDS)).isTrue();
             start.countDown();
 
@@ -233,13 +275,21 @@ class TripServiceTest extends DatabaseIntegrationTest {
         }
     }
 
+    private Callable<Object> gate(Callable<?> action, CountDownLatch ready, CountDownLatch start) {
+        return () -> {
+            ready.countDown();
+            start.await(10, TimeUnit.SECONDS);
+            return action.call();
+        };
+    }
+
     @Test
     void 내가_만든_여행만_목록에_나온다() {
         // given
         Long userId = saveUser();
         Long otherId = saveUser("다른 회원");
-        Long myTripId = tripService.create(userId, START_DATE, END_DATE);
-        tripService.create(otherId, START_DATE, END_DATE);
+        Long myTripId = tripService.create(userId, START_DATE, END_DATE, TITLE);
+        tripService.create(otherId, START_DATE, END_DATE, TITLE);
 
         // when
         List<TripSummaryResult> trips = tripService.findMine(userId);
@@ -252,8 +302,8 @@ class TripServiceTest extends DatabaseIntegrationTest {
     void 목록은_나중에_만든_여행부터_나온다() {
         // given
         Long userId = saveUser();
-        Long firstTripId = tripService.create(userId, START_DATE, END_DATE);
-        Long secondTripId = tripService.create(userId, START_DATE, END_DATE);
+        Long firstTripId = tripService.create(userId, START_DATE, END_DATE, TITLE);
+        Long secondTripId = tripService.create(userId, START_DATE, END_DATE, TITLE);
 
         // when
         List<TripSummaryResult> trips = tripService.findMine(userId);
@@ -279,7 +329,7 @@ class TripServiceTest extends DatabaseIntegrationTest {
         // given
         Long ownerId = saveUser();
         Long memberId = saveUser("멤버");
-        Long tripId = tripService.create(ownerId, START_DATE, END_DATE);
+        Long tripId = tripService.create(ownerId, START_DATE, END_DATE, TITLE);
         Long roomId = tripService.createRoom(ownerId, tripId, ROOM_NAME);
         joinRoom(roomId, ownerId, memberId);
 
@@ -296,7 +346,7 @@ class TripServiceTest extends DatabaseIntegrationTest {
         // given
         Long ownerId = saveUser();
         Long memberId = saveUser();
-        Long tripId = tripService.create(ownerId, START_DATE, END_DATE);
+        Long tripId = tripService.create(ownerId, START_DATE, END_DATE, TITLE);
         Long roomId = tripService.createRoom(ownerId, tripId, ROOM_NAME);
         joinRoom(roomId, ownerId, memberId);
         roomService.leave(roomId, memberId);
@@ -312,7 +362,7 @@ class TripServiceTest extends DatabaseIntegrationTest {
     void 여행을_만든_회원도_채팅방을_나가면_목록에_그_여행이_나오지_않는다() {
         // given
         Long ownerId = saveUser();
-        Long tripId = tripService.create(ownerId, START_DATE, END_DATE);
+        Long tripId = tripService.create(ownerId, START_DATE, END_DATE, TITLE);
         Long roomId = tripService.createRoom(ownerId, tripId, ROOM_NAME);
         roomService.leave(roomId, ownerId);
 
@@ -328,9 +378,9 @@ class TripServiceTest extends DatabaseIntegrationTest {
         // given
         Long ownerId = saveUser();
         Long memberId = saveUser("멤버");
-        Long joinedTripId = tripService.create(ownerId, START_DATE, END_DATE);
+        Long joinedTripId = tripService.create(ownerId, START_DATE, END_DATE, TITLE);
         Long joinedRoomId = tripService.createRoom(ownerId, joinedTripId, ROOM_NAME);
-        Long otherTripId = tripService.create(ownerId, START_DATE, END_DATE);
+        Long otherTripId = tripService.create(ownerId, START_DATE, END_DATE, TITLE);
         tripService.createRoom(ownerId, otherTripId, ROOM_NAME);
         joinRoom(joinedRoomId, ownerId, memberId);
 
@@ -346,7 +396,7 @@ class TripServiceTest extends DatabaseIntegrationTest {
         // given
         Long ownerId = saveUser();
         Long memberId = saveUser("멤버");
-        Long tripId = tripService.create(ownerId, START_DATE, END_DATE);
+        Long tripId = tripService.create(ownerId, START_DATE, END_DATE, TITLE);
         Long roomId = tripService.createRoom(ownerId, tripId, ROOM_NAME);
         joinRoom(roomId, ownerId, memberId);
 
@@ -363,7 +413,7 @@ class TripServiceTest extends DatabaseIntegrationTest {
         // given
         Long ownerId = saveUser();
         Long memberId = saveUser("멤버");
-        Long tripId = tripService.create(ownerId, START_DATE, END_DATE);
+        Long tripId = tripService.create(ownerId, START_DATE, END_DATE, TITLE);
         Long roomId = tripService.createRoom(ownerId, tripId, ROOM_NAME);
         joinRoom(roomId, ownerId, memberId);
         roomService.leave(roomId, memberId);
@@ -378,7 +428,7 @@ class TripServiceTest extends DatabaseIntegrationTest {
     void 만든_회원도_채팅방을_나가면_여행을_조회할_수_없다() {
         // given
         Long ownerId = saveUser();
-        Long tripId = tripService.create(ownerId, START_DATE, END_DATE);
+        Long tripId = tripService.create(ownerId, START_DATE, END_DATE, TITLE);
         Long roomId = tripService.createRoom(ownerId, tripId, ROOM_NAME);
         roomService.leave(roomId, ownerId);
 
@@ -393,9 +443,9 @@ class TripServiceTest extends DatabaseIntegrationTest {
         // given
         Long ownerId = saveUser();
         Long memberId = saveUser("멤버");
-        Long joinedTripId = tripService.create(ownerId, START_DATE, END_DATE);
+        Long joinedTripId = tripService.create(ownerId, START_DATE, END_DATE, TITLE);
         Long joinedRoomId = tripService.createRoom(ownerId, joinedTripId, ROOM_NAME);
-        Long otherTripId = tripService.create(ownerId, START_DATE, END_DATE);
+        Long otherTripId = tripService.create(ownerId, START_DATE, END_DATE, TITLE);
         tripService.createRoom(ownerId, otherTripId, ROOM_NAME);
         joinRoom(joinedRoomId, ownerId, memberId);
 
@@ -409,7 +459,7 @@ class TripServiceTest extends DatabaseIntegrationTest {
     void 내가_만든_여행을_조회하면_기간과_비어_있는_제목과_채팅방_ID를_돌려준다() {
         // given
         Long userId = saveUser();
-        Long tripId = tripService.create(userId, START_DATE, END_DATE);
+        Long tripId = tripService.create(userId, START_DATE, END_DATE, null);
 
         // when
         TripSummaryResult trip = tripService.find(userId, tripId);
@@ -422,11 +472,135 @@ class TripServiceTest extends DatabaseIntegrationTest {
     }
 
     @Test
+    void 여행을_만든_회원은_채팅방이_없는_여행의_이름을_바꾼다() {
+        // given
+        Long userId = saveUser();
+        Long tripId = tripService.create(userId, START_DATE, END_DATE, TITLE);
+
+        // when
+        TripSummaryResult result = tripService.rename(userId, tripId, "부산 여행");
+
+        // then
+        assertThat(result.title()).isEqualTo("부산 여행");
+        assertThat(findTrip(tripId).getTitle()).isEqualTo("부산 여행");
+    }
+
+    @Test
+    void 채팅방_멤버는_연결된_여행의_이름을_바꾼다() {
+        // given
+        Long ownerId = saveUser();
+        Long memberId = saveUser("멤버");
+        Long tripId = tripService.create(ownerId, START_DATE, END_DATE, TITLE);
+        Long roomId = tripService.createRoom(ownerId, tripId, ROOM_NAME);
+        joinRoom(roomId, ownerId, memberId);
+
+        // when
+        tripService.rename(memberId, tripId, "부산 여행");
+
+        // then
+        assertThat(findTrip(tripId).getTitle()).isEqualTo("부산 여행");
+    }
+
+    @Test
+    void 채팅방_생성과_이름_변경을_동시에_요청해도_채팅방_연결과_새_이름이_모두_남는다() throws Exception {
+        // 두 요청의 실행 순서는 매번 달라 경쟁 상황을 여러 번 만든다
+        for (int attempt = 0; attempt < 20; attempt++) {
+            // given
+            Long userId = saveUser("회원" + attempt);
+            Long tripId = tripService.create(userId, START_DATE, END_DATE, TITLE);
+
+            // when
+            List<Throwable> failures = runConcurrently(
+                    () -> tripService.createRoom(userId, tripId, ROOM_NAME),
+                    () -> tripService.rename(userId, tripId, "부산 여행"));
+
+            // then
+            assertThat(failures).isEmpty();
+            Trip trip = findTrip(tripId);
+            assertThat(trip.getRoomId()).isNotNull();
+            assertThat(trip.getTitle()).isEqualTo("부산 여행");
+        }
+    }
+
+    @Test
+    void 다른_회원의_여행_이름은_바꿀_수_없다() {
+        // given
+        Long ownerId = saveUser();
+        Long otherId = saveUser("다른 회원");
+        Long tripId = tripService.create(ownerId, START_DATE, END_DATE, TITLE);
+
+        // when
+        assertThatThrownBy(() -> tripService.rename(otherId, tripId, "부산 여행"))
+                .isInstanceOfSatisfying(BusinessException.class,
+                        e -> assertThat(e.getErrorCode()).isEqualTo(TripErrorCode.TRIP_NOT_FOUND));
+
+        // then
+        assertThat(findTrip(tripId).getTitle()).isEqualTo(TITLE);
+    }
+
+    @Test
+    void 채팅방을_나간_멤버는_여행_이름을_바꿀_수_없다() {
+        // given
+        Long ownerId = saveUser();
+        Long memberId = saveUser("멤버");
+        Long tripId = tripService.create(ownerId, START_DATE, END_DATE, TITLE);
+        Long roomId = tripService.createRoom(ownerId, tripId, ROOM_NAME);
+        joinRoom(roomId, ownerId, memberId);
+        roomService.leave(roomId, memberId);
+
+        // when
+        assertThatThrownBy(() -> tripService.rename(memberId, tripId, "부산 여행"))
+                .isInstanceOfSatisfying(BusinessException.class,
+                        e -> assertThat(e.getErrorCode()).isEqualTo(TripErrorCode.TRIP_NOT_FOUND));
+
+        // then
+        assertThat(findTrip(tripId).getTitle()).isEqualTo(TITLE);
+    }
+
+    @Test
+    void 없는_여행의_이름은_바꿀_수_없다() {
+        // given
+        Long userId = saveUser();
+
+        // when & then
+        assertThatThrownBy(() -> tripService.rename(userId, MISSING_TRIP_ID, "부산 여행"))
+                .isInstanceOfSatisfying(BusinessException.class,
+                        e -> assertThat(e.getErrorCode()).isEqualTo(TripErrorCode.TRIP_NOT_FOUND));
+    }
+
+    @Test
+    void 이름을_보내지_않으면_기존_이름을_유지한다() {
+        // given
+        Long userId = saveUser();
+        Long tripId = tripService.create(userId, START_DATE, END_DATE, TITLE);
+
+        // when
+        TripSummaryResult result = tripService.rename(userId, tripId, null);
+
+        // then
+        assertThat(result.title()).isEqualTo(TITLE);
+        assertThat(findTrip(tripId).getTitle()).isEqualTo(TITLE);
+    }
+
+    @Test
+    void 빈_이름을_보내면_이름_없는_여행이_된다() {
+        // given
+        Long userId = saveUser();
+        Long tripId = tripService.create(userId, START_DATE, END_DATE, TITLE);
+
+        // when
+        tripService.rename(userId, tripId, "");
+
+        // then
+        assertThat(findTrip(tripId).getTitle()).isNull();
+    }
+
+    @Test
     void 다른_회원의_여행은_조회할_수_없다() {
         // given
         Long ownerId = saveUser();
         Long otherId = saveUser("다른 회원");
-        Long tripId = tripService.create(ownerId, START_DATE, END_DATE);
+        Long tripId = tripService.create(ownerId, START_DATE, END_DATE, TITLE);
 
         // when & then
         assertThatThrownBy(() -> tripService.find(otherId, tripId))
@@ -449,7 +623,7 @@ class TripServiceTest extends DatabaseIntegrationTest {
     void 장소를_추가하면_일차와_메모와_추가한_회원이_저장된다() {
         // given
         Long userId = saveUser();
-        Long tripId = tripService.create(userId, START_DATE, END_DATE);
+        Long tripId = tripService.create(userId, START_DATE, END_DATE, TITLE);
         givenTourPlace();
 
         // when
@@ -466,7 +640,7 @@ class TripServiceTest extends DatabaseIntegrationTest {
         // given
         Long ownerId = saveUser();
         Long memberId = saveUser("멤버");
-        Long tripId = tripService.create(ownerId, START_DATE, END_DATE);
+        Long tripId = tripService.create(ownerId, START_DATE, END_DATE, TITLE);
         Long roomId = tripService.createRoom(ownerId, tripId, ROOM_NAME);
         joinRoom(roomId, ownerId, memberId);
         givenTourPlace();
@@ -485,7 +659,7 @@ class TripServiceTest extends DatabaseIntegrationTest {
         // given
         Long ownerId = saveUser();
         Long memberId = saveUser("멤버");
-        Long tripId = tripService.create(ownerId, START_DATE, END_DATE);
+        Long tripId = tripService.create(ownerId, START_DATE, END_DATE, TITLE);
         Long roomId = tripService.createRoom(ownerId, tripId, ROOM_NAME);
         joinRoom(roomId, ownerId, memberId);
         roomService.leave(roomId, memberId);
@@ -503,7 +677,7 @@ class TripServiceTest extends DatabaseIntegrationTest {
         // given
         Long ownerId = saveUser();
         Long otherId = saveUser("다른 회원");
-        Long tripId = tripService.create(ownerId, START_DATE, END_DATE);
+        Long tripId = tripService.create(ownerId, START_DATE, END_DATE, TITLE);
         givenTourPlace();
 
         // when & then
@@ -528,7 +702,7 @@ class TripServiceTest extends DatabaseIntegrationTest {
     void 일차가_기간을_벗어나면_TourAPI를_호출하지_않고_거부한다() {
         // given
         Long userId = saveUser();
-        Long tripId = tripService.create(userId, START_DATE, END_DATE);
+        Long tripId = tripService.create(userId, START_DATE, END_DATE, TITLE);
         givenTourPlace();
 
         // when & then
@@ -542,7 +716,7 @@ class TripServiceTest extends DatabaseIntegrationTest {
     void TourAPI에서_찾을_수_없는_장소면_PLACE_NOT_FOUND로_거부하고_아무것도_저장하지_않는다() {
         // given
         Long userId = saveUser();
-        Long tripId = tripService.create(userId, START_DATE, END_DATE);
+        Long tripId = tripService.create(userId, START_DATE, END_DATE, TITLE);
         given(placeCatalog.find(SOURCE_ID)).willReturn(Optional.empty());
 
         // when & then
@@ -557,7 +731,7 @@ class TripServiceTest extends DatabaseIntegrationTest {
     void 같은_장소를_한_여행에_여러_번_추가할_수_있다() {
         // given
         Long userId = saveUser();
-        Long tripId = tripService.create(userId, START_DATE, END_DATE);
+        Long tripId = tripService.create(userId, START_DATE, END_DATE, TITLE);
         givenTourPlace();
 
         // when
@@ -573,7 +747,7 @@ class TripServiceTest extends DatabaseIntegrationTest {
     void 직접_고른_위치와_이름으로_추가하면_일차와_메모와_추가한_회원이_저장된다() {
         // given
         Long userId = saveUser();
-        Long tripId = tripService.create(userId, START_DATE, END_DATE);
+        Long tripId = tripService.create(userId, START_DATE, END_DATE, TITLE);
 
         // when
         Long tripPlaceId = tripService.addCustomPlace(userId, tripId, customCommand(2, "체크인 4시"));
@@ -590,7 +764,7 @@ class TripServiceTest extends DatabaseIntegrationTest {
         // given
         Long ownerId = saveUser();
         Long memberId = saveUser("멤버");
-        Long tripId = tripService.create(ownerId, START_DATE, END_DATE);
+        Long tripId = tripService.create(ownerId, START_DATE, END_DATE, TITLE);
         Long roomId = tripService.createRoom(ownerId, tripId, ROOM_NAME);
         joinRoom(roomId, ownerId, memberId);
 
@@ -608,7 +782,7 @@ class TripServiceTest extends DatabaseIntegrationTest {
         // given
         Long ownerId = saveUser();
         Long otherId = saveUser("다른 회원");
-        Long tripId = tripService.create(ownerId, START_DATE, END_DATE);
+        Long tripId = tripService.create(ownerId, START_DATE, END_DATE, TITLE);
 
         // when & then
         assertThatThrownBy(() -> tripService.addCustomPlace(otherId, tripId, customCommand(null, null)))
@@ -621,7 +795,7 @@ class TripServiceTest extends DatabaseIntegrationTest {
     void 일차가_기간을_벗어나면_직접_추가를_거부하고_장소를_저장하지_않는다() {
         // given
         Long userId = saveUser();
-        Long tripId = tripService.create(userId, START_DATE, END_DATE);
+        Long tripId = tripService.create(userId, START_DATE, END_DATE, TITLE);
 
         // when & then
         assertThatThrownBy(() -> tripService.addCustomPlace(userId, tripId, customCommand(5, null)))
@@ -634,7 +808,7 @@ class TripServiceTest extends DatabaseIntegrationTest {
     void 좌표가_범위를_벗어나면_직접_추가를_거부하고_장소를_저장하지_않는다() {
         // given
         Long userId = saveUser();
-        Long tripId = tripService.create(userId, START_DATE, END_DATE);
+        Long tripId = tripService.create(userId, START_DATE, END_DATE, TITLE);
         AddTripCustomPlaceCommand command = new AddTripCustomPlaceCommand(
                 "숙소", new BigDecimal("91"), new BigDecimal("126.5311884"), null, null);
 
@@ -649,7 +823,7 @@ class TripServiceTest extends DatabaseIntegrationTest {
     void 메모가_너무_길면_거부하고_직접_추가한_장소도_남기지_않는다() {
         // given
         Long userId = saveUser();
-        Long tripId = tripService.create(userId, START_DATE, END_DATE);
+        Long tripId = tripService.create(userId, START_DATE, END_DATE, TITLE);
         String memo = "가".repeat(TripPlace.MAX_MEMO_LENGTH + 1);
 
         // when & then
@@ -664,7 +838,7 @@ class TripServiceTest extends DatabaseIntegrationTest {
     void 담긴_장소가_없으면_빈_목록을_돌려준다() {
         // given
         Long userId = saveUser();
-        Long tripId = tripService.create(userId, START_DATE, END_DATE);
+        Long tripId = tripService.create(userId, START_DATE, END_DATE, TITLE);
 
         // when
         List<TripPlaceResult> places = tripService.findPlaces(userId, tripId);
@@ -689,7 +863,7 @@ class TripServiceTest extends DatabaseIntegrationTest {
         // given
         Long ownerId = saveUser();
         Long otherId = saveUser("다른 회원");
-        Long tripId = tripService.create(ownerId, START_DATE, END_DATE);
+        Long tripId = tripService.create(ownerId, START_DATE, END_DATE, TITLE);
 
         // when & then
         assertThatThrownBy(() -> tripService.findPlaces(otherId, tripId))
@@ -701,7 +875,7 @@ class TripServiceTest extends DatabaseIntegrationTest {
     void 장소마다_이름_좌표_일차_메모_추가한_회원을_돌려준다() {
         // given
         Long userId = saveUser();
-        Long tripId = tripService.create(userId, START_DATE, END_DATE);
+        Long tripId = tripService.create(userId, START_DATE, END_DATE, TITLE);
         Long tripPlaceId = tripService.addCustomPlace(userId, tripId, customCommand(2, "체크인 4시"));
 
         // when
@@ -720,7 +894,7 @@ class TripServiceTest extends DatabaseIntegrationTest {
     void 검색으로_추가한_장소는_출처를_TOUR로_분류와_주소를_함께_돌려준다() {
         // given
         Long userId = saveUser();
-        Long tripId = tripService.create(userId, START_DATE, END_DATE);
+        Long tripId = tripService.create(userId, START_DATE, END_DATE, TITLE);
         givenTourPlace();
         tripService.addPlace(userId, tripId, command(1, null));
 
@@ -738,7 +912,7 @@ class TripServiceTest extends DatabaseIntegrationTest {
     void 직접_추가한_장소는_출처를_CUSTOM으로_분류와_주소_없이_돌려준다() {
         // given
         Long userId = saveUser();
-        Long tripId = tripService.create(userId, START_DATE, END_DATE);
+        Long tripId = tripService.create(userId, START_DATE, END_DATE, TITLE);
         tripService.addCustomPlace(userId, tripId, customCommand(null, null));
 
         // when
@@ -754,7 +928,7 @@ class TripServiceTest extends DatabaseIntegrationTest {
     void 담긴_장소를_일차_순서대로_돌려주고_일차_미정은_마지막에_둔다() {
         // given
         Long userId = saveUser();
-        Long tripId = tripService.create(userId, START_DATE, END_DATE);
+        Long tripId = tripService.create(userId, START_DATE, END_DATE, TITLE);
         tripService.addCustomPlace(userId, tripId, customCommand(null, "미정"));
         tripService.addCustomPlace(userId, tripId, customCommand(3, "3일차"));
         tripService.addCustomPlace(userId, tripId, customCommand(1, "1일차"));
@@ -771,7 +945,7 @@ class TripServiceTest extends DatabaseIntegrationTest {
     void 같은_일차의_장소는_추가한_순서대로_돌려준다() {
         // given
         Long userId = saveUser();
-        Long tripId = tripService.create(userId, START_DATE, END_DATE);
+        Long tripId = tripService.create(userId, START_DATE, END_DATE, TITLE);
         tripService.addCustomPlace(userId, tripId, customCommand(2, "처음"));
         tripService.addCustomPlace(userId, tripId, customCommand(2, "두 번째"));
         tripService.addCustomPlace(userId, tripId, customCommand(2, "세 번째"));
@@ -790,8 +964,8 @@ class TripServiceTest extends DatabaseIntegrationTest {
     void 다른_여행에_담긴_장소는_포함하지_않는다() {
         // given
         Long userId = saveUser();
-        Long tripId = tripService.create(userId, START_DATE, END_DATE);
-        Long otherTripId = tripService.create(userId, START_DATE, END_DATE);
+        Long tripId = tripService.create(userId, START_DATE, END_DATE, TITLE);
+        Long otherTripId = tripService.create(userId, START_DATE, END_DATE, TITLE);
         tripService.addCustomPlace(userId, tripId, customCommand(1, "이 여행"));
         tripService.addCustomPlace(userId, otherTripId, customCommand(1, "다른 여행"));
 
@@ -807,7 +981,7 @@ class TripServiceTest extends DatabaseIntegrationTest {
         // given
         Long ownerId = saveUser();
         Long memberId = saveUser("멤버");
-        Long tripId = tripService.create(ownerId, START_DATE, END_DATE);
+        Long tripId = tripService.create(ownerId, START_DATE, END_DATE, TITLE);
         Long roomId = tripService.createRoom(ownerId, tripId, ROOM_NAME);
         joinRoom(roomId, ownerId, memberId);
         tripService.addCustomPlace(ownerId, tripId, customCommand(1, null));
@@ -826,7 +1000,7 @@ class TripServiceTest extends DatabaseIntegrationTest {
         // given
         Long ownerId = saveUser();
         Long memberId = saveUser("멤버");
-        Long tripId = tripService.create(ownerId, START_DATE, END_DATE);
+        Long tripId = tripService.create(ownerId, START_DATE, END_DATE, TITLE);
         Long roomId = tripService.createRoom(ownerId, tripId, ROOM_NAME);
         joinRoom(roomId, ownerId, memberId);
         roomService.leave(roomId, memberId);
@@ -841,7 +1015,7 @@ class TripServiceTest extends DatabaseIntegrationTest {
     void 장소_목록을_조회할_때_TourAPI를_호출하지_않는다() {
         // given
         Long userId = saveUser();
-        Long tripId = tripService.create(userId, START_DATE, END_DATE);
+        Long tripId = tripService.create(userId, START_DATE, END_DATE, TITLE);
         givenTourPlace();
         tripService.addPlace(userId, tripId, command(1, null));
         clearInvocations(placeCatalog);

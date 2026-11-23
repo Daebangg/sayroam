@@ -83,7 +83,7 @@ domain은 어떤 계층도 참조하지 않습니다. infrastructure는 applicat
 
 - `application/dto`의 입력은 유스케이스 이름에 `Command`를 붙입니다. 예: `UpdateUserProfileCommand`. 조회 조건이면 `Query`를 붙입니다.
 - `application/dto`의 출력은 담긴 내용에 `Result`를 붙입니다. 예: `UserProfileResult`. 여러 유스케이스가 같은 결과를 반환하면 하나를 함께 씁니다.
-- 인자가 한두 개인 유스케이스는 `Command`를 만들지 않고 값을 직접 받습니다.
+- 유스케이스 메서드의 인자가 4개 이하면 `Command`를 만들지 않고 값을 직접 받습니다. 5개 이상이거나, 입력을 묶어서 검증·변환해야 할 때만 `Command`로 묶습니다.
 - `presentation/dto`의 클래스는 `XxxRequest`, `XxxResponse`로 이름 짓습니다.
 - 서비스는 `Request`·`Response` 타입을 받거나 반환하지 않습니다. 컨트롤러가 `Request`를 `Command`로, `Result`를 `Response`로 변환합니다.
 

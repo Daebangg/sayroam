@@ -41,6 +41,7 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -76,7 +77,7 @@ class TripControllerTest {
     @Test
     void 로그인한_회원의_기간으로_여행을_만들고_201과_여행_ID를_응답한다() throws Exception {
         // given
-        given(tripService.create(USER_ID, START_DATE, END_DATE)).willReturn(TRIP_ID);
+        given(tripService.create(USER_ID, START_DATE, END_DATE, null)).willReturn(TRIP_ID);
 
         // when & then
         mvc.perform(createTripRequest("""
@@ -84,6 +85,34 @@ class TripControllerTest {
                         """).with(login()))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.tripId").value(TRIP_ID));
+    }
+
+    @Test
+    void 여행_생성_요청의_제목을_서비스에_전달한다() throws Exception {
+        // given
+        given(tripService.create(USER_ID, START_DATE, END_DATE, "제주 여행")).willReturn(TRIP_ID);
+
+        // when & then
+        mvc.perform(createTripRequest("""
+                        {"startDate": "2026-12-01", "endDate": "2026-12-04", "title": "제주 여행"}
+                        """).with(login()))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.tripId").value(TRIP_ID));
+    }
+
+    @Test
+    void 제목이_30자를_넘으면_400과_에러_코드를_응답한다() throws Exception {
+        // given
+        String title = "가".repeat(31);
+        given(tripService.create(USER_ID, START_DATE, END_DATE, title))
+                .willThrow(new BusinessException(TripErrorCode.TRIP_TITLE_TOO_LONG));
+
+        // when & then
+        mvc.perform(createTripRequest("""
+                        {"startDate": "2026-12-01", "endDate": "2026-12-04", "title": "%s"}
+                        """.formatted(title)).with(login()))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("TRIP_TITLE_TOO_LONG"));
     }
 
     @Test
@@ -126,7 +155,7 @@ class TripControllerTest {
     @Test
     void 종료일이_시작일보다_앞서면_400과_에러_코드를_응답한다() throws Exception {
         // given
-        given(tripService.create(USER_ID, END_DATE, START_DATE))
+        given(tripService.create(USER_ID, END_DATE, START_DATE, null))
                 .willThrow(new BusinessException(TravelPeriodErrorCode.TRAVEL_PERIOD_END_BEFORE_START));
 
         // when & then
@@ -144,6 +173,75 @@ class TripControllerTest {
                         {"startDate": "2026/12/01", "endDate": "2026-12-04"}
                         """).with(login()))
                 .andExpect(status().isBadRequest());
+
+        then(tripService).shouldHaveNoInteractions();
+    }
+
+    @Test
+    void 여행_이름을_바꾸면_200과_바뀐_여행을_응답한다() throws Exception {
+        // given
+        given(tripService.rename(USER_ID, TRIP_ID, "부산 여행"))
+                .willReturn(new TripSummaryResult(TRIP_ID, "부산 여행", PERIOD, null));
+
+        // when & then
+        mvc.perform(updateTripRequest(TRIP_ID, """
+                        {"title": "부산 여행"}
+                        """).with(login()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.tripId").value(TRIP_ID))
+                .andExpect(jsonPath("$.title").value("부산 여행"))
+                .andExpect(jsonPath("$.startDate").value("2026-12-01"))
+                .andExpect(jsonPath("$.endDate").value("2026-12-04"));
+    }
+
+    @Test
+    void 이름을_보내지_않으면_서비스에_null을_전달한다() throws Exception {
+        // given
+        given(tripService.rename(USER_ID, TRIP_ID, null))
+                .willReturn(new TripSummaryResult(TRIP_ID, "제주 여행", PERIOD, null));
+
+        // when & then
+        mvc.perform(updateTripRequest(TRIP_ID, "{}").with(login()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.title").value("제주 여행"));
+    }
+
+    @Test
+    void 수정할_수_없는_여행이면_404와_에러_코드를_응답한다() throws Exception {
+        // given
+        given(tripService.rename(USER_ID, TRIP_ID, "부산 여행"))
+                .willThrow(new BusinessException(TripErrorCode.TRIP_NOT_FOUND));
+
+        // when & then
+        mvc.perform(updateTripRequest(TRIP_ID, """
+                        {"title": "부산 여행"}
+                        """).with(login()))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("TRIP_NOT_FOUND"));
+    }
+
+    @Test
+    void 바꿀_이름이_30자를_넘으면_400과_에러_코드를_응답한다() throws Exception {
+        // given
+        String title = "가".repeat(31);
+        given(tripService.rename(USER_ID, TRIP_ID, title))
+                .willThrow(new BusinessException(TripErrorCode.TRIP_TITLE_TOO_LONG));
+
+        // when & then
+        mvc.perform(updateTripRequest(TRIP_ID, """
+                        {"title": "%s"}
+                        """.formatted(title)).with(login()))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("TRIP_TITLE_TOO_LONG"));
+    }
+
+    @Test
+    void 로그인하지_않으면_401을_응답하고_여행을_수정하지_않는다() throws Exception {
+        // when & then
+        mvc.perform(updateTripRequest(TRIP_ID, """
+                        {"title": "부산 여행"}
+                        """))
+                .andExpect(status().isUnauthorized());
 
         then(tripService).shouldHaveNoInteractions();
     }
@@ -647,6 +745,12 @@ class TripControllerTest {
 
     private MockHttpServletRequestBuilder createTripRequest(String body) {
         return post("/api/trips")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(body);
+    }
+
+    private MockHttpServletRequestBuilder updateTripRequest(Long tripId, String body) {
+        return patch("/api/trips/{tripId}", tripId)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(body);
     }

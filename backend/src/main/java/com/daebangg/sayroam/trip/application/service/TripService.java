@@ -33,10 +33,22 @@ public class TripService {
     private final RoomService roomService;
 
     @Transactional
-    public Long create(Long userId, LocalDate startDate, LocalDate endDate) {
+    public Long create(Long userId, LocalDate startDate, LocalDate endDate, String title) {
         TravelPeriod period = new TravelPeriod(startDate, endDate);
-        Trip trip = tripRepository.save(new Trip(userId, period));
+        Trip trip = tripRepository.save(new Trip(userId, period, title));
         return trip.getId();
+    }
+
+    @Transactional
+    public TripSummaryResult rename(Long userId, Long tripId, String title) {
+        // 잠금 없이 읽으면 동시에 커밋된 방 연결을 이전 값으로 덮어쓴다
+        Trip trip = tripRepository.findAccessibleForUpdate(userId, tripId)
+                .orElseThrow(() -> new BusinessException(TripErrorCode.TRIP_NOT_FOUND));
+
+        if (title != null) {
+            trip.rename(title);
+        }
+        return TripSummaryResult.from(trip);
     }
 
     @Transactional
