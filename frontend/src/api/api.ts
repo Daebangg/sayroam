@@ -12,7 +12,17 @@ import {
     validateNotificationList,
     validateNotificationSummary,
 } from "./notifications/notificationResponse.ts";
-import { validateCreatedTrip, validateTripList } from "./trips/tripResponse.ts";
+import {
+    validateAddedPlace,
+    validateCreatedRoom,
+    validateCreatedTrip,
+    validateInvitation,
+    validateJoinedRoom,
+    validatePlaceSearch,
+    validateTrip,
+    validateTripList,
+    validateTripPlaces,
+} from "./trips/tripResponse.ts";
 import { validateCurrentUser, validateLoginMethods } from "./users/userResponse.ts";
 import {
     validateIssued,
@@ -34,6 +44,15 @@ export const api = createApiRouter(apiRoutes, {
         getMyNotificationSummary: { parseResponse: validateNotificationSummary },
         listMyTrips: { parseResponse: validateTripList },
         createTrip: { parseResponse: validateCreatedTrip },
+        getTrip: { parseResponse: validateTrip },
+        updateTrip: { parseResponse: validateTrip },
+        listTripPlaces: { parseResponse: validateTripPlaces },
+        addTripPlace: { parseResponse: validateAddedPlace },
+        addTripCustomPlace: { parseResponse: validateAddedPlace },
+        searchPlaces: { parseResponse: validatePlaceSearch },
+        createTripRoom: { parseResponse: validateCreatedRoom },
+        createInvitation: { parseResponse: validateInvitation },
+        joinByInvitation: { parseResponse: validateJoinedRoom },
         listSocialProviders: { parseResponse: validateProviders },
         startSocialLogin: { cookieAction: "oauth", parseResponse: validateAuthorization },
         exchangeSocialLoginResult: {
