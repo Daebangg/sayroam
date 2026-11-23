@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useLayoutEffect, useRef } from "react";
 
 import { useTheme } from "@/hooks/useTheme";
 
@@ -8,6 +8,23 @@ type LivingCoastProps = {
     initialIntensity?: number;
     animated?: boolean;
 };
+
+let cachedImage: { src: string; decoded: Promise<HTMLImageElement> } | undefined;
+
+function loadCoastImage(src: string): Promise<HTMLImageElement> {
+    if (cachedImage?.src === src) return cachedImage.decoded;
+    const image = new Image();
+    image.src = src;
+    const decoded = image
+        .decode()
+        .then(() => image)
+        .catch((error: unknown) => {
+            if (cachedImage?.decoded === decoded) cachedImage = undefined;
+            throw error;
+        });
+    cachedImage = { src, decoded };
+    return decoded;
+}
 
 // 밤하늘과 달빛은 정적인 레이어로 한 번 그려 프레임마다 풍경을 다시 채색하지 않는다.
 function paintNightCoast(image: HTMLImageElement, width: number, height: number) {
@@ -76,7 +93,7 @@ export function LivingCoast({
     const night = resolved === "dark";
     const canvasRef = useRef<HTMLCanvasElement>(null);
 
-    useEffect(() => {
+    useLayoutEffect(() => {
         const element = canvasRef.current;
         const context = element?.getContext("2d");
         if (!element || !context) return;
@@ -84,8 +101,7 @@ export function LivingCoast({
         const ctx = context;
         const W = 1672,
             H = 941;
-        const img = new Image();
-        let backdrop: CanvasImageSource = img;
+        let backdrop: CanvasImageSource | undefined;
         const intensity = initialIntensity;
         let t = 0;
         let last = 0;
@@ -95,15 +111,15 @@ export function LivingCoast({
         const reducedMedia = window.matchMedia("(prefers-reduced-motion: reduce)");
         let reduced = reducedMedia.matches;
 
-        function ready(): boolean {
-            return img.complete && img.naturalWidth > 0;
-        }
         function resize(): void {
+            if (!backdrop) return;
             const rect = canvas.getBoundingClientRect();
             if (!rect.width || !rect.height) return;
             const dpr = Math.min(window.devicePixelRatio || 1, 2);
-            canvas.width = Math.max(1, Math.round(rect.width * dpr));
-            canvas.height = Math.max(1, Math.round(rect.height * dpr));
+            const width = Math.max(1, Math.round(rect.width * dpr));
+            const height = Math.max(1, Math.round(rect.height * dpr));
+            if (canvas.width !== width) canvas.width = width;
+            if (canvas.height !== height) canvas.height = height;
             // Cover the background without stretching the original scene.
             const scale = Math.max(canvas.width / W, canvas.height / H);
             ctx.setTransform(
@@ -114,7 +130,7 @@ export function LivingCoast({
                 (canvas.width - W * scale) * 0.65,
                 canvas.height - H * scale,
             );
-            if (ready()) draw();
+            syncPlayback();
         }
         // 두 개의 부드러운 구름만 유지해 넓은 하늘 여백을 살립니다.
         const clouds = [
@@ -408,6 +424,7 @@ export function LivingCoast({
         }
 
         function draw() {
+            if (!backdrop) return;
             ctx.clearRect(0, 0, W, H);
             ctx.drawImage(backdrop, 0, 0, W, H);
             if (!night) drawSunlight();
@@ -418,6 +435,7 @@ export function LivingCoast({
             drawSunReflections();
             ctx.restore();
             drawBoat();
+            if (!canvas.hasAttribute("data-painted")) canvas.setAttribute("data-painted", "");
         }
 
         function stop(): void {
@@ -426,7 +444,7 @@ export function LivingCoast({
             last = 0;
         }
         function canAnimate(): boolean {
-            return animated && !disposed && visible && !document.hidden && !reduced && ready();
+            return animated && !disposed && visible && !document.hidden && !reduced && !!backdrop;
         }
         function loop(ms: number): void {
             frameId = 0;
@@ -439,7 +457,7 @@ export function LivingCoast({
         }
         function syncPlayback(): void {
             stop();
-            if (disposed || !ready()) return;
+            if (disposed || !backdrop) return;
             if (visible && !document.hidden) draw();
             if (canAnimate()) frameId = window.requestAnimationFrame(loop);
         }
@@ -456,14 +474,16 @@ export function LivingCoast({
         };
         reducedMedia.addEventListener("change", onReducedMotionChange);
         document.addEventListener("visibilitychange", syncPlayback);
-        img.onload = () => {
-            if (disposed) return;
-            if (night) backdrop = paintNightCoast(img, W, H);
-            resize();
-            syncPlayback();
-        };
-        img.src = imageSrc;
-        resize();
+        void loadCoastImage(imageSrc).then(
+            (image) => {
+                if (disposed) return;
+                backdrop = night ? paintNightCoast(image, W, H) : image;
+                resize();
+            },
+            () => {
+                /* Keep the themed background if the decorative image is unavailable. */
+            },
+        );
 
         return () => {
             disposed = true;
@@ -472,13 +492,12 @@ export function LivingCoast({
             intersectionObserver.disconnect();
             reducedMedia.removeEventListener("change", onReducedMotionChange);
             document.removeEventListener("visibilitychange", syncPlayback);
-            img.onload = null;
         };
     }, [imageSrc, initialIntensity, animated, night]);
 
     return (
         <div className={`living-coast ${className}`} aria-hidden="true">
-            <canvas key={resolved} ref={canvasRef} className="living-coast__canvas" />
+            <canvas ref={canvasRef} className="living-coast__canvas" />
         </div>
     );
 }

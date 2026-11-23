@@ -8936,7 +8936,7 @@ p {
     width: 100%;
     height: 100%;
     overflow: hidden;
-    background: url("/images/sayroam-coast.png") 65% bottom / cover no-repeat;
+    background: linear-gradient(#b4dcfa, #cce7ff 72%, #6299d4);
 }
 :root[data-theme="dark"] .living-coast {
     background: linear-gradient(#132540, #334d73 72%, #183657);
@@ -8952,7 +8952,11 @@ p {
     z-index: -1;
     pointer-events: none;
     overflow: hidden;
-    animation: roam-scenery-reveal 1.5s cubic-bezier(0.22, 0.61, 0.36, 1) both;
+}
+@media (prefers-reduced-motion: no-preference) {
+    .roam-landscape:not(.roam-landscape--subtle) .living-coast__canvas[data-painted] {
+        animation: roam-scenery-reveal 1.5s cubic-bezier(0.22, 0.61, 0.36, 1) both;
+    }
 }
 @keyframes roam-scenery-reveal {
     from {
@@ -9038,7 +9042,6 @@ p {
     }
 }
 @media (prefers-reduced-motion: reduce) {
-    .roam-landscape,
     .roam-discovery-message {
         animation: none;
     }
@@ -9180,7 +9183,6 @@ p {
 
 .roam-landscape--subtle {
     opacity: 0.2;
-    animation: none;
 }
 
 :root[data-theme="dark"] .roam-landscape--subtle {
