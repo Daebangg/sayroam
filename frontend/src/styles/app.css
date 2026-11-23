@@ -9173,6 +9173,8 @@ p {
 }
 .trip-map {
     position: relative;
+    /* Leaflet 내부 레이어의 z-index(최대 1000)가 머리글·dock·패널 위로 올라오지 않게 지도 안에 가둔다. */
+    isolation: isolate;
     order: 2;
     min-height: 0;
 }

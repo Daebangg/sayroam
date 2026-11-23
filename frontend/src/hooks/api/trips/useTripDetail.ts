@@ -14,12 +14,13 @@ type TripDetail = {
     adding: boolean;
     reload: () => void;
     rename: (title: string) => Promise<RenameResult>;
-    addPlace: (sourceId: string, day: number | null) => Promise<boolean>;
+    /** 추가했으면 true, 실패하면 false, 이미 다른 추가가 진행 중이라 보내지 않았으면 null */
+    addPlace: (sourceId: string, day: number | null) => Promise<boolean | null>;
     addCustomPlace: (
         location: PickedLocation,
         name: string,
         day: number | null,
-    ) => Promise<boolean>;
+    ) => Promise<boolean | null>;
     /** 초대 코드를 새로 발급한다. 채팅방이 없는 여행이면 채팅방을 먼저 만들어 연결한다. 실패하면 null */
     createInvitation: () => Promise<string | null>;
 };
@@ -78,30 +79,32 @@ export function useTripDetail(tripId: number): TripDetail {
         }
     }
 
-    // 추가는 반복하면 같은 장소가 여러 번 담기므로 진행 중에는 다시 보내지 않고 자동 재시도도 하지 않는다.
-    async function add(send: () => Promise<unknown>): Promise<boolean> {
-        if (pending.current) return false;
+    // 추가는 반복하면 같은 장소가 여러 번 담기므로 목록을 다시 받을 때까지 다시 보내지 않고 자동 재시도도 하지 않는다.
+    async function add(send: () => Promise<unknown>): Promise<boolean | null> {
+        if (pending.current) return null;
         pending.current = true;
         setAdding(true);
         try {
-            await send();
-        } catch {
-            return false;
+            try {
+                await send();
+            } catch {
+                return false;
+            }
+            try {
+                const list = await api.call("listTripPlaces", { params: { path: { tripId } } });
+                setPlaces(list.places);
+            } catch {
+                // 추가는 끝났으므로 목록 갱신이 실패해도 성공으로 알리고 다음 조회에서 맞춘다.
+            }
+            return true;
         } finally {
+            // 추가 뒤 목록 재조회까지 끝나야 잠금을 푼다. 그 전에 같은 결과를 다시 눌러도 보내지 않는다.
             pending.current = false;
             setAdding(false);
         }
-        // 추가는 끝났으므로 목록 갱신이 실패해도 성공으로 알리고 다음 조회에서 맞춘다.
-        try {
-            const list = await api.call("listTripPlaces", { params: { path: { tripId } } });
-            setPlaces(list.places);
-        } catch {
-            // 무시
-        }
-        return true;
     }
 
-    function addPlace(sourceId: string, day: number | null): Promise<boolean> {
+    function addPlace(sourceId: string, day: number | null): Promise<boolean | null> {
         return add(() =>
             api.call("addTripPlace", { params: { path: { tripId } }, body: { sourceId, day } }),
         );
@@ -111,7 +114,7 @@ export function useTripDetail(tripId: number): TripDetail {
         location: PickedLocation,
         name: string,
         day: number | null,
-    ): Promise<boolean> {
+    ): Promise<boolean | null> {
         return add(() =>
             api.call("addTripCustomPlace", {
                 params: { path: { tripId } },

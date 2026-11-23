@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useOutletContext, useParams } from "react-router";
 import { useTranslation } from "react-i18next";
 import { ButtonLink, Button, PageState, Toast, type ToastTone } from "@/components/ui";
@@ -144,7 +144,18 @@ function TripPlanner({ trip, detail }: { trip: MyTrip; detail: ReturnType<typeof
             ?.scrollIntoView({ behavior: "smooth", block: "start" });
     }
 
+    // 추가 상자를 열고 닫을 때마다 바뀐다. 추가가 끝났을 때 그 사이 다른 일차의 상자를 열었으면 닫지 않는다.
+    const addSession = useRef(0);
+
+    function openAdd(key: string) {
+        addSession.current += 1;
+        setAddingKey(key);
+        setQuery("");
+        setPicking(null);
+    }
+
     function closeAdd() {
+        addSession.current += 1;
         setAddingKey(null);
         setQuery("");
         setPicking(null);
@@ -171,18 +182,21 @@ function TripPlanner({ trip, detail }: { trip: MyTrip; detail: ReturnType<typeof
         }
     }
 
-    async function addSearched(section: TripSection, place: SearchedPlace) {
-        const added = await detail.addPlace(place.sourceId, section.day);
-        if (!added) return notify(t("tripDetail.addFailed"), "error");
-        notify(t("tripDetail.placeAdded", { name: place.name }));
-        closeAdd();
-    }
-
-    async function addCustom(section: TripSection, location: PickedLocation, name: string) {
-        const added = await detail.addCustomPlace(location, name, section.day);
+    async function finishAdd(request: Promise<boolean | null>, name: string) {
+        const session = addSession.current;
+        const added = await request;
+        if (added === null) return;
         if (!added) return notify(t("tripDetail.addFailed"), "error");
         notify(t("tripDetail.placeAdded", { name }));
-        closeAdd();
+        if (addSession.current === session) closeAdd();
+    }
+
+    function addSearched(section: TripSection, place: SearchedPlace) {
+        return finishAdd(detail.addPlace(place.sourceId, section.day), place.name);
+    }
+
+    function addCustom(section: TripSection, location: PickedLocation, name: string) {
+        return finishAdd(detail.addCustomPlace(location, name, section.day), name);
     }
 
     return (
@@ -214,11 +228,7 @@ function TripPlanner({ trip, detail }: { trip: MyTrip; detail: ReturnType<typeof
                     onFocusPlace={showOnMap}
                     onActiveChange={setActiveKey}
                     addingKey={addingKey}
-                    onStartAdd={(key) => {
-                        setAddingKey(key);
-                        setQuery("");
-                        setPicking(null);
-                    }}
+                    onStartAdd={openAdd}
                     addBox={
                         addingSection && (
                             <PlaceAddBox

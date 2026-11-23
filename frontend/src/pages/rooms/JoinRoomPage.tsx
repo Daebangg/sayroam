@@ -6,8 +6,13 @@ import { invitationCode, pagePaths } from "@/routing/paths";
 
 // 회원 전용 경로라 App의 MemberGate가 로그인 전 진입을 막고, 로그인 후 같은 주소(해시 포함)로 돌아온다.
 export function JoinRoomPage() {
-    const { t } = useTranslation();
     const code = invitationCode(useLocation().hash);
+    // 같은 화면에서 다른 초대 링크를 열면 이전 코드의 참여 결과를 남기지 않고 처음부터 시작한다.
+    return <JoinRoom key={code ?? ""} code={code} />;
+}
+
+function JoinRoom({ code }: { code: string | null }) {
+    const { t } = useTranslation();
     const { status, join } = useJoinRoom();
     const result =
         code === null
