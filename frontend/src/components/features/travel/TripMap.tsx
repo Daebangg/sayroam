@@ -214,6 +214,8 @@ export function TripMap({
         });
     }, [status, sections, visible, t]);
 
+    // 지도를 불러오는 중에 고른 장소도 지도가 준비되어 핀을 만든 뒤 이동한다.
+    // 핀을 만드는 효과보다 뒤에 두어 같은 렌더에서 핀이 먼저 만들어지게 한다.
     useEffect(() => {
         const instance = map.current;
         const popup = infoWindow.current;
@@ -222,7 +224,7 @@ export function TripMap({
         instance.panTo(target.marker.position);
         instance.setZoom(Math.max(instance.getZoom() ?? 0, FOCUS_ZOOM));
         openPopup(popup, instance, target);
-    }, [focus]);
+    }, [focus, status]);
 
     useEffect(() => {
         const instance = map.current;
