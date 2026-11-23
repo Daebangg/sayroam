@@ -1058,6 +1058,7 @@
         "all": "All",
         "unread": "Unread",
         "readAll": "Mark all as read",
+        "goToRecruitment": "Open · {{target}}",
         "goToPage": "Open",
         "markRead": "Mark as read",
         "markUnread": "Mark as unread",

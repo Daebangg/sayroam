@@ -43,6 +43,10 @@ type NotificationInboxProps = {
     onDelete?: (id: string) => void;
 };
 
+function focusControl(id: string): void {
+    document.getElementById(id)?.focus({ preventScroll: true });
+}
+
 export function NotificationInbox({
     items,
     inline = false,
@@ -68,7 +72,6 @@ export function NotificationInbox({
     const [expandedId, setExpandedId] = useState<string | null>(null);
     const root = useRef<HTMLDivElement>(null);
     const trigger = useRef<HTMLButtonElement>(null);
-    const panel = useRef<HTMLDivElement>(null);
     const bell = useRef<HTMLSpanElement>(null);
     const ring = useRef<Animation | null>(null);
     const knownIds = useRef(new Set(items.map((item) => item.id)));
@@ -128,7 +131,7 @@ export function NotificationInbox({
 
     useEffect(() => {
         if (!open || inline) return;
-        panel.current?.focus({ preventScroll: true });
+        focusControl(id);
         const outside = (event: PointerEvent) => {
             if (event.target instanceof Node && !root.current?.contains(event.target)) {
                 setOpen(false);
@@ -136,7 +139,14 @@ export function NotificationInbox({
         };
         document.addEventListener("pointerdown", outside);
         return () => document.removeEventListener("pointerdown", outside);
-    }, [open, inline]);
+    }, [open, inline, id]);
+
+    function openMessage(item: InboxItem, expanded: boolean): void {
+        if (!item.action) setExpandedId(expanded ? null : item.id);
+        if (expanded || item.isRead || busy || !onReadChange) return;
+        if (unreadOnly && item.action) focusControl(`${id}-unread`);
+        onReadChange(item.id, true);
+    }
 
     function close(): void {
         setOpen(false);
@@ -197,7 +207,6 @@ export function NotificationInbox({
             )}
             {(inline || open) && (
                 <div
-                    ref={panel}
                     id={id}
                     className="notification-inbox__panel ui-menu-surface"
                     role={inline ? "region" : "dialog"}
@@ -214,7 +223,7 @@ export function NotificationInbox({
                                 className="notification-inbox__read-all"
                                 disabled={busy || unreadCount === 0 || !onReadAll}
                                 onClick={() => {
-                                    panel.current?.focus({ preventScroll: true });
+                                    focusControl(id);
                                     setExpandedId(null);
                                     onReadAll?.();
                                 }}
@@ -258,6 +267,7 @@ export function NotificationInbox({
                         <Button
                             variant="plain"
                             className="notification-inbox__filter"
+                            id={`${id}-unread`}
                             aria-pressed={unreadOnly}
                             onClick={() => {
                                 setExpandedId(null);
@@ -333,28 +343,24 @@ export function NotificationInbox({
                                                                     variant="plain"
                                                                     className="notification-inbox__message"
                                                                     aria-describedby={`${id}-meta-${item.id}`}
+                                                                    aria-disabled={
+                                                                        item.action && item.isRead
+                                                                            ? true
+                                                                            : undefined
+                                                                    }
+                                                                    tabIndex={
+                                                                        item.action && item.isRead
+                                                                            ? -1
+                                                                            : undefined
+                                                                    }
                                                                     aria-expanded={
                                                                         item.action
                                                                             ? undefined
                                                                             : expanded
                                                                     }
-                                                                    onClick={() => {
-                                                                        if (!item.action)
-                                                                            setExpandedId(
-                                                                                expanded
-                                                                                    ? null
-                                                                                    : item.id,
-                                                                            );
-                                                                        if (
-                                                                            !expanded &&
-                                                                            !item.isRead &&
-                                                                            !busy
-                                                                        )
-                                                                            onReadChange?.(
-                                                                                item.id,
-                                                                                true,
-                                                                            );
-                                                                    }}
+                                                                    onClick={() =>
+                                                                        openMessage(item, expanded)
+                                                                    }
                                                                 >
                                                                     <span className="notification-inbox__item-title">
                                                                         <span className="notification-inbox__title-text">
@@ -379,9 +385,16 @@ export function NotificationInbox({
                                                                         id={`${id}-meta-${item.id}`}
                                                                     >
                                                                         {item.context && (
-                                                                            <span>
-                                                                                {item.context}
-                                                                            </span>
+                                                                            <Tooltip
+                                                                                content={
+                                                                                    item.context
+                                                                                }
+                                                                                className="notification-inbox__context"
+                                                                            >
+                                                                                <span tabIndex={0}>
+                                                                                    {item.context}
+                                                                                </span>
+                                                                            </Tooltip>
                                                                         )}
                                                                         <span>{item.time}</span>
                                                                     </span>
@@ -391,6 +404,14 @@ export function NotificationInbox({
                                                                                 variant="plain"
                                                                                 className="notification-inbox__action notification-inbox__go"
                                                                                 to={item.action.to}
+                                                                                aria-label={t(
+                                                                                    "inbox.goToRecruitment",
+                                                                                    {
+                                                                                        target:
+                                                                                            item.context ||
+                                                                                            `${item.title} #${item.id}`,
+                                                                                    },
+                                                                                )}
                                                                                 onClick={(
                                                                                     event,
                                                                                 ) => {
@@ -435,10 +456,8 @@ export function NotificationInbox({
                                                                                     !onReadChange
                                                                                 }
                                                                                 onClick={() => {
-                                                                                    panel.current?.focus(
-                                                                                        {
-                                                                                            preventScroll: true,
-                                                                                        },
+                                                                                    focusControl(
+                                                                                        id,
                                                                                     );
                                                                                     onReadChange?.(
                                                                                         item.id,
@@ -475,10 +494,8 @@ export function NotificationInbox({
                                                                                     !onDelete
                                                                                 }
                                                                                 onClick={() => {
-                                                                                    panel.current?.focus(
-                                                                                        {
-                                                                                            preventScroll: true,
-                                                                                        },
+                                                                                    focusControl(
+                                                                                        id,
                                                                                     );
                                                                                     setExpandedId(
                                                                                         null,

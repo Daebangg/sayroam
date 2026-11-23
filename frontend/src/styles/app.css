@@ -8655,11 +8655,18 @@ p {
     line-height: 1.6;
 }
 .notification-inbox__title-text,
-.notification-inbox__meta > span:first-child {
+.notification-inbox__context,
+.notification-inbox__context > span {
     min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+}
+@media (hover: none) {
+    .notification-inbox__context > span {
+        white-space: normal;
+        overflow-wrap: anywhere;
+    }
 }
 .notification-inbox__item.is-expanded .notification-inbox__title-text {
     white-space: normal;

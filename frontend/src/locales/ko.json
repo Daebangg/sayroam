@@ -1058,6 +1058,7 @@
         "all": "전체",
         "unread": "읽지 않음",
         "readAll": "모두 읽음 처리",
+        "goToRecruitment": "이동하기 · {{target}}",
         "goToPage": "이동하기",
         "markRead": "읽음으로 표시",
         "markUnread": "읽지 않음으로 표시",
