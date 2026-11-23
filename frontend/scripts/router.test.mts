@@ -20,6 +20,7 @@ const user = {
     role: "USER",
     createdAt: "2026-11-10T12:00:00Z",
     birthDate: null,
+    profileSetupSeen: false,
 };
 const invalidResponse = (error: unknown): boolean =>
     error instanceof ApiError && error.kind === "invalid-response";

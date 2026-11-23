@@ -49,11 +49,11 @@ class SayroamApplicationTests extends DatabaseIntegrationTest {
                 SELECT COUNT(*) FROM information_schema.tables
                 WHERE table_schema = DATABASE() AND table_type = 'BASE TABLE'
                 """, Integer.class)).isEqualTo(22);
-        assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("21");
+        assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("22");
         flyway.validate();
         assertThat(flyway.migrate().migrationsExecuted).isZero();
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM flyway_schema_history WHERE success = 1",
-                Integer.class)).isEqualTo(21);
+                Integer.class)).isEqualTo(22);
     }
 
     @Test
@@ -287,6 +287,11 @@ class SayroamApplicationTests extends DatabaseIntegrationTest {
                     """, thirtyCharacterTitle);
             assertThat(legacy.queryForObject("SELECT COUNT(*) FROM trip WHERE title = ?",
                     Integer.class, thirtyCharacterTitle)).isEqualTo(1);
+
+            Flyway.configure().dataSource(dataSource).target("22").load().migrate();
+            assertThat(legacy.queryForObject("SELECT profile_setup_seen FROM users WHERE id = 10", Boolean.class)).isTrue();
+            legacy.update("INSERT INTO users (id, nickname, role, created_at, updated_at) VALUES (11, '신규 회원', 'USER', NOW(), NOW())");
+            assertThat(legacy.queryForObject("SELECT profile_setup_seen FROM users WHERE id = 11", Boolean.class)).isFalse();
         }
     }
 

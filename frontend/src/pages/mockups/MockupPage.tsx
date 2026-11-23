@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import { useNavigate, useLocation } from "react-router";
 import { useTranslation } from "react-i18next";
 import { Brand, ButtonLink, DropdownMenu, Icon } from "@/components/ui";
+import { ProfileSetupPage } from "@/pages/onboarding/ProfileSetupPage";
 import { HomePage } from "@/pages/home/HomePage";
 import { TripsPage } from "@/pages/trips/TripsPage";
 import { MatchingPreview } from "./MatchingPreview";
@@ -99,6 +100,12 @@ export function MockupPage({ screen }: { screen: MockupScreen }) {
                         </div>
                     </div>
                 </main>
+            ) : screen === "profile-setup" ? (
+                <ProfileSetupPage
+                    member={{ nickname: "Roam", gender: null, birthDate: null }}
+                    savedStyle={{}}
+                    homePath={mockupUrl("home")}
+                />
             ) : screen === "notifications" ? (
                 <RoamMatePreview key={screen} screen={screen} />
             ) : screen === "home" ? (

@@ -30,6 +30,7 @@ const user: CurrentUserResponse = {
     role: "USER",
     createdAt: "2026-11-10T12:00:00Z",
     birthDate: null,
+    profileSetupSeen: false,
 };
 
 function problem(status: number, code: string): Response {

@@ -16,10 +16,12 @@ public record UserProfileResult(
         Integer birthYear,
         Role role,
         LocalDateTime createdAt,
-        LocalDate birthDate) {
+        LocalDate birthDate,
+        boolean profileSetupSeen) {
 
     public static UserProfileResult from(User user) {
         return new UserProfileResult(user.getId(), user.getEmail(), user.getNickname(),
-                user.getProfileImageUrl(), user.getGender(), user.getBirthYear(), user.getRole(), user.getCreatedAt(), user.getBirthDate());
+                user.getProfileImageUrl(), user.getGender(), user.getBirthYear(), user.getRole(), user.getCreatedAt(),
+                user.getBirthDate(), user.isProfileSetupSeen());
     }
 }

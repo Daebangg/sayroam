@@ -61,6 +61,9 @@ public class UserService {
         User user = requireCurrentUser(userRepository.findForUpdateByIdAndDeletedAtIsNull(userId),
                 expectedAuthVersion);
 
+        if (command.profileSetupSeen()) {
+            user.markProfileSetupSeen();
+        }
         if (command.nickname().present()) {
             user.changeNickname(command.nickname().value());
         }

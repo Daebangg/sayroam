@@ -35,6 +35,7 @@ const user = {
     role: "USER",
     createdAt: "2026-11-10T12:00:00Z",
     birthDate: null,
+    profileSetupSeen: false,
 };
 
 function createGate(): { promise: Promise<void>; resolve: () => void } {

@@ -1,19 +1,10 @@
-import { useNavigate } from "react-router";
-import { PageLeaveDialog } from "@/components/layout/PageLeaveDialog";
-import { ProfileGreetingPage } from "./ProfileGreetingPage";
 import { useEffect, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { Button, DatePicker, IconChoiceGroup, Spinner, Tooltip, Icon } from "@/components/ui";
-import { TravelStyleChoices } from "@/components/features/matching/TravelStyleChoices";
+import { Button } from "@/components/ui";
 import { useTravelStyle } from "@/hooks/api/profile/useTravelStyle";
 import { useProfileEditor } from "@/hooks/api/auth/useProfileEditor";
-import {
-    hasCompleteStyle,
-    profileStyleQuestions,
-    type ProfileStyleValues,
-} from "@/data/profileStyle";
 import type { PageContext } from "@/routing/context";
-import { calendarToday, formatCalendarDate } from "@/components/ui/inputs/calendar";
+import { ProfileSetupPage } from "./ProfileSetupPage";
 
 type ProfileSetupGateProps = {
     member: NonNullable<PageContext["member"]>;
@@ -28,235 +19,65 @@ export function ProfileSetupGate({
     onActivity,
 }: ProfileSetupGateProps) {
     const { t } = useTranslation();
-    const navigate = useNavigate();
-    const [welcoming, setWelcoming] = useState(false);
-    const style = useTravelStyle(member.userId);
+    // 열람 기록이 저장돼도 지금 열린 안내는 계속 진행할 수 있다.
+    const [closed, setClosed] = useState(member.profileSetupSeen);
+    const style = useTravelStyle(closed ? undefined : member.userId);
     const details = useProfileEditor(onUpdate);
-    const storageKey = `sayroam.profile-setup.dismissed.${member.userId}`;
-    const [dismissed, setDismissed] = useState(() => {
-        try {
-            return localStorage.getItem(storageKey) === "1";
-        } catch {
-            return false;
-        }
-    });
-    function dismiss(): void {
-        try {
-            localStorage.setItem(storageKey, "1");
-        } catch {
-            /* Continue for this session if storage is unavailable. */
-        }
-        setDismissed(true);
-    }
-    const [step, setStep] = useState(0);
-    const [gender, setGender] = useState(member.gender);
-    const [birthDate, setBirthDate] = useState(member.birthDate ?? "");
-    const [draft, setDraft] = useState<ProfileStyleValues>({});
-    const [saving, setSaving] = useState(false);
-    const values = { ...style.values, ...draft };
-    const today = formatCalendarDate(calendarToday());
-    const age = birthDate
-        ? Number(today.slice(0, 4)) -
-          Number(birthDate.slice(0, 4)) -
-          (today.slice(5) < birthDate.slice(5) ? 1 : 0)
-        : null;
-    const active = !dismissed;
+    const [visitSaveFailed, setVisitSaveFailed] = useState(false);
+    const [visitAttempt, setVisitAttempt] = useState(0);
+    const active = !closed;
+    const showingSetup = active && (style.values !== null || style.failed);
     useEffect(() => {
-        try {
-            localStorage.setItem(storageKey, dismissed ? "1" : "0");
-        } catch {
-            // The current session can continue when browser storage is unavailable.
-        }
-    }, [storageKey, dismissed]);
+        if (!showingSetup || member.profileSetupSeen) return;
+        const controller = new AbortController();
+        void onUpdate({ profileSetupSeen: true }, controller.signal).catch(() => {
+            if (!controller.signal.aborted) setVisitSaveFailed(true);
+        });
+        return () => controller.abort();
+    }, [showingSetup, member.profileSetupSeen, onUpdate, visitAttempt]);
     useEffect(() => {
-        onActivity(active || welcoming);
+        onActivity(active);
         return () => onActivity(false);
-    }, [active, welcoming, onActivity]);
-    const question = profileStyleQuestions[step - 2];
-    const busy = saving || details.busy || style.busy;
-    const canContinue =
-        step === 0
-            ? gender !== null
-            : step === 1
-              ? Boolean(birthDate)
-              : Boolean(question && values[question]);
-    async function finish(): Promise<void> {
-        if (busy || !gender || !birthDate || !hasCompleteStyle(values)) return;
-        setSaving(true);
-        try {
-            const input: Parameters<typeof details.save>[0] = {};
-            if (member.gender !== gender) input.gender = gender;
-            if (member.birthDate !== birthDate) input.birthDate = birthDate;
-            if (Object.keys(input).length && !(await details.save(input))) return;
-            if (await style.save(values)) {
-                dismiss();
-                setWelcoming(true);
-            }
-        } finally {
-            setSaving(false);
-        }
-    }
-    if (welcoming)
-        return (
-            <ProfileGreetingPage
-                onStart={() => {
-                    setWelcoming(false);
-                    void navigate("/", { replace: true });
-                }}
-            />
-        );
-    if (dismissed) return children;
-    const leaveDialog = (
-        <PageLeaveDialog
-            shouldBlock={({ currentLocation, nextLocation }) =>
-                nextLocation.pathname === "/" || currentLocation.pathname !== nextLocation.pathname
-            }
-            title={t("profileSetup.leaveTitle")}
-            description={t("profileSetup.leaveHint")}
-            stayLabel={t("common.cancel")}
-            leaveLabel={t("profileSetup.leave")}
-            leaveDisabled={busy}
-            onLeave={dismiss}
-        />
-    );
-    if (style.values === null && !style.failed)
-        return (
-            <main id="main-content" tabIndex={-1} className="profile-onboarding">
-                <Spinner label={t("matchingFlow.loading")} />
-                {leaveDialog}
-            </main>
-        );
+    }, [active, onActivity]);
+    if (closed) return children;
     return (
-        <main id="main-content" tabIndex={-1} className="profile-onboarding">
-            <div className="settings-landscape" aria-hidden="true" />
-            <section className="profile-onboarding__content" aria-labelledby="profile-setup-title">
-                <p className="profile-onboarding__eyebrow">
-                    {t("profileSetup.welcome", { nickname: member.nickname })}
-                </p>
-                <h1 id="profile-setup-title">
-                    {t(
-                        step === 0
-                            ? "profileSetup.genderQuestion"
-                            : step === 1
-                              ? "profileSetup.birthdayQuestion"
-                              : `matchingFlow.questions.${question!}`,
-                    )}
-                </h1>
-                <p className="profile-travel-style__hint">{t("profileSetup.intro")}</p>
-                {style.values === null && style.failed ? (
+        <ProfileSetupPage
+            member={member}
+            savedStyle={style.values}
+            styleFailed={style.failed}
+            onReloadStyle={style.reload}
+            busy={details.busy || style.busy || (showingSetup && !member.profileSetupSeen)}
+            homePath="/"
+            onLeave={() => setClosed(true)}
+            visitError={
+                visitSaveFailed && (
                     <div role="alert">
-                        <p>{t("profileSetup.styleError")}</p>
-                        <Button onClick={style.reload}>{t("profileSetup.retry")}</Button>
+                        <p>{t("profileSetup.visitError")}</p>
+                        <Button
+                            onClick={() => {
+                                setVisitSaveFailed(false);
+                                setVisitAttempt((attempt) => attempt + 1);
+                            }}
+                        >
+                            {t("profileSetup.retry")}
+                        </Button>
                     </div>
-                ) : (
-                    <fieldset className="profile-onboarding__input" disabled={busy}>
-                        {step === 0 && (
-                            <IconChoiceGroup
-                                showLabels
-                                label={t("settings.gender")}
-                                value={gender ?? "unset"}
-                                options={[
-                                    {
-                                        value: "MALE",
-                                        label: t("settings.genderValues.MALE"),
-                                        icon: "gender-male",
-                                    },
-                                    {
-                                        value: "FEMALE",
-                                        label: t("settings.genderValues.FEMALE"),
-                                        icon: "gender-female",
-                                    },
-                                ]}
-                                onChange={(value) =>
-                                    setGender(value === "MALE" || value === "FEMALE" ? value : null)
-                                }
-                            />
-                        )}
-                        {step === 1 && (
-                            <div className="profile-onboarding__birthday">
-                                <DatePicker
-                                    yearNavigation
-                                    label={t("settings.birthday")}
-                                    value={birthDate}
-                                    min={`${calendarToday().getUTCFullYear() - 100}-01-01`}
-                                    max={formatCalendarDate(calendarToday())}
-                                    onChange={setBirthDate}
-                                    placeholder={t("profileSetup.birthdayPlaceholder")}
-                                />
-                                {age !== null && (
-                                    <p className="profile-onboarding__age" role="status">
-                                        {t("profileSetup.age", { count: age })}
-                                    </p>
-                                )}
-                            </div>
-                        )}
-                        {question && (
-                            <TravelStyleChoices
-                                question={question}
-                                value={values[question] ?? 0}
-                                onChange={(value) => setDraft({ ...draft, [question]: value })}
-                            />
-                        )}
-                    </fieldset>
-                )}
-                {(details.message || (style.failed && style.values !== null)) && (
-                    <p role="alert" className="profile-travel-style__error">
-                        {details.message
-                            ? t(`settings.detailsMessages.${details.message}`)
-                            : t("profileSetup.styleError")}
-                    </p>
-                )}
-            </section>
-            <Tooltip
-                className="profile-onboarding__nav profile-onboarding__nav--previous"
-                content={t("matchingFlow.previous")}
-            >
-                <Button
-                    variant="plain"
-                    className="matching-step-arrow"
-                    aria-label={t("matchingFlow.previous")}
-                    disabled={busy || step === 0}
-                    onClick={() => setStep(step - 1)}
-                >
-                    <Icon name="arrow" variant="brand" className="matching-back-arrow" />
-                </Button>
-            </Tooltip>
-            <Tooltip
-                className="profile-onboarding__nav profile-onboarding__nav--next"
-                content={t(
-                    !canContinue || style.values === null
-                        ? "profileSetup.later"
-                        : step === 5
-                          ? "profileSetup.finish"
-                          : "matchingFlow.next",
-                )}
-            >
-                <Button
-                    variant="plain"
-                    className="matching-step-arrow"
-                    aria-label={t(
-                        !canContinue || style.values === null
-                            ? "profileSetup.later"
-                            : step === 5
-                              ? "profileSetup.finish"
-                              : "matchingFlow.next",
-                    )}
-                    disabled={busy}
-                    aria-busy={saving || undefined}
-                    onClick={() => {
-                        if (!canContinue || style.values === null) dismiss();
-                        else if (step === 5) void finish();
-                        else setStep(step + 1);
-                    }}
-                >
-                    {saving ? (
-                        <Spinner label={t("matchingFlow.loading")} labelHidden />
-                    ) : (
-                        <Icon name="arrow" variant="brand" />
-                    )}
-                </Button>
-            </Tooltip>
-            {leaveDialog}
-        </main>
+                )
+            }
+            error={
+                details.message
+                    ? t(`settings.detailsMessages.${details.message}`)
+                    : style.failed && style.values !== null
+                      ? t("profileSetup.styleError")
+                      : null
+            }
+            onSave={async (gender, birthDate, values) => {
+                const input: Parameters<typeof details.save>[0] = {};
+                if (member.gender !== gender) input.gender = gender;
+                if (member.birthDate !== birthDate) input.birthDate = birthDate;
+                if (Object.keys(input).length && !(await details.save(input))) return false;
+                return style.save(values);
+            }}
+        />
     );
 }

@@ -20,7 +20,8 @@
   "birthYear": null,
   "role": "USER",
   "createdAt": "2026-11-10T12:00:00Z",
-  "birthDate": null
+  "birthDate": null,
+  "profileSetupSeen": false
 }
 ```
 
@@ -28,16 +29,20 @@
 `createdAt`은 수정할 수 없는 가입 시각이며 UTC ISO 8601 형식입니다.
 `gender`는 `MALE`·`FEMALE`·null입니다. 선택 정보의 null은 미설정 상태를 의미합니다.
 
-PATCH 본문은 JSON 객체이며 아래 다섯 필드만 허용합니다. `{}`는 현재 상태를 그대로 반환합니다.
+PATCH 본문은 JSON 객체이며 아래 필드만 허용합니다. `{}`는 현재 상태를 그대로 반환합니다.
 생략한 필드는 유지하고, 선택 정보의 명시적 null은 기존 값을 제거합니다.
 
 | 필드 | 설정·변경 기준 | null |
 | --- | --- | --- |
+| `profileSetupSeen` | 초기 안내 화면이 표시되면 `true`를 저장. 같은 요청을 반복할 수 있음 | 거절 |
 | `nickname` | 앞뒤 공백 제거 후 필수 1~50자, 제어·숨김·줄바꿈 문자 불가 | 거절 |
 | `profileImageUrl` | 앞뒤 공백 제거 후 최대 500자, 호스트가 있는 HTTP(S) URL 또는 제공된 `/brand/avatars/{preset}.svg` 경로, 사용자 정보 불가 | 제거 |
 | `gender` | `MALE` 또는 `FEMALE` 문자열 | 미설정으로 변경 |
 | `birthDate` | `YYYY-MM-DD` 형식의 실제 날짜, 오늘 이하 | 생일·출생연도 제거 |
 | `birthYear` | JSON 정수, 1 이상·현재 연도 이하 | 미설정으로 변경 |
+
+V22 적용 시점의 기존 회원은 초기 안내를 생략합니다. 이후 가입한 회원은 안내 화면이 처음 표시될 때
+계정에 열람 이력을 기록하므로, 입력 도중 종료하거나 다른 브라우저에서 로그인해도 안내가 다시 뜨지 않습니다.
 
 `birthDate`를 저장하면 `birthYear`도 해당 연도로 맞춥니다. 두 필드는 한 요청에 함께 보낼 수 없습니다.
 기존 연도만 있는 회원의 생일은 임의로 만들지 않고 null로 유지합니다. 기존 `birthYear` 변경은 정확한 생일과 연도가 다를 때 생일을 지웁니다.

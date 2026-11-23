@@ -20,11 +20,12 @@ public record CurrentUserResponse(
                 requiredMode = Schema.RequiredMode.REQUIRED) Integer birthYear,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) Role role,
         @Schema(description = "가입 시각(UTC)", example = "2026-11-10T12:00:00Z", requiredMode = Schema.RequiredMode.REQUIRED) Instant createdAt,
-        @Schema(description = "생일. 연도만 등록된 기존 계정은 null", types = {"string", "null"}, format = "date", requiredMode = Schema.RequiredMode.REQUIRED) LocalDate birthDate) {
+        @Schema(description = "생일. 연도만 등록된 기존 계정은 null", types = {"string", "null"}, format = "date", requiredMode = Schema.RequiredMode.REQUIRED) LocalDate birthDate,
+        @Schema(description = "초기 프로필 안내를 이미 본 회원인지 여부", requiredMode = Schema.RequiredMode.REQUIRED) boolean profileSetupSeen) {
 
     public static CurrentUserResponse from(UserProfileResult profile) {
         return new CurrentUserResponse(profile.userId(), profile.email(), profile.nickname(),
                 profile.profileImageUrl(), profile.gender(), profile.birthYear(), profile.role(),
-                profile.createdAt().toInstant(ZoneOffset.UTC), profile.birthDate());
+                profile.createdAt().toInstant(ZoneOffset.UTC), profile.birthDate(), profile.profileSetupSeen());
     }
 }

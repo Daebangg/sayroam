@@ -38,6 +38,8 @@ export function validateCurrentUser(value: unknown, status: number): CurrentUser
                 value.birthYear <= 0)) ||
         !("birthDate" in value) ||
         !isBirthDate(value.birthDate) ||
+        !("profileSetupSeen" in value) ||
+        typeof value.profileSetupSeen !== "boolean" ||
         !("createdAt" in value) ||
         typeof value.createdAt !== "string" ||
         !value.createdAt.endsWith("Z") ||
@@ -56,6 +58,7 @@ export function validateCurrentUser(value: unknown, status: number): CurrentUser
         role: value.role,
         createdAt: value.createdAt,
         birthDate: value.birthDate,
+        profileSetupSeen: value.profileSetupSeen,
     };
 }
 

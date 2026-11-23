@@ -1,6 +1,7 @@
 export const mockupScreens = [
     "welcome",
     "onboarding",
+    "profile-setup",
     "home",
     "trips",
     "matching",
