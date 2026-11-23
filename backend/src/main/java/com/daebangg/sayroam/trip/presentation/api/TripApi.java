@@ -12,6 +12,7 @@ import com.daebangg.sayroam.trip.presentation.dto.TripListResponse;
 import com.daebangg.sayroam.trip.presentation.dto.TripPlaceListResponse;
 import com.daebangg.sayroam.trip.presentation.dto.TripSummaryResponse;
 import com.daebangg.sayroam.trip.presentation.dto.UpdateTripRequest;
+import com.daebangg.sayroam.trip.presentation.dto.UpdateTripResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -44,16 +45,16 @@ public interface TripApi {
                     + "수정할 수 없는 여행은 없는 여행과 같이 404로 응답합니다.",
             security = @SecurityRequirement(name = "bearerAuth"))
     @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "여행 수정 완료. 수정된 여행을 응답"),
+            @ApiResponse(responseCode = "200", description = "여행 수정 완료. 여행 ID와 저장된 이름을 응답"),
             @ApiResponse(responseCode = "400", ref = "#/components/responses/TripUpdateBadRequest"),
             @ApiResponse(responseCode = "401", ref = "#/components/responses/Unauthorized"),
             @ApiResponse(responseCode = "404", ref = "#/components/responses/TripNotFound"),
             @ApiResponse(responseCode = "503", ref = "#/components/responses/AuthenticationUnavailable"),
             @ApiResponse(responseCode = "500", ref = "#/components/responses/InternalServerError")
     })
-    ResponseEntity<TripSummaryResponse> update(@Parameter(hidden = true) @AuthenticationPrincipal AuthenticatedAccount account,
-                                               @Parameter(description = "여행 ID", example = "12") Long tripId,
-                                               @RequestBody UpdateTripRequest request);
+    ResponseEntity<UpdateTripResponse> update(@Parameter(hidden = true) @AuthenticationPrincipal AuthenticatedAccount account,
+                                              @Parameter(description = "여행 ID", example = "12") Long tripId,
+                                              @RequestBody UpdateTripRequest request);
 
     @Operation(operationId = "createTripRoom", summary = "여행에 채팅방 만들어 연결",
             description = "방이 없는 여행에 채팅방을 만들고, 요청한 회원을 방장으로 등록한 뒤 여행에 연결합니다. "

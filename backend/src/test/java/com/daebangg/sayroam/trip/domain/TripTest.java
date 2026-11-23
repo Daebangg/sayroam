@@ -16,6 +16,7 @@ class TripTest {
     private static final Long OTHER_USER_ID = 2L;
     private static final Long ROOM_ID = 3L;
     private static final Long OTHER_ROOM_ID = 99L;
+    private static final Long DESTINATION_ID = 4L;
     private static final TravelPeriod PERIOD =
             new TravelPeriod(LocalDate.of(2026, 12, 1), LocalDate.of(2026, 12, 4));
     private static final String TITLE = "제주 여행";
@@ -26,22 +27,33 @@ class TripTest {
         TravelPeriod noPeriod = null;
 
         // when & then
-        assertThatThrownBy(() -> new Trip(USER_ID, noPeriod, TITLE))
+        assertThatThrownBy(() -> new Trip(USER_ID, DESTINATION_ID, noPeriod, TITLE))
                 .isInstanceOfSatisfying(BusinessException.class,
                         e -> assertThat(e.getErrorCode()).isEqualTo(TripErrorCode.TRIP_PERIOD_REQUIRED));
     }
 
     @Test
+    void 목적지가_없으면_여행을_만들_수_없다() {
+        // given
+        Long noDestination = null;
+
+        // when & then
+        assertThatThrownBy(() -> new Trip(USER_ID, noDestination, PERIOD, TITLE))
+                .isInstanceOfSatisfying(BusinessException.class,
+                        e -> assertThat(e.getErrorCode()).isEqualTo(TripErrorCode.TRIP_DESTINATION_REQUIRED));
+    }
+
+    @Test
     void 기간이_있으면_여행을_만들_수_있다() {
         // when & then
-        assertThatCode(() -> new Trip(USER_ID, PERIOD, TITLE))
+        assertThatCode(() -> new Trip(USER_ID, DESTINATION_ID, PERIOD, TITLE))
                 .doesNotThrowAnyException();
     }
 
     @Test
     void 제목의_앞뒤_공백을_지워_저장한다() {
         // when
-        Trip trip = new Trip(USER_ID, PERIOD, "  제주 여행 ");
+        Trip trip = new Trip(USER_ID, DESTINATION_ID, PERIOD, "  제주 여행 ");
 
         // then
         assertThat(trip.getTitle()).isEqualTo("제주 여행");
@@ -50,7 +62,7 @@ class TripTest {
     @Test
     void 제목_없이_만든_여행은_제목이_없다() {
         // when
-        Trip trip = new Trip(USER_ID, PERIOD, null);
+        Trip trip = new Trip(USER_ID, DESTINATION_ID, PERIOD, null);
 
         // then
         assertThat(trip.getTitle()).isNull();
@@ -59,7 +71,7 @@ class TripTest {
     @Test
     void 공백뿐인_제목은_제목_없음으로_저장한다() {
         // when
-        Trip trip = new Trip(USER_ID, PERIOD, "   ");
+        Trip trip = new Trip(USER_ID, DESTINATION_ID, PERIOD, "   ");
 
         // then
         assertThat(trip.getTitle()).isNull();
@@ -71,7 +83,7 @@ class TripTest {
         String title = "가".repeat(31);
 
         // when & then
-        assertThatThrownBy(() -> new Trip(USER_ID, PERIOD, title))
+        assertThatThrownBy(() -> new Trip(USER_ID, DESTINATION_ID, PERIOD, title))
                 .isInstanceOfSatisfying(BusinessException.class,
                         e -> assertThat(e.getErrorCode()).isEqualTo(TripErrorCode.TRIP_TITLE_TOO_LONG));
     }
@@ -82,7 +94,7 @@ class TripTest {
         String title = "🍊".repeat(30);
 
         // when
-        Trip trip = new Trip(USER_ID, PERIOD, title);
+        Trip trip = new Trip(USER_ID, DESTINATION_ID, PERIOD, title);
 
         // then
         assertThat(trip.getTitle()).isEqualTo(title);
@@ -94,7 +106,7 @@ class TripTest {
         String title = " " + "가".repeat(30) + " ";
 
         // when
-        Trip trip = new Trip(USER_ID, PERIOD, title);
+        Trip trip = new Trip(USER_ID, DESTINATION_ID, PERIOD, title);
 
         // then
         assertThat(trip.getTitle()).isEqualTo("가".repeat(30));
@@ -115,7 +127,7 @@ class TripTest {
     @Test
     void 이름_없는_여행에도_이름을_붙일_수_있다() {
         // given
-        Trip trip = new Trip(USER_ID, PERIOD, null);
+        Trip trip = new Trip(USER_ID, DESTINATION_ID, PERIOD, null);
 
         // when
         trip.rename("부산 여행");
@@ -226,6 +238,6 @@ class TripTest {
     }
 
     private Trip newTrip() {
-        return new Trip(USER_ID, PERIOD, TITLE);
+        return new Trip(USER_ID, DESTINATION_ID, PERIOD, TITLE);
     }
 }

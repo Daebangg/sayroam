@@ -49,11 +49,11 @@ class SayroamApplicationTests extends DatabaseIntegrationTest {
                 SELECT COUNT(*) FROM information_schema.tables
                 WHERE table_schema = DATABASE() AND table_type = 'BASE TABLE'
                 """, Integer.class)).isEqualTo(22);
-        assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("22");
+        assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("23");
         flyway.validate();
         assertThat(flyway.migrate().migrationsExecuted).isZero();
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM flyway_schema_history WHERE success = 1",
-                Integer.class)).isEqualTo(22);
+                Integer.class)).isEqualTo(23);
     }
 
     @Test
@@ -296,6 +296,59 @@ class SayroamApplicationTests extends DatabaseIntegrationTest {
     }
 
     @Test
+    void 버전_22의_여행과_딸린_데이터를_지우고_목적지를_필수로_만든다() {
+        try (MySQLContainer mysql = new MySQLContainer("mysql:8.4")
+                .withCommand("--log-bin-trust-function-creators=1")) {
+            // given
+            mysql.start();
+            DriverManagerDataSource dataSource = new DriverManagerDataSource(
+                    mysql.getJdbcUrl(), mysql.getUsername(), mysql.getPassword());
+            Flyway.configure().dataSource(dataSource).target("22").load().migrate();
+            JdbcTemplate legacy = new JdbcTemplate(dataSource);
+            legacy.update("""
+                    INSERT INTO users (id, nickname, role, created_at, updated_at)
+                    VALUES (10, '기존 회원', 'USER', NOW(), NOW())
+                    """);
+            legacy.update("""
+                    INSERT INTO place (id, source, source_id, name, category, source_category_code, latitude, longitude,
+                        created_at, updated_at)
+                    VALUES (1, 'TOUR', '126081', '송정해수욕장', 'ATTRACTION', '12', 35.1786, 129.1997, NOW(), NOW())
+                    """);
+            legacy.update("""
+                    INSERT INTO trip (id, created_by, title, start_date, end_date, created_at, updated_at)
+                    VALUES (1, 10, '부산 여행', '2026-12-01', '2026-12-04', NOW(), NOW())
+                    """);
+            legacy.update("""
+                    INSERT INTO trip_place (trip_id, place_id, added_by, created_at, updated_at)
+                    VALUES (1, 1, 10, NOW(), NOW())
+                    """);
+            legacy.update("""
+                    INSERT INTO expense (id, trip_id, payer_id, created_by, title, amount, split_type, spent_at,
+                        created_at, updated_at)
+                    VALUES (1, 1, 10, 10, '저녁', 30000, 'EQUAL', NOW(), NOW(), NOW())
+                    """);
+            legacy.update("""
+                    INSERT INTO expense_share (expense_id, user_id, amount, created_at, updated_at)
+                    VALUES (1, 10, 30000, NOW(), NOW())
+                    """);
+
+            // when
+            int executed = Flyway.configure().dataSource(dataSource).target("23").load().migrate().migrationsExecuted;
+
+            // then
+            assertThat(executed).isEqualTo(1);
+            for (String table : List.of("trip", "trip_place", "expense", "expense_share")) {
+                assertThat(legacy.queryForObject("SELECT COUNT(*) FROM " + table, Integer.class)).as(table).isZero();
+            }
+            assertThat(legacy.queryForObject("SELECT COUNT(*) FROM place", Integer.class)).isEqualTo(1);
+            assertThatThrownBy(() -> legacy.update("""
+                    INSERT INTO trip (created_by, title, start_date, end_date, created_at, updated_at)
+                    VALUES (10, '목적지 없는 여행', '2026-12-01', '2026-12-04', NOW(), NOW())
+                    """)).isInstanceOf(DataAccessException.class);
+        }
+    }
+
+    @Test
     void upgradesVersionEighteenPreservingTourPlacesAndAllowsCustomPlaces() {
         try (MySQLContainer mysql = new MySQLContainer("mysql:8.4")
                 .withCommand("--log-bin-trust-function-creators=1")) {
@@ -342,7 +395,10 @@ class SayroamApplicationTests extends DatabaseIntegrationTest {
         User user = User.builder().nickname("테스트 회원").role(Role.USER).build();
         entityManager.persist(user);
         TravelPeriod period = new TravelPeriod(LocalDate.of(2026, 12, 1), LocalDate.of(2026, 12, 4));
-        Trip trip = new Trip(user.getId(), period, "제주 여행");
+        Long destinationId = entityManager.createQuery(
+                "select d.id from Destination d where d.name = :name", Long.class)
+                .setParameter("name", "제주").getSingleResult();
+        Trip trip = new Trip(user.getId(), destinationId, period, "제주 여행");
         entityManager.persist(trip);
         entityManager.flush();
         Object tripId = entityManagerFactory.getPersistenceUnitUtil().getIdentifier(trip);

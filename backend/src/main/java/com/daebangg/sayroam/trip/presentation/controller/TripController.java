@@ -1,8 +1,10 @@
 package com.daebangg.sayroam.trip.presentation.controller;
 
 import com.daebangg.sayroam.auth.domain.AuthenticatedAccount;
+import com.daebangg.sayroam.trip.application.dto.CreateTripCommand;
 import com.daebangg.sayroam.trip.application.dto.TripPlaceResult;
 import com.daebangg.sayroam.trip.application.dto.TripSummaryResult;
+import com.daebangg.sayroam.trip.application.dto.TripTitleResult;
 import com.daebangg.sayroam.trip.application.service.TripService;
 import com.daebangg.sayroam.trip.presentation.api.TripApi;
 import com.daebangg.sayroam.trip.presentation.dto.AddTripCustomPlaceRequest;
@@ -16,6 +18,7 @@ import com.daebangg.sayroam.trip.presentation.dto.TripListResponse;
 import com.daebangg.sayroam.trip.presentation.dto.TripPlaceListResponse;
 import com.daebangg.sayroam.trip.presentation.dto.TripSummaryResponse;
 import com.daebangg.sayroam.trip.presentation.dto.UpdateTripRequest;
+import com.daebangg.sayroam.trip.presentation.dto.UpdateTripResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -40,18 +43,19 @@ public class TripController implements TripApi {
     @PostMapping(value = "/api/trips", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<CreateTripResponse> create(@AuthenticationPrincipal AuthenticatedAccount account,
                                                      @Valid @RequestBody CreateTripRequest request) {
-        Long tripId = tripService.create(account.userId(), request.startDate(), request.endDate(), request.title());
+        Long tripId = tripService.create(account.userId(), new CreateTripCommand(
+                request.destinationId(), request.startDate(), request.endDate(), request.title()));
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(new CreateTripResponse(tripId));
     }
 
     @Override
     @PatchMapping(value = "/api/trips/{tripId}", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<TripSummaryResponse> update(@AuthenticationPrincipal AuthenticatedAccount account,
-                                                      @PathVariable Long tripId,
-                                                      @RequestBody UpdateTripRequest request) {
-        TripSummaryResult result = tripService.rename(account.userId(), tripId, request.title());
-        return ResponseEntity.ok(TripSummaryResponse.from(result));
+    public ResponseEntity<UpdateTripResponse> update(@AuthenticationPrincipal AuthenticatedAccount account,
+                                                     @PathVariable Long tripId,
+                                                     @RequestBody UpdateTripRequest request) {
+        TripTitleResult result = tripService.rename(account.userId(), tripId, request.title());
+        return ResponseEntity.ok(UpdateTripResponse.from(result));
     }
 
     @Override

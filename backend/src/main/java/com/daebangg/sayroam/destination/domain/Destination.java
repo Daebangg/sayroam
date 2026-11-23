@@ -10,6 +10,8 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.math.BigDecimal;
+
 @Entity
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Destination extends BaseTimeEntity {
@@ -31,4 +33,17 @@ public class Destination extends BaseTimeEntity {
 
     @Column(name = "is_active", nullable = false)
     private boolean active;
+
+    // 지도에 여행지 전체를 맞춰 보여 줄 위경도 사각형. 먼 섬은 뺀 영역이다(V23 참고)
+    @Column(nullable = false, precision = 9, scale = 6)
+    private BigDecimal boundsSouth;
+
+    @Column(nullable = false, precision = 9, scale = 6)
+    private BigDecimal boundsWest;
+
+    @Column(nullable = false, precision = 9, scale = 6)
+    private BigDecimal boundsNorth;
+
+    @Column(nullable = false, precision = 9, scale = 6)
+    private BigDecimal boundsEast;
 }

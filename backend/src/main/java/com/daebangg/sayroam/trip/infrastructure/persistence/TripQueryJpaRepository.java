@@ -14,8 +14,11 @@ import java.util.Optional;
 public interface TripQueryJpaRepository extends TripQueryRepository, Repository<Trip, Long> {
     @Override
     @Query("""
-            select new com.daebangg.sayroam.trip.application.dto.TripSummaryResult(t.id, t.title, t.period, t.roomId)
+            select new com.daebangg.sayroam.trip.application.dto.TripSummaryResult(
+                       t.id, t.title, t.period, t.roomId,
+                       d.id, d.name, d.boundsSouth, d.boundsWest, d.boundsNorth, d.boundsEast)
             from Trip t
+            join Destination d on d.id = t.destinationId
             where (t.roomId is null and t.createdById = :userId)
                or t.roomId in (select m.room.id
                                from RoomMember m
@@ -27,8 +30,11 @@ public interface TripQueryJpaRepository extends TripQueryRepository, Repository<
 
     @Override
     @Query("""
-            select new com.daebangg.sayroam.trip.application.dto.TripSummaryResult(t.id, t.title, t.period, t.roomId)
+            select new com.daebangg.sayroam.trip.application.dto.TripSummaryResult(
+                       t.id, t.title, t.period, t.roomId,
+                       d.id, d.name, d.boundsSouth, d.boundsWest, d.boundsNorth, d.boundsEast)
             from Trip t
+            join Destination d on d.id = t.destinationId
             where t.id = :tripId
               and ((t.roomId is null and t.createdById = :userId)
                    or t.roomId in (select m.room.id
