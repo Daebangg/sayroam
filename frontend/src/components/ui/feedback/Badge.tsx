@@ -2,14 +2,20 @@ import { Icon, type IconName } from "../icons/Icon";
 
 type BadgeProps = {
     label: string;
-    tone?: "brand" | "warm" | "success" | "neutral";
+    className?: string;
+    tone?: "brand" | "warm" | "success" | "neutral" | "danger";
     icon?: IconName;
 };
 
-export function Badge({ label, tone = "brand", icon }: BadgeProps) {
+export function Badge({ label, tone = "brand", icon, className = "" }: BadgeProps) {
     return (
-        <span className={`ui-badge ui-badge--${tone}`}>
-            {icon && <Icon name={icon} variant={tone === "success" ? "outline" : "brand"} />}
+        <span className={`ui-badge ui-badge--${tone} ${className}`}>
+            {icon && (
+                <Icon
+                    name={icon}
+                    variant={tone === "success" || tone === "danger" ? "outline" : "brand"}
+                />
+            )}
             {label}
         </span>
     );

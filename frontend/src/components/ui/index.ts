@@ -45,3 +45,7 @@ export { RangeField } from "./inputs/RangeField";
 export { RangeSelector } from "./inputs/RangeSelector";
 
 export { TextArea } from "./inputs/TextArea";
+
+export { LivingCoast } from "./brand/LivingCoast";
+
+export { DiscoveryWordmark } from "./brand/DiscoveryWordmark";

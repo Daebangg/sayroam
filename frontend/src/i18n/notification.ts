@@ -8,5 +8,5 @@ export function localizeNotificationContent(
     t: TFunction,
 ): string {
     if (notification.type === "WELCOME") return t("inbox.messages.welcome.content");
-    return notification.content;
+    return t("inbox.messages.match.content");
 }

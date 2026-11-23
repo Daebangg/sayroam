@@ -3,7 +3,6 @@ import { useTranslation } from "react-i18next";
 import {
     Autocomplete,
     Avatar,
-    Badge,
     Button,
     Card,
     Checkbox,
@@ -16,6 +15,7 @@ import {
     Tooltip,
 } from "@/components/ui";
 import { MatchingFilterPopover } from "./MatchingFilterPopover";
+import { RecruitmentStatusBadge } from "./RecruitmentStatusBadge";
 import { RecruitmentDetailsPanel } from "./RecruitmentDetailsPanel";
 import type { CandidateQuery, CandidateResult, MatchingDestination } from "@/hooks/matching.types";
 
@@ -283,7 +283,7 @@ export function CompanionSearch({
                                         className={`matching-registration${selectedId === candidate.searchId ? " is-selected" : ""}`}
                                     >
                                         <div>
-                                            <Badge tone="brand" label={t("matchingFlow.active")} />
+                                            <RecruitmentStatusBadge status="ACTIVE" />
                                             <h3>
                                                 <Button
                                                     variant="plain"
@@ -372,34 +372,22 @@ export function CompanionSearch({
                             </nav>
                         </>
                     )}
-                    {selectedCandidate && submitted && (
-                        <RecruitmentDetailsPanel
-                            candidate={selectedCandidate}
-                            registration={{
-                                id: selectedCandidate.searchId,
-                                title: selectedCandidate.title,
-                                startDate: selectedCandidate.startDate,
-                                endDate: selectedCandidate.endDate,
-                                destinationId: submitted.destinationId,
-                                legacyRegion: null,
-                                introduction: selectedCandidate.introduction,
-                                showAge: selectedCandidate.age !== null,
-                                showGender: selectedCandidate.gender !== null,
-                                travelStyle: {},
-                                status: "ACTIVE",
-                                preferredGender: null,
-                                preferredMinAge: null,
-                                preferredMaxAge: null,
-                            }}
-                            destination={
-                                destinations.find((item) => item.id === submitted.destinationId)
-                                    ?.name ?? ""
-                            }
-                            onClose={() => setSelectedId(undefined)}
-                            busy={busy}
-                            failed={false}
-                        />
-                    )}
+                    <RecruitmentDetailsPanel
+                        details={
+                            selectedCandidate && submitted
+                                ? {
+                                      candidate: selectedCandidate,
+                                      destination:
+                                          destinations.find(
+                                              (item) => item.id === submitted.destinationId,
+                                          )?.name ?? "",
+                                      onClose: () => setSelectedId(undefined),
+                                      busy: busy,
+                                      failed: false,
+                                  }
+                                : undefined
+                        }
+                    />
                 </>
             )}
         </section>

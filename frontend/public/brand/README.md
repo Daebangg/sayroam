@@ -88,3 +88,10 @@ Google·카카오·네이버 자산은 [공식 제공자 자산](providers/READM
 ## 설정·프로필 제목
 
 `settings-wordmark.svg`와 `profile-wordmark.svg`는 로고와 같은 Avenir Next Demi Bold의 글자 윤곽과 파랑·모래색 면을 사용합니다. `-light.svg`는 어두운 화면용이며 공용 `SectionWordmark`가 테마에 맞춰 선택합니다.
+
+탐색 상태의 `DiscoveryWordmark`도 같은 Avenir Next Demi Bold 윤곽과 글자별 비대칭 색면 분할을 사용합니다.
+윤곽은 `src/components/ui/brand/discoveryWordmarks.ts`에서 공유하며, 탐색 중에만 글자별로 순서대로 움직입니다.
+로딩 모션은 공용 CSS에서 관리하고 모션 줄이기 설정에서는 정지합니다.
+
+롬 메이트 진입의 `matching`과 모집의 `journey-register`는 공용 `Icon`에서 `style-time-mostly`(함께하는 편) 일러스트로 표시합니다.
+네비게이션과 모집 진입 화면이 같은 자산을 사용하며, 선형 변형도 해당 여행 스타일의 `-outline`을 사용합니다.

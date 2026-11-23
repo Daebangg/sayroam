@@ -1,20 +1,44 @@
-import { useNavigate } from "react-router";
+import { useEffect, useRef } from "react";
+import { useNavigate, useLocation } from "react-router";
 import { useTranslation } from "react-i18next";
 import { Brand, ButtonLink, DropdownMenu, Icon } from "@/components/ui";
 import { HomePage } from "@/pages/home/HomePage";
 import { TripsPage } from "@/pages/trips/TripsPage";
-import { MatchingPage } from "@/pages/matching/MatchingPage";
+import { MatchingPreview } from "./MatchingPreview";
 import { RoomsPage } from "@/pages/rooms/RoomsPage";
+import { RoamMatePreview } from "./RoamMatePreview";
 import { mockupScreens, mockupUrl, type MockupScreen } from "@/routing/mockups";
 
 export function MockupPage({ screen }: { screen: MockupScreen }) {
     const { t } = useTranslation();
     const navigate = useNavigate();
+    const location = useLocation();
+    const preparingEntry = useRef<string | undefined>(undefined);
+    const discovery =
+        screen === "matching-searching" ||
+        screen === "matching-found" ||
+        screen === "matching-empty" ||
+        screen === "matching-delayed";
+    const needsParent = discovery && !location.state?.fromMatchingMain;
+
+    // 직접 열거나 알림에서 들어온 목업도 브라우저 뒤로가기의 목적지가 롬 메이트 메인이 되게 한다.
+    useEffect(() => {
+        if (!needsParent || preparingEntry.current === location.key) return;
+        preparingEntry.current = location.key;
+        async function enterFromMain() {
+            await navigate(mockupUrl("matching"), { replace: true });
+            await navigate(
+                { pathname: location.pathname, search: location.search, hash: location.hash },
+                { state: { fromMatchingMain: true } },
+            );
+        }
+        void enterFromMain();
+    }, [needsParent, location, navigate]);
+    if (needsParent) return null;
     const intro = screen === "welcome" || screen === "onboarding";
     return (
         <>
-            <aside className="mockup-toolbar" aria-label={t("mockup.toolbar")}>
-                <span>{t("mockup.toolbar")}</span>
+            <aside className="mockup-toolbar" aria-label={t("mockup.screen")}>
                 <DropdownMenu
                     label={t("mockup.screen")}
                     value={screen}
@@ -24,12 +48,15 @@ export function MockupPage({ screen }: { screen: MockupScreen }) {
                     }))}
                     onChange={(value) => {
                         const next = mockupScreens.find((item) => item === value);
-                        if (next) void navigate(mockupUrl(next));
+                        if (next)
+                            void navigate(mockupUrl(next), {
+                                state:
+                                    screen === "matching" && !location.state?.matchingView
+                                        ? { fromMatchingMain: true }
+                                        : undefined,
+                            });
                     }}
                 />
-                <ButtonLink variant="plain" className="auth-text-link" to="/brand">
-                    {t("brand.guide")}
-                </ButtonLink>
             </aside>
             {intro ? (
                 <main
@@ -72,12 +99,14 @@ export function MockupPage({ screen }: { screen: MockupScreen }) {
                         </div>
                     </div>
                 </main>
-            ) : screen === "home" || screen === "notifications" ? (
+            ) : screen === "notifications" ? (
+                <RoamMatePreview key={screen} screen={screen} />
+            ) : screen === "home" ? (
                 <HomePage />
             ) : screen === "trips" ? (
                 <TripsPage />
-            ) : screen === "matching" ? (
-                <MatchingPage />
+            ) : screen === "matching" || discovery ? (
+                <MatchingPreview screen={screen} />
             ) : (
                 <RoomsPage />
             )}

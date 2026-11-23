@@ -171,24 +171,31 @@ export function useCompanionMatching(userId: number | undefined) {
             setCatalogLoading(userId !== undefined);
             setRevision((value) => value + 1);
         },
-        save: (body: MatchingConditions, searchId?: number) =>
-            searchId === undefined && !canCreate
-                ? denyCreate()
-                : run(async (signal) => {
-                      const response =
-                          searchId === undefined
-                              ? await api.call("createCompanionSearch", { body, signal })
-                              : await api.call("updateCompanionSearch", {
-                                    params: { path: { searchId } },
-                                    body,
-                                    signal,
-                                });
-                      if (!signal.aborted)
-                          setSearches((values) => [
-                              response,
-                              ...values.filter((value) => value.id !== response.id),
-                          ]);
-                  }),
+        save: async (body: MatchingConditions, searchId?: number) => {
+            if (searchId === undefined && !canCreate) {
+                await denyCreate();
+                return undefined;
+            }
+            let saved: Schemas["CompanionSearchResponse"] | undefined;
+            const ok = await run(async (signal) => {
+                const response =
+                    searchId === undefined
+                        ? await api.call("createCompanionSearch", { body, signal })
+                        : await api.call("updateCompanionSearch", {
+                              params: { path: { searchId } },
+                              body,
+                              signal,
+                          });
+                if (!signal.aborted) {
+                    saved = response;
+                    setSearches((values) => [
+                        response,
+                        ...values.filter((value) => value.id !== response.id),
+                    ]);
+                }
+            });
+            return ok ? saved : undefined;
+        },
         close: (searchId: number) => changeStatus(searchId, "CLOSED"),
         resume: (searchId: number) => changeStatus(searchId, "ACTIVE"),
     };

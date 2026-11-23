@@ -1,16 +1,9 @@
-import { useBlocker, useNavigate } from "react-router";
+import { useNavigate } from "react-router";
+import { PageLeaveDialog } from "@/components/layout/PageLeaveDialog";
 import { ProfileGreetingPage } from "./ProfileGreetingPage";
-import { useEffect, useId, useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import {
-    Button,
-    DatePicker,
-    IconChoiceGroup,
-    Spinner,
-    Tooltip,
-    Icon,
-    Modal,
-} from "@/components/ui";
+import { Button, DatePicker, IconChoiceGroup, Spinner, Tooltip, Icon } from "@/components/ui";
 import { TravelStyleChoices } from "@/components/features/matching/TravelStyleChoices";
 import { useTravelStyle } from "@/hooks/api/profile/useTravelStyle";
 import { useProfileEditor } from "@/hooks/api/auth/useProfileEditor";
@@ -75,12 +68,6 @@ export function ProfileSetupGate({
             // The current session can continue when browser storage is unavailable.
         }
     }, [storageKey, dismissed]);
-    const blocker = useBlocker(
-        ({ currentLocation, nextLocation }) =>
-            active &&
-            (nextLocation.pathname === "/" || currentLocation.pathname !== nextLocation.pathname),
-    );
-    const leaveTitle = useId();
     useEffect(() => {
         onActivity(active || welcoming);
         return () => onActivity(false);
@@ -119,10 +106,24 @@ export function ProfileSetupGate({
             />
         );
     if (dismissed) return children;
+    const leaveDialog = (
+        <PageLeaveDialog
+            shouldBlock={({ currentLocation, nextLocation }) =>
+                nextLocation.pathname === "/" || currentLocation.pathname !== nextLocation.pathname
+            }
+            title={t("profileSetup.leaveTitle")}
+            description={t("profileSetup.leaveHint")}
+            stayLabel={t("common.cancel")}
+            leaveLabel={t("profileSetup.leave")}
+            leaveDisabled={busy}
+            onLeave={dismiss}
+        />
+    );
     if (style.values === null && !style.failed)
         return (
             <main id="main-content" tabIndex={-1} className="profile-onboarding">
                 <Spinner label={t("matchingFlow.loading")} />
+                {leaveDialog}
             </main>
         );
     return (
@@ -255,30 +256,7 @@ export function ProfileSetupGate({
                     )}
                 </Button>
             </Tooltip>
-            <Modal
-                open={blocker.state === "blocked"}
-                labelledBy={leaveTitle}
-                onClose={() => blocker.reset?.()}
-                className="matching-end-dialog"
-            >
-                <h2 id={leaveTitle}>{t("profileSetup.leaveTitle")}</h2>
-                <p className="matching-end-dialog__title">{t("profileSetup.leaveHint")}</p>
-                <div className="matching-end-dialog__actions">
-                    <Button variant="outline" onClick={() => blocker.reset?.()}>
-                        {t("common.cancel")}
-                    </Button>
-                    <Button
-                        variant="brand"
-                        disabled={busy}
-                        onClick={() => {
-                            dismiss();
-                            blocker.proceed?.();
-                        }}
-                    >
-                        {t("profileSetup.leave")}
-                    </Button>
-                </div>
-            </Modal>
+            {leaveDialog}
         </main>
     );
 }

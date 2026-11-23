@@ -4,6 +4,10 @@ export const mockupScreens = [
     "home",
     "trips",
     "matching",
+    "matching-searching",
+    "matching-found",
+    "matching-empty",
+    "matching-delayed",
     "rooms",
     "notifications",
 ] as const;

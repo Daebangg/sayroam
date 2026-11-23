@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { mockupUrl } from "@/routing/mockups";
 import { localizeNotificationContent } from "@/i18n/notification";
 import { NotificationInbox, type InboxItem } from "./NotificationInbox";
 
 type PreviewItem = {
     id: string;
-    sample: "match" | "trip" | "chat" | "listing" | "welcome";
+    sample: "match" | "welcome";
     icon: InboxItem["icon"];
     section: InboxItem["section"];
     time: "justNow" | "fiveMinutes" | "halfHour" | "oneHour" | "yesterday";
@@ -13,15 +14,6 @@ type PreviewItem = {
 
 const samples: readonly PreviewItem[] = [
     { id: "match", sample: "match", icon: "matching", section: "today", time: "fiveMinutes" },
-    { id: "trip", sample: "trip", icon: "trips", section: "today", time: "halfHour" },
-    { id: "chat", sample: "chat", icon: "conversation", section: "today", time: "oneHour" },
-    {
-        id: "listing",
-        sample: "listing",
-        icon: "journey-register",
-        section: "earlier",
-        time: "yesterday",
-    },
     { id: "welcome", sample: "welcome", icon: "compass", section: "earlier", time: "yesterday" },
 ];
 
@@ -33,7 +25,7 @@ export function NotificationInboxPreview({
     inline?: boolean;
 }) {
     const { t } = useTranslation();
-    const [readIds, setReadIds] = useState(() => new Set<string>(["listing", "welcome"]));
+    const [readIds, setReadIds] = useState(() => new Set<string>(["welcome"]));
     const [deletedIds, setDeletedIds] = useState(() => new Set<string>());
     const [arrivals, setArrivals] = useState<PreviewItem[]>([]);
     useEffect(() => {
@@ -61,7 +53,7 @@ export function NotificationInboxPreview({
             title:
                 item.sample === "welcome"
                     ? t("inbox.messages.welcome.title")
-                    : t(`inbox.samples.${item.sample}.title`),
+                    : t("inbox.messages.match.title"),
             content:
                 item.sample === "welcome"
                     ? localizeNotificationContent(
@@ -71,12 +63,19 @@ export function NotificationInboxPreview({
                           },
                           t,
                       )
-                    : t(`inbox.samples.${item.sample}.content`),
+                    : t("inbox.messages.match.content"),
             ...(item.sample === "welcome"
                 ? {}
                 : { context: t(`inbox.samples.${item.sample}.context`) }),
             time: t(`inbox.time.${item.time}`),
             isRead: readIds.has(item.id),
+            ...(item.sample === "match"
+                ? {
+                      action: {
+                          to: mockupUrl("matching-found"),
+                      },
+                  }
+                : {}),
         }));
 
     return (

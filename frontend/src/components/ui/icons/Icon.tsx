@@ -69,10 +69,11 @@ type IconProps = {
 };
 
 export function Icon({ name, className = "", variant = "brand" }: IconProps) {
-    if (name.startsWith("style-") && variant === "brand") {
+    const artwork = name === "matching" || name === "journey-register" ? "style-time-mostly" : name;
+    if (artwork.startsWith("style-") && variant === "brand") {
         return (
             <img
-                src={`/brand/travel-style/${name}.webp`}
+                src={`/brand/travel-style/${artwork}.webp`}
                 className={`icon icon--illustration ${className}`}
                 width={24}
                 height={24}
@@ -82,8 +83,10 @@ export function Icon({ name, className = "", variant = "brand" }: IconProps) {
             />
         );
     }
-    const sprite = name.startsWith("style-") ? "/brand/travel-style-icons.svg" : "/brand/icons.svg";
-    const symbol = variant === "outline" ? `${name}-outline` : name;
+    const sprite = artwork.startsWith("style-")
+        ? "/brand/travel-style-icons.svg"
+        : "/brand/icons.svg";
+    const symbol = variant === "outline" ? `${artwork}-outline` : artwork;
     return (
         <svg className={`icon ${className}`} viewBox="0 0 24 24" aria-hidden="true">
             <use href={`${sprite}#${symbol}`} />

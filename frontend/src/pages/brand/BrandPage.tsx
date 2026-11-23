@@ -46,6 +46,8 @@ import {
     NotificationBadge,
     FilterChips,
     TravelArtwork,
+    LivingCoast,
+    DiscoveryWordmark,
 } from "@/components/ui";
 import { BrandAssets } from "@/components/features/brand/BrandAssets";
 import { mockupUrl } from "@/routing/mockups";
@@ -402,6 +404,14 @@ export function BrandPage() {
                                 <TravelArtwork key={scene} scene={scene} />
                             ))}
                         </div>
+                        <div className="discovery-wordmark-showcase">
+                            <DiscoveryWordmark state="searching" />
+                            <DiscoveryWordmark state="found" />
+                        </div>
+                        <h4>{t("brand.livingCoast")}</h4>
+                        <div className="living-coast-showcase">
+                            <LivingCoast />
+                        </div>
                     </Card>
                     <Card className="component-example">
                         <h3>{t("settings.themeSettings")}</h3>
@@ -482,6 +492,10 @@ export function BrandPage() {
                             <Button variant="brand">{t("brand.primaryButton")}</Button>
                             <Button variant="outline">{t("brand.secondaryButton")}</Button>
                             <Button variant="soft">{t("common.join")}</Button>
+                            <Button variant="dismiss">{t("common.close")}</Button>
+                            <Button variant="danger-soft">
+                                {t("roamMatePreview.empty.close")}
+                            </Button>
                             <Button variant="danger">{t("brand.delete")}</Button>
                             <Button disabled>{t("common.disabled")}</Button>
                             <Button
@@ -494,6 +508,15 @@ export function BrandPage() {
                             <Button variant="outline">{t("brand.longAction")}</Button>
                             <Button variant="brand" loading>
                                 {t("brand.save")}
+                            </Button>
+                        </div>
+                        <div className="component-example__row">
+                            <Button variant="highlight">{t("brand.highlightButton")}</Button>
+                            <Button variant="highlight" loading>
+                                {t("brand.highlightButton")}
+                            </Button>
+                            <Button variant="highlight" disabled>
+                                {t("common.disabled")}
                             </Button>
                         </div>
                     </Card>

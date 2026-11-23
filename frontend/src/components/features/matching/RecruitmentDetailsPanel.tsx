@@ -1,30 +1,52 @@
+import { RecruitmentTextAction } from "./RecruitmentTextAction";
 import { useEffect, useEffectEvent, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
-import { Avatar, Badge, Button, Icon, Tooltip } from "@/components/ui";
+import { Avatar, Button, Icon, Tooltip } from "@/components/ui";
+import { RecruitmentStatusBadge } from "./RecruitmentStatusBadge";
 import type { CandidateResult, MatchingRegistration } from "@/hooks/matching.types";
 
 type RecruitmentDetailsPanelProps = {
-    registration: MatchingRegistration;
     destination: string;
     onClose: () => void;
+    onViewResults?: () => void;
     onEdit?: () => void;
     onFinish?: () => void;
     onResume?: () => void;
     resumeDisabled?: boolean;
     resumeHint?: string;
     errorMessage?: string;
-    candidate?: CandidateResult["candidates"][number];
     busy: boolean;
     failed: boolean;
-};
+} & (
+    | { registration: MatchingRegistration; candidate?: never }
+    | { candidate: CandidateResult["candidates"][number]; registration?: never }
+);
 
 export function RecruitmentDetailsPanel({
+    details,
+}: {
+    details: RecruitmentDetailsPanelProps | undefined;
+}) {
+    // 선택이 해제돼도 닫힘 모션이 끝날 때까지 마지막 모집을 표시한다.
+    const [lastDetails, setLastDetails] = useState(details);
+    if (details && details !== lastDetails) setLastDetails(details);
+    const visible = details ?? lastDetails;
+    if (!visible) return null;
+    return (
+        <PanelContent {...visible} closing={!details} onExited={() => setLastDetails(undefined)} />
+    );
+}
+
+function PanelContent({
+    closing,
+    onExited,
     registration,
     candidate,
     destination,
     onClose,
     onEdit,
+    onViewResults,
     onFinish,
     onResume,
     resumeDisabled = false,
@@ -32,8 +54,11 @@ export function RecruitmentDetailsPanel({
     errorMessage,
     busy,
     failed,
-}: RecruitmentDetailsPanelProps) {
+}: RecruitmentDetailsPanelProps & { closing: boolean; onExited: () => void }) {
     const { t, i18n } = useTranslation();
+    const post = registration ?? candidate;
+    const postId = registration?.id ?? candidate?.searchId;
+    const status = registration?.status;
     const titleId = useId();
     const panel = useRef<HTMLElement>(null);
     const content = useRef<HTMLDivElement>(null);
@@ -91,7 +116,12 @@ export function RecruitmentDetailsPanel({
             )
                 return;
             // Let another recruitment card handle selection without closing its new panel.
-            if (target.closest(".matching-registration, .ui-dropdown__menu")) return;
+            if (
+                target.closest(
+                    ".matching-registration__open, .matching-registration, .roam-match-card, .ui-dropdown__menu",
+                )
+            )
+                return;
             close();
         }
         document.addEventListener("pointerdown", outside);
@@ -108,7 +138,7 @@ export function RecruitmentDetailsPanel({
     }, []);
     useEffect(() => {
         content.current?.scrollTo({ top: 0 });
-    }, [registration.id]);
+    }, [postId]);
     const date = (value: string) =>
         new Intl.DateTimeFormat(i18n.resolvedLanguage === "en" ? "en-US" : "ko-KR", {
             year: "numeric",
@@ -124,49 +154,54 @@ export function RecruitmentDetailsPanel({
             role={mobile ? "dialog" : "region"}
             aria-modal={mobile || undefined}
             aria-labelledby={titleId}
-            className="matching-details-panel"
+            className={`matching-details-panel${closing ? " matching-details-panel--closing" : ""}`}
+            onAnimationEnd={(event) => {
+                if (
+                    closing &&
+                    event.target === event.currentTarget &&
+                    event.animationName === "matching-panel-exit"
+                )
+                    onExited();
+            }}
         >
             <div ref={content} className="matching-details-panel__body">
                 <header className="matching-details-panel__header">
                     <div>
-                        <div className="matching-details-panel__status">
-                            <Badge
-                                tone={registration.status === "ACTIVE" ? "brand" : "neutral"}
-                                label={t(
-                                    registration.status === "ACTIVE"
-                                        ? "matchingFlow.active"
-                                        : "matchingFlow.closed",
+                        {registration && (
+                            <div className="matching-details-panel__status">
+                                <RecruitmentStatusBadge
+                                    status={onViewResults ? "MATCHED" : registration.status}
+                                />
+                                {status === "ACTIVE" && onFinish && (
+                                    <RecruitmentTextAction
+                                        action="close"
+                                        disabled={busy}
+                                        onClick={onFinish}
+                                    />
                                 )}
-                            />
-                            {registration.status === "ACTIVE" && onFinish && (
-                                <Button
-                                    variant="plain"
-                                    className="matching-text-action"
-                                    disabled={busy}
-                                    onClick={onFinish}
-                                >
-                                    {t("matchingFlow.close")}
-                                </Button>
-                            )}
-                            {registration.status === "CLOSED" && onResume && (
-                                <Tooltip content={resumeHint || t("matchingFlow.resume")}>
-                                    <Button
-                                        variant="plain"
-                                        className="matching-text-action"
-                                        disabled={busy || resumeDisabled}
-                                        onClick={onResume}
-                                    >
-                                        {t("matchingFlow.resume")}
-                                    </Button>
-                                </Tooltip>
-                            )}
-                        </div>
+                                {status === "CLOSED" && onResume && (
+                                    <Tooltip content={resumeHint || t("matchingFlow.resume")}>
+                                        <RecruitmentTextAction
+                                            action="resume"
+                                            disabled={busy || resumeDisabled}
+                                            onClick={onResume}
+                                        />
+                                    </Tooltip>
+                                )}
+                            </div>
+                        )}
+                        {candidate && (
+                            <div className="matching-details-author">
+                                <Avatar src={candidate.profileImageUrl} />
+                                <strong>{candidate.nickname}</strong>
+                            </div>
+                        )}
                         <h2 id={titleId} aria-live="polite">
-                            {registration.title || t("matchingFlow.untitled")}
+                            {post.title || t("matchingFlow.untitled")}
                         </h2>
-                        {registration.introduction && (
+                        {post.introduction && (
                             <div className="matching-details-introduction">
-                                <p>{registration.introduction}</p>
+                                <p>{post.introduction}</p>
                             </div>
                         )}
                     </div>
@@ -187,69 +222,77 @@ export function RecruitmentDetailsPanel({
                         <dd className="matching-details-panel__dates">
                             <span>
                                 {t("matchingFlow.dateRangeStart", {
-                                    start: date(registration.startDate),
+                                    start: date(post.startDate),
                                 })}
                             </span>
-                            <span>{date(registration.endDate)}</span>
+                            <span>{date(post.endDate)}</span>
                         </dd>
                     </div>
                 </dl>
-                {!candidate && (
-                    <dl className="matching-details-panel__privacy">
-                        <div>
-                            <dt>
-                                <Icon name="gender-unset" />
-                                {t("matchingFlow.genderVisibilityLabel")}
-                            </dt>
-                            <dd>
-                                {t(
-                                    registration.showGender
-                                        ? "matchingFlow.public"
-                                        : "matchingFlow.private",
-                                )}
-                            </dd>
-                        </div>
-                        <div>
-                            <dt>
-                                <Icon name="profile" />
-                                {t("matchingFlow.ageVisibilityLabel")}
-                            </dt>
-                            <dd>
-                                {t(
-                                    registration.showAge
-                                        ? "matchingFlow.public"
-                                        : "matchingFlow.private",
-                                )}
-                            </dd>
-                        </div>
-                    </dl>
-                )}
-                <dl className="matching-conditions-summary">
+                <dl className="matching-details-panel__privacy">
+                    <div>
+                        <dt>
+                            <Icon name="gender-unset" />
+                            {t(
+                                candidate
+                                    ? "settings.gender"
+                                    : "matchingFlow.genderVisibilityLabel",
+                            )}
+                        </dt>
+                        <dd>
+                            {candidate
+                                ? candidate.gender
+                                    ? t(`settings.genderValues.${candidate.gender}`)
+                                    : t("matchingFlow.private")
+                                : t(
+                                      registration.showGender
+                                          ? "matchingFlow.public"
+                                          : "matchingFlow.private",
+                                  )}
+                        </dd>
+                    </div>
+                    <div>
+                        <dt>
+                            <Icon name="journey-age" />
+                            {t(
+                                candidate
+                                    ? "matchingFlow.myAge"
+                                    : "matchingFlow.ageVisibilityLabel",
+                            )}
+                        </dt>
+                        <dd>
+                            {candidate
+                                ? candidate.age !== null
+                                    ? t("matchingFlow.ageValue", { count: candidate.age })
+                                    : t("matchingFlow.private")
+                                : t(
+                                      registration.showAge
+                                          ? "matchingFlow.public"
+                                          : "matchingFlow.private",
+                                  )}
+                        </dd>
+                    </div>
+                </dl>
+                <dl
+                    className={
+                        candidate
+                            ? "matching-conditions-summary matching-details-overlap"
+                            : "matching-conditions-summary"
+                    }
+                >
                     {candidate ? (
-                        <>
-                            <div>
-                                <dt>
-                                    <Icon name="profile" />
-                                    {t("matchingFlow.organizer")}
-                                </dt>
-                                <dd className="companion-search__person">
-                                    <Avatar src={candidate.profileImageUrl} />
-                                    {candidate.nickname}
-                                </dd>
-                            </div>
-                            <div>
-                                <dt>
-                                    <Icon name="calendar" />
-                                    {t("matchingFlow.overlap", { count: candidate.overlapDays })}
-                                </dt>
-                                <dd>
-                                    {t("matchingFlow.dateRange", {
-                                        start: date(candidate.overlapStartDate),
-                                        end: date(candidate.overlapEndDate),
-                                    })}
-                                </dd>
-                            </div>
-                        </>
+                        <div>
+                            <dt>
+                                <Icon name="calendar" />
+                                {t("matchingFlow.overlap", { count: candidate.overlapDays })}
+                            </dt>
+                            <dd>
+                                {t("matchingFlow.dateRange", {
+                                    start: date(candidate.overlapStartDate),
+                                    end: date(candidate.overlapEndDate),
+                                })}
+                            </dd>
+                        </div>
                     ) : (
                         <>
                             <div>
@@ -290,9 +333,31 @@ export function RecruitmentDetailsPanel({
                         </>
                     )}
                 </dl>
-                <dl className="matching-conditions-summary matching-details-panel__styles">
-                    {!candidate &&
-                        (
+                {candidate && (
+                    <p className="matching-details-style-summary">
+                        {candidate.travelStyleMatch ? (
+                            <>
+                                <strong>{t("profileSetup.styleTitle")}</strong>
+                                <span
+                                    className="matching-details-score"
+                                    title={t("matchingFlow.styleMatchLabel")}
+                                >
+                                    {t("matchingFlow.styleMatchScore", {
+                                        score: new Intl.NumberFormat(i18n.resolvedLanguage, {
+                                            style: "percent",
+                                            maximumFractionDigits: 2,
+                                        }).format(candidate.travelStyleMatch.score / 100),
+                                    })}
+                                </span>
+                            </>
+                        ) : (
+                            t("matchingFlow.styleUnavailable")
+                        )}
+                    </p>
+                )}
+                {(registration || candidate.travelStyleMatch) && (
+                    <dl className="matching-conditions-summary matching-details-panel__styles">
+                        {(
                             [
                                 ["planning", "planning", "journey-plan"],
                                 ["pace", "daily-pace", "journey-pace"],
@@ -300,39 +365,82 @@ export function RecruitmentDetailsPanel({
                                 ["spending", "spending", "journey-budget"],
                             ] as const
                         ).map(([name, code, icon]) => {
-                            const score = registration.travelStyle[code];
+                            const item = candidate?.travelStyleMatch?.items.find(
+                                (entry) => entry.code === code,
+                            );
+                            const score = registration
+                                ? registration.travelStyle[code]
+                                : item?.candidateScore;
                             const level = ([1, 2, 3, 4, 5] as const).find(
                                 (value) => value === score,
                             );
+                            const myLevel = ([1, 2, 3, 4, 5] as const).find(
+                                (value) => value === item?.myScore,
+                            );
+                            const discuss =
+                                item?.similarity === "SOMEWHAT_DIFFERENT" ||
+                                item?.similarity === "DIFFERENT";
                             return (
-                                <div key={code}>
+                                <div
+                                    key={code}
+                                    className={
+                                        discuss ? "matching-style-needs-discussion" : undefined
+                                    }
+                                >
                                     <dt>
                                         <Icon name={icon} />
                                         {t(`matchingFlow.styleLabels.${name}`)}
                                     </dt>
                                     <dd>
-                                        {level
-                                            ? t(`matchingFlow.styleDegrees.${name}.${level}`)
-                                            : t("matchingFlow.profileMissing")}
+                                        <div className="matching-details-style-value">
+                                            <span>
+                                                {level
+                                                    ? t(
+                                                          `matchingFlow.styleDegrees.${name}.${level}`,
+                                                      )
+                                                    : t("matchingFlow.profileMissing")}
+                                            </span>
+                                            {item && (
+                                                <small>
+                                                    {t(
+                                                        `matchingFlow.styleSimilarity.${item.similarity}`,
+                                                    )}
+                                                </small>
+                                            )}
+                                        </div>
+                                        {item && myLevel && (
+                                            <small className="matching-details-comparison">
+                                                {t("matchingFlow.styleMine", {
+                                                    value: t(
+                                                        `matchingFlow.styleDegrees.${name}.${myLevel}`,
+                                                    ),
+                                                })}
+                                            </small>
+                                        )}
                                     </dd>
                                 </div>
                             );
                         })}
-                </dl>
+                    </dl>
+                )}
             </div>
             <footer className="matching-details-panel__footer">
+                {onViewResults && (
+                    <Button key={postId} variant="highlight" onClick={onViewResults}>
+                        {t("roamMatePreview.openMatches")}
+                    </Button>
+                )}
                 <div className="matching-details-panel__actions">
-                    {registration.status === "ACTIVE" && onEdit && (
+                    {registration && status === "ACTIVE" && onEdit && (
                         <Button
-                            variant="brand"
+                            variant="soft"
                             disabled={busy || !registration.destinationId}
                             onClick={onEdit}
                         >
-                            <Icon name="edit" />
                             {t("matchingFlow.edit")}
                         </Button>
                     )}
-                    <Button variant="outline" onClick={onClose}>
+                    <Button variant="dismiss" onClick={onClose}>
                         {t("common.close")}
                     </Button>
                 </div>
