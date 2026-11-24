@@ -6,7 +6,9 @@ import com.daebangg.sayroam.auth.presentation.cookie.RefreshTokenCookie;
 import com.daebangg.sayroam.global.exception.BusinessException;
 import com.daebangg.sayroam.global.security.ActiveAccountJwtConverter;
 import com.daebangg.sayroam.global.security.SecurityConfig;
+import com.daebangg.sayroam.room.application.dto.RoomMemberProfileResult;
 import com.daebangg.sayroam.room.application.service.RoomService;
+import com.daebangg.sayroam.room.domain.RoomMemberStatus;
 import com.daebangg.sayroam.room.domain.error.RoomErrorCode;
 import com.daebangg.sayroam.room.presentation.controller.RoomController;
 import com.daebangg.sayroam.user.domain.Role;
@@ -31,6 +33,7 @@ import static org.mockito.BDDMockito.then;
 import static org.mockito.BDDMockito.willThrow;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -220,6 +223,46 @@ class RoomControllerTest {
         then(roomService).shouldHaveNoInteractions();
     }
 
+    @Test
+    void 멤버_목록을_조회하면_200과_멤버를_응답한다() throws Exception {
+        // given
+        given(roomService.findMembers(ROOM_ID, USER_ID)).willReturn(List.of(
+                new RoomMemberProfileResult(USER_ID, "민수", "https://example.com/minsu.png", RoomMemberStatus.JOINED),
+                new RoomMemberProfileResult(3L, "지영", null, RoomMemberStatus.LEFT)));
+
+        // when & then
+        mvc.perform(findMembersRequest().with(로그인()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.members.length()").value(2))
+                .andExpect(jsonPath("$.members[0].userId").value(1))
+                .andExpect(jsonPath("$.members[0].nickname").value("민수"))
+                .andExpect(jsonPath("$.members[0].profileImageUrl").value("https://example.com/minsu.png"))
+                .andExpect(jsonPath("$.members[0].status").value("JOINED"))
+                .andExpect(jsonPath("$.members[1].profileImageUrl").isEmpty())
+                .andExpect(jsonPath("$.members[1].status").value("LEFT"));
+    }
+
+    @Test
+    void 방_멤버가_아니면_멤버_목록_조회에_403과_에러_코드를_응답한다() throws Exception {
+        // given
+        given(roomService.findMembers(ROOM_ID, USER_ID))
+                .willThrow(new BusinessException(RoomErrorCode.ROOM_ACCESS_DENIED));
+
+        // when & then
+        mvc.perform(findMembersRequest().with(로그인()))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("ROOM_ACCESS_DENIED"));
+    }
+
+    @Test
+    void 로그인하지_않으면_멤버_목록_조회에_401을_응답한다() throws Exception {
+        // when & then
+        mvc.perform(findMembersRequest())
+                .andExpect(status().isUnauthorized());
+
+        then(roomService).shouldHaveNoInteractions();
+    }
+
     private MockHttpServletRequestBuilder 방_생성_요청(String body) {
         return post("/api/rooms")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -244,6 +287,10 @@ class RoomControllerTest {
 
     private MockHttpServletRequestBuilder leaveRequest() {
         return delete("/api/rooms/{roomId}/members/me", ROOM_ID);
+    }
+
+    private MockHttpServletRequestBuilder findMembersRequest() {
+        return get("/api/rooms/{roomId}/members", ROOM_ID);
     }
 
     private RequestPostProcessor 로그인() {

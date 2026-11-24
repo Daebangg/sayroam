@@ -1,8 +1,10 @@
 package com.daebangg.sayroam.room.application;
 
 import com.daebangg.sayroam.global.exception.BusinessException;
+import com.daebangg.sayroam.room.application.dto.RoomMemberProfileResult;
 import com.daebangg.sayroam.room.application.service.RoomService;
 import com.daebangg.sayroam.room.domain.RoomMember;
+import com.daebangg.sayroam.room.domain.RoomMemberStatus;
 import com.daebangg.sayroam.room.domain.error.RoomErrorCode;
 import com.daebangg.sayroam.room.domain.event.RoomMemberLeft;
 import com.daebangg.sayroam.room.infrastructure.persistence.RoomInvitationJpaRepository;
@@ -23,10 +25,12 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.tuple;
 
 @RecordApplicationEvents
 class RoomServiceTest extends DatabaseIntegrationTest {
@@ -304,9 +308,113 @@ class RoomServiceTest extends DatabaseIntegrationTest {
         assertThat(joinedRoomId).isEqualTo(roomId);
     }
 
+    @Test
+    void 방_멤버의_닉네임과_프로필_이미지를_돌려준다() {
+        // given
+        Long ownerId = saveUser("민수", "https://example.com/minsu.png");
+        Long memberId = saveUser("지영", null);
+        Long roomId = roomService.create(ownerId, "제주 3박 4일");
+        String code = roomService.createInvitation(roomId, ownerId);
+        roomService.joinByInvitation(code, memberId);
+
+        // when
+        List<RoomMemberProfileResult> members = roomService.findMembers(roomId, ownerId);
+
+        // then
+        assertThat(members)
+                .extracting(RoomMemberProfileResult::userId, RoomMemberProfileResult::nickname,
+                        RoomMemberProfileResult::profileImageUrl, RoomMemberProfileResult::status)
+                .containsExactlyInAnyOrder(
+                        tuple(ownerId, "민수", "https://example.com/minsu.png", RoomMemberStatus.JOINED),
+                        tuple(memberId, "지영", null, RoomMemberStatus.JOINED));
+    }
+
+    @Test
+    void 나간_멤버도_나간_상태로_돌려준다() {
+        // given
+        Long ownerId = saveUser();
+        Long leftId = saveUser();
+        Long roomId = roomService.create(ownerId, "제주 3박 4일");
+        String code = roomService.createInvitation(roomId, ownerId);
+        roomService.joinByInvitation(code, leftId);
+        roomService.leave(roomId, leftId);
+
+        // when
+        List<RoomMemberProfileResult> members = roomService.findMembers(roomId, ownerId);
+
+        // then
+        assertThat(members)
+                .extracting(RoomMemberProfileResult::userId, RoomMemberProfileResult::status)
+                .containsExactlyInAnyOrder(
+                        tuple(ownerId, RoomMemberStatus.JOINED),
+                        tuple(leftId, RoomMemberStatus.LEFT));
+    }
+
+    @Test
+    void 탈퇴한_멤버는_탈퇴한_회원_이름으로_돌려준다() {
+        // given
+        Long ownerId = saveUser();
+        Long withdrawnId = saveUser("지영", "https://example.com/jiyoung.png");
+        Long roomId = roomService.create(ownerId, "제주 3박 4일");
+        String code = roomService.createInvitation(roomId, ownerId);
+        roomService.joinByInvitation(code, withdrawnId);
+        withdraw(withdrawnId);
+
+        // when
+        List<RoomMemberProfileResult> members = roomService.findMembers(roomId, ownerId);
+
+        // then
+        assertThat(members)
+                .filteredOn(member -> member.userId().equals(withdrawnId))
+                .singleElement()
+                .satisfies(member -> {
+                    assertThat(member.nickname()).isEqualTo("탈퇴한 회원");
+                    assertThat(member.profileImageUrl()).isNull();
+                });
+    }
+
+    @Test
+    void 참여하지_않은_회원은_멤버_목록을_볼_수_없다() {
+        // given
+        Long ownerId = saveUser();
+        Long outsiderId = saveUser();
+        Long roomId = roomService.create(ownerId, "제주 3박 4일");
+
+        // when & then
+        assertThatThrownBy(() -> roomService.findMembers(roomId, outsiderId))
+                .isInstanceOfSatisfying(BusinessException.class,
+                        e -> assertThat(e.getErrorCode()).isEqualTo(RoomErrorCode.ROOM_ACCESS_DENIED));
+    }
+
+    @Test
+    void 방을_나간_회원은_멤버_목록을_볼_수_없다() {
+        // given
+        Long ownerId = saveUser();
+        Long leftId = saveUser();
+        Long roomId = roomService.create(ownerId, "제주 3박 4일");
+        String code = roomService.createInvitation(roomId, ownerId);
+        roomService.joinByInvitation(code, leftId);
+        roomService.leave(roomId, leftId);
+
+        // when & then
+        assertThatThrownBy(() -> roomService.findMembers(roomId, leftId))
+                .isInstanceOfSatisfying(BusinessException.class,
+                        e -> assertThat(e.getErrorCode()).isEqualTo(RoomErrorCode.ROOM_ACCESS_DENIED));
+    }
+
     private Long saveUser() {
         User user = User.builder().nickname("방장").role(Role.USER).build();
         return userRepository.save(user).getId();
+    }
+
+    private Long saveUser(String nickname, String profileImageUrl) {
+        User user = User.builder().nickname(nickname).profileImageUrl(profileImageUrl).role(Role.USER).build();
+        return userRepository.save(user).getId();
+    }
+
+    private void withdraw(Long userId) {
+        transactionTemplate.executeWithoutResult(status -> userRepository.findById(userId).orElseThrow()
+                .withdraw(LocalDateTime.now(ZoneOffset.UTC)));
     }
 
     private void expireInvitation(String code) {

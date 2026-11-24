@@ -672,6 +672,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/rooms/{roomId}/members": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 방 멤버 목록 조회
+         * @description 방에 참여 중인 회원이 멤버의 닉네임·프로필 이미지·참여 상태를 조회합니다.
+         *     나간 멤버도 포함하므로 지난 메시지의 senderId로 보낸 사람을 찾을 수 있습니다.
+         */
+        get: operations["findMembers"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/rooms/{roomId}/members/me": {
         parameters: {
             query?: never;
@@ -1682,6 +1703,32 @@ export interface components {
             /** Format: int32 */
             "time-together": number | null;
         };
+        RoomMemberListResponse: {
+            /** @description 방 멤버. 나간 멤버도 포함하며 순서는 보장하지 않음 */
+            members: components["schemas"]["RoomMemberProfileResponse"][];
+        };
+        RoomMemberProfileResponse: {
+            /**
+             * @description 닉네임. 탈퇴한 회원은 '탈퇴한 회원'
+             * @example 민수
+             */
+            nickname: string;
+            /**
+             * @description 프로필 이미지 주소. 없으면 null
+             * @example /brand/avatars/traveler.svg
+             */
+            profileImageUrl: string | null;
+            /** @description 참여 상태. JOINED는 참여 중, LEFT는 나감, KICKED는 내보내짐 */
+            status: components["schemas"]["RoomMemberStatus"];
+            /**
+             * Format: int64
+             * @description 회원 ID. 메시지의 senderId와 같은 값
+             * @example 1
+             */
+            userId: number;
+        };
+        /** @enum {string} */
+        RoomMemberStatus: "JOINED" | "LEFT" | "KICKED";
         SaveCompanionSearchRequest: {
             /** Format: int64 */
             destinationId: number;
@@ -3769,6 +3816,36 @@ export interface operations {
             503: components["responses"]["AuthenticationUnavailable"];
         };
     };
+    findMembers: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /**
+                 * @description 방 ID
+                 * @example 7
+                 */
+                roomId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 조회 성공 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RoomMemberListResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["RoomAccessDenied"];
+            500: components["responses"]["InternalServerError"];
+            503: components["responses"]["AuthenticationUnavailable"];
+        };
+    };
     leave: {
         parameters: {
             query?: never;
@@ -4364,6 +4441,13 @@ export const apiRoutes = {
     findAfter: {
         method: "get",
         path: "/api/rooms/{roomId}/messages",
+        auth: "required",
+        csrf: false,
+        responses: { "200": true },
+    },
+    findMembers: {
+        method: "get",
+        path: "/api/rooms/{roomId}/members",
         auth: "required",
         csrf: false,
         responses: { "200": true },
