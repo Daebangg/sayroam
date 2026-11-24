@@ -972,9 +972,9 @@
             "ChatMessageResponse": {
                 "properties": {
                     "clientMessageId": {
-                        "description": "클라이언트가 전송할 때 만든 UUID",
+                        "description": "클라이언트가 전송할 때 만든 UUID. 시스템 메시지는 null",
                         "example": "6f1c2b6e-8a57-4b7a-9d3e-2f4a1c7e9b10",
-                        "type": "string"
+                        "type": ["string", "null"]
                     },
                     "content": {
                         "description": "메시지 본문",
@@ -1003,9 +1003,17 @@
                         "description": "보낸 회원 ID. 시스템 메시지는 null",
                         "example": 1,
                         "format": "int64",
-                        "type": "integer"
+                        "type": ["integer", "null"]
                     }
                 },
+                "required": [
+                    "clientMessageId",
+                    "content",
+                    "createdAt",
+                    "messageId",
+                    "roomId",
+                    "senderId"
+                ],
                 "type": "object"
             },
             "CompanionCandidateListResponse": {
@@ -3883,7 +3891,12 @@
                         "in": "query",
                         "name": "afterId",
                         "required": false,
-                        "schema": { "default": "0", "example": 100, "type": "string" }
+                        "schema": {
+                            "default": 0,
+                            "example": 100,
+                            "format": "int64",
+                            "type": "integer"
+                        }
                     },
                     {
                         "description": "한 번에 조회할 최대 개수",
@@ -3891,10 +3904,11 @@
                         "name": "size",
                         "required": false,
                         "schema": {
-                            "default": "100",
+                            "default": 100,
+                            "format": "int32",
                             "maximum": 100,
                             "minimum": 1,
-                            "type": "string"
+                            "type": "integer"
                         }
                     }
                 ],

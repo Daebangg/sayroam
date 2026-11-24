@@ -1217,39 +1217,39 @@ export interface components {
         };
         ChatMessageResponse: {
             /**
-             * @description 클라이언트가 전송할 때 만든 UUID
+             * @description 클라이언트가 전송할 때 만든 UUID. 시스템 메시지는 null
              * @example 6f1c2b6e-8a57-4b7a-9d3e-2f4a1c7e9b10
              */
-            clientMessageId?: string;
+            clientMessageId: string | null;
             /**
              * @description 메시지 본문
              * @example 안녕
              */
-            content?: string;
+            content: string;
             /**
              * Format: date-time
              * @description 서버 저장 시각(UTC)
              * @example 2026-11-07T10:00:00Z
              */
-            createdAt?: string;
+            createdAt: string;
             /**
              * Format: int64
              * @description 메시지 ID. 다음 조회의 afterId로 사용
              * @example 101
              */
-            messageId?: number;
+            messageId: number;
             /**
              * Format: int64
              * @description 방 ID
              * @example 7
              */
-            roomId?: number;
+            roomId: number;
             /**
              * Format: int64
              * @description 보낸 회원 ID. 시스템 메시지는 null
              * @example 1
              */
-            senderId?: number;
+            senderId: number | null;
         };
         CompanionCandidateListResponse: {
             candidates: components["schemas"]["Candidate"][];
@@ -3878,9 +3878,9 @@ export interface operations {
         parameters: {
             query?: {
                 /** @description 마지막으로 받은 메시지 ID. 생략하면 처음부터 조회 */
-                afterId?: string;
+                afterId?: number;
                 /** @description 한 번에 조회할 최대 개수 */
-                size?: string;
+                size?: number;
             };
             header?: never;
             path: {

@@ -36,9 +36,9 @@ public interface ChatMessageApi {
             @Parameter(hidden = true) @AuthenticationPrincipal AuthenticatedAccount account,
             @Parameter(description = "방 ID", example = "7") Long roomId,
             @Parameter(description = "마지막으로 받은 메시지 ID. 생략하면 처음부터 조회",
-                    schema = @Schema(defaultValue = "0", example = "100")) Long afterId,
+                    schema = @Schema(type = "integer", format = "int64", defaultValue = "0", example = "100")) Long afterId,
             @Parameter(description = "한 번에 조회할 최대 개수",
-                    schema = @Schema(minimum = "1", maximum = "100", defaultValue = "100"))
+                    schema = @Schema(type = "integer", format = "int32", minimum = "1", maximum = "100", defaultValue = "100"))
             @Min(1) @Max(100) int size);
 }
 
