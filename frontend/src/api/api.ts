@@ -4,6 +4,7 @@ import {
     validateSocialExchange,
 } from "./auth/socialResponse.ts";
 import { refreshAccessToken } from "./auth/refreshSession.ts";
+import { validateChatMessages, validateRoomMembers } from "./chat/chatResponse.ts";
 import { validateToken } from "./auth/tokenResponse.ts";
 import type { AccessTokenSnapshot } from "./auth/tokenStore.ts";
 import { apiRoutes } from "./generated/schema.ts";
@@ -54,6 +55,8 @@ export const api = createApiRouter(apiRoutes, {
         createTripRoom: { parseResponse: validateCreatedRoom },
         createInvitation: { parseResponse: validateInvitation },
         joinByInvitation: { parseResponse: validateJoinedRoom },
+        findMembers: { parseResponse: validateRoomMembers },
+        findAfter: { parseResponse: validateChatMessages },
         listSocialProviders: { parseResponse: validateProviders },
         startSocialLogin: { cookieAction: "oauth", parseResponse: validateAuthorization },
         exchangeSocialLoginResult: {
