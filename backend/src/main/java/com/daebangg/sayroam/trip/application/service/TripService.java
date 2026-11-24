@@ -22,7 +22,10 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 @Transactional(readOnly = true)
@@ -59,6 +62,21 @@ public class TripService {
             trip.rename(title);
         }
         return TripTitleResult.from(trip);
+    }
+
+    // 동시에 발급해도 코드가 하나만 생기도록 잠근다. 나중 요청이 먼저 준 링크를 새 코드로 덮어쓰지 않게 한다
+    @Transactional
+    public String issueInvitation(Long userId, Long tripId) {
+        Trip trip = tripRepository.findAccessibleForUpdate(userId, tripId)
+                .orElseThrow(() -> new BusinessException(TripErrorCode.TRIP_NOT_FOUND));
+        return trip.issueInvitation(LocalDateTime.now(ZoneOffset.UTC));
+    }
+
+    // 상태를 바꾸지 않아 잠그지 않는다. 없거나 만료됐으면 화면이 발급을 요청한다
+    public Optional<String> findInvitation(Long userId, Long tripId) {
+        Trip trip = tripRepository.findAccessible(userId, tripId)
+                .orElseThrow(() -> new BusinessException(TripErrorCode.TRIP_NOT_FOUND));
+        return trip.findValidInvitationCode(LocalDateTime.now(ZoneOffset.UTC));
     }
 
     @Transactional

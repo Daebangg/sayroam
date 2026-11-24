@@ -14,6 +14,8 @@ import com.daebangg.sayroam.trip.presentation.dto.CreateTripRequest;
 import com.daebangg.sayroam.trip.presentation.dto.CreateTripResponse;
 import com.daebangg.sayroam.trip.presentation.dto.CreateTripRoomRequest;
 import com.daebangg.sayroam.trip.presentation.dto.CreateTripRoomResponse;
+import com.daebangg.sayroam.trip.presentation.dto.CurrentTripInvitationResponse;
+import com.daebangg.sayroam.trip.presentation.dto.TripInvitationResponse;
 import com.daebangg.sayroam.trip.presentation.dto.TripListResponse;
 import com.daebangg.sayroam.trip.presentation.dto.TripPlaceListResponse;
 import com.daebangg.sayroam.trip.presentation.dto.TripSummaryResponse;
@@ -66,6 +68,22 @@ public class TripController implements TripApi {
         Long roomId = tripService.createRoom(account.userId(), tripId, request.name());
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(new CreateTripRoomResponse(roomId));
+    }
+
+    @Override
+    @GetMapping(value = "/api/trips/{tripId}/invitation", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<CurrentTripInvitationResponse> findInvitation(@AuthenticationPrincipal AuthenticatedAccount account,
+                                                                        @PathVariable Long tripId) {
+        String code = tripService.findInvitation(account.userId(), tripId).orElse(null);
+        return ResponseEntity.ok(new CurrentTripInvitationResponse(code));
+    }
+
+    @Override
+    @PostMapping(value = "/api/trips/{tripId}/invitation", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<TripInvitationResponse> issueInvitation(@AuthenticationPrincipal AuthenticatedAccount account,
+                                                                  @PathVariable Long tripId) {
+        String code = tripService.issueInvitation(account.userId(), tripId);
+        return ResponseEntity.ok(new TripInvitationResponse(code));
     }
 
     @Override

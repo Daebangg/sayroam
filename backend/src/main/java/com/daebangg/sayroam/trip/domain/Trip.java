@@ -15,6 +15,9 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDateTime;
+import java.util.Optional;
+
 @Entity
 @Table(name = "trip")
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
@@ -47,6 +50,10 @@ public class Trip extends BaseTimeEntity {
     @Embedded
     @Getter
     private TravelPeriod period;
+
+    // 친구 초대 링크. 아직 공유하지 않았으면 NULL
+    @Embedded
+    private TripInvitation invitation;
 
     public Trip(Long createdById, Long destinationId, TravelPeriod period, String title) {
         if (destinationId == null) {
@@ -86,6 +93,20 @@ public class Trip extends BaseTimeEntity {
         this.roomId = roomId;
     }
 
+    public String issueInvitation(LocalDateTime now) {
+        if (!hasValidInvitation(now)) {
+            invitation = TripInvitation.issue(now);
+        }
+        return invitation.getCode();
+    }
+
+    public Optional<String> findValidInvitationCode(LocalDateTime now) {
+        if (!hasValidInvitation(now)) {
+            return Optional.empty();
+        }
+        return Optional.of(invitation.getCode());
+    }
+
     // 생성과 이름 변경이 함께 쓴다. 앞뒤 공백을 지우고 비면 이름 없음(null)으로 두며, 글자 수는 이모지도 한 글자로 센다
     private static String normalizeTitle(String title) {
         if (title == null || title.isBlank()) {
@@ -96,5 +117,10 @@ public class Trip extends BaseTimeEntity {
             throw new BusinessException(TripErrorCode.TRIP_TITLE_TOO_LONG);
         }
         return stripped;
+    }
+
+    // 링크를 만든 적이 없거나 만료됐으면 쓸 수 있는 초대가 없다
+    private boolean hasValidInvitation(LocalDateTime now) {
+        return invitation != null && !invitation.isExpired(now);
     }
 }

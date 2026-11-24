@@ -8,6 +8,8 @@ import com.daebangg.sayroam.trip.presentation.dto.CreateTripRequest;
 import com.daebangg.sayroam.trip.presentation.dto.CreateTripResponse;
 import com.daebangg.sayroam.trip.presentation.dto.CreateTripRoomRequest;
 import com.daebangg.sayroam.trip.presentation.dto.CreateTripRoomResponse;
+import com.daebangg.sayroam.trip.presentation.dto.CurrentTripInvitationResponse;
+import com.daebangg.sayroam.trip.presentation.dto.TripInvitationResponse;
 import com.daebangg.sayroam.trip.presentation.dto.TripListResponse;
 import com.daebangg.sayroam.trip.presentation.dto.TripPlaceListResponse;
 import com.daebangg.sayroam.trip.presentation.dto.TripSummaryResponse;
@@ -72,6 +74,37 @@ public interface TripApi {
     ResponseEntity<CreateTripRoomResponse> createRoom(@Parameter(hidden = true) @AuthenticationPrincipal AuthenticatedAccount account,
                                                       @Parameter(description = "여행 ID", example = "12") Long tripId,
                                                       @RequestBody CreateTripRoomRequest request);
+
+    @Operation(operationId = "getTripInvitation", summary = "여행 초대 링크 조회",
+            description = "지금 쓸 수 있는 초대 코드를 조회합니다. 발급한 적이 없거나 만료됐으면 code가 null이며, "
+                    + "이때 화면은 초대 링크 발급을 요청합니다. 코드를 새로 만들지 않습니다.",
+            security = @SecurityRequirement(name = "bearerAuth"))
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "현재 초대 코드 또는 null"),
+            @ApiResponse(responseCode = "401", ref = "#/components/responses/Unauthorized"),
+            @ApiResponse(responseCode = "404", ref = "#/components/responses/TripNotFound"),
+            @ApiResponse(responseCode = "503", ref = "#/components/responses/AuthenticationUnavailable"),
+            @ApiResponse(responseCode = "500", ref = "#/components/responses/InternalServerError")
+    })
+    ResponseEntity<CurrentTripInvitationResponse> findInvitation(
+            @Parameter(hidden = true) @AuthenticationPrincipal AuthenticatedAccount account,
+            @Parameter(description = "여행 ID", example = "12") Long tripId);
+
+    @Operation(operationId = "issueTripInvitation", summary = "여행 초대 링크 발급",
+            description = "친구에게 보낼 초대 코드를 발급합니다. 여행마다 링크는 하나이며, 7일 동안 유효합니다. "
+                    + "유효한 코드가 있으면 같은 코드를 돌려주고, 없거나 만료됐으면 새 코드로 바꿔 돌려줍니다. "
+                    + "링크를 발급해도 채팅방은 만들지 않습니다. 여행을 볼 수 있는 회원이면 누구나 발급할 수 있습니다.",
+            security = @SecurityRequirement(name = "bearerAuth"))
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "유효한 초대 코드"),
+            @ApiResponse(responseCode = "401", ref = "#/components/responses/Unauthorized"),
+            @ApiResponse(responseCode = "404", ref = "#/components/responses/TripNotFound"),
+            @ApiResponse(responseCode = "503", ref = "#/components/responses/AuthenticationUnavailable"),
+            @ApiResponse(responseCode = "500", ref = "#/components/responses/InternalServerError")
+    })
+    ResponseEntity<TripInvitationResponse> issueInvitation(
+            @Parameter(hidden = true) @AuthenticationPrincipal AuthenticatedAccount account,
+            @Parameter(description = "여행 ID", example = "12") Long tripId);
 
     @Operation(operationId = "addTripPlace", summary = "여행에 장소 추가",
             description = "장소 검색에서 고른 장소를 여행에 추가합니다. 장소 ID만 받고, 이름·분류·주소·좌표는 서버가 TourAPI에서 받아 저장합니다. "
