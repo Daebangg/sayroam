@@ -33,8 +33,8 @@ public class Trip extends BaseTimeEntity {
     @Column(name = "created_by", nullable = false, updatable = false)
     private Long createdById;
 
-    // 혼자 가는 여행은 NULL
-    @Column(name = "room_id", unique = true)
+    // 여행 채팅. 여행을 만들 때 함께 만든다
+    @Column(name = "room_id", nullable = false, unique = true)
     @Getter
     private Long roomId;
 

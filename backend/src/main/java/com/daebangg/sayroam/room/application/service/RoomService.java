@@ -5,13 +5,13 @@ import com.daebangg.sayroam.room.application.dto.RoomMemberProfileResult;
 import com.daebangg.sayroam.room.application.port.out.RoomMemberQueryRepository;
 import com.daebangg.sayroam.room.domain.Room;
 import com.daebangg.sayroam.room.domain.RoomInvitation;
+import com.daebangg.sayroam.room.domain.RoomInvitationRepository;
 import com.daebangg.sayroam.room.domain.RoomMember;
+import com.daebangg.sayroam.room.domain.RoomMemberRepository;
 import com.daebangg.sayroam.room.domain.RoomMemberStatus;
+import com.daebangg.sayroam.room.domain.RoomRepository;
 import com.daebangg.sayroam.room.domain.error.RoomErrorCode;
 import com.daebangg.sayroam.room.domain.event.RoomMemberLeft;
-import com.daebangg.sayroam.room.domain.RoomInvitationRepository;
-import com.daebangg.sayroam.room.domain.RoomMemberRepository;
-import com.daebangg.sayroam.room.domain.RoomRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
@@ -49,7 +49,7 @@ public class RoomService {
         LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);
         roomMemberRepository.findByRoomIdAndUserId(roomId, userId)
                 .ifPresentOrElse(member -> member.rejoin(now),
-                        () -> roomMemberRepository.save(RoomMember.join(getRoom(roomId), userId, now)));
+                        () -> roomMemberRepository.save(RoomMember.join(roomRepository.getReferenceById(roomId), userId, now)));
     }
 
     @Transactional
@@ -94,12 +94,6 @@ public class RoomService {
     public List<RoomMemberProfileResult> findMembers(Long roomId, Long userId) {
         ensureJoined(roomId, userId);
         return roomMemberQueryRepository.findProfiles(roomId);
-    }
-
-    // 여행이 가진 방 ID로만 부르므로 없으면 데이터가 어긋난 것이다
-    private Room getRoom(Long roomId) {
-        return roomRepository.findById(roomId)
-                .orElseThrow(() -> new IllegalStateException("Room does not exist: " + roomId));
     }
 
     private RoomMember getMember(Long roomId, Long userId) {

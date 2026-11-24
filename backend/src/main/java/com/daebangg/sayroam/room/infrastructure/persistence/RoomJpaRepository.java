@@ -4,13 +4,11 @@ import com.daebangg.sayroam.room.domain.Room;
 import com.daebangg.sayroam.room.domain.RoomRepository;
 import org.springframework.data.jpa.repository.JpaRepository;
 
-import java.util.Optional;
-
 public interface RoomJpaRepository extends RoomRepository, JpaRepository<Room, Long> {
 
     @Override
     <S extends Room> S save(S room);
 
     @Override
-    Optional<Room> findById(Long roomId);
+    Room getReferenceById(Long roomId);
 }

@@ -75,7 +75,6 @@ public class RoomMember extends BaseTimeEntity {
         return new RoomMember(room, userId, RoomMemberRole.OWNER, now);
     }
 
-    // 초대가 유효한지는 부르는 쪽이 먼저 확인한다
     public static RoomMember join(Room room, Long userId, LocalDateTime now) {
         return new RoomMember(room, userId, RoomMemberRole.MEMBER, now);
     }
