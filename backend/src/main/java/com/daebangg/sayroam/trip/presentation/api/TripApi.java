@@ -6,8 +6,6 @@ import com.daebangg.sayroam.trip.presentation.dto.AddTripPlaceRequest;
 import com.daebangg.sayroam.trip.presentation.dto.AddTripPlaceResponse;
 import com.daebangg.sayroam.trip.presentation.dto.CreateTripRequest;
 import com.daebangg.sayroam.trip.presentation.dto.CreateTripResponse;
-import com.daebangg.sayroam.trip.presentation.dto.CreateTripRoomRequest;
-import com.daebangg.sayroam.trip.presentation.dto.CreateTripRoomResponse;
 import com.daebangg.sayroam.trip.presentation.dto.CurrentTripInvitationResponse;
 import com.daebangg.sayroam.trip.presentation.dto.TripInvitationResponse;
 import com.daebangg.sayroam.trip.presentation.dto.TripListResponse;
@@ -57,23 +55,6 @@ public interface TripApi {
     ResponseEntity<UpdateTripResponse> update(@Parameter(hidden = true) @AuthenticationPrincipal AuthenticatedAccount account,
                                               @Parameter(description = "여행 ID", example = "12") Long tripId,
                                               @RequestBody UpdateTripRequest request);
-
-    @Operation(operationId = "createTripRoom", summary = "여행에 채팅방 만들어 연결",
-            description = "방이 없는 여행에 채팅방을 만들고, 요청한 회원을 방장으로 등록한 뒤 여행에 연결합니다. "
-                    + "여행을 만든 회원만 사용할 수 있습니다. 이미 방이 연결된 여행은 여행 조회 응답의 roomId로 초대 링크를 발급합니다.",
-            security = @SecurityRequirement(name = "bearerAuth"))
-    @ApiResponses({
-            @ApiResponse(responseCode = "201", description = "방 생성, 방장 등록, 여행 연결 완료"),
-            @ApiResponse(responseCode = "400", ref = "#/components/responses/RoomBadRequest"),
-            @ApiResponse(responseCode = "401", ref = "#/components/responses/Unauthorized"),
-            @ApiResponse(responseCode = "404", ref = "#/components/responses/TripNotFound"),
-            @ApiResponse(responseCode = "409", ref = "#/components/responses/TripRoomAlreadyLinked"),
-            @ApiResponse(responseCode = "503", ref = "#/components/responses/AuthenticationUnavailable"),
-            @ApiResponse(responseCode = "500", ref = "#/components/responses/InternalServerError")
-    })
-    ResponseEntity<CreateTripRoomResponse> createRoom(@Parameter(hidden = true) @AuthenticationPrincipal AuthenticatedAccount account,
-                                                      @Parameter(description = "여행 ID", example = "12") Long tripId,
-                                                      @RequestBody CreateTripRoomRequest request);
 
     @Operation(operationId = "getTripInvitation", summary = "여행 초대 링크 조회",
             description = "지금 쓸 수 있는 초대 코드를 조회합니다. 발급한 적이 없거나 만료됐으면 code가 null이며, "

@@ -43,6 +43,9 @@ public class TripService {
         TravelPeriod period = new TravelPeriod(command.startDate(), command.endDate());
         Trip trip = new Trip(userId, command.destinationId(), period, command.title());
         requireActiveDestination(command.destinationId());
+        Long roomId = roomService.createForTrip();
+        roomService.join(roomId, userId);
+        trip.linkRoom(roomId);
         return tripRepository.save(trip).getId();
     }
 
@@ -77,17 +80,6 @@ public class TripService {
         Trip trip = tripRepository.findAccessible(userId, tripId)
                 .orElseThrow(() -> new BusinessException(TripErrorCode.TRIP_NOT_FOUND));
         return trip.findValidInvitationCode(LocalDateTime.now(ZoneOffset.UTC));
-    }
-
-    @Transactional
-    public Long createRoom(Long userId, Long tripId, String roomName) {
-        Trip trip = tripRepository.findByIdForUpdate(tripId)
-                .filter(t -> t.isCreatedBy(userId))
-                .orElseThrow(() -> new BusinessException(TripErrorCode.TRIP_NOT_FOUND));
-        trip.ensureRoomLinkable();
-        Long roomId = roomService.create(userId, roomName);
-        trip.linkRoom(roomId);
-        return roomId;
     }
 
     @Transactional

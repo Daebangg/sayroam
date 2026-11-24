@@ -6,6 +6,7 @@ import com.daebangg.sayroam.room.application.port.out.RoomMemberQueryRepository;
 import com.daebangg.sayroam.room.domain.Room;
 import com.daebangg.sayroam.room.domain.RoomInvitation;
 import com.daebangg.sayroam.room.domain.RoomMember;
+import com.daebangg.sayroam.room.domain.RoomMemberStatus;
 import com.daebangg.sayroam.room.domain.error.RoomErrorCode;
 import com.daebangg.sayroam.room.domain.event.RoomMemberLeft;
 import com.daebangg.sayroam.room.domain.RoomInvitationRepository;
@@ -35,6 +36,20 @@ public class RoomService {
         Room room = roomRepository.save(new Room(name));
         roomMemberRepository.save(RoomMember.joinAsOwner(room, userId, LocalDateTime.now(ZoneOffset.UTC)));
         return room.getId();
+    }
+
+    // 여행 방은 이름이 없다. 화면은 여행 이름을 보여 준다
+    @Transactional
+    public Long createForTrip() {
+        return roomRepository.save(new Room(null)).getId();
+    }
+
+    @Transactional
+    public void join(Long roomId, Long userId) {
+        LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);
+        roomMemberRepository.findByRoomIdAndUserId(roomId, userId)
+                .ifPresentOrElse(member -> member.rejoin(now),
+                        () -> roomMemberRepository.save(RoomMember.join(getRoom(roomId), userId, now)));
     }
 
     @Transactional
@@ -68,6 +83,10 @@ public class RoomService {
         getJoinedMember(roomId, userId);
     }
 
+    public long countJoinedMembers(Long roomId) {
+        return roomMemberRepository.countByRoomIdAndStatus(roomId, RoomMemberStatus.JOINED);
+    }
+
     public LocalDateTime getJoinedAt(Long roomId, Long userId) {
         return getJoinedMember(roomId, userId).getJoinedAt();
     }
@@ -75,6 +94,12 @@ public class RoomService {
     public List<RoomMemberProfileResult> findMembers(Long roomId, Long userId) {
         ensureJoined(roomId, userId);
         return roomMemberQueryRepository.findProfiles(roomId);
+    }
+
+    // 여행이 가진 방 ID로만 부르므로 없으면 데이터가 어긋난 것이다
+    private Room getRoom(Long roomId) {
+        return roomRepository.findById(roomId)
+                .orElseThrow(() -> new IllegalStateException("Room does not exist: " + roomId));
     }
 
     private RoomMember getMember(Long roomId, Long userId) {

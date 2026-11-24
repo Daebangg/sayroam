@@ -72,10 +72,6 @@ public class Trip extends BaseTimeEntity {
         this.title = normalizeTitle(title);
     }
 
-    public boolean isCreatedBy(Long userId) {
-        return createdById.equals(userId);
-    }
-
     public void ensurePlaceAddable(Integer day) {
         if (day != null && !period.containsDay(day)) {
             throw new BusinessException(TripErrorCode.TRIP_DAY_OUT_OF_RANGE);
@@ -98,6 +94,12 @@ public class Trip extends BaseTimeEntity {
             invitation = TripInvitation.issue(now);
         }
         return invitation.getCode();
+    }
+
+    public void ensureInvitationValid(LocalDateTime now) {
+        if (!hasValidInvitation(now)) {
+            throw new BusinessException(TripErrorCode.TRIP_INVITATION_NOT_FOUND);
+        }
     }
 
     public Optional<String> findValidInvitationCode(LocalDateTime now) {

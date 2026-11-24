@@ -14,6 +14,7 @@ public enum TripErrorCode implements ErrorCode {
     TRIP_TITLE_TOO_LONG(ErrorType.INVALID, "TRIP_TITLE_TOO_LONG", "Trip title is too long"),
     TRIP_NOT_FOUND(ErrorType.NOT_FOUND, "TRIP_NOT_FOUND", "Trip does not exist"),
     TRIP_ROOM_ALREADY_LINKED(ErrorType.CONFLICT, "TRIP_ROOM_ALREADY_LINKED", "Trip is already linked to a chat room"),
+    TRIP_INVITATION_NOT_FOUND(ErrorType.NOT_FOUND, "TRIP_INVITATION_NOT_FOUND", "Trip invitation does not exist or has expired"),
     TRIP_DAY_OUT_OF_RANGE(ErrorType.INVALID, "TRIP_DAY_OUT_OF_RANGE", "Day is outside the trip period"),
     TRIP_PLACE_MEMO_TOO_LONG(ErrorType.INVALID, "TRIP_PLACE_MEMO_TOO_LONG", "Trip place memo is too long");
 

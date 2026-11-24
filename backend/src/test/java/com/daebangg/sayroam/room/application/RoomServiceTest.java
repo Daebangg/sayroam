@@ -402,6 +402,76 @@ class RoomServiceTest extends DatabaseIntegrationTest {
                         e -> assertThat(e.getErrorCode()).isEqualTo(RoomErrorCode.ROOM_ACCESS_DENIED));
     }
 
+    @Test
+    void 여행_방을_만들면_멤버가_없는_방이_생긴다() {
+        // when
+        Long roomId = roomService.createForTrip();
+
+        // then
+        assertThat(roomRepository.findById(roomId)).isPresent();
+        assertThat(roomService.countJoinedMembers(roomId)).isZero();
+    }
+
+    @Test
+    void 방에_참여시키면_참여_중이_된다() {
+        // given
+        Long userId = saveUser();
+        Long roomId = roomService.createForTrip();
+
+        // when
+        roomService.join(roomId, userId);
+
+        // then
+        assertThatCode(() -> roomService.ensureJoined(roomId, userId)).doesNotThrowAnyException();
+    }
+
+    @Test
+    void 나갔던_회원을_참여시키면_다시_참여_중이_된다() {
+        // given
+        Long userId = saveUser();
+        Long roomId = roomService.createForTrip();
+        roomService.join(roomId, userId);
+        roomService.leave(roomId, userId);
+
+        // when
+        roomService.join(roomId, userId);
+
+        // then
+        assertThatCode(() -> roomService.ensureJoined(roomId, userId)).doesNotThrowAnyException();
+        assertThat(roomMemberRepository.count()).isEqualTo(1);
+    }
+
+    @Test
+    void 이미_참여_중인_회원을_다시_참여시켜도_멤버가_늘지_않는다() {
+        // given
+        Long userId = saveUser();
+        Long roomId = roomService.createForTrip();
+        roomService.join(roomId, userId);
+
+        // when
+        roomService.join(roomId, userId);
+
+        // then
+        assertThat(roomService.countJoinedMembers(roomId)).isEqualTo(1);
+    }
+
+    @Test
+    void 참여_중인_멤버_수에는_나간_멤버를_세지_않는다() {
+        // given
+        Long firstId = saveUser();
+        Long secondId = saveUser();
+        Long roomId = roomService.createForTrip();
+        roomService.join(roomId, firstId);
+        roomService.join(roomId, secondId);
+        roomService.leave(roomId, secondId);
+
+        // when
+        long count = roomService.countJoinedMembers(roomId);
+
+        // then
+        assertThat(count).isEqualTo(1);
+    }
+
     private Long saveUser() {
         User user = User.builder().nickname("방장").role(Role.USER).build();
         return userRepository.save(user).getId();

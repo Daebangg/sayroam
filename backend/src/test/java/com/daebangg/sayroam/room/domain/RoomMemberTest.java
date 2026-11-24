@@ -153,6 +153,51 @@ class RoomMemberTest {
                         e -> assertThat(e.getErrorCode()).isEqualTo(RoomErrorCode.ROOM_ACCESS_DENIED));
     }
 
+    @Test
+    void 방에_참여하면_방에_접근할_수_있다() {
+        // when
+        RoomMember member = RoomMember.join(room, 2L, NOW);
+
+        // then
+        assertThatCode(member::ensureJoined).doesNotThrowAnyException();
+    }
+
+    @Test
+    void 방에_참여하면_참여_시각이_기록된다() {
+        // when
+        RoomMember member = RoomMember.join(room, 2L, NOW);
+
+        // then
+        assertThat(member.getJoinedAt()).isEqualTo(NOW);
+    }
+
+    @Test
+    void 나간_멤버가_다시_참여하면_방에_접근할_수_있고_참여_시각이_바뀐다() {
+        // given
+        RoomMember member = RoomMember.join(room, 2L, NOW);
+        member.leave(NOW.plusDays(1));
+        LocalDateTime rejoinedAt = NOW.plusDays(3);
+
+        // when
+        member.rejoin(rejoinedAt);
+
+        // then
+        assertThatCode(member::ensureJoined).doesNotThrowAnyException();
+        assertThat(member.getJoinedAt()).isEqualTo(rejoinedAt);
+    }
+
+    @Test
+    void 참여_중인_멤버를_다시_참여시켜도_참여_시각은_그대로다() {
+        // given
+        RoomMember member = RoomMember.join(room, 2L, NOW);
+
+        // when
+        member.rejoin(NOW.plusDays(3));
+
+        // then
+        assertThat(member.getJoinedAt()).isEqualTo(NOW);
+    }
+
     private RoomInvitation invitationIssuedAt(LocalDateTime issuedAt) {
         return RoomMember.joinAsOwner(room, 1L, NOW).createShareInvitation(issuedAt);
     }

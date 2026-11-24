@@ -57,6 +57,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
@@ -127,6 +128,61 @@ class TripServiceTest extends DatabaseIntegrationTest {
         roomMemberJpaRepository.deleteAllInBatch();
         roomJpaRepository.deleteAllInBatch();
         userRepository.deleteAllInBatch();
+    }
+
+    @Test
+    void 여행을_만들면_채팅방도_만들어_연결한다() {
+        // given
+        Long ownerId = saveUser();
+
+        // when
+        Long tripId = createTrip(ownerId);
+
+        // then
+        Long roomId = findTrip(tripId).getRoomId();
+        assertThat(roomId).isNotNull();
+        assertThat(roomJpaRepository.findById(roomId)).isPresent();
+    }
+
+    @Test
+    void 여행을_만들면_만든_회원이_채팅방의_유일한_멤버다() {
+        // given
+        Long ownerId = saveUser();
+
+        // when
+        Long tripId = createTrip(ownerId);
+
+        // then
+        Long roomId = findTrip(tripId).getRoomId();
+        assertThatCode(() -> roomService.ensureJoined(roomId, ownerId)).doesNotThrowAnyException();
+        assertThat(roomService.countJoinedMembers(roomId)).isEqualTo(1);
+    }
+
+    @Test
+    void 여행마다_서로_다른_채팅방이_만들어진다() {
+        // given
+        Long ownerId = saveUser();
+
+        // when
+        Long firstTripId = createTrip(ownerId);
+        Long secondTripId = createTrip(ownerId);
+
+        // then
+        assertThat(findTrip(firstTripId).getRoomId()).isNotEqualTo(findTrip(secondTripId).getRoomId());
+    }
+
+    @Test
+    void 비활성_여행지로는_여행도_채팅방도_만들지_않는다() {
+        // given
+        Long ownerId = saveUser();
+        jdbc.update("UPDATE destination SET is_active = 0 WHERE id = ?", destinationId);
+
+        // when & then
+        assertThatThrownBy(() -> createTrip(ownerId))
+                .isInstanceOfSatisfying(BusinessException.class,
+                        e -> assertThat(e.getErrorCode()).isEqualTo(TripErrorCode.TRIP_DESTINATION_UNAVAILABLE));
+        assertThat(tripJpaRepository.count()).isZero();
+        assertThat(roomJpaRepository.count()).isZero();
     }
 
     @Test
@@ -244,81 +300,6 @@ class TripServiceTest extends DatabaseIntegrationTest {
     }
 
     @Test
-    void 채팅방이_없는_여행에서_채팅방을_만들면_방장과_함께_만들어지고_여행에_연결된다() {
-        // given
-        Long userId = saveUser();
-        Long tripId = tripService.create(userId, new CreateTripCommand(destinationId, START_DATE, END_DATE, TITLE));
-
-        // when
-        Long roomId = tripService.createRoom(userId, tripId, ROOM_NAME);
-
-        // then
-        assertThat(roomJpaRepository.count()).isEqualTo(1);
-        RoomMember owner = roomMemberJpaRepository.findByRoomIdAndUserId(roomId, userId).orElseThrow();
-        assertThat(owner.isOwner()).isTrue();
-        assertThat(findTrip(tripId).getRoomId()).isEqualTo(roomId);
-    }
-
-    @Test
-    void 이미_채팅방이_연결된_여행이면_409로_거부하고_새_채팅방을_만들지_않는다() {
-        // given
-        Long userId = saveUser();
-        Long tripId = tripService.create(userId, new CreateTripCommand(destinationId, START_DATE, END_DATE, TITLE));
-        Long roomId = tripService.createRoom(userId, tripId, ROOM_NAME);
-
-        // when & then
-        assertThatThrownBy(() -> tripService.createRoom(userId, tripId, ROOM_NAME))
-                .isInstanceOfSatisfying(BusinessException.class,
-                        e -> assertThat(e.getErrorCode()).isEqualTo(TripErrorCode.TRIP_ROOM_ALREADY_LINKED));
-        assertThat(roomJpaRepository.count()).isEqualTo(1);
-        assertThat(findTrip(tripId).getRoomId()).isEqualTo(roomId);
-    }
-
-    @Test
-    void 다른_회원의_여행에는_채팅방을_만들_수_없다() {
-        // given
-        Long ownerId = saveUser();
-        Long otherId = saveUser();
-        Long tripId = tripService.create(ownerId, new CreateTripCommand(destinationId, START_DATE, END_DATE, TITLE));
-
-        // when & then
-
-        assertThatThrownBy(() -> tripService.createRoom(otherId, tripId, ROOM_NAME))
-                .isInstanceOfSatisfying(BusinessException.class,
-                        e -> assertThat(e.getErrorCode()).isEqualTo(TripErrorCode.TRIP_NOT_FOUND));
-        assertThat(roomJpaRepository.count()).isZero();
-        assertThat(findTrip(tripId).getRoomId()).isNull();
-    }
-
-    @Test
-    void 없는_여행에는_채팅방을_만들_수_없다() {
-        // given
-        Long userId = saveUser();
-
-        // when & then
-        assertThatThrownBy(() -> tripService.createRoom(userId, MISSING_TRIP_ID, ROOM_NAME))
-                .isInstanceOfSatisfying(BusinessException.class,
-                        e -> assertThat(e.getErrorCode()).isEqualTo(TripErrorCode.TRIP_NOT_FOUND));
-        assertThat(roomJpaRepository.count()).isZero();
-    }
-
-    @Test
-    void 같은_여행으로_동시에_요청하면_채팅방은_하나만_생긴다() throws Exception {
-        // given
-        Long userId = saveUser();
-        Long tripId = tripService.create(userId, new CreateTripCommand(destinationId, START_DATE, END_DATE, TITLE));
-
-        // when
-        List<Throwable> failures = runTwiceConcurrently(() -> tripService.createRoom(userId, tripId, ROOM_NAME));
-
-        // then
-        assertThat(failures).singleElement()
-                .isInstanceOfSatisfying(BusinessException.class,
-                        e -> assertThat(e.getErrorCode()).isEqualTo(TripErrorCode.TRIP_ROOM_ALREADY_LINKED));
-        assertThat(roomJpaRepository.count()).isEqualTo(1);
-    }
-
-    @Test
     void 여행을_만든_회원이_초대하면_초대_코드를_준다() {
         // given
         Long ownerId = saveUser();
@@ -329,20 +310,6 @@ class TripServiceTest extends DatabaseIntegrationTest {
 
         // then
         assertThat(code).isNotBlank();
-    }
-
-    @Test
-    void 초대_링크를_만들어도_채팅방은_생기지_않는다() {
-        // given
-        Long ownerId = saveUser();
-        Long tripId = createTrip(ownerId);
-
-        // when
-        tripService.issueInvitation(ownerId, tripId);
-
-        // then
-        assertThat(findTrip(tripId).getRoomId()).isNull();
-        assertThat(roomJpaRepository.count()).isZero();
     }
 
     @Test
@@ -380,8 +347,8 @@ class TripServiceTest extends DatabaseIntegrationTest {
         Long ownerId = saveUser();
         Long memberId = saveUser("친구");
         Long tripId = createTrip(ownerId);
-        Long roomId = tripService.createRoom(ownerId, tripId, ROOM_NAME);
-        joinRoom(roomId, ownerId, memberId);
+        Long roomId = findTrip(tripId).getRoomId();
+        joinRoom(roomId, memberId);
 
         // when
         String code = tripService.issueInvitation(memberId, tripId);
@@ -467,8 +434,8 @@ class TripServiceTest extends DatabaseIntegrationTest {
         Long ownerId = saveUser();
         Long memberId = saveUser("친구");
         Long tripId = createTrip(ownerId);
-        Long roomId = tripService.createRoom(ownerId, tripId, ROOM_NAME);
-        joinRoom(roomId, ownerId, memberId);
+        Long roomId = findTrip(tripId).getRoomId();
+        joinRoom(roomId, memberId);
         String issued = tripService.issueInvitation(ownerId, tripId);
 
         // when
@@ -586,8 +553,8 @@ class TripServiceTest extends DatabaseIntegrationTest {
         Long ownerId = saveUser();
         Long memberId = saveUser("멤버");
         Long tripId = tripService.create(ownerId, new CreateTripCommand(destinationId, START_DATE, END_DATE, TITLE));
-        Long roomId = tripService.createRoom(ownerId, tripId, ROOM_NAME);
-        joinRoom(roomId, ownerId, memberId);
+        Long roomId = findTrip(tripId).getRoomId();
+        joinRoom(roomId, memberId);
 
         // when
         List<TripSummaryResult> trips = tripService.findMine(memberId);
@@ -603,8 +570,8 @@ class TripServiceTest extends DatabaseIntegrationTest {
         Long ownerId = saveUser();
         Long memberId = saveUser();
         Long tripId = tripService.create(ownerId, new CreateTripCommand(destinationId, START_DATE, END_DATE, TITLE));
-        Long roomId = tripService.createRoom(ownerId, tripId, ROOM_NAME);
-        joinRoom(roomId, ownerId, memberId);
+        Long roomId = findTrip(tripId).getRoomId();
+        joinRoom(roomId, memberId);
         roomService.leave(roomId, memberId);
 
         // when
@@ -619,7 +586,7 @@ class TripServiceTest extends DatabaseIntegrationTest {
         // given
         Long ownerId = saveUser();
         Long tripId = tripService.create(ownerId, new CreateTripCommand(destinationId, START_DATE, END_DATE, TITLE));
-        Long roomId = tripService.createRoom(ownerId, tripId, ROOM_NAME);
+        Long roomId = findTrip(tripId).getRoomId();
         roomService.leave(roomId, ownerId);
 
         // when
@@ -635,10 +602,9 @@ class TripServiceTest extends DatabaseIntegrationTest {
         Long ownerId = saveUser();
         Long memberId = saveUser("멤버");
         Long joinedTripId = tripService.create(ownerId, new CreateTripCommand(destinationId, START_DATE, END_DATE, TITLE));
-        Long joinedRoomId = tripService.createRoom(ownerId, joinedTripId, ROOM_NAME);
+        Long joinedRoomId = findTrip(joinedTripId).getRoomId();
         Long otherTripId = tripService.create(ownerId, new CreateTripCommand(destinationId, START_DATE, END_DATE, TITLE));
-        tripService.createRoom(ownerId, otherTripId, ROOM_NAME);
-        joinRoom(joinedRoomId, ownerId, memberId);
+        joinRoom(joinedRoomId, memberId);
 
         // when
         List<TripSummaryResult> trips = tripService.findMine(memberId);
@@ -653,8 +619,8 @@ class TripServiceTest extends DatabaseIntegrationTest {
         Long ownerId = saveUser();
         Long memberId = saveUser("멤버");
         Long tripId = tripService.create(ownerId, new CreateTripCommand(destinationId, START_DATE, END_DATE, TITLE));
-        Long roomId = tripService.createRoom(ownerId, tripId, ROOM_NAME);
-        joinRoom(roomId, ownerId, memberId);
+        Long roomId = findTrip(tripId).getRoomId();
+        joinRoom(roomId, memberId);
 
         // when
         TripSummaryResult trip = tripService.find(memberId, tripId);
@@ -670,8 +636,8 @@ class TripServiceTest extends DatabaseIntegrationTest {
         Long ownerId = saveUser();
         Long memberId = saveUser("멤버");
         Long tripId = tripService.create(ownerId, new CreateTripCommand(destinationId, START_DATE, END_DATE, TITLE));
-        Long roomId = tripService.createRoom(ownerId, tripId, ROOM_NAME);
-        joinRoom(roomId, ownerId, memberId);
+        Long roomId = findTrip(tripId).getRoomId();
+        joinRoom(roomId, memberId);
         roomService.leave(roomId, memberId);
 
         // when & then
@@ -685,7 +651,7 @@ class TripServiceTest extends DatabaseIntegrationTest {
         // given
         Long ownerId = saveUser();
         Long tripId = tripService.create(ownerId, new CreateTripCommand(destinationId, START_DATE, END_DATE, TITLE));
-        Long roomId = tripService.createRoom(ownerId, tripId, ROOM_NAME);
+        Long roomId = findTrip(tripId).getRoomId();
         roomService.leave(roomId, ownerId);
 
         // when & then
@@ -700,10 +666,9 @@ class TripServiceTest extends DatabaseIntegrationTest {
         Long ownerId = saveUser();
         Long memberId = saveUser("멤버");
         Long joinedTripId = tripService.create(ownerId, new CreateTripCommand(destinationId, START_DATE, END_DATE, TITLE));
-        Long joinedRoomId = tripService.createRoom(ownerId, joinedTripId, ROOM_NAME);
+        Long joinedRoomId = findTrip(joinedTripId).getRoomId();
         Long otherTripId = tripService.create(ownerId, new CreateTripCommand(destinationId, START_DATE, END_DATE, TITLE));
-        tripService.createRoom(ownerId, otherTripId, ROOM_NAME);
-        joinRoom(joinedRoomId, ownerId, memberId);
+        joinRoom(joinedRoomId, memberId);
 
         // when & then
         assertThatThrownBy(() -> tripService.find(memberId, otherTripId))
@@ -724,7 +689,7 @@ class TripServiceTest extends DatabaseIntegrationTest {
         assertThat(trip.tripId()).isEqualTo(tripId);
         assertThat(trip.period()).isEqualTo(new TravelPeriod(START_DATE, END_DATE));
         assertThat(trip.title()).isNull();
-        assertThat(trip.roomId()).isNull();
+        assertThat(trip.roomId()).isEqualTo(findTrip(tripId).getRoomId()).isNotNull();
     }
 
     @Test
@@ -763,35 +728,14 @@ class TripServiceTest extends DatabaseIntegrationTest {
         Long ownerId = saveUser();
         Long memberId = saveUser("멤버");
         Long tripId = tripService.create(ownerId, new CreateTripCommand(destinationId, START_DATE, END_DATE, TITLE));
-        Long roomId = tripService.createRoom(ownerId, tripId, ROOM_NAME);
-        joinRoom(roomId, ownerId, memberId);
+        Long roomId = findTrip(tripId).getRoomId();
+        joinRoom(roomId, memberId);
 
         // when
         tripService.rename(memberId, tripId, "부산 여행");
 
         // then
         assertThat(findTrip(tripId).getTitle()).isEqualTo("부산 여행");
-    }
-
-    @Test
-    void 채팅방_생성과_이름_변경을_동시에_요청해도_채팅방_연결과_새_이름이_모두_남는다() throws Exception {
-        // 두 요청의 실행 순서는 매번 달라 경쟁 상황을 여러 번 만든다
-        for (int attempt = 0; attempt < 20; attempt++) {
-            // given
-            Long userId = saveUser("회원" + attempt);
-            Long tripId = tripService.create(userId, new CreateTripCommand(destinationId, START_DATE, END_DATE, TITLE));
-
-            // when
-            List<Throwable> failures = runConcurrently(
-                    () -> tripService.createRoom(userId, tripId, ROOM_NAME),
-                    () -> tripService.rename(userId, tripId, "부산 여행"));
-
-            // then
-            assertThat(failures).isEmpty();
-            Trip trip = findTrip(tripId);
-            assertThat(trip.getRoomId()).isNotNull();
-            assertThat(trip.getTitle()).isEqualTo("부산 여행");
-        }
     }
 
     @Test
@@ -816,8 +760,8 @@ class TripServiceTest extends DatabaseIntegrationTest {
         Long ownerId = saveUser();
         Long memberId = saveUser("멤버");
         Long tripId = tripService.create(ownerId, new CreateTripCommand(destinationId, START_DATE, END_DATE, TITLE));
-        Long roomId = tripService.createRoom(ownerId, tripId, ROOM_NAME);
-        joinRoom(roomId, ownerId, memberId);
+        Long roomId = findTrip(tripId).getRoomId();
+        joinRoom(roomId, memberId);
         roomService.leave(roomId, memberId);
 
         // when
@@ -913,8 +857,8 @@ class TripServiceTest extends DatabaseIntegrationTest {
         Long ownerId = saveUser();
         Long memberId = saveUser("멤버");
         Long tripId = tripService.create(ownerId, new CreateTripCommand(destinationId, START_DATE, END_DATE, TITLE));
-        Long roomId = tripService.createRoom(ownerId, tripId, ROOM_NAME);
-        joinRoom(roomId, ownerId, memberId);
+        Long roomId = findTrip(tripId).getRoomId();
+        joinRoom(roomId, memberId);
         givenTourPlace();
 
         // when
@@ -932,8 +876,8 @@ class TripServiceTest extends DatabaseIntegrationTest {
         Long ownerId = saveUser();
         Long memberId = saveUser("멤버");
         Long tripId = tripService.create(ownerId, new CreateTripCommand(destinationId, START_DATE, END_DATE, TITLE));
-        Long roomId = tripService.createRoom(ownerId, tripId, ROOM_NAME);
-        joinRoom(roomId, ownerId, memberId);
+        Long roomId = findTrip(tripId).getRoomId();
+        joinRoom(roomId, memberId);
         roomService.leave(roomId, memberId);
         givenTourPlace();
 
@@ -1037,8 +981,8 @@ class TripServiceTest extends DatabaseIntegrationTest {
         Long ownerId = saveUser();
         Long memberId = saveUser("멤버");
         Long tripId = tripService.create(ownerId, new CreateTripCommand(destinationId, START_DATE, END_DATE, TITLE));
-        Long roomId = tripService.createRoom(ownerId, tripId, ROOM_NAME);
-        joinRoom(roomId, ownerId, memberId);
+        Long roomId = findTrip(tripId).getRoomId();
+        joinRoom(roomId, memberId);
 
         // when
         Long tripPlaceId = tripService.addCustomPlace(memberId, tripId, customCommand(null, null));
@@ -1254,8 +1198,8 @@ class TripServiceTest extends DatabaseIntegrationTest {
         Long ownerId = saveUser();
         Long memberId = saveUser("멤버");
         Long tripId = tripService.create(ownerId, new CreateTripCommand(destinationId, START_DATE, END_DATE, TITLE));
-        Long roomId = tripService.createRoom(ownerId, tripId, ROOM_NAME);
-        joinRoom(roomId, ownerId, memberId);
+        Long roomId = findTrip(tripId).getRoomId();
+        joinRoom(roomId, memberId);
         tripService.addCustomPlace(ownerId, tripId, customCommand(1, null));
 
         // when
@@ -1273,8 +1217,8 @@ class TripServiceTest extends DatabaseIntegrationTest {
         Long ownerId = saveUser();
         Long memberId = saveUser("멤버");
         Long tripId = tripService.create(ownerId, new CreateTripCommand(destinationId, START_DATE, END_DATE, TITLE));
-        Long roomId = tripService.createRoom(ownerId, tripId, ROOM_NAME);
-        joinRoom(roomId, ownerId, memberId);
+        Long roomId = findTrip(tripId).getRoomId();
+        joinRoom(roomId, memberId);
         roomService.leave(roomId, memberId);
 
         // when & then
@@ -1321,9 +1265,8 @@ class TripServiceTest extends DatabaseIntegrationTest {
         return tripJpaRepository.findById(tripId).orElseThrow();
     }
 
-    private void joinRoom(Long roomId, Long ownerId, Long memberId) {
-        String invitationCode = roomService.createInvitation(roomId, ownerId);
-        roomService.joinByInvitation(invitationCode, memberId);
+    private void joinRoom(Long roomId, Long memberId) {
+        roomService.join(roomId, memberId);
     }
 
     // 실제 어댑터처럼 조회할 때마다 새 장소 객체를 돌려준다

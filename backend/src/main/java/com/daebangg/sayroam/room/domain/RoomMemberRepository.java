@@ -7,4 +7,6 @@ public interface RoomMemberRepository {
     <S extends RoomMember> S save(S member);
 
     Optional<RoomMember> findByRoomIdAndUserId(Long roomId, Long userId);
+
+    long countByRoomIdAndStatus(Long roomId, RoomMemberStatus status);
 }

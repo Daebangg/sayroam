@@ -165,16 +165,6 @@ class TripTest {
     }
 
     @Test
-    void 여행을_만든_회원인지_알_수_있다() {
-        // given
-        Trip trip = newTrip();
-
-        // when & then
-        assertThat(trip.isCreatedBy(USER_ID)).isTrue();
-        assertThat(trip.isCreatedBy(OTHER_USER_ID)).isFalse();
-    }
-
-    @Test
     void 새로_만든_여행에는_채팅방을_연결할_수_있다() {
         // given
         Trip trip = newTrip();
@@ -283,6 +273,29 @@ class TripTest {
 
         // then
         assertThat(code).isEmpty();
+    }
+
+    @Test
+    void 유효한_초대가_있으면_참여할_수_있다() {
+        // given
+        Trip trip = newTrip();
+        trip.issueInvitation(INVITED_AT);
+
+        // when & then
+        assertThatCode(() -> trip.ensureInvitationValid(INVITED_AT.plusDays(7)))
+                .doesNotThrowAnyException();
+    }
+
+    @Test
+    void 만료된_초대로는_참여할_수_없다() {
+        // given
+        Trip trip = newTrip();
+        trip.issueInvitation(INVITED_AT);
+
+        // when & then
+        assertThatThrownBy(() -> trip.ensureInvitationValid(INVITED_AT.plusDays(7).plusNanos(1)))
+                .isInstanceOfSatisfying(BusinessException.class,
+                        e -> assertThat(e.getErrorCode()).isEqualTo(TripErrorCode.TRIP_INVITATION_NOT_FOUND));
     }
 
     @Test

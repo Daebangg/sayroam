@@ -75,9 +75,23 @@ public class RoomMember extends BaseTimeEntity {
         return new RoomMember(room, userId, RoomMemberRole.OWNER, now);
     }
 
+    // 초대가 유효한지는 부르는 쪽이 먼저 확인한다
+    public static RoomMember join(Room room, Long userId, LocalDateTime now) {
+        return new RoomMember(room, userId, RoomMemberRole.MEMBER, now);
+    }
+
     public static RoomMember joinAsMember(RoomInvitation invitation, Long userId, LocalDateTime now) {
         invitation.ensureValid(now);
         return new RoomMember(invitation.getRoom(), userId, RoomMemberRole.MEMBER, now);
+    }
+
+    public void rejoin(LocalDateTime now) {
+        if (status == RoomMemberStatus.JOINED) {
+            return;
+        }
+        this.status = RoomMemberStatus.JOINED;
+        this.joinedAt = now;
+        this.leftAt = null;
     }
 
     public void rejoin(RoomInvitation invitation, LocalDateTime now) {
