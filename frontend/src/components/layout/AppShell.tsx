@@ -37,6 +37,7 @@ export function AppShell({
     children,
 }: AppShellProps) {
     const [chatOpen, setChatOpen] = useState(false);
+    const pageContent = useRef<HTMLDivElement>(null);
     const chatId = useId();
     const chatTrigger = useRef<HTMLButtonElement>(null);
     const chat = { id: chatId, open: chatOpen, setOpen: setChatOpen, trigger: chatTrigger };
@@ -58,6 +59,21 @@ export function AppShell({
         : mockupScreen === "notifications"
           ? "home"
           : mockupScreen;
+
+    useEffect(() => {
+        const content = pageContent.current;
+        if (!chatOpen || !content) return;
+        const mobile = window.matchMedia("(max-width: 700px)");
+        const sync = () => {
+            content.inert = mobile.matches;
+        };
+        sync();
+        mobile.addEventListener("change", sync);
+        return () => {
+            mobile.removeEventListener("change", sync);
+            content.inert = false;
+        };
+    }, [chatOpen]);
 
     useEffect(() => {
         const shortcut = (event: KeyboardEvent) => {
@@ -177,7 +193,9 @@ export function AppShell({
                     </div>
                 </header>
                 <ChatSidebar {...chat} />
-                <div className="app-shell__content">{children}</div>
+                <div ref={pageContent} className="app-shell__content">
+                    {children}
+                </div>
             </div>
         </div>
     );

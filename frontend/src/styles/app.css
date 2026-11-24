@@ -1,5 +1,4 @@
 :root {
-    --chat-block: 0px;
     --details-width: 400px;
     scrollbar-gutter: stable;
     --bg: #f8faff;
@@ -1921,7 +1920,7 @@ p {
 @media (max-width: 700px) {
     .home-planner {
         grid-template-rows: 1fr auto auto;
-        padding: calc(72px + var(--chat-block)) 20px max(20px, env(safe-area-inset-bottom));
+        padding: 72px 20px max(20px, env(safe-area-inset-bottom));
         gap: 20px;
     }
     .home-planner__intro {
@@ -2474,7 +2473,7 @@ p {
     width: min(440px, 100%);
     min-height: 660px;
     margin: auto;
-    padding: calc(60px + var(--chat-block)) 32px 40px;
+    padding: 60px 32px 40px;
     display: flex;
     flex-direction: column;
 }
@@ -6917,24 +6916,17 @@ p {
         translate: none;
     }
     .edge-panel {
-        inset: calc(60px + var(--chat-block)) 0 0;
+        inset: 60px 0 0;
         width: 100%;
-        height: auto;
+        height: calc(100dvh - 60px);
+        border: 0;
+        border-radius: 0;
     }
-    body {
-        --chat-height: clamp(132px, 24dvh, 200px);
+    :root:has(.chat-sidebar:not([hidden])) {
+        overflow: hidden;
     }
-    body:has(.chat-sidebar:not([hidden])) {
-        --chat-block: var(--chat-height);
-    }
-    .chat-sidebar {
-        top: 60px;
-        bottom: auto;
-        height: var(--chat-height);
-        border-radius: 0 0 16px 16px;
-    }
-    .app-shell__content:not(:has(.home-planner, .intro-mockup)) {
-        padding-top: var(--chat-block);
+    .app-shell:has(.chat-sidebar:not([hidden])) .matching-details-panel {
+        visibility: hidden;
     }
 }
 @media (prefers-reduced-motion: reduce) {
@@ -6949,7 +6941,7 @@ p {
 .matching-workspace--mine {
     width: min(100% - 64px, 1200px);
     margin-inline: max(32px, calc((100% - 1200px) / 2));
-    height: calc(100svh - 64px - var(--chat-block));
+    height: calc(100svh - 64px);
     min-height: 0;
     padding-block: var(--space-4) var(--space-5);
     transition: none;
@@ -8873,7 +8865,7 @@ p {
     --roam-title-top: calc(40svh - var(--roam-title-height) / 2);
     --roam-dock-padding: clamp(12px, 3svh, 32px);
     position: fixed;
-    inset: calc(var(--roam-nav-height) + var(--chat-block)) 0 0 var(--chat-inset);
+    inset: var(--roam-nav-height) 0 0 var(--chat-inset);
     min-height: 0;
     display: flex;
     align-items: flex-start;
