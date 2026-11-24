@@ -29,7 +29,6 @@ public class Trip extends BaseTimeEntity {
     @Getter
     private Long id;
 
-    // 여행을 만든 회원. 방이 없는 동안에는 이 회원만 수정한다
     @Column(name = "created_by", nullable = false, updatable = false)
     private Long createdById;
 
