@@ -972,9 +972,9 @@
             "ChatMessageResponse": {
                 "properties": {
                     "clientMessageId": {
-                        "description": "클라이언트가 전송할 때 만든 UUID",
+                        "description": "클라이언트가 전송할 때 만든 UUID. 시스템 메시지는 null",
                         "example": "6f1c2b6e-8a57-4b7a-9d3e-2f4a1c7e9b10",
-                        "type": "string"
+                        "type": ["string", "null"]
                     },
                     "content": {
                         "description": "메시지 본문",
@@ -1003,9 +1003,17 @@
                         "description": "보낸 회원 ID. 시스템 메시지는 null",
                         "example": 1,
                         "format": "int64",
-                        "type": "integer"
+                        "type": ["integer", "null"]
                     }
                 },
+                "required": [
+                    "clientMessageId",
+                    "content",
+                    "createdAt",
+                    "messageId",
+                    "roomId",
+                    "senderId"
+                ],
                 "type": "object"
             },
             "CompanionCandidateListResponse": {
@@ -1728,6 +1736,44 @@
                 "required": ["daily-pace", "planning", "spending", "time-together"],
                 "type": "object"
             },
+            "RoomMemberListResponse": {
+                "properties": {
+                    "members": {
+                        "description": "방 멤버. 나간 멤버도 포함하며 순서는 보장하지 않음",
+                        "items": { "$ref": "#/components/schemas/RoomMemberProfileResponse" },
+                        "type": "array"
+                    }
+                },
+                "required": ["members"],
+                "type": "object"
+            },
+            "RoomMemberProfileResponse": {
+                "properties": {
+                    "nickname": {
+                        "description": "닉네임. 탈퇴한 회원은 '탈퇴한 회원'",
+                        "example": "민수",
+                        "type": "string"
+                    },
+                    "profileImageUrl": {
+                        "description": "프로필 이미지 주소. 없으면 null",
+                        "example": "/brand/avatars/traveler.svg",
+                        "type": ["string", "null"]
+                    },
+                    "status": {
+                        "$ref": "#/components/schemas/RoomMemberStatus",
+                        "description": "참여 상태. JOINED는 참여 중, LEFT는 나감, KICKED는 내보내짐"
+                    },
+                    "userId": {
+                        "description": "회원 ID. 메시지의 senderId와 같은 값",
+                        "example": 1,
+                        "format": "int64",
+                        "type": "integer"
+                    }
+                },
+                "required": ["nickname", "profileImageUrl", "status", "userId"],
+                "type": "object"
+            },
+            "RoomMemberStatus": { "enum": ["JOINED", "LEFT", "KICKED"], "type": "string" },
             "SaveCompanionSearchRequest": {
                 "properties": {
                     "destinationId": {
@@ -3768,6 +3814,39 @@
                 "tags": ["Room"]
             }
         },
+        "/api/rooms/{roomId}/members": {
+            "get": {
+                "description": "방에 참여 중인 회원이 멤버의 닉네임·프로필 이미지·참여 상태를 조회합니다.\n나간 멤버도 포함하므로 지난 메시지의 senderId로 보낸 사람을 찾을 수 있습니다.\n",
+                "operationId": "findMembers",
+                "parameters": [
+                    {
+                        "description": "방 ID",
+                        "example": 7,
+                        "in": "path",
+                        "name": "roomId",
+                        "required": true,
+                        "schema": { "format": "int64", "type": "integer" }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/RoomMemberListResponse" }
+                            }
+                        },
+                        "description": "조회 성공"
+                    },
+                    "401": { "$ref": "#/components/responses/Unauthorized" },
+                    "403": { "$ref": "#/components/responses/RoomAccessDenied" },
+                    "500": { "$ref": "#/components/responses/InternalServerError" },
+                    "503": { "$ref": "#/components/responses/AuthenticationUnavailable" }
+                },
+                "security": [{ "bearerAuth": [] }],
+                "summary": "방 멤버 목록 조회",
+                "tags": ["Room"]
+            }
+        },
         "/api/rooms/{roomId}/members/me": {
             "delete": {
                 "description": "참여 중인 방에서 나갑니다. 멤버 기록은 정산을 위해 남고, 유효한 초대 코드로 다시 참여할 수 있습니다. 이미 열린 채팅 구독은 서버가 즉시 끊지 않으므로 클라이언트가 해제해야 합니다.",
@@ -3812,7 +3891,12 @@
                         "in": "query",
                         "name": "afterId",
                         "required": false,
-                        "schema": { "default": "0", "example": 100, "type": "string" }
+                        "schema": {
+                            "default": 0,
+                            "example": 100,
+                            "format": "int64",
+                            "type": "integer"
+                        }
                     },
                     {
                         "description": "한 번에 조회할 최대 개수",
@@ -3820,10 +3904,11 @@
                         "name": "size",
                         "required": false,
                         "schema": {
-                            "default": "100",
+                            "default": 100,
+                            "format": "int32",
                             "maximum": 100,
                             "minimum": 1,
-                            "type": "string"
+                            "type": "integer"
                         }
                     }
                 ],

@@ -1,8 +1,8 @@
-import { useLocation } from "react-router";
+import { Navigate, useLocation } from "react-router";
 import { useTranslation } from "react-i18next";
 import { Button, ButtonLink, Card, Icon } from "@/components/ui";
 import { useJoinRoom } from "@/hooks/api/rooms/useJoinRoom";
-import { invitationCode, pagePaths } from "@/routing/paths";
+import { invitationCode, pagePaths, tripDetailPath } from "@/routing/paths";
 
 // 회원 전용 경로라 App의 MemberGate가 로그인 전 진입을 막고, 로그인 후 같은 주소(해시 포함)로 돌아온다.
 export function JoinRoomPage() {
@@ -13,7 +13,10 @@ export function JoinRoomPage() {
 
 function JoinRoom({ code }: { code: string | null }) {
     const { t } = useTranslation();
-    const { status, join } = useJoinRoom();
+    const { status, tripId, join } = useJoinRoom();
+    // 참여한 여행으로 바로 보낸다. 뒤로 가기로 참여 화면에 돌아오지 않도록 기록을 바꾼다.
+    if (status === "joined" && tripId !== null)
+        return <Navigate to={tripDetailPath(tripId)} replace />;
     const result =
         code === null
             ? { title: t("join.missingTitle"), description: t("join.missingDescription") }

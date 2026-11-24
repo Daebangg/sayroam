@@ -10220,7 +10220,8 @@ body:has(.matching-details-panel) .mockup-toolbar {
     top: 80px;
     right: 16px;
     bottom: 16px;
-    grid-template-rows: auto auto minmax(0, 1fr) auto;
+    display: flex;
+    flex-direction: column;
     width: min(380px, calc(100vw - 32px));
 }
 .trip-chat__notice {
@@ -10230,51 +10231,134 @@ body:has(.matching-details-panel) .mockup-toolbar {
     color: var(--accent-text);
     font-size: 12px;
 }
+.trip-chat__notice--error {
+    background: var(--danger-bg);
+    color: var(--danger);
+}
+div.trip-chat__notice {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+div.trip-chat__notice .ui-button-plain {
+    flex: none;
+    color: inherit;
+    font-size: 12px;
+    font-weight: 600;
+    text-decoration: underline;
+}
+.trip-chat__state {
+    display: grid;
+    flex: 1;
+    align-content: center;
+    justify-items: center;
+    gap: 12px;
+    color: var(--secondary-text);
+    font-size: 13px;
+    text-align: center;
+}
 .trip-chat__messages {
     display: flex;
+    flex: 1;
     flex-direction: column;
     gap: 12px;
+    min-height: 0;
     margin: 0;
     padding: 0;
     overflow-y: auto;
     list-style: none;
 }
+.trip-chat__empty {
+    margin: auto 0;
+    color: var(--secondary-text);
+    font-size: 13px;
+    text-align: center;
+}
 .trip-chat__message {
     display: flex;
-    align-items: flex-end;
+    align-items: flex-start;
     gap: 8px;
 }
-.trip-chat__message > div {
+.trip-chat__body {
     display: grid;
     justify-items: start;
-    gap: 3px;
-    max-width: 75%;
+    gap: 4px;
+    min-width: 0;
+    max-width: 80%;
 }
-.trip-chat__message span {
+.trip-chat__sender {
     color: var(--secondary-text);
-    font-size: 11px;
+    font-size: 12px;
+    font-weight: 600;
 }
-.trip-chat__message p {
-    padding: 9px 12px;
-    border-radius: 16px 16px 16px 4px;
+.trip-chat__bubble {
+    display: flex;
+    align-items: flex-end;
+    gap: 6px;
+    min-width: 0;
+}
+.trip-chat__bubble p {
+    min-width: 0;
+    padding: 9px 13px;
+    border-radius: 18px;
     background: var(--bg);
     font-size: 13px;
     line-height: 1.5;
+    overflow-wrap: anywhere;
+    white-space: pre-wrap;
 }
-.trip-chat__message time {
+.trip-chat__bubble time,
+.trip-chat__bubble span {
+    flex: none;
     color: var(--muted);
     font-size: 10px;
+    white-space: nowrap;
 }
 .trip-chat__message--mine {
-    flex-direction: row-reverse;
+    justify-content: flex-end;
 }
-.trip-chat__message--mine > div {
+.trip-chat__message--mine .trip-chat__body {
     justify-items: end;
 }
-.trip-chat__message--mine p {
-    border-radius: 16px 16px 4px 16px;
+.trip-chat__message--mine .trip-chat__bubble {
+    flex-direction: row-reverse;
+}
+.trip-chat__message--mine .trip-chat__bubble p {
     background: var(--button-bg);
     color: var(--button-text);
+}
+.trip-chat__message--sending .trip-chat__bubble p {
+    opacity: 0.6;
+}
+.trip-chat__message--failed .trip-chat__bubble p {
+    background: var(--danger-bg);
+    color: var(--danger);
+}
+.trip-chat__failed {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: end;
+    gap: 8px;
+    color: var(--danger);
+    font-size: 11px;
+}
+.trip-chat__failed .ui-button-plain {
+    color: var(--accent-text);
+    font-size: 11px;
+    font-weight: 600;
+}
+.trip-chat__failed .ui-button-plain:disabled {
+    color: var(--muted);
+}
+.trip-chat__message--system {
+    justify-content: center;
+}
+.trip-chat__message--system > p {
+    background: none;
+    color: var(--secondary-text);
+    font-size: 12px;
 }
 .trip-chat__form {
     display: flex;

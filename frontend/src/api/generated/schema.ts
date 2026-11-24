@@ -672,6 +672,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/rooms/{roomId}/members": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 방 멤버 목록 조회
+         * @description 방에 참여 중인 회원이 멤버의 닉네임·프로필 이미지·참여 상태를 조회합니다.
+         *     나간 멤버도 포함하므로 지난 메시지의 senderId로 보낸 사람을 찾을 수 있습니다.
+         */
+        get: operations["findMembers"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/rooms/{roomId}/members/me": {
         parameters: {
             query?: never;
@@ -1196,39 +1217,39 @@ export interface components {
         };
         ChatMessageResponse: {
             /**
-             * @description 클라이언트가 전송할 때 만든 UUID
+             * @description 클라이언트가 전송할 때 만든 UUID. 시스템 메시지는 null
              * @example 6f1c2b6e-8a57-4b7a-9d3e-2f4a1c7e9b10
              */
-            clientMessageId?: string;
+            clientMessageId: string | null;
             /**
              * @description 메시지 본문
              * @example 안녕
              */
-            content?: string;
+            content: string;
             /**
              * Format: date-time
              * @description 서버 저장 시각(UTC)
              * @example 2026-11-07T10:00:00Z
              */
-            createdAt?: string;
+            createdAt: string;
             /**
              * Format: int64
              * @description 메시지 ID. 다음 조회의 afterId로 사용
              * @example 101
              */
-            messageId?: number;
+            messageId: number;
             /**
              * Format: int64
              * @description 방 ID
              * @example 7
              */
-            roomId?: number;
+            roomId: number;
             /**
              * Format: int64
              * @description 보낸 회원 ID. 시스템 메시지는 null
              * @example 1
              */
-            senderId?: number;
+            senderId: number | null;
         };
         CompanionCandidateListResponse: {
             candidates: components["schemas"]["Candidate"][];
@@ -1682,6 +1703,32 @@ export interface components {
             /** Format: int32 */
             "time-together": number | null;
         };
+        RoomMemberListResponse: {
+            /** @description 방 멤버. 나간 멤버도 포함하며 순서는 보장하지 않음 */
+            members: components["schemas"]["RoomMemberProfileResponse"][];
+        };
+        RoomMemberProfileResponse: {
+            /**
+             * @description 닉네임. 탈퇴한 회원은 '탈퇴한 회원'
+             * @example 민수
+             */
+            nickname: string;
+            /**
+             * @description 프로필 이미지 주소. 없으면 null
+             * @example /brand/avatars/traveler.svg
+             */
+            profileImageUrl: string | null;
+            /** @description 참여 상태. JOINED는 참여 중, LEFT는 나감, KICKED는 내보내짐 */
+            status: components["schemas"]["RoomMemberStatus"];
+            /**
+             * Format: int64
+             * @description 회원 ID. 메시지의 senderId와 같은 값
+             * @example 1
+             */
+            userId: number;
+        };
+        /** @enum {string} */
+        RoomMemberStatus: "JOINED" | "LEFT" | "KICKED";
         SaveCompanionSearchRequest: {
             /** Format: int64 */
             destinationId: number;
@@ -3769,6 +3816,36 @@ export interface operations {
             503: components["responses"]["AuthenticationUnavailable"];
         };
     };
+    findMembers: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /**
+                 * @description 방 ID
+                 * @example 7
+                 */
+                roomId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 조회 성공 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RoomMemberListResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["RoomAccessDenied"];
+            500: components["responses"]["InternalServerError"];
+            503: components["responses"]["AuthenticationUnavailable"];
+        };
+    };
     leave: {
         parameters: {
             query?: never;
@@ -3801,9 +3878,9 @@ export interface operations {
         parameters: {
             query?: {
                 /** @description 마지막으로 받은 메시지 ID. 생략하면 처음부터 조회 */
-                afterId?: string;
+                afterId?: number;
                 /** @description 한 번에 조회할 최대 개수 */
-                size?: string;
+                size?: number;
             };
             header?: never;
             path: {
@@ -4364,6 +4441,13 @@ export const apiRoutes = {
     findAfter: {
         method: "get",
         path: "/api/rooms/{roomId}/messages",
+        auth: "required",
+        csrf: false,
+        responses: { "200": true },
+    },
+    findMembers: {
+        method: "get",
+        path: "/api/rooms/{roomId}/members",
         auth: "required",
         csrf: false,
         responses: { "200": true },

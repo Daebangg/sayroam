@@ -6,6 +6,7 @@ import com.daebangg.sayroam.room.presentation.dto.CreateRoomRequest;
 import com.daebangg.sayroam.room.presentation.dto.CreateRoomResponse;
 import com.daebangg.sayroam.room.presentation.dto.JoinRoomRequest;
 import com.daebangg.sayroam.room.presentation.dto.JoinRoomResponse;
+import com.daebangg.sayroam.room.presentation.dto.RoomMemberListResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -67,6 +68,23 @@ public interface RoomApi {
     ResponseEntity<JoinRoomResponse> joinByInvitation(
             @Parameter(hidden = true) @AuthenticationPrincipal AuthenticatedAccount account,
             @RequestBody JoinRoomRequest request);
+
+    @Operation(summary = "방 멤버 목록 조회",
+            description = """
+                    방에 참여 중인 회원이 멤버의 닉네임·프로필 이미지·참여 상태를 조회합니다.
+                    나간 멤버도 포함하므로 지난 메시지의 senderId로 보낸 사람을 찾을 수 있습니다.
+                    """,
+            security = @SecurityRequirement(name = "bearerAuth"))
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "조회 성공"),
+            @ApiResponse(responseCode = "401", ref = "#/components/responses/Unauthorized"),
+            @ApiResponse(responseCode = "403", ref = "#/components/responses/RoomAccessDenied"),
+            @ApiResponse(responseCode = "503", ref = "#/components/responses/AuthenticationUnavailable"),
+            @ApiResponse(responseCode = "500", ref = "#/components/responses/InternalServerError")
+    })
+    ResponseEntity<RoomMemberListResponse> findMembers(
+            @Parameter(hidden = true) @AuthenticationPrincipal AuthenticatedAccount account,
+            @Parameter(description = "방 ID", example = "7") Long roomId);
 
     @Operation(summary = "채팅방 나가기",
             description = "참여 중인 방에서 나갑니다. 멤버 기록은 정산을 위해 남고, 유효한 초대 코드로 다시 참여할 수 있습니다. "

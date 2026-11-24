@@ -16,6 +16,7 @@ import {
     tripSections,
     type TripSection,
 } from "@/components/features/travel/tripDays";
+import { useTripChat } from "@/hooks/api/chat/useTripChat";
 import { PLACE_QUERY_MAX_LENGTH, usePlaceSearch } from "@/hooks/api/trips/usePlaceSearch";
 import { useTripDetail } from "@/hooks/api/trips/useTripDetail";
 import type { MyTrip, PickedLocation, SearchedPlace } from "@/hooks/trip.types";
@@ -37,7 +38,15 @@ export function TripDetailPage() {
     const { member } = useOutletContext<PageContext>();
     const tripId = parseTripId(useParams().tripId);
     if (tripId === null) return <TripNotFound />;
-    return member && <TripDetail key={`${member.userId}-${tripId}`} tripId={tripId} />;
+    return (
+        member && (
+            <TripDetail
+                key={`${member.userId}-${tripId}`}
+                tripId={tripId}
+                myUserId={member.userId}
+            />
+        )
+    );
 }
 
 function TripNotFound() {
@@ -58,7 +67,7 @@ function TripNotFound() {
     );
 }
 
-function TripDetail({ tripId }: { tripId: number }) {
+function TripDetail({ tripId, myUserId }: { tripId: number; myUserId: number }) {
     const { t } = useTranslation();
     const detail = useTripDetail(tripId);
     if (detail.status === "notFound") return <TripNotFound />;
@@ -81,14 +90,20 @@ function TripDetail({ tripId }: { tripId: number }) {
                 )}
             </main>
         );
-    return <TripPlanner trip={detail.trip} detail={detail} />;
+    return <TripPlanner trip={detail.trip} detail={detail} myUserId={myUserId} />;
 }
 
 type Picking = { location: PickedLocation | null };
 type Notice = { id: number; message: string; tone: ToastTone };
 type Invite = { link: string | null; creating: boolean; failed: boolean };
 
-function TripPlanner({ trip, detail }: { trip: MyTrip; detail: ReturnType<typeof useTripDetail> }) {
+type TripPlannerProps = {
+    trip: MyTrip;
+    detail: ReturnType<typeof useTripDetail>;
+    myUserId: number;
+};
+
+function TripPlanner({ trip, detail, myUserId }: TripPlannerProps) {
     const { t } = useTranslation();
     const { places } = detail;
     // 지도 마커를 다시 그리고 범위를 맞추는 기준이므로 입력 등 다른 상태로 다시 렌더링될 때 새로 만들지 않는다.
@@ -121,6 +136,8 @@ function TripPlanner({ trip, detail }: { trip: MyTrip; detail: ReturnType<typeof
     const [panel, setPanel] = useState<"chat" | "invite" | null>(null);
     const [invite, setInvite] = useState<Invite>({ link: null, creating: false, failed: false });
     const search = usePlaceSearch(addingKey === null ? "" : query);
+    // 패널을 닫아도 연결과 받은 메시지를 유지하도록 페이지에서 연결한다. 채팅방이 없으면 연결하지 않는다.
+    const chat = useTripChat(trip.roomId, myUserId);
     const addingSection = sections.find((section) => section.key === addingKey);
 
     function notify(message: string, tone: ToastTone = "success") {
@@ -306,6 +323,20 @@ function TripPlanner({ trip, detail }: { trip: MyTrip; detail: ReturnType<typeof
             {panel === "chat" && (
                 <TripChatPanel
                     title={trip.title ?? t("trips.untitled")}
+                    myUserId={myUserId}
+                    hasRoom={trip.roomId !== null}
+                    status={chat.status}
+                    connection={chat.connection}
+                    messages={chat.messages}
+                    outgoing={chat.outgoing}
+                    members={chat.members}
+                    syncFailed={chat.syncFailed}
+                    onSend={chat.send}
+                    onRetry={chat.retry}
+                    onDiscard={chat.discard}
+                    onRetrySync={chat.retrySync}
+                    onReload={chat.reload}
+                    onInvite={() => setPanel("invite")}
                     onClose={() => setPanel(null)}
                 />
             )}

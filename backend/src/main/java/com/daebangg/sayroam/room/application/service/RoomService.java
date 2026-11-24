@@ -1,6 +1,8 @@
 package com.daebangg.sayroam.room.application.service;
 
 import com.daebangg.sayroam.global.exception.BusinessException;
+import com.daebangg.sayroam.room.application.dto.RoomMemberProfileResult;
+import com.daebangg.sayroam.room.application.port.out.RoomMemberQueryRepository;
 import com.daebangg.sayroam.room.domain.Room;
 import com.daebangg.sayroam.room.domain.RoomInvitation;
 import com.daebangg.sayroam.room.domain.RoomMember;
@@ -16,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
+import java.util.List;
 
 @Service
 @Transactional(readOnly = true)
@@ -24,6 +27,7 @@ public class RoomService {
     private final RoomRepository roomRepository;
     private final RoomMemberRepository roomMemberRepository;
     private final RoomInvitationRepository roomInvitationRepository;
+    private final RoomMemberQueryRepository roomMemberQueryRepository;
     private final ApplicationEventPublisher eventPublisher;
 
     @Transactional
@@ -66,6 +70,11 @@ public class RoomService {
 
     public LocalDateTime getJoinedAt(Long roomId, Long userId) {
         return getJoinedMember(roomId, userId).getJoinedAt();
+    }
+
+    public List<RoomMemberProfileResult> findMembers(Long roomId, Long userId) {
+        ensureJoined(roomId, userId);
+        return roomMemberQueryRepository.findProfiles(roomId);
     }
 
     private RoomMember getMember(Long roomId, Long userId) {
