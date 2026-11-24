@@ -9,14 +9,14 @@ import {
 } from "@/data/profileStyle";
 
 type ProfileStyleEditorProps = {
-    initialValues: ProfileStyleValues;
+    savedValues: ProfileStyleValues;
     busy: boolean;
     failed: boolean;
     onSave: (values: ProfileStyleValues) => Promise<boolean>;
     onClose: () => void;
 };
 export function ProfileStyleEditor({
-    initialValues,
+    savedValues,
     busy,
     failed,
     onSave,
@@ -25,7 +25,8 @@ export function ProfileStyleEditor({
     const { t } = useTranslation();
     const editor = useRef<HTMLElement>(null);
     const [step, setStep] = useState(0);
-    const [values, setValues] = useState(initialValues);
+    const [edits, setEdits] = useState<ProfileStyleValues>({});
+    const values = { ...savedValues, ...edits };
     const question = profileStyleQuestions[step]!;
     const last = step === profileStyleQuestions.length - 1;
     async function next(): Promise<void> {
@@ -47,7 +48,7 @@ export function ProfileStyleEditor({
                     <TravelStyleChoices
                         question={question}
                         value={values[question] ?? 0}
-                        onChange={(value) => setValues({ ...values, [question]: value })}
+                        onChange={(value) => setEdits({ ...edits, [question]: value })}
                     />
                 </fieldset>
                 <div className="profile-style-editor__save">

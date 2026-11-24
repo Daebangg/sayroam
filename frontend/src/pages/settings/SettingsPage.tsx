@@ -165,7 +165,7 @@ export function ProfileSettingsPage() {
                 <div className="settings-content">
                     {editingStyle && travelStyle.values && (
                         <ProfileStyleEditor
-                            initialValues={travelStyle.values}
+                            savedValues={travelStyle.values}
                             busy={travelStyle.busy}
                             failed={travelStyle.failed}
                             onSave={travelStyle.save}
