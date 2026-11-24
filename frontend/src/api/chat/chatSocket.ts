@@ -63,9 +63,10 @@ export function openChatSocket(roomId: number, handlers: ChatSocketHandlers): Ch
             }
         },
         onConnect: () => {
+            // 전송 확인 채널은 같은 계정의 모든 연결로 가므로, 다른 탭에서 다른 방에 보낸 메시지도 온다.
             const receive = (frame: IMessage) => {
                 const message = parseChatMessage(frame.body);
-                if (message) handlers.onMessage(message);
+                if (message?.roomId === roomId) handlers.onMessage(message);
             };
             client.subscribe(`/topic/rooms/${roomId}`, receive);
             client.subscribe("/user/queue/messages", receive);

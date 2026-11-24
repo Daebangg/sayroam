@@ -24,9 +24,11 @@ type TripChatPanelProps = {
     messages: ChatMessage[];
     outgoing: OutgoingMessage[];
     members: RoomMember[];
+    syncFailed: boolean;
     onSend: (content: string) => void;
     onRetry: (clientMessageId: string) => void;
     onDiscard: (clientMessageId: string) => void;
+    onRetrySync: () => void;
     onReload: () => void;
     onInvite: () => void;
     onClose: () => void;
@@ -41,9 +43,11 @@ export function TripChatPanel({
     messages,
     outgoing,
     members,
+    syncFailed,
     onSend,
     onRetry,
     onDiscard,
+    onRetrySync,
     onReload,
     onInvite,
     onClose,
@@ -113,6 +117,14 @@ export function TripChatPanel({
                         <p className="trip-chat__notice trip-chat__notice--error" role="alert">
                             {t("tripDetail.chatClosed")}
                         </p>
+                    )}
+                    {syncFailed && status === "ready" && (
+                        <div className="trip-chat__notice trip-chat__notice--error" role="alert">
+                            <span>{t("tripDetail.chatSyncFailed")}</span>
+                            <Button variant="plain" onClick={onRetrySync}>
+                                {t("tripDetail.retry")}
+                            </Button>
+                        </div>
                     )}
                     {status === "failed" ? (
                         <div className="trip-chat__state">

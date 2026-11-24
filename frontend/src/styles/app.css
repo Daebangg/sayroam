@@ -10388,6 +10388,19 @@ body:has(.matching-details-panel) .mockup-toolbar {
     background: var(--danger-bg);
     color: var(--danger);
 }
+div.trip-chat__notice {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+div.trip-chat__notice .ui-button-plain {
+    flex: none;
+    color: inherit;
+    font-size: 12px;
+    font-weight: 600;
+    text-decoration: underline;
+}
 .trip-chat__state {
     display: grid;
     flex: 1;

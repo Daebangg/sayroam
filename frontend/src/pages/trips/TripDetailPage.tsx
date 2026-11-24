@@ -330,9 +330,11 @@ function TripPlanner({ trip, detail, myUserId }: TripPlannerProps) {
                     messages={chat.messages}
                     outgoing={chat.outgoing}
                     members={chat.members}
+                    syncFailed={chat.syncFailed}
                     onSend={chat.send}
                     onRetry={chat.retry}
                     onDiscard={chat.discard}
+                    onRetrySync={chat.retrySync}
                     onReload={chat.reload}
                     onInvite={() => setPanel("invite")}
                     onClose={() => setPanel(null)}

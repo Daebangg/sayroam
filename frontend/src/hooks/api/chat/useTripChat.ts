@@ -17,9 +17,12 @@ type TripChat = {
     /** 아직 서버 확인을 받지 못한 내 메시지. 보낸 순서 */
     outgoing: OutgoingMessage[];
     members: RoomMember[];
+    /** 다시 연결된 뒤 놓친 메시지를 받지 못해 빠진 구간이 있을 수 있다. */
+    syncFailed: boolean;
     send: (content: string) => void;
     retry: (clientMessageId: string) => void;
     discard: (clientMessageId: string) => void;
+    retrySync: () => void;
     reload: () => void;
 };
 
@@ -114,9 +117,11 @@ export function useTripChat(roomId: number | null, myUserId: number): TripChat {
     const [messages, setMessages] = useState<ChatMessage[]>([]);
     const [outgoing, setOutgoing] = useState<OutgoingMessage[]>([]);
     const [members, setMembers] = useState<RoomMember[]>([]);
+    const [syncFailed, setSyncFailed] = useState(false);
     const [outbox] = useState<Outbox>(() => createOutbox(setOutgoing));
     const socket = useRef<ChatSocket | null>(null);
     const loadAll = useRef<() => void>(() => undefined);
+    const resync = useRef<() => void>(() => undefined);
 
     useEffect(() => {
         if (roomId === null) return;
@@ -124,7 +129,8 @@ export function useTripChat(roomId: number | null, myUserId: number): TripChat {
         const controller = new AbortController();
         const { signal } = controller;
         const memberIds = new Set<number>();
-        let lastMessageId = 0;
+        // 놓친 메시지 조회 위치. 실시간 메시지는 앞 구간이 아직 조회되지 않았을 수 있어 조회 결과로만 옮긴다.
+        let fetchedUntil = 0;
         let catchingUp: Promise<void> | null = null;
         let catchUpAgain = false;
         let loadingMembers: Promise<void> | null = null;
@@ -132,10 +138,6 @@ export function useTripChat(roomId: number | null, myUserId: number): TripChat {
 
         function receive(incoming: ChatMessage[]) {
             if (incoming.length === 0) return;
-            lastMessageId = Math.max(
-                lastMessageId,
-                ...incoming.map((message) => message.messageId),
-            );
             setMessages((current) => mergeMessages(current, incoming));
             const confirmed = new Set<string>();
             incoming.forEach((message) => {
@@ -171,12 +173,13 @@ export function useTripChat(roomId: number | null, myUserId: number): TripChat {
                 const page = await api.call("findAfter", {
                     params: {
                         path: { roomId: room },
-                        query: { afterId: lastMessageId, size: PAGE_SIZE },
+                        query: { afterId: fetchedUntil, size: PAGE_SIZE },
                     },
                     signal,
                 });
                 if (signal.aborted) return;
                 receive(page);
+                fetchedUntil = page.at(-1)?.messageId ?? fetchedUntil;
                 if (page.length < PAGE_SIZE) return;
             }
         }
@@ -203,10 +206,23 @@ export function useTripChat(roomId: number | null, myUserId: number): TripChat {
         loadAll.current = () => {
             Promise.all([loadMembers(), catchUp()])
                 .then(() => {
-                    if (!signal.aborted) setStatus("ready");
+                    if (signal.aborted) return;
+                    setStatus("ready");
+                    setSyncFailed(false);
                 })
                 .catch(() => {
                     if (!signal.aborted) setStatus("failed");
+                });
+        };
+
+        // 다시 연결된 뒤 놓친 메시지를 받지 못하면 받은 메시지는 그대로 두고 빠진 구간이 있다고 알린다.
+        resync.current = () => {
+            catchUp()
+                .then(() => {
+                    if (!signal.aborted) setSyncFailed(false);
+                })
+                .catch(() => {
+                    if (!signal.aborted) setSyncFailed(true);
                 });
         };
 
@@ -214,7 +230,7 @@ export function useTripChat(roomId: number | null, myUserId: number): TripChat {
         socket.current = openChatSocket(room, {
             onConnected: () => {
                 setConnection("connected");
-                void catchUp().catch(() => undefined);
+                resync.current();
                 if (connectedBefore) void loadMembers().catch(() => undefined);
                 connectedBefore = true;
             },
@@ -260,6 +276,10 @@ export function useTripChat(roomId: number | null, myUserId: number): TripChat {
         outbox.remove(new Set([clientMessageId]));
     }
 
+    function retrySync() {
+        resync.current();
+    }
+
     function reload() {
         setStatus("loading");
         loadAll.current();
@@ -272,10 +292,24 @@ export function useTripChat(roomId: number | null, myUserId: number): TripChat {
             messages: [],
             outgoing: [],
             members: [],
+            syncFailed: false,
             send,
             retry,
             discard,
+            retrySync,
             reload,
         };
-    return { status, connection, messages, outgoing, members, send, retry, discard, reload };
+    return {
+        status,
+        connection,
+        messages,
+        outgoing,
+        members,
+        syncFailed,
+        send,
+        retry,
+        discard,
+        retrySync,
+        reload,
+    };
 }

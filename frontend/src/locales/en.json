@@ -238,6 +238,7 @@
         "chatEmpty": "No messages yet. Send the first one.",
         "chatReconnecting": "Connection lost. Reconnecting.",
         "chatClosed": "Can't connect to chat. Please refresh the page.",
+        "chatSyncFailed": "Couldn't load missed messages.",
         "chatUnknownMember": "Unknown member",
         "chatSending": "Sending",
         "chatSendFailed": "Not sent",
