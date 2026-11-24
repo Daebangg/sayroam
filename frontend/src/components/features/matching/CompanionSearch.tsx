@@ -250,7 +250,11 @@ export function CompanionSearch({
                     {catalogFailed && (
                         <div role="alert" className="matching-error">
                             <p>{t("matchingFlow.catalogError")}</p>
-                            <Button variant="plain" onClick={onReload}>
+                            <Button
+                                variant="plain"
+                                className="matching-text-action"
+                                onClick={onReload}
+                            >
                                 {t("matchingFlow.retry")}
                             </Button>
                         </div>

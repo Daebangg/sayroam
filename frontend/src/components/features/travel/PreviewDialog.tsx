@@ -1,6 +1,6 @@
 import { useId } from "react";
 import { useTranslation } from "react-i18next";
-import { Button, Icon, Modal, TravelArtwork } from "@/components/ui";
+import { Button, Modal, ModalCloseButton, TravelArtwork } from "@/components/ui";
 
 type PreviewDialogProps = {
     open: boolean;
@@ -21,19 +21,12 @@ export function PreviewDialog({
     return (
         <Modal open={open} onClose={onClose} labelledBy={id} className="preview-dialog">
             <div className="preview-dialog__toolbar">
-                <Button
-                    variant="ghost"
-                    className="icon-button"
-                    aria-label={t("common.close")}
-                    onClick={onClose}
-                >
-                    <Icon name="close" variant="outline" />
-                </Button>
+                <ModalCloseButton inline onClose={onClose} />
             </div>
             <TravelArtwork scene={scene} />
             <h2 id={id}>{title}</h2>
             <p className="ui-modal__description">{description}</p>
-            <Button variant="brand" onClick={onClose}>
+            <Button variant="confirm" onClick={onClose}>
                 {t("mockup.confirm")}
             </Button>
         </Modal>

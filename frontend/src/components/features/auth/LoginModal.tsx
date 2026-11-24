@@ -1,7 +1,7 @@
 import type { SocialProvider } from "@/hooks/auth.types";
 import { useEffect, useId, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Button, Checkbox, Icon, Modal, TextField, Tooltip } from "@/components/ui";
+import { Button, Checkbox, Modal, ModalCloseButton, TextField } from "@/components/ui";
 import type { AuthMessage, LoginInput } from "@/hooks/auth.types";
 import { isValidEmail, isValidPassword } from "@/hooks/authValidation";
 import { useCountdown } from "@/hooks/useCountdown";
@@ -49,16 +49,7 @@ export function LoginModal({
 
     return (
         <Modal open={open} onClose={onClose} labelledBy={titleId} className="auth-modal">
-            <Tooltip content={t("common.close")} shortcut={["Escape"]} className="ui-modal__close">
-                <Button
-                    variant="ghost"
-                    className="icon-button"
-                    onClick={onClose}
-                    aria-label={t("common.close")}
-                >
-                    <Icon name="close" variant="outline" />
-                </Button>
-            </Tooltip>
+            <ModalCloseButton onClose={onClose} />
             <h2 id={titleId}>{t("auth.title")}</h2>
             <p className="auth-preview__description">{t("auth.description")}</p>
             <div className="auth-preview__options">

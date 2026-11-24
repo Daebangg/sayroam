@@ -1,8 +1,6 @@
 import { useNavigate } from "react-router";
 import { useTranslation } from "react-i18next";
-import { useTheme } from "@/hooks/useTheme";
 import { NotificationInboxPreview } from "@/components/features/notifications/NotificationInboxPreview";
-import { RoamDiscoveryLandscape } from "@/components/features/matching/RoamDiscoveryLandscape";
 import { RecruitmentDiscovery } from "@/components/features/matching/RecruitmentDiscovery";
 import { roamMateCandidates } from "./roamMateCandidates";
 
@@ -31,12 +29,10 @@ export function RoamMatePreview({
     recruitmentTitle,
 }: PreviewProps) {
     const { t } = useTranslation();
-    const { resolved } = useTheme();
     const navigate = useNavigate();
     if (screen === "notifications") {
         return (
             <main id="main-content" tabIndex={-1} className="roam-preview">
-                {resolved === "dark" && <RoamDiscoveryLandscape subtle />}
                 <header className="roam-preview__heading">
                     <h1>{t("common.notifications")}</h1>
                 </header>

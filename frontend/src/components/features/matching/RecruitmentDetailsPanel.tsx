@@ -2,7 +2,7 @@ import { RecruitmentTextAction } from "./RecruitmentTextAction";
 import { useEffect, useEffectEvent, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
-import { Avatar, Button, Icon, Tooltip } from "@/components/ui";
+import { Avatar, Button, Icon, Tag, Tooltip } from "@/components/ui";
 import { RecruitmentStatusBadge } from "./RecruitmentStatusBadge";
 import type { CandidateResult, MatchingRegistration } from "@/hooks/matching.types";
 
@@ -62,49 +62,29 @@ function PanelContent({
     const titleId = useId();
     const panel = useRef<HTMLElement>(null);
     const content = useRef<HTMLDivElement>(null);
-    const [mobile, setMobile] = useState(false);
     const close = useEffectEvent(onClose);
     useEffect(() => {
         const opener = document.activeElement;
         const media = window.matchMedia("(max-width: 700px)");
+        const page = document.getElementById("main-content");
         const previousOverflow = document.body.style.overflow;
         function update(): void {
-            setMobile(media.matches);
+            if (page) page.inert = media.matches;
             document.body.style.overflow = media.matches ? "hidden" : previousOverflow;
         }
         update();
         panel.current?.focus({ preventScroll: true });
         function keydown(event: KeyboardEvent): void {
             if (event.defaultPrevented || document.querySelector("dialog[open]")) return;
-            if (event.key === "Escape") {
+            if (
+                event.target instanceof Element &&
+                event.target.closest(".site-header, .chat-sidebar")
+            )
+                return;
+            if (event.key === "Escape" && !event.isComposing) {
                 event.preventDefault();
                 close();
                 return;
-            }
-            if (!media.matches || event.key !== "Tab") return;
-            const items = Array.from(
-                panel.current?.querySelectorAll<HTMLElement>(
-                    'button:not(:disabled), [href], input:not(:disabled), [tabindex="0"]',
-                ) ?? [],
-            );
-            const first = items[0];
-            const last = items[items.length - 1];
-            if (!first || !last) {
-                event.preventDefault();
-                return;
-            }
-            if (
-                event.shiftKey &&
-                (document.activeElement === first || document.activeElement === panel.current)
-            ) {
-                event.preventDefault();
-                last.focus();
-            } else if (
-                !event.shiftKey &&
-                (document.activeElement === last || document.activeElement === panel.current)
-            ) {
-                event.preventDefault();
-                first.focus();
             }
         }
         function outside(event: PointerEvent): void {
@@ -118,7 +98,7 @@ function PanelContent({
             // Let another recruitment card handle selection without closing its new panel.
             if (
                 target.closest(
-                    ".matching-registration__open, .matching-registration, .roam-match-card, .ui-dropdown__menu",
+                    ".matching-registration__open, .matching-registration, .roam-match-card, .ui-dropdown__menu, .chat-sidebar, [aria-keyshortcuts='Alt+C']",
                 )
             )
                 return;
@@ -131,6 +111,7 @@ function PanelContent({
             document.removeEventListener("pointerdown", outside);
             media.removeEventListener("change", update);
             document.removeEventListener("keydown", keydown);
+            if (page) page.inert = false;
             document.body.style.overflow = previousOverflow;
             if (opener instanceof HTMLElement && opener.isConnected)
                 opener.focus({ preventScroll: true });
@@ -151,10 +132,9 @@ function PanelContent({
             ref={panel}
             id="recruitment-details-panel"
             tabIndex={-1}
-            role={mobile ? "dialog" : "region"}
-            aria-modal={mobile || undefined}
+            role="region"
             aria-labelledby={titleId}
-            className={`matching-details-panel${closing ? " matching-details-panel--closing" : ""}`}
+            className={`edge-panel matching-details-panel${closing ? " matching-details-panel--closing" : ""}`}
             onAnimationEnd={(event) => {
                 if (
                     closing &&
@@ -240,15 +220,19 @@ function PanelContent({
                             )}
                         </dt>
                         <dd>
-                            {candidate
-                                ? candidate.gender
-                                    ? t(`settings.genderValues.${candidate.gender}`)
-                                    : t("matchingFlow.private")
-                                : t(
-                                      registration.showGender
-                                          ? "matchingFlow.public"
-                                          : "matchingFlow.private",
-                                  )}
+                            <Tag
+                                label={
+                                    candidate
+                                        ? candidate.gender
+                                            ? t(`settings.genderValues.${candidate.gender}`)
+                                            : t("matchingFlow.private")
+                                        : t(
+                                              registration.showGender
+                                                  ? "matchingFlow.public"
+                                                  : "matchingFlow.private",
+                                          )
+                                }
+                            />
                         </dd>
                     </div>
                     <div>
@@ -261,15 +245,19 @@ function PanelContent({
                             )}
                         </dt>
                         <dd>
-                            {candidate
-                                ? candidate.age !== null
-                                    ? t("matchingFlow.ageValue", { count: candidate.age })
-                                    : t("matchingFlow.private")
-                                : t(
-                                      registration.showAge
-                                          ? "matchingFlow.public"
-                                          : "matchingFlow.private",
-                                  )}
+                            <Tag
+                                label={
+                                    candidate
+                                        ? candidate.age !== null
+                                            ? t("matchingFlow.ageValue", { count: candidate.age })
+                                            : t("matchingFlow.private")
+                                        : t(
+                                              registration.showAge
+                                                  ? "matchingFlow.public"
+                                                  : "matchingFlow.private",
+                                          )
+                                }
+                            />
                         </dd>
                     </div>
                 </dl>
@@ -338,16 +326,16 @@ function PanelContent({
                         {candidate.travelStyleMatch ? (
                             <>
                                 <strong>{t("profileSetup.styleTitle")}</strong>
-                                <span
-                                    className="matching-details-score"
-                                    title={t("matchingFlow.styleMatchLabel")}
-                                >
-                                    {t("matchingFlow.styleMatchScore", {
-                                        score: new Intl.NumberFormat(i18n.resolvedLanguage, {
-                                            style: "percent",
-                                            maximumFractionDigits: 2,
-                                        }).format(candidate.travelStyleMatch.score / 100),
-                                    })}
+                                <span title={t("matchingFlow.styleMatchLabel")}>
+                                    <Tag
+                                        tone="primary"
+                                        label={t("matchingFlow.styleMatchScore", {
+                                            score: new Intl.NumberFormat(i18n.resolvedLanguage, {
+                                                style: "percent",
+                                                maximumFractionDigits: 2,
+                                            }).format(candidate.travelStyleMatch.score / 100),
+                                        })}
+                                    />
                                 </span>
                             </>
                         ) : (
@@ -433,14 +421,14 @@ function PanelContent({
                 <div className="matching-details-panel__actions">
                     {registration && status === "ACTIVE" && onEdit && (
                         <Button
-                            variant="soft"
+                            variant="edit"
                             disabled={busy || !registration.destinationId}
                             onClick={onEdit}
                         >
                             {t("matchingFlow.edit")}
                         </Button>
                     )}
-                    <Button variant="dismiss" onClick={onClose}>
+                    <Button variant="close" onClick={onClose}>
                         {t("common.close")}
                     </Button>
                 </div>
@@ -451,6 +439,6 @@ function PanelContent({
                 )}
             </footer>
         </aside>,
-        document.body,
+        document.querySelector(".app-shell") ?? document.body,
     );
 }

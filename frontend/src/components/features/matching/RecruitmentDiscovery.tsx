@@ -139,7 +139,7 @@ export function RecruitmentDiscovery({
                 {(phase === "empty" || phase === "delayed") && (
                     <div className="roam-discovery-actions">
                         {phase === "empty" && onEdit && (
-                            <Button variant="soft" onClick={onEdit}>
+                            <Button variant="edit" onClick={onEdit}>
                                 {t("roamMatePreview.empty.edit")}
                             </Button>
                         )}

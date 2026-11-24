@@ -1,11 +1,11 @@
 import { Link, type LinkProps } from "react-router";
 
 type ButtonLinkProps = LinkProps & {
-    variant?: "primary" | "brand" | "highlight" | "soft" | "outline" | "ghost" | "plain";
+    variant?: "primary" | "brand" | "highlight" | "edit" | "soft" | "outline" | "ghost" | "plain";
 };
 
 export function ButtonLink({
-    variant = "brand",
+    variant = "primary",
     className = "",
     children,
     ...props

@@ -1,11 +1,12 @@
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { RoamDiscoveryLandscape } from "@/components/features/matching/RoamDiscoveryLandscape";
+import { ChatSidebar, ChatSidebarButton } from "@/components/features/chat/ChatSidebar";
 import { ProfileMenu } from "@/components/features/profile/ProfileMenu";
 import { useTranslation } from "react-i18next";
-import { Brand, Icon } from "@/components/ui";
+import { Brand, Icon, Tooltip } from "@/components/ui";
 import { NotificationInboxPreview } from "@/components/features/notifications/NotificationInboxPreview";
 import { mockupUrl, type MockupScreen } from "@/routing/mockups";
-import { appNavigation } from "@/data/preview";
+import { primaryNavigation } from "@/data/preview";
 import { pagePaths } from "@/routing/paths";
 import { Link, NavLink, useNavigate, useLocation, useMatch, useNavigation } from "react-router";
 import type { ResolvedTheme } from "@/hooks/useTheme";
@@ -35,6 +36,10 @@ export function AppShell({
     onLogout,
     children,
 }: AppShellProps) {
+    const [chatOpen, setChatOpen] = useState(false);
+    const chatId = useId();
+    const chatTrigger = useRef<HTMLButtonElement>(null);
+    const chat = { id: chatId, open: chatOpen, setOpen: setChatOpen, trigger: chatTrigger };
     const navigate = useNavigate();
     const navigation = useNavigation();
     const { t, i18n } = useTranslation();
@@ -89,8 +94,23 @@ export function AppShell({
             </a>
             <div
                 className={`app-shell ${discoveryActive ? "app-shell--discovery" : ""} ${isHome ? "app-shell--home" : ""} ${mockupScreen === "welcome" || mockupScreen === "onboarding" ? "app-shell--intro" : ""}`}
+                onClick={(event) => {
+                    const target = event.target;
+                    if (!chatOpen || event.defaultPrevented || !(target instanceof Element)) return;
+                    if (target !== event.currentTarget && !target.closest(".app-shell__content"))
+                        return;
+                    if (
+                        target.closest(
+                            "a, button, input, textarea, select, label, form, article, dialog, [popover], [role='button'], [role='menu'], [contenteditable='true'], [tabindex='0'], .trip-map",
+                        )
+                    )
+                        return;
+                    setChatOpen(false);
+                }}
             >
-                {discoveryActive && <RoamDiscoveryLandscape />}
+                {(setupActive || (!isHome && mockupScreen !== "home")) && (
+                    <RoamDiscoveryLandscape subtle={!discoveryActive} />
+                )}
                 {navigation.state !== "idle" && (
                     <div className="route-progress" role="status">
                         <span className="visually-hidden">{t("pageState.loading.title")}</span>
@@ -99,37 +119,42 @@ export function AppShell({
                 <header
                     className={`site-header ${inSettings || setupActive ? "site-header--settings" : ""}`}
                 >
-                    <Link
-                        className="brand-button"
-                        to={mockupScreen ? mockupUrl("home") : "/"}
-                        aria-label={t("navigation.home")}
-                    >
-                        <Brand />
-                    </Link>
-                    {!inSettings && !setupActive && (
-                        <nav className="desktop-nav" aria-label={t("navigation.main")}>
-                            {appNavigation.map((item) => (
-                                <NavLink
-                                    key={item.to}
-                                    to={mockupScreen ? mockupUrl(item.icon) : item.to}
-                                    end={item.to === "/"}
-                                    aria-current={
-                                        mockupScreen
-                                            ? activeMockupScreen === item.icon
-                                                ? "page"
-                                                : false
-                                            : undefined
-                                    }
-                                    className={({ isActive }) =>
-                                        `nav-item ${(mockupScreen ? activeMockupScreen === item.icon : isActive) ? "is-active" : ""}`
-                                    }
-                                >
-                                    <Icon name={item.icon} />
-                                    <span>{t(item.label)}</span>
-                                </NavLink>
-                            ))}
-                        </nav>
-                    )}
+                    <Tooltip content={t("navigation.goHome")} className="brand-home-link">
+                        <Link
+                            className="brand-button"
+                            to={mockupScreen ? mockupUrl("home") : "/"}
+                            aria-label={t("navigation.goHome")}
+                        >
+                            <Brand />
+                        </Link>
+                    </Tooltip>
+                    <nav className="primary-nav" aria-label={t("navigation.main")}>
+                        {primaryNavigation.map((item) =>
+                            item.icon === "conversation" ? (
+                                <ChatSidebarButton key={item.icon} {...chat} />
+                            ) : setupActive ? null : (
+                                <Tooltip key={item.to} content={t(item.label)} touchHint>
+                                    <NavLink
+                                        aria-label={t(item.label)}
+                                        to={mockupScreen ? mockupUrl(item.icon) : item.to}
+                                        aria-current={
+                                            mockupScreen
+                                                ? activeMockupScreen === item.icon
+                                                    ? "page"
+                                                    : false
+                                                : undefined
+                                        }
+                                        className={({ isActive }) =>
+                                            `nav-item ${(mockupScreen ? activeMockupScreen === item.icon : isActive) ? "is-active" : ""}`
+                                        }
+                                    >
+                                        <Icon name={item.icon} />
+                                        <span>{t(item.label)}</span>
+                                    </NavLink>
+                                </Tooltip>
+                            ),
+                        )}
+                    </nav>
                     <div className="header-actions">
                         {mockupScreen ? (
                             <NotificationInboxPreview
@@ -151,42 +176,8 @@ export function AppShell({
                         />
                     </div>
                 </header>
-                {children}
-                {!inSettings && !setupActive && (
-                    <nav className="mobile-nav" aria-label={t("navigation.main")}>
-                        {appNavigation.map((item) => (
-                            <NavLink
-                                key={item.to}
-                                to={mockupScreen ? mockupUrl(item.icon) : item.to}
-                                end={item.to === "/"}
-                                aria-current={
-                                    mockupScreen
-                                        ? activeMockupScreen === item.icon
-                                            ? "page"
-                                            : false
-                                        : undefined
-                                }
-                                className={({ isActive }) =>
-                                    `mobile-nav__item ${(mockupScreen ? activeMockupScreen === item.icon : isActive) ? "is-active" : ""}`
-                                }
-                                aria-label={t(item.label)}
-                            >
-                                <Icon name={item.icon} />
-                            </NavLink>
-                        ))}
-                        <ProfileMenu
-                            member={member}
-                            profileImageUrl={member?.profileImageUrl ?? null}
-                            busy={authBusy}
-                            onLogout={onLogout}
-                            mobile
-                            onLogin={onOpenAuth}
-                            onBrand={() => void navigate("/brand")}
-                            onSettings={() => void navigate(pagePaths.settings)}
-                            onProfile={() => void navigate(pagePaths.profile)}
-                        />
-                    </nav>
-                )}
+                <ChatSidebar {...chat} />
+                <div className="app-shell__content">{children}</div>
             </div>
         </div>
     );

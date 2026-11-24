@@ -1,6 +1,5 @@
-import { Link, Outlet, useLocation, useOutletContext } from "react-router";
+import { Link, Outlet, useLocation, useNavigate, useOutletContext } from "react-router";
 import { useTranslation } from "react-i18next";
-import { useState } from "react";
 import { useTravelStyle } from "@/hooks/api/profile/useTravelStyle";
 import { ProfileStyleEditor } from "@/components/features/profile/ProfileStyleEditor";
 import { ProfileTravelStyle } from "@/components/features/profile/ProfileTravelStyle";
@@ -32,32 +31,11 @@ export function SettingsPage() {
     const { t } = useTranslation();
     const { pathname } = useLocation();
     const currentPath = pathname.replace(/\/+$/, "").toLowerCase();
-    if (currentPath === pagePaths.profile)
-        return (
-            <main id="main-content" tabIndex={-1} className="settings-page settings-page--profile">
-                <div className="settings-landscape" aria-hidden="true" />
-                <div className="profile-page-layout">
-                    <header className="profile-page-header">
-                        <ButtonLink to={pagePaths.plaza} variant="plain" className="settings-back">
-                            <Icon name="arrow" variant="outline" />
-                            {t("settings.backToApp")}
-                        </ButtonLink>
-                        <SectionWordmark variant="profile" />
-                    </header>
-                    <div key={currentPath} className="settings-content">
-                        <Outlet context={context} />
-                    </div>
-                </div>
-            </main>
-        );
+    if (currentPath === pagePaths.profile) return <Outlet context={context} />;
     return (
         <main id="main-content" tabIndex={-1} className="settings-page">
-            <div className="settings-landscape" aria-hidden="true" />
             <div className="settings-layout">
                 <aside className="settings-sidebar">
-                    <div className="settings-sidebar__cover">
-                        <img src="/images/travel-coast.jpg" alt="" />
-                    </div>
                     <p className="settings-sidebar__title">
                         <SectionWordmark variant="settings" />
                     </p>
@@ -165,38 +143,57 @@ export function ProfileSettingsPage() {
     );
     const detailsEditor = useProfileEditor(onUpdateProfileDetails);
     const travelStyle = useTravelStyle(member?.userId);
-    const [editingStyle, setEditingStyle] = useState(false);
+    const { pathname, search, hash, state } = useLocation();
+    const navigate = useNavigate();
+    const editingStyle = state?.profileView === "travel-style" && travelStyle.values !== null;
+    function openStyleEditor(): void {
+        void navigate(
+            { pathname, search, hash },
+            { state: { ...state, profileView: "travel-style" } },
+        );
+    }
     return member ? (
-        <>
-            {editingStyle && travelStyle.values && (
-                <ProfileStyleEditor
-                    initialValues={travelStyle.values}
-                    busy={travelStyle.busy}
-                    failed={travelStyle.failed}
-                    onSave={travelStyle.save}
-                    onClose={() => setEditingStyle(false)}
-                />
-            )}
-            <div hidden={editingStyle}>
-                <SettingsHeading title={t("settings.profile")} />
-                <ProfileDetails
-                    member={member}
-                    nicknameEditor={nicknameEditor}
-                    imageEditor={imageEditor}
-                    detailsEditor={detailsEditor}
-                    travelStyle={
-                        <ProfileTravelStyle
-                            values={travelStyle.values}
+        <main id="main-content" tabIndex={-1} className="settings-page settings-page--profile">
+            <div className="profile-page-layout">
+                <header className="profile-page-header">
+                    <ButtonLink to={pagePaths.plaza} variant="plain" className="settings-back">
+                        <Icon name="arrow" variant="outline" />
+                        {t("settings.backToApp")}
+                    </ButtonLink>
+                    <SectionWordmark variant={editingStyle ? "travel-style" : "profile"} />
+                </header>
+                <div className="settings-content">
+                    {editingStyle && travelStyle.values && (
+                        <ProfileStyleEditor
+                            initialValues={travelStyle.values}
+                            busy={travelStyle.busy}
                             failed={travelStyle.failed}
-                            saved={travelStyle.saved}
-                            onEdit={() => setEditingStyle(true)}
-                            onRetry={travelStyle.reload}
-                            onDismissSaved={travelStyle.dismissSaved}
+                            onSave={travelStyle.save}
+                            onClose={() => void navigate(-1)}
                         />
-                    }
-                />
+                    )}
+                    <div hidden={editingStyle}>
+                        <SettingsHeading title={t("settings.profile")} />
+                        <ProfileDetails
+                            member={member}
+                            nicknameEditor={nicknameEditor}
+                            imageEditor={imageEditor}
+                            detailsEditor={detailsEditor}
+                            travelStyle={
+                                <ProfileTravelStyle
+                                    values={travelStyle.values}
+                                    failed={travelStyle.failed}
+                                    saved={travelStyle.saved}
+                                    onEdit={openStyleEditor}
+                                    onRetry={travelStyle.reload}
+                                    onDismissSaved={travelStyle.dismissSaved}
+                                />
+                            }
+                        />
+                    </div>
+                </div>
             </div>
-        </>
+        </main>
     ) : null;
 }
 

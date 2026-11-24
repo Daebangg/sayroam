@@ -34,7 +34,6 @@ import {
 import { RecruitmentStatusBadge } from "@/components/features/matching/RecruitmentStatusBadge";
 import { RecruitmentDetailsPanel } from "@/components/features/matching/RecruitmentDetailsPanel";
 import { TravelStyleChoices } from "@/components/features/matching/TravelStyleChoices";
-import { RoamDiscoveryLandscape } from "@/components/features/matching/RoamDiscoveryLandscape";
 import { MatchingFilterPopover } from "@/components/features/matching/MatchingFilterPopover";
 import type { MatchingRegistration } from "@/hooks/matching.types";
 import type { PageContext } from "@/routing/context";
@@ -530,7 +529,6 @@ function MatchingWorkspace({
             tabIndex={-1}
             className={`matching-workspace${view === "entry" ? " matching-workspace--entry" : ""}${view === "mine" ? " matching-workspace--mine" : ""}${view === "mine" && animatePanelLayout ? " matching-workspace--panel-transition" : ""}${view === "mine" && selectedRegistration ? " matching-workspace--details" : ""}`}
         >
-            <RoamDiscoveryLandscape subtle />
             <div key={view} className="matching-view page-enter">
                 {view !== "entry" && (
                     <div className="matching-section-nav">

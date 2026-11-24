@@ -1,6 +1,6 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Button, Icon, Modal, TextField, VerificationCode, Tooltip } from "@/components/ui";
+import { Button, Modal, ModalCloseButton, TextField, VerificationCode } from "@/components/ui";
 import {
     isValidEmail,
     isValidNewPassword,
@@ -118,17 +118,7 @@ export function EmailFlowModal({
             dismissible={!blocking}
             closeOnBackdrop={false}
         >
-            <Tooltip content={t("common.close")} shortcut={["Escape"]} className="ui-modal__close">
-                <Button
-                    variant="ghost"
-                    className="icon-button"
-                    disabled={blocking}
-                    onClick={onClose}
-                    aria-label={t("common.close")}
-                >
-                    <Icon name="close" variant="outline" />
-                </Button>
-            </Tooltip>
+            <ModalCloseButton onClose={onClose} disabled={blocking} />
             <div className="auth-flow-header">
                 <h2 id={titleId}>{t(mode === "signup" ? "auth.signupTitle" : "auth.reset")}</h2>
                 <p className="auth-preview__description">
@@ -224,7 +214,7 @@ export function EmailFlowModal({
                                                 onChange={setCode}
                                             />
                                             <Button
-                                                variant="brand"
+                                                variant="confirm"
                                                 loading={busy && !sending && !verified}
                                                 disabled={
                                                     !/^\d{6}$/.test(code) || expiresIn === 0 || busy

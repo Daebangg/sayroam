@@ -108,7 +108,6 @@ export function ProfileSetupPage({
         );
     return (
         <main id="main-content" tabIndex={-1} className="profile-onboarding">
-            <div className="settings-landscape" aria-hidden="true" />
             <section className="profile-onboarding__content" aria-labelledby="profile-setup-title">
                 <p className="profile-onboarding__eyebrow">
                     {t("profileSetup.welcome", { nickname: member.nickname })}

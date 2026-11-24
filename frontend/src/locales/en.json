@@ -6,8 +6,10 @@
     "navigation": {
         "plaza": "Plaza",
         "trips": "Trips",
+        "chat": "Chat",
         "matching": "Roam Mate",
         "rooms": "Rooms",
+        "goHome": "Go to homepage",
         "home": "Go home",
         "main": "Main navigation",
         "skip": "Skip to content"
@@ -37,7 +39,58 @@
         "titleSecond": "Extraordinary journeys",
         "descriptionFirst": "From travel plans to people and places,",
         "descriptionSecond": "get ready for it all in one place.",
-        "start": "Start your journey"
+        "start": "Start your journey",
+        "slider": {
+            "label": "Destinations in Korea",
+            "haeundae": {
+                "city": "Busan",
+                "name": "Haeundae Beach"
+            },
+            "cherryBlossoms": {
+                "city": "Jeju",
+                "name": "Jeonnong-ro Cherry Blossom Street"
+            },
+            "hyangwonjeong": {
+                "city": "Seoul",
+                "name": "Hyangwonjeong Pavilion"
+            },
+            "gamcheon": {
+                "city": "Busan",
+                "name": "Gamcheon Culture Village"
+            },
+            "pinkMuhly": {
+                "city": "Gyeongju",
+                "name": "Cheomseongdae Area"
+            },
+            "gwanganDay": {
+                "city": "Busan",
+                "name": "Gwangandaegyo Bridge"
+            },
+            "sunsetFlowers": {
+                "city": "Gyeongju",
+                "name": "Cheomseongdae, Inwang-dong"
+            },
+            "namsan": {
+                "city": "Seoul",
+                "name": "N Seoul Tower"
+            },
+            "donggung": {
+                "city": "Gyeongju",
+                "name": "Donggung Palace and Wolji Pond"
+            },
+            "gwanganNight": {
+                "city": "Busan",
+                "name": "Gwangandaegyo Bridge"
+            },
+            "gwangjang": {
+                "city": "Seoul",
+                "name": "Gwangjang Market"
+            },
+            "gwanghwamun": {
+                "city": "Seoul",
+                "name": "Gwanghwamun Gate"
+            }
+        }
     },
     "auth": {
         "welcome": "Welcome to SayRoam.",
@@ -691,6 +744,8 @@
         },
         "keyboard": "Keyboard",
         "openSettings": "Open settings",
+        "openChat": "Open chat",
+        "openInbox": "Open notification inbox",
         "openProfile": "Open profile",
         "joinedAt": "Member since",
         "yourJourney": "MY PROFILE",

@@ -9,6 +9,7 @@ import {
     Tooltip,
     type IconName,
 } from "@/components/ui";
+import { openInboxShortcut } from "@/data/shortcuts";
 import type { NotificationSummary } from "@/hooks/notification.types";
 
 export type InboxItem = {
@@ -130,6 +131,36 @@ export function NotificationInbox({
     }, []);
 
     useEffect(() => {
+        if (inline) return;
+        const openFromKeyboard = (event: KeyboardEvent) => {
+            if (
+                event.code !== "KeyN" ||
+                !event.altKey ||
+                event.ctrlKey ||
+                event.metaKey ||
+                event.shiftKey ||
+                event.repeat ||
+                event.isComposing ||
+                event.defaultPrevented
+            )
+                return;
+            if (
+                (event.target instanceof HTMLElement &&
+                    (event.target.isContentEditable ||
+                        event.target.closest("input, textarea, select"))) ||
+                document.querySelector('dialog[open], [aria-modal="true"]') ||
+                !trigger.current?.getClientRects().length
+            )
+                return;
+            event.preventDefault();
+            ring.current?.cancel();
+            setOpen(true);
+        };
+        window.addEventListener("keydown", openFromKeyboard);
+        return () => window.removeEventListener("keydown", openFromKeyboard);
+    }, [inline]);
+
+    useEffect(() => {
         if (!open || inline) return;
         focusControl(id);
         const outside = (event: PointerEvent) => {
@@ -175,13 +206,14 @@ export function NotificationInbox({
             }}
         >
             {!inline && (
-                <Tooltip content={t("common.notifications")}>
+                <Tooltip content={t("settings.openInbox")} shortcut={openInboxShortcut}>
                     <Button
                         ref={trigger}
                         variant="ghost"
                         className="icon-button notification-trigger"
                         data-unread={unreadCount > 0 || undefined}
                         aria-label={t("inbox.trigger", { count: unreadCount })}
+                        aria-keyshortcuts="Alt+N"
                         aria-haspopup="dialog"
                         aria-expanded={open}
                         aria-controls={open ? id : undefined}

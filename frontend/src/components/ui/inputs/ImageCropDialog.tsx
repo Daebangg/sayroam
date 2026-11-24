@@ -257,11 +257,11 @@ export function ImageCropDialog({
                 </p>
             )}
             <div className="ui-image-crop__actions">
-                <Button variant="ghost" disabled={busy} onClick={onClose}>
+                <Button variant="cancel" disabled={busy} onClick={onClose}>
                     {cancelLabel}
                 </Button>
                 <Button
-                    variant="brand"
+                    variant="confirm"
                     disabled={!image || failed || busy}
                     loading={busy}
                     onClick={apply}

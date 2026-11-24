@@ -49,8 +49,7 @@
 `bookmark`, `plus`, `minus`, `arrow`, `chevron`, `close`, `sun`, `moon`, `mail`, `filter`,
 `pin`, `guide`, `check`, `flame`, `plan`, `calendar`를 제공합니다.
 
-기본 `variant="brand"`는 파랑·하늘색·모래색을 겹친 면을 표시합니다. 작은 메타 정보나 진한
-버튼 안에서는 `variant="outline"`으로 같은 의미의 선형 아이콘을 선택합니다. 모든 아이콘은
+기본 `variant="brand"`는 파랑·하늘색·모래색을 겹친 면을 표시합니다. 모든 아이콘은
 24px 좌표계를 공유하고 선형 변형은 `currentColor`를 따릅니다. 여행 진입은 내비게이션과 같은
 여행가방 `trips`, 날짜 정보는 `calendar`를 사용합니다. 검색·동행·설정만 다른 아이콘 라이브러리로
 교체하지 않습니다. 단축키는 그림 아이콘 대신 공용 `KeyboardShortcut` 키캡으로 표시합니다.
@@ -87,7 +86,7 @@ Google·카카오·네이버 자산은 [공식 제공자 자산](providers/READM
 
 ## 설정·프로필 제목
 
-`settings-wordmark.svg`와 `profile-wordmark.svg`는 로고와 같은 Avenir Next Demi Bold의 글자 윤곽과 파랑·모래색 면을 사용합니다. `-light.svg`는 어두운 화면용이며 공용 `SectionWordmark`가 테마에 맞춰 선택합니다.
+설정·프로필·여행 스타일의 `settings-wordmark.svg`, `profile-wordmark.svg`, `travel-style-wordmark.svg`는 로고와 같은 Avenir Next Demi Bold의 글자 윤곽과 파랑·모래색 면을 사용합니다. `-light.svg`는 어두운 화면용이며 공용 `SectionWordmark`가 테마에 맞춰 선택합니다.
 
 탐색 상태의 `DiscoveryWordmark`도 같은 Avenir Next Demi Bold 윤곽과 글자별 비대칭 색면 분할을 사용합니다.
 윤곽은 `src/components/ui/brand/discoveryWordmarks.ts`에서 공유하며, 탐색 중에만 글자별로 순서대로 움직입니다.
