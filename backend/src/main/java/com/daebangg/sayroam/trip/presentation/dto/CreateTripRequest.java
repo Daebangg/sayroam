@@ -5,8 +5,10 @@ import jakarta.validation.constraints.NotNull;
 
 import java.time.LocalDate;
 
-@Schema(requiredProperties = {"startDate", "endDate"})
+@Schema(requiredProperties = {"destinationId", "startDate", "endDate"})
 public record CreateTripRequest(
+        @Schema(description = "국내 여행지 목록(GET /api/destinations)에서 고른 여행지 ID", example = "3")
+        @NotNull Long destinationId,
         @Schema(description = "여행 시작일", example = "2026-12-01")
         @NotNull LocalDate startDate,
         @Schema(description = "여행 종료일. 시작일과 같거나 이후", example = "2026-12-04")

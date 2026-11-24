@@ -35,6 +35,10 @@ public class Trip extends BaseTimeEntity {
     @Getter
     private Long roomId;
 
+    // 국내 여행지 목록에서 고른 목적지. 지도 초기 위치에만 쓰며 담을 장소의 지역을 제한하지 않는다
+    @Column(name = "destination_id", nullable = false)
+    private Long destinationId;
+
     // 여행 이름. 생성 화면이 목적지로 기본 이름을 만들어 보낸다. 붙이지 않았으면 NULL
     @Column(length = MAX_TITLE_LENGTH)
     @Getter
@@ -44,11 +48,15 @@ public class Trip extends BaseTimeEntity {
     @Getter
     private TravelPeriod period;
 
-    public Trip(Long createdById, TravelPeriod period, String title) {
+    public Trip(Long createdById, Long destinationId, TravelPeriod period, String title) {
+        if (destinationId == null) {
+            throw new BusinessException(TripErrorCode.TRIP_DESTINATION_REQUIRED);
+        }
         if (period == null) {
             throw new BusinessException(TripErrorCode.TRIP_PERIOD_REQUIRED);
         }
         this.createdById = createdById;
+        this.destinationId = destinationId;
         this.period = period;
         this.title = normalizeTitle(title);
     }

@@ -1801,6 +1801,16 @@ p {
     outline: 2px solid var(--primary);
     outline-offset: 2px;
 }
+/* 목적지 칸은 왼쪽 핀 아이콘으로 구분하므로 자동완성의 검색·선택 아이콘과 그 여백을 쓰지 않는다. */
+.travel-search .ui-autocomplete {
+    width: 100%;
+}
+.travel-search .ui-autocomplete .ui-input {
+    padding-right: 0;
+}
+.travel-search .ui-autocomplete__icon {
+    display: none;
+}
 .travel-search__submit {
     min-width: 58px;
     padding: 10px 18px;

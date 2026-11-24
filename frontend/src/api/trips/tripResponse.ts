@@ -27,7 +27,15 @@ function trip(value: unknown): value is TripSummary {
         date(value.startDate) &&
         date(value.endDate) &&
         value.startDate <= value.endDate &&
-        (value.roomId === null || id(value.roomId))
+        (value.roomId === null || id(value.roomId)) &&
+        id(value.destinationId) &&
+        text(value.destinationName) &&
+        coordinate(value.boundsSouth, 90) &&
+        coordinate(value.boundsNorth, 90) &&
+        coordinate(value.boundsWest, 180) &&
+        coordinate(value.boundsEast, 180) &&
+        value.boundsSouth < value.boundsNorth &&
+        value.boundsWest < value.boundsEast
     );
 }
 
@@ -101,6 +109,15 @@ function searchedPlace(value: unknown): value is components["schemas"]["PlaceSea
 export function validateTrip(value: unknown, status: number): TripSummary {
     if (!trip(value)) throw new ApiError("invalid-response", { status });
     return value;
+}
+
+export function validateUpdatedTrip(
+    value: unknown,
+    status: number,
+): components["schemas"]["UpdateTripResponse"] {
+    if (!record(value) || !id(value.tripId) || !optionalText(value.title))
+        throw new ApiError("invalid-response", { status });
+    return { tripId: value.tripId, title: value.title };
 }
 
 export function validateTripPlaces(

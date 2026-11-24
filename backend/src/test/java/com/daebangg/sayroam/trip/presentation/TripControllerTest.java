@@ -14,8 +14,10 @@ import com.daebangg.sayroam.place.domain.error.PlaceErrorCode;
 import com.daebangg.sayroam.room.domain.error.RoomErrorCode;
 import com.daebangg.sayroam.trip.application.dto.AddTripCustomPlaceCommand;
 import com.daebangg.sayroam.trip.application.dto.AddTripPlaceCommand;
+import com.daebangg.sayroam.trip.application.dto.CreateTripCommand;
 import com.daebangg.sayroam.trip.application.dto.TripPlaceResult;
 import com.daebangg.sayroam.trip.application.dto.TripSummaryResult;
+import com.daebangg.sayroam.trip.application.dto.TripTitleResult;
 import com.daebangg.sayroam.trip.application.service.TripService;
 import com.daebangg.sayroam.trip.domain.error.TripErrorCode;
 import com.daebangg.sayroam.trip.presentation.controller.TripController;
@@ -52,6 +54,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class TripControllerTest {
     private static final Long USER_ID = 1L;
     private static final Long TRIP_ID = 12L;
+    private static final Long DESTINATION_ID = 3L;
     private static final LocalDate START_DATE = LocalDate.of(2026, 12, 1);
     private static final LocalDate END_DATE = LocalDate.of(2026, 12, 4);
     private static final Long OTHER_TRIP_ID = 13L;
@@ -61,6 +64,10 @@ class TripControllerTest {
     private static final BigDecimal LATITUDE = new BigDecimal("33.4996213");
     private static final BigDecimal LONGITUDE = new BigDecimal("126.5311884");
     private static final TravelPeriod PERIOD = new TravelPeriod(START_DATE, END_DATE);
+    private static final BigDecimal SOUTH = new BigDecimal("33.113712");
+    private static final BigDecimal WEST = new BigDecimal("126.144116");
+    private static final BigDecimal NORTH = new BigDecimal("33.565734");
+    private static final BigDecimal EAST = new BigDecimal("126.970428");
 
     @Autowired
     MockMvc mvc;
@@ -77,11 +84,11 @@ class TripControllerTest {
     @Test
     void 로그인한_회원의_기간으로_여행을_만들고_201과_여행_ID를_응답한다() throws Exception {
         // given
-        given(tripService.create(USER_ID, START_DATE, END_DATE, null)).willReturn(TRIP_ID);
+        given(tripService.create(USER_ID, new CreateTripCommand(DESTINATION_ID, START_DATE, END_DATE, null))).willReturn(TRIP_ID);
 
         // when & then
         mvc.perform(createTripRequest("""
-                        {"startDate": "2026-12-01", "endDate": "2026-12-04"}
+                        {"destinationId": 3, "startDate": "2026-12-01", "endDate": "2026-12-04"}
                         """).with(login()))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.tripId").value(TRIP_ID));
@@ -90,11 +97,11 @@ class TripControllerTest {
     @Test
     void 여행_생성_요청의_제목을_서비스에_전달한다() throws Exception {
         // given
-        given(tripService.create(USER_ID, START_DATE, END_DATE, "제주 여행")).willReturn(TRIP_ID);
+        given(tripService.create(USER_ID, new CreateTripCommand(DESTINATION_ID, START_DATE, END_DATE, "제주 여행"))).willReturn(TRIP_ID);
 
         // when & then
         mvc.perform(createTripRequest("""
-                        {"startDate": "2026-12-01", "endDate": "2026-12-04", "title": "제주 여행"}
+                        {"destinationId": 3, "startDate": "2026-12-01", "endDate": "2026-12-04", "title": "제주 여행"}
                         """).with(login()))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.tripId").value(TRIP_ID));
@@ -104,12 +111,12 @@ class TripControllerTest {
     void 제목이_30자를_넘으면_400과_에러_코드를_응답한다() throws Exception {
         // given
         String title = "가".repeat(31);
-        given(tripService.create(USER_ID, START_DATE, END_DATE, title))
+        given(tripService.create(USER_ID, new CreateTripCommand(DESTINATION_ID, START_DATE, END_DATE, title)))
                 .willThrow(new BusinessException(TripErrorCode.TRIP_TITLE_TOO_LONG));
 
         // when & then
         mvc.perform(createTripRequest("""
-                        {"startDate": "2026-12-01", "endDate": "2026-12-04", "title": "%s"}
+                        {"destinationId": 3, "startDate": "2026-12-01", "endDate": "2026-12-04", "title": "%s"}
                         """.formatted(title)).with(login()))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("TRIP_TITLE_TOO_LONG"));
@@ -119,7 +126,7 @@ class TripControllerTest {
     void 로그인하지_않으면_401을_응답하고_여행을_만들지_않는다() throws Exception {
         // when & then
         mvc.perform(createTripRequest("""
-                        {"startDate": "2026-12-01", "endDate": "2026-12-04"}
+                        {"destinationId": 3, "startDate": "2026-12-01", "endDate": "2026-12-04"}
                         """))
                 .andExpect(status().isUnauthorized());
 
@@ -130,7 +137,7 @@ class TripControllerTest {
     void 시작일이_없으면_400과_에러_코드를_응답하고_여행을_만들지_않는다() throws Exception {
         // when & then
         mvc.perform(createTripRequest("""
-                        {"endDate": "2026-12-04"}
+                        {"destinationId": 3, "endDate": "2026-12-04"}
                         """).with(login()))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("INVALID_INPUT"))
@@ -143,7 +150,7 @@ class TripControllerTest {
     void 종료일이_없으면_400과_에러_코드를_응답하고_여행을_만들지_않는다() throws Exception {
         // when & then
         mvc.perform(createTripRequest("""
-                        {"startDate": "2026-12-01"}
+                        {"destinationId": 3, "startDate": "2026-12-01"}
                         """).with(login()))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("INVALID_INPUT"))
@@ -153,14 +160,41 @@ class TripControllerTest {
     }
 
     @Test
+    void 목적지가_없으면_400과_에러_코드를_응답하고_여행을_만들지_않는다() throws Exception {
+        // when & then
+        mvc.perform(createTripRequest("""
+                        {"startDate": "2026-12-01", "endDate": "2026-12-04"}
+                        """).with(login()))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("INVALID_INPUT"))
+                .andExpect(jsonPath("$.errors[0].field").value("destinationId"));
+
+        then(tripService).shouldHaveNoInteractions();
+    }
+
+    @Test
+    void 목록에_없거나_비활성인_여행지면_400과_에러_코드를_응답한다() throws Exception {
+        // given
+        given(tripService.create(USER_ID, new CreateTripCommand(DESTINATION_ID, START_DATE, END_DATE, null)))
+                .willThrow(new BusinessException(TripErrorCode.TRIP_DESTINATION_UNAVAILABLE));
+
+        // when & then
+        mvc.perform(createTripRequest("""
+                        {"destinationId": 3, "startDate": "2026-12-01", "endDate": "2026-12-04"}
+                        """).with(login()))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("TRIP_DESTINATION_UNAVAILABLE"));
+    }
+
+    @Test
     void 종료일이_시작일보다_앞서면_400과_에러_코드를_응답한다() throws Exception {
         // given
-        given(tripService.create(USER_ID, END_DATE, START_DATE, null))
+        given(tripService.create(USER_ID, new CreateTripCommand(DESTINATION_ID, END_DATE, START_DATE, null)))
                 .willThrow(new BusinessException(TravelPeriodErrorCode.TRAVEL_PERIOD_END_BEFORE_START));
 
         // when & then
         mvc.perform(createTripRequest("""
-                        {"startDate": "2026-12-04", "endDate": "2026-12-01"}
+                        {"destinationId": 3, "startDate": "2026-12-04", "endDate": "2026-12-01"}
                         """).with(login()))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("TRAVEL_PERIOD_END_BEFORE_START"));
@@ -170,7 +204,7 @@ class TripControllerTest {
     void 날짜_형식이_잘못되면_400을_응답하고_여행을_만들지_않는다() throws Exception {
         // when & then
         mvc.perform(createTripRequest("""
-                        {"startDate": "2026/12/01", "endDate": "2026-12-04"}
+                        {"destinationId": 3, "startDate": "2026/12/01", "endDate": "2026-12-04"}
                         """).with(login()))
                 .andExpect(status().isBadRequest());
 
@@ -178,10 +212,10 @@ class TripControllerTest {
     }
 
     @Test
-    void 여행_이름을_바꾸면_200과_바뀐_여행을_응답한다() throws Exception {
+    void 여행_이름을_바꾸면_200과_여행_ID와_저장된_이름만_응답한다() throws Exception {
         // given
         given(tripService.rename(USER_ID, TRIP_ID, "부산 여행"))
-                .willReturn(new TripSummaryResult(TRIP_ID, "부산 여행", PERIOD, null));
+                .willReturn(new TripTitleResult(TRIP_ID, "부산 여행"));
 
         // when & then
         mvc.perform(updateTripRequest(TRIP_ID, """
@@ -190,15 +224,15 @@ class TripControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.tripId").value(TRIP_ID))
                 .andExpect(jsonPath("$.title").value("부산 여행"))
-                .andExpect(jsonPath("$.startDate").value("2026-12-01"))
-                .andExpect(jsonPath("$.endDate").value("2026-12-04"));
+                .andExpect(jsonPath("$.startDate").doesNotExist())
+                .andExpect(jsonPath("$.destination").doesNotExist());
     }
 
     @Test
     void 이름을_보내지_않으면_서비스에_null을_전달한다() throws Exception {
         // given
         given(tripService.rename(USER_ID, TRIP_ID, null))
-                .willReturn(new TripSummaryResult(TRIP_ID, "제주 여행", PERIOD, null));
+                .willReturn(new TripTitleResult(TRIP_ID, "제주 여행"));
 
         // when & then
         mvc.perform(updateTripRequest(TRIP_ID, "{}").with(login()))
@@ -620,8 +654,8 @@ class TripControllerTest {
     void 내_여행_목록을_조회하면_200과_여행_목록을_응답한다() throws Exception {
         // given
         given(tripService.findMine(USER_ID)).willReturn(List.of(
-                new TripSummaryResult(OTHER_TRIP_ID, "제주 3박 4일", PERIOD, ROOM_ID),
-                new TripSummaryResult(TRIP_ID, null, PERIOD, null)));
+                new TripSummaryResult(OTHER_TRIP_ID, "제주 3박 4일", PERIOD, ROOM_ID, DESTINATION_ID, "제주", SOUTH, WEST, NORTH, EAST),
+                new TripSummaryResult(TRIP_ID, null, PERIOD, null, DESTINATION_ID, "제주", SOUTH, WEST, NORTH, EAST)));
 
         // when & then
         mvc.perform(listTripsRequest().with(login()))
@@ -636,9 +670,9 @@ class TripControllerTest {
     }
 
     @Test
-    void 여행을_조회하면_200과_여행을_응답한다() throws Exception {
+    void 여행을_조회하면_200과_목적지_이름과_지도_영역을_포함한_여행을_응답한다() throws Exception {
         // given
-        given(tripService.find(USER_ID, TRIP_ID)).willReturn(new TripSummaryResult(TRIP_ID, null, PERIOD, null));
+        given(tripService.find(USER_ID, TRIP_ID)).willReturn(new TripSummaryResult(TRIP_ID, null, PERIOD, null, DESTINATION_ID, "제주", SOUTH, WEST, NORTH, EAST));
 
         // when & then
         mvc.perform(getTripRequest(TRIP_ID).with(login()))
@@ -647,7 +681,13 @@ class TripControllerTest {
                 .andExpect(jsonPath("$.startDate").value("2026-12-01"))
                 .andExpect(jsonPath("$.endDate").value("2026-12-04"))
                 .andExpect(jsonPath("$.title").isEmpty())
-                .andExpect(jsonPath("$.roomId").isEmpty());
+                .andExpect(jsonPath("$.roomId").isEmpty())
+                .andExpect(jsonPath("$.destinationId").value(DESTINATION_ID))
+                .andExpect(jsonPath("$.destinationName").value("제주"))
+                .andExpect(jsonPath("$.boundsSouth").value(SOUTH.doubleValue()))
+                .andExpect(jsonPath("$.boundsWest").value(WEST.doubleValue()))
+                .andExpect(jsonPath("$.boundsNorth").value(NORTH.doubleValue()))
+                .andExpect(jsonPath("$.boundsEast").value(EAST.doubleValue()));
     }
 
     @Test

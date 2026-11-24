@@ -22,6 +22,7 @@ import {
     validateTrip,
     validateTripList,
     validateTripPlaces,
+    validateUpdatedTrip,
 } from "./trips/tripResponse.ts";
 import { validateCurrentUser, validateLoginMethods } from "./users/userResponse.ts";
 import {
@@ -45,7 +46,7 @@ export const api = createApiRouter(apiRoutes, {
         listMyTrips: { parseResponse: validateTripList },
         createTrip: { parseResponse: validateCreatedTrip },
         getTrip: { parseResponse: validateTrip },
-        updateTrip: { parseResponse: validateTrip },
+        updateTrip: { parseResponse: validateUpdatedTrip },
         listTripPlaces: { parseResponse: validateTripPlaces },
         addTripPlace: { parseResponse: validateAddedPlace },
         addTripCustomPlace: { parseResponse: validateAddedPlace },

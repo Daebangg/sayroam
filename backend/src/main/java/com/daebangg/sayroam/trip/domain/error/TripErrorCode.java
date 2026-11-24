@@ -8,6 +8,8 @@ import lombok.RequiredArgsConstructor;
 @Getter
 @RequiredArgsConstructor
 public enum TripErrorCode implements ErrorCode {
+    TRIP_DESTINATION_REQUIRED(ErrorType.INVALID, "TRIP_DESTINATION_REQUIRED", "Trip destination is required"),
+    TRIP_DESTINATION_UNAVAILABLE(ErrorType.INVALID, "TRIP_DESTINATION_UNAVAILABLE", "Trip destination is unavailable"),
     TRIP_PERIOD_REQUIRED(ErrorType.INVALID, "TRIP_PERIOD_REQUIRED", "Trip period is required"),
     TRIP_TITLE_TOO_LONG(ErrorType.INVALID, "TRIP_TITLE_TOO_LONG", "Trip title is too long"),
     TRIP_NOT_FOUND(ErrorType.NOT_FOUND, "TRIP_NOT_FOUND", "Trip does not exist"),

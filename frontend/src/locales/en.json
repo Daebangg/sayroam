@@ -635,7 +635,10 @@
         "planTrip": "Plan trip",
         "scheduleRequired": "Choose your trip dates first.",
         "planTripFailed": "Couldn't create your trip. Please try again shortly.",
-        "destinationRequired": "Enter your destination.",
+        "destinationRequired": "Choose a destination from the list.",
+        "noDestinations": "No matching destinations",
+        "destinationSignIn": "Sign in to choose a destination",
+        "destinationsUnavailable": "Couldn't load destinations",
         "defaultTripTitle": "Trip to {{destination}}"
     },
     "controls": {

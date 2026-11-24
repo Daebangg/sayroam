@@ -60,6 +60,20 @@ class DestinationApiIntegrationTest extends DatabaseIntegrationTest {
     }
 
     @Test
+    void 모든_여행지의_지도_영역은_대한민국_안의_올바른_사각형이다() {
+        // when
+        Integer invalid = jdbc.queryForObject("""
+                SELECT COUNT(*) FROM destination
+                WHERE NOT (bounds_south < bounds_north AND bounds_west < bounds_east
+                           AND bounds_south >= 33.0 AND bounds_north <= 38.7
+                           AND bounds_west >= 124.6 AND bounds_east <= 131.0)
+                """, Integer.class);
+
+        // then
+        assertThat(invalid).isZero();
+    }
+
+    @Test
     void searchesPartialNamesAndDistinguishesRegionsWithTheSameName() throws Exception {
         list("광주").andExpect(jsonPath("$.destinations[*].name").value(containsInAnyOrder("광주", "경기 광주")));
         list("고성").andExpect(jsonPath("$.destinations[*].name").value(containsInAnyOrder("강원 고성", "경남 고성")));

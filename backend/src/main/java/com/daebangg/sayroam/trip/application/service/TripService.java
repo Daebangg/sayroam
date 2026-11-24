@@ -1,14 +1,17 @@
 package com.daebangg.sayroam.trip.application.service;
 
 import com.daebangg.sayroam.common.domain.TravelPeriod;
+import com.daebangg.sayroam.destination.domain.DestinationRepository;
 import com.daebangg.sayroam.global.exception.BusinessException;
 import com.daebangg.sayroam.place.application.service.PlaceService;
 import com.daebangg.sayroam.place.domain.Coordinate;
 import com.daebangg.sayroam.room.application.service.RoomService;
 import com.daebangg.sayroam.trip.application.dto.AddTripCustomPlaceCommand;
 import com.daebangg.sayroam.trip.application.dto.AddTripPlaceCommand;
+import com.daebangg.sayroam.trip.application.dto.CreateTripCommand;
 import com.daebangg.sayroam.trip.application.dto.TripPlaceResult;
 import com.daebangg.sayroam.trip.application.dto.TripSummaryResult;
+import com.daebangg.sayroam.trip.application.dto.TripTitleResult;
 import com.daebangg.sayroam.trip.application.port.out.TripQueryRepository;
 import com.daebangg.sayroam.trip.domain.Trip;
 import com.daebangg.sayroam.trip.domain.TripPlace;
@@ -19,7 +22,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDate;
 import java.util.List;
 
 @Service
@@ -31,16 +33,24 @@ public class TripService {
     private final TripPlaceRepository tripPlaceRepository;
     private final PlaceService placeService;
     private final RoomService roomService;
+    private final DestinationRepository destinationRepository;
 
     @Transactional
-    public Long create(Long userId, LocalDate startDate, LocalDate endDate, String title) {
-        TravelPeriod period = new TravelPeriod(startDate, endDate);
-        Trip trip = tripRepository.save(new Trip(userId, period, title));
-        return trip.getId();
+    public Long create(Long userId, CreateTripCommand command) {
+        TravelPeriod period = new TravelPeriod(command.startDate(), command.endDate());
+        Trip trip = new Trip(userId, command.destinationId(), period, command.title());
+        requireActiveDestination(command.destinationId());
+        return tripRepository.save(trip).getId();
+    }
+
+    private void requireActiveDestination(Long destinationId) {
+        if (!destinationRepository.existsByIdAndActiveTrue(destinationId)) {
+            throw new BusinessException(TripErrorCode.TRIP_DESTINATION_UNAVAILABLE);
+        }
     }
 
     @Transactional
-    public TripSummaryResult rename(Long userId, Long tripId, String title) {
+    public TripTitleResult rename(Long userId, Long tripId, String title) {
         // 잠금 없이 읽으면 동시에 커밋된 방 연결을 이전 값으로 덮어쓴다
         Trip trip = tripRepository.findAccessibleForUpdate(userId, tripId)
                 .orElseThrow(() -> new BusinessException(TripErrorCode.TRIP_NOT_FOUND));
@@ -48,7 +58,7 @@ public class TripService {
         if (title != null) {
             trip.rename(title);
         }
-        return TripSummaryResult.from(trip);
+        return TripTitleResult.from(trip);
     }
 
     @Transactional

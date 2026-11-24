@@ -530,7 +530,7 @@
                         "schema": { "$ref": "#/components/schemas/ApiProblem" }
                     }
                 },
-                "description": "400: INVALID_INPUT(시작일·종료일 누락, errors 포함), TRAVEL_PERIOD_END_BEFORE_START(종료일이 시작일보다 앞섬), TRIP_TITLE_TOO_LONG(여행 이름 30자 초과) 또는 Spring 요청 오류(날짜 형식 오류). 날짜는 yyyy-MM-dd"
+                "description": "400: INVALID_INPUT(여행지·시작일·종료일 누락, errors 포함), TRIP_DESTINATION_UNAVAILABLE(목록에 없거나 비활성인 여행지), TRAVEL_PERIOD_END_BEFORE_START(종료일이 시작일보다 앞섬), TRIP_TITLE_TOO_LONG(여행 이름 30자 초과) 또는 Spring 요청 오류(날짜 형식 오류). 날짜는 yyyy-MM-dd"
             },
             "TripCustomPlaceBadRequest": {
                 "content": {
@@ -850,6 +850,8 @@
                     "TRAVEL_PERIOD_END_BEFORE_START",
                     "TRAVEL_STYLE_REQUIRED",
                     "TRIP_DAY_OUT_OF_RANGE",
+                    "TRIP_DESTINATION_REQUIRED",
+                    "TRIP_DESTINATION_UNAVAILABLE",
                     "TRIP_NOT_FOUND",
                     "TRIP_PERIOD_REQUIRED",
                     "TRIP_PLACE_MEMO_TOO_LONG",
@@ -1141,6 +1143,12 @@
             },
             "CreateTripRequest": {
                 "properties": {
+                    "destinationId": {
+                        "description": "국내 여행지 목록(GET /api/destinations)에서 고른 여행지 ID",
+                        "example": 3,
+                        "format": "int64",
+                        "type": "integer"
+                    },
                     "endDate": {
                         "description": "여행 종료일. 시작일과 같거나 이후",
                         "example": "2026-12-04",
@@ -1159,7 +1167,7 @@
                         "type": ["string", "null"]
                     }
                 },
-                "required": ["endDate", "startDate"],
+                "required": ["destinationId", "endDate", "startDate"],
                 "type": "object"
             },
             "CreateTripResponse": {
@@ -2069,6 +2077,37 @@
             },
             "TripSummaryResponse": {
                 "properties": {
+                    "boundsEast": {
+                        "description": "영역의 동쪽 끝 경도",
+                        "example": 129.305605,
+                        "type": "number"
+                    },
+                    "boundsNorth": {
+                        "description": "영역의 북쪽 끝 위도",
+                        "example": 35.389041,
+                        "type": "number"
+                    },
+                    "boundsSouth": {
+                        "description": "지도에 여행지 전체를 맞춰 보여 줄 영역의 남쪽 끝 위도. 먼 섬은 제외",
+                        "example": 34.932748,
+                        "type": "number"
+                    },
+                    "boundsWest": {
+                        "description": "영역의 서쪽 끝 경도",
+                        "example": 128.761718,
+                        "type": "number"
+                    },
+                    "destinationId": {
+                        "description": "여행을 만들 때 고른 여행지 ID. 지도 초기 위치에만 쓰며 담을 장소의 지역을 제한하지 않는다",
+                        "example": 2,
+                        "format": "int64",
+                        "type": "integer"
+                    },
+                    "destinationName": {
+                        "description": "여행지 이름",
+                        "example": "부산",
+                        "type": "string"
+                    },
                     "endDate": {
                         "description": "여행 종료일",
                         "example": "2026-12-04",
@@ -2099,7 +2138,19 @@
                         "type": "integer"
                     }
                 },
-                "required": ["endDate", "roomId", "startDate", "title", "tripId"],
+                "required": [
+                    "boundsEast",
+                    "boundsNorth",
+                    "boundsSouth",
+                    "boundsWest",
+                    "destinationId",
+                    "destinationName",
+                    "endDate",
+                    "roomId",
+                    "startDate",
+                    "title",
+                    "tripId"
+                ],
                 "type": "object"
             },
             "UpdateNotificationReadRequest": {
@@ -2135,6 +2186,23 @@
                         "type": ["string", "null"]
                     }
                 },
+                "type": "object"
+            },
+            "UpdateTripResponse": {
+                "properties": {
+                    "title": {
+                        "description": "저장된 여행 이름. 앞뒤 공백을 지운 값이며 비웠으면 null",
+                        "example": "부산 여행",
+                        "type": ["string", "null"]
+                    },
+                    "tripId": {
+                        "description": "여행 ID",
+                        "example": 12,
+                        "format": "int64",
+                        "type": "integer"
+                    }
+                },
+                "required": ["title", "tripId"],
                 "type": "object"
             },
             "UpdateUserProfileRequest": {
@@ -3890,10 +3958,10 @@
                     "200": {
                         "content": {
                             "application/json": {
-                                "schema": { "$ref": "#/components/schemas/TripSummaryResponse" }
+                                "schema": { "$ref": "#/components/schemas/UpdateTripResponse" }
                             }
                         },
-                        "description": "여행 수정 완료. 수정된 여행을 응답"
+                        "description": "여행 수정 완료. 여행 ID와 저장된 이름을 응답"
                     },
                     "400": { "$ref": "#/components/responses/TripUpdateBadRequest" },
                     "401": { "$ref": "#/components/responses/Unauthorized" },

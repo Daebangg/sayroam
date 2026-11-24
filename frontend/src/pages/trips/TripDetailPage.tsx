@@ -96,6 +96,16 @@ function TripPlanner({ trip, detail }: { trip: MyTrip; detail: ReturnType<typeof
         () => tripSections(trip.startDate, trip.endDate, places),
         [trip.startDate, trip.endDate, places],
     );
+    // 이름을 바꾸는 등 여행 정보만 갱신될 때 지도가 다시 여행지 영역으로 돌아가지 않게 영역 값이 같으면 유지한다.
+    const destination = useMemo(
+        () => ({
+            south: trip.boundsSouth,
+            west: trip.boundsWest,
+            north: trip.boundsNorth,
+            east: trip.boundsEast,
+        }),
+        [trip.boundsSouth, trip.boundsWest, trip.boundsNorth, trip.boundsEast],
+    );
     const [hidden, setHidden] = useState<ReadonlySet<string>>(() => new Set());
     const visible = useMemo(
         () => new Set(sections.map((section) => section.key).filter((key) => !hidden.has(key))),
@@ -254,6 +264,7 @@ function TripPlanner({ trip, detail }: { trip: MyTrip; detail: ReturnType<typeof
                 />
             </div>
             <TripMap
+                destination={destination}
                 sections={sections}
                 visible={visible}
                 focus={focus}

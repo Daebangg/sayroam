@@ -70,7 +70,8 @@ export function useTripDetail(tripId: number): TripDetail {
                 params: { path: { tripId } },
                 body: { title },
             });
-            setTrip(updated);
+            // 이름 변경 응답은 ID와 저장된 이름만 담으므로 나머지 여행 정보는 유지한다.
+            setTrip((current) => (current ? { ...current, title: updated.title } : current));
             return "saved";
         } catch (error) {
             return error instanceof ApiError && error.problem?.code === "TRIP_TITLE_TOO_LONG"
