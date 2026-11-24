@@ -6,20 +6,32 @@ type TooltipProps = {
     content: string;
     shortcut?: readonly string[];
     className?: string;
+    touchHint?: boolean;
+    placement?: "viewport" | "below-end";
     children: ReactElement<{ "aria-describedby"?: string | undefined }>;
 };
 
-export function Tooltip({ content, shortcut, children, className = "" }: TooltipProps) {
+export function Tooltip({
+    content,
+    shortcut,
+    children,
+    className = "",
+    touchHint = false,
+    placement = "viewport",
+}: TooltipProps) {
     const [open, setOpen] = useState(false);
     const [portal, setPortal] = useState<HTMLElement>(() => document.body);
     const trigger = useRef<HTMLSpanElement>(null);
     const panel = useRef<HTMLSpanElement>(null);
     const keyboard = useRef(false);
+    const touchStart = useRef<number | null>(null);
+    const held = useRef(false);
     const id = useId();
 
     useLayoutEffect(() => {
         if (!open) return;
         const update = () => {
+            if (placement === "below-end") return;
             const anchor = trigger.current?.getBoundingClientRect();
             const tip = panel.current;
             if (!anchor || !tip) return;
@@ -54,25 +66,60 @@ export function Tooltip({ content, shortcut, children, className = "" }: Tooltip
             window.removeEventListener("blur", dismiss);
             window.removeEventListener("keydown", escape);
         };
-    }, [open, content]);
+    }, [open, content, placement]);
 
     function showOverlay(): void {
         setPortal(trigger.current?.closest("dialog") ?? document.body);
         setOpen(true);
     }
+    const tip = (
+        <span ref={panel} id={id} role="tooltip" className="ui-tooltip-content">
+            <span>{content}</span>
+            {shortcut && <KeyboardShortcut keys={shortcut} />}
+        </span>
+    );
     return (
         <span
             ref={trigger}
-            className={`ui-tooltip-trigger ${className}`}
-            onMouseEnter={() => showOverlay()}
-            onMouseLeave={() => {
+            className={`ui-tooltip-trigger ${placement === "below-end" ? "ui-tooltip-trigger--below-end" : ""} ${className}`}
+            onPointerEnter={(event) => {
+                if (event.pointerType !== "touch") showOverlay();
+            }}
+            onPointerLeave={() => {
                 if (!keyboard.current) setOpen(false);
             }}
-            onPointerDownCapture={() => {
+            onPointerDownCapture={(event) => {
                 keyboard.current = false;
+                held.current = false;
+                if (touchHint && event.pointerType === "touch") {
+                    touchStart.current = event.timeStamp;
+                    showOverlay();
+                    return;
+                }
+                touchStart.current = null;
                 setOpen(false);
             }}
-            onClickCapture={() => setOpen(false)}
+            onContextMenu={(event) => {
+                if (touchStart.current !== null) event.preventDefault();
+            }}
+            onPointerUp={(event) => {
+                if (touchStart.current === null) return;
+                held.current = event.timeStamp - touchStart.current >= 450;
+                touchStart.current = null;
+                setOpen(false);
+            }}
+            onPointerCancel={() => {
+                touchStart.current = null;
+                setOpen(false);
+            }}
+            onClickCapture={(event) => {
+                if (held.current && event.detail > 0) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                }
+                held.current = false;
+                setOpen(false);
+            }}
             onFocusCapture={(event) => {
                 keyboard.current = event.target.matches(":focus-visible");
                 if (keyboard.current) showOverlay();
@@ -87,14 +134,7 @@ export function Tooltip({ content, shortcut, children, className = "" }: Tooltip
                     ? [children.props["aria-describedby"], id].filter(Boolean).join(" ")
                     : children.props["aria-describedby"],
             })}
-            {open &&
-                createPortal(
-                    <span ref={panel} id={id} role="tooltip" className="ui-tooltip-content">
-                        <span>{content}</span>
-                        {shortcut && <KeyboardShortcut keys={shortcut} />}
-                    </span>,
-                    portal,
-                )}
+            {open && (placement === "below-end" ? tip : createPortal(tip, portal))}
         </span>
     );
 }

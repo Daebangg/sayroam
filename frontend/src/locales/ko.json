@@ -6,8 +6,10 @@
     "navigation": {
         "plaza": "홈",
         "trips": "여행",
+        "chat": "채팅",
         "matching": "롬 메이트",
         "rooms": "내 방",
+        "goHome": "메인 페이지로 이동",
         "home": "홈으로",
         "main": "주요 메뉴",
         "skip": "본문으로 건너뛰기"
@@ -37,7 +39,58 @@
         "titleSecond": "더 특별한 여행",
         "descriptionFirst": "여행 계획부터 롬 메이트, 일정까지",
         "descriptionSecond": "한곳에서 준비하세요.",
-        "start": "여행 시작하기"
+        "start": "여행 시작하기",
+        "slider": {
+            "label": "국내 여행지 사진",
+            "haeundae": {
+                "city": "부산",
+                "name": "해운대해수욕장"
+            },
+            "cherryBlossoms": {
+                "city": "제주",
+                "name": "전농로 벚꽃길"
+            },
+            "hyangwonjeong": {
+                "city": "서울",
+                "name": "경복궁 향원정"
+            },
+            "gamcheon": {
+                "city": "부산",
+                "name": "감천문화마을"
+            },
+            "pinkMuhly": {
+                "city": "경주",
+                "name": "첨성대 일대"
+            },
+            "gwanganDay": {
+                "city": "부산",
+                "name": "광안대교"
+            },
+            "sunsetFlowers": {
+                "city": "경주",
+                "name": "인왕동 첨성대"
+            },
+            "namsan": {
+                "city": "서울",
+                "name": "N서울타워"
+            },
+            "donggung": {
+                "city": "경주",
+                "name": "동궁과 월지"
+            },
+            "gwanganNight": {
+                "city": "부산",
+                "name": "광안대교"
+            },
+            "gwangjang": {
+                "city": "서울",
+                "name": "광장시장"
+            },
+            "gwanghwamun": {
+                "city": "서울",
+                "name": "광화문"
+            }
+        }
     },
     "auth": {
         "welcome": "SayRoam에 오신 걸 환영해요.",
@@ -691,6 +744,8 @@
         },
         "keyboard": "키보드",
         "openSettings": "설정 열기",
+        "openChat": "채팅 열기",
+        "openInbox": "알림함 열기",
         "openProfile": "프로필 열기",
         "joinedAt": "가입일",
         "yourJourney": "내 프로필",

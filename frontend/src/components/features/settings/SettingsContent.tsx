@@ -23,6 +23,7 @@ import type { ProfilePhoto } from "@/hooks/account.types";
 import type { AuthState } from "@/hooks/auth.types";
 import type { ThemePreference } from "@/hooks/useTheme";
 import { formatDate, normalizeLanguage, type Language } from "@/i18n/locale";
+import { openChatShortcut, openInboxShortcut } from "@/data/shortcuts";
 import { pagePaths } from "@/routing/paths";
 import type {
     AccountPurpose,
@@ -102,7 +103,7 @@ export function AccountDetails({
     const socialOnly = methods !== null && !methods.passwordEnabled;
     const passwordButton = (
         <Button
-            variant="outline"
+            variant="edit"
             disabled={!methods}
             aria-disabled={socialOnly || undefined}
             onClick={() => {
@@ -177,7 +178,7 @@ export function AccountDetails({
                 </SettingsRow>
                 <SettingsRow label={t("settings.deleteAccount")} danger>
                     <Button
-                        variant="danger"
+                        variant="delete"
                         disabled={!member.email}
                         onClick={() => onAction("ACCOUNT_DELETION")}
                     >
@@ -289,7 +290,7 @@ export function ProfileDetails({
                 )}
                 <div className="settings-avatar-picker__actions">
                     <Button
-                        variant="outline"
+                        variant="cancel"
                         disabled={!changed || imageEditor.busy}
                         onClick={imageEditor.cancel}
                     >
@@ -379,7 +380,7 @@ export function ProfileDetails({
                     )}
                     <div className="settings-avatar-picker__actions">
                         <Button
-                            variant="outline"
+                            variant="cancel"
                             disabled={!detailsChanged || detailsEditor.busy}
                             onClick={() => {
                                 setGender(member.gender);
@@ -465,6 +466,12 @@ export function KeyboardSettings() {
             </SettingsRow>
             <SettingsRow label={t("settings.openProfile")}>
                 <KeyboardShortcut keys={["shift", "mod", "P"]} />
+            </SettingsRow>
+            <SettingsRow label={t("settings.openChat")}>
+                <KeyboardShortcut keys={openChatShortcut} />
+            </SettingsRow>
+            <SettingsRow label={t("settings.openInbox")}>
+                <KeyboardShortcut keys={openInboxShortcut} />
             </SettingsRow>
         </div>
     );

@@ -62,11 +62,11 @@ export function RecruitmentActionDialog({
                 </p>
             )}
             <div className="matching-end-dialog__actions">
-                <Button variant="soft" disabled={busy} onClick={onCancel}>
+                <Button variant="cancel" disabled={busy} onClick={onCancel}>
                     {t("common.cancel")}
                 </Button>
                 <Button
-                    variant={action === "close" ? "danger" : "brand"}
+                    variant={action === "close" ? "danger" : "confirm"}
                     loading={busy}
                     onClick={onConfirm}
                 >

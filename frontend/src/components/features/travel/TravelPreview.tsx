@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { Badge, Button, Icon, NotificationBadge, TravelArtwork } from "@/components/ui";
+import { Button, Icon, NotificationBadge, TravelArtwork } from "@/components/ui";
 import { formatDateRange, formatNumber } from "@/i18n/locale";
 import type { PreviewRoom, PreviewTrip } from "@/data/preview";
 
@@ -22,22 +22,6 @@ export function TravelMeta({ trip }: { trip: PreviewTrip }) {
                 })}
             </span>
         </span>
-    );
-}
-
-export function FeaturedTrip({ trip, onOpen }: TripProps) {
-    const { t } = useTranslation();
-    return (
-        <Button variant="plain" className="featured-trip" onClick={onOpen}>
-            <TravelArtwork scene={trip.scene} />
-            <span className="featured-trip__badge">
-                <Badge tone="warm" icon="flame" label={t("mockup.popular")} />
-            </span>
-            <span className="featured-trip__caption">
-                <strong>{t(trip.title)}</strong>
-                <TravelMeta trip={trip} />
-            </span>
-        </Button>
     );
 }
 

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Button, Icon, Tooltip } from "@/components/ui";
 import { TravelStyleChoices } from "@/components/features/matching/TravelStyleChoices";
@@ -9,31 +9,38 @@ import {
 } from "@/data/profileStyle";
 
 type ProfileStyleEditorProps = {
-    initialValues: ProfileStyleValues;
+    savedValues: ProfileStyleValues;
     busy: boolean;
     failed: boolean;
     onSave: (values: ProfileStyleValues) => Promise<boolean>;
     onClose: () => void;
 };
 export function ProfileStyleEditor({
-    initialValues,
+    savedValues,
     busy,
     failed,
     onSave,
     onClose,
 }: ProfileStyleEditorProps) {
     const { t } = useTranslation();
+    const editor = useRef<HTMLElement>(null);
     const [step, setStep] = useState(0);
-    const [values, setValues] = useState(initialValues);
+    const [edits, setEdits] = useState<ProfileStyleValues>({});
+    const values = { ...savedValues, ...edits };
     const question = profileStyleQuestions[step]!;
     const last = step === profileStyleQuestions.length - 1;
     async function next(): Promise<void> {
         if (busy || !values[question]) return;
         if (!last) setStep(step + 1);
-        else if (hasCompleteStyle(values) && (await onSave(values))) onClose();
+        // 저장 중 브라우저 뒤로가기로 나간 경우, 완료 응답이 다시 뒤로 이동시키지 않는다.
+        else if (hasCompleteStyle(values) && (await onSave(values)) && editor.current) onClose();
     }
     return (
-        <section className="profile-style-editor" aria-labelledby="profile-style-editor-title">
+        <section
+            ref={editor}
+            className="profile-style-editor"
+            aria-labelledby="profile-style-editor-title"
+        >
             <div className="profile-style-editor__content">
                 <h1 id="profile-style-editor-title">{t(`matchingFlow.questions.${question}`)}</h1>
                 <p className="profile-travel-style__hint">{t("profileSetup.editHint")}</p>
@@ -41,7 +48,7 @@ export function ProfileStyleEditor({
                     <TravelStyleChoices
                         question={question}
                         value={values[question] ?? 0}
-                        onChange={(value) => setValues({ ...values, [question]: value })}
+                        onChange={(value) => setEdits({ ...edits, [question]: value })}
                     />
                 </fieldset>
                 <div className="profile-style-editor__save">

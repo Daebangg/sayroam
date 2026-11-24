@@ -34,11 +34,11 @@ export function PageLeaveDialog({
             <h2 id={titleId}>{title}</h2>
             <p className="matching-end-dialog__title">{description}</p>
             <div className="matching-end-dialog__actions">
-                <Button variant="outline" onClick={stay}>
+                <Button variant="cancel" onClick={stay}>
                     {stayLabel}
                 </Button>
                 <Button
-                    variant="brand"
+                    variant="confirm"
                     disabled={leaveDisabled}
                     onClick={() => {
                         onLeave?.();

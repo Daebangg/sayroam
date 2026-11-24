@@ -1,6 +1,14 @@
 import { useId, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Button, Checkbox, Icon, Modal, TextField, VerificationCode } from "@/components/ui";
+import {
+    Button,
+    Checkbox,
+    Icon,
+    Modal,
+    ModalCloseButton,
+    TextField,
+    VerificationCode,
+} from "@/components/ui";
 import { ValidationPanel } from "@/components/features/auth/EmailFlowModal";
 import { isValidNewPassword, newPasswordRules } from "@/hooks/authValidation";
 import type { AccountFlowView, AccountPurpose, AccountResult } from "@/hooks/account.types";
@@ -67,15 +75,7 @@ export function AccountActionDialog({
                 <h2 id={title}>
                     {t(deletion ? "settings.deleteAccount" : "settings.changePassword")}
                 </h2>
-                <Button
-                    variant="ghost"
-                    className="icon-button ui-modal__close"
-                    onClick={onClose}
-                    disabled={blocking}
-                    aria-label={t("common.close")}
-                >
-                    <Icon name="close" variant="outline" />
-                </Button>
+                <ModalCloseButton onClose={onClose} disabled={blocking} />
             </div>
             <div className="auth-flow-body" aria-busy={busy || undefined}>
                 {deletion && (
@@ -229,7 +229,7 @@ export function AccountActionDialog({
                         </p>
                     )}
                     <Button
-                        variant={verified && deletion ? "danger" : "brand"}
+                        variant={verified && deletion ? "delete" : "confirm"}
                         type="submit"
                         loading={busy && !sending}
                         disabled={
@@ -281,7 +281,7 @@ export function AccountResultDialog({
                 {t(`accountAction.results.${key}.message`)}
             </p>
             <div className="account-dialog-actions">
-                <Button variant="outline" onClick={onClose}>
+                <Button variant="close" onClick={onClose}>
                     {t("common.close")}
                 </Button>
                 {(!deletion || result.outcome !== "complete") && (

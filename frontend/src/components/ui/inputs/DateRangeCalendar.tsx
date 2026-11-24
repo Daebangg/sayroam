@@ -20,6 +20,7 @@ type DateRangeCalendarProps = {
     disabled?: boolean;
     /** 선택 결과를 트리거 등 바깥에서 이미 보여 줄 때 아래 출발일·종료일 요약을 숨긴다. */
     summary?: boolean;
+    monthCount?: 1 | 2;
 };
 
 export function DateRangeCalendar({
@@ -29,6 +30,7 @@ export function DateRangeCalendar({
     onChange,
     disabled = false,
     summary = true,
+    monthCount = 2,
 }: DateRangeCalendarProps) {
     const { t, i18n } = useTranslation();
     const locale = i18n.resolvedLanguage === "en" ? "en-US" : "ko-KR";
@@ -39,6 +41,13 @@ export function DateRangeCalendar({
     const [cursor, setCursor] = useState(() =>
         formatCalendarDate(initial < today ? today : initial),
     );
+    const visibleMonths = monthCount === 1 ? [month] : [month, addCalendarMonths(month, 1)];
+    const firstDay = formatCalendarDate(month < today ? today : month);
+    const tabStop =
+        cursor >= firstDay &&
+        visibleMonths.some((date) => cursor.startsWith(formatCalendarDate(date).slice(0, 7)))
+            ? cursor
+            : firstDay;
     const root = useRef<HTMLDivElement>(null);
     const id = useId();
     const monthFormat = new Intl.DateTimeFormat(locale, {
@@ -99,7 +108,8 @@ export function DateRangeCalendar({
         if (next < today) next = today;
         if (next.getUTCFullYear() > 9999) return;
         const iso = formatCalendarDate(next);
-        if (next < month || next >= addCalendarMonths(month, 2)) setMonth(calendarMonthStart(next));
+        if (next < month || next >= addCalendarMonths(month, monthCount))
+            setMonth(calendarMonthStart(next));
         setCursor(iso);
         requestAnimationFrame(() =>
             root.current
@@ -110,7 +120,7 @@ export function DateRangeCalendar({
     return (
         <div ref={root} className="ui-range-calendar" role="group" aria-label={label}>
             <div className="ui-range-calendar__months">
-                {[month, addCalendarMonths(month, 1)].map((visibleMonth, index) => {
+                {visibleMonths.map((visibleMonth, index) => {
                     const days = calendarMonthDays(visibleMonth);
                     const monthId = `${id}-month-${index}`;
                     return (
@@ -141,7 +151,7 @@ export function DateRangeCalendar({
                                             <Icon name="chevron" variant="outline" />
                                         </Button>
                                     )}
-                                    {index === 1 && (
+                                    {index === visibleMonths.length - 1 && (
                                         <Button
                                             variant="plain"
                                             className="ui-calendar__nav ui-calendar__nav--next"
@@ -149,7 +159,7 @@ export function DateRangeCalendar({
                                             disabled={
                                                 disabled ||
                                                 (month.getUTCFullYear() === 9999 &&
-                                                    month.getUTCMonth() >= 10)
+                                                    month.getUTCMonth() >= 12 - monthCount)
                                             }
                                             onClick={() => navigate(1)}
                                         >
@@ -237,7 +247,7 @@ export function DateRangeCalendar({
                                                                             : undefined
                                                                     }
                                                                     tabIndex={
-                                                                        iso === cursor ? 0 : -1
+                                                                        iso === tabStop ? 0 : -1
                                                                     }
                                                                     disabled={
                                                                         disabled || day < today

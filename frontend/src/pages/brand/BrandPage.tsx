@@ -27,6 +27,7 @@ import {
     Icon,
     KeyboardShortcut,
     Modal,
+    ModalCloseButton,
     Tag,
     TextField,
     TextArea,
@@ -169,6 +170,7 @@ export function BrandPage() {
             <div className="section-wordmark-showcase">
                 <SectionWordmark variant="settings" />
                 <SectionWordmark variant="profile" />
+                <SectionWordmark variant="travel-style" />
                 <SectionWordmark variant="matching" />
             </div>
             <section className="brand-design-intro">
@@ -486,17 +488,21 @@ export function BrandPage() {
                             onChange={() => {}}
                         />
                     </Card>
-                    <Card className="component-example">
+                    <Card className="component-example button-examples">
                         <h3>{t("brand.buttons")}</h3>
                         <div className="component-example__row">
-                            <Button variant="brand">{t("brand.primaryButton")}</Button>
+                            <Button>{t("brand.primaryButton")}</Button>
+                            <Button variant="close">{t("common.close")}</Button>
+                            <Button variant="cancel">{t("common.cancel")}</Button>
+                            <Button variant="edit">{t("matchingFlow.edit")}</Button>
+                            <Button variant="delete">{t("brand.delete")}</Button>
+                        </div>
+                        <div className="component-example__row">
                             <Button variant="outline">{t("brand.secondaryButton")}</Button>
                             <Button variant="soft">{t("common.join")}</Button>
-                            <Button variant="dismiss">{t("common.close")}</Button>
                             <Button variant="danger-soft">
                                 {t("roamMatePreview.empty.close")}
                             </Button>
-                            <Button variant="danger">{t("brand.delete")}</Button>
                             <Button disabled>{t("common.disabled")}</Button>
                             <Button
                                 variant="outline"
@@ -851,21 +857,14 @@ export function BrandPage() {
                 labelledBy="brand-modal-heading"
                 className="ui-modal--showcase"
             >
-                <Button
-                    variant="ghost"
-                    className="icon-button ui-modal__close"
-                    onClick={() => setDialogOpen(false)}
-                    aria-label={t("common.close")}
-                >
-                    <Icon name="close" variant="outline" />
-                </Button>
+                <ModalCloseButton onClose={() => setDialogOpen(false)} />
                 <h2 id="brand-modal-heading">{t("brand.modalTitle")}</h2>
                 <p className="ui-modal__description">{t("brand.modalDescription")}</p>
                 <div className="ui-modal__footer">
-                    <Button variant="outline" onClick={() => setDialogOpen(false)}>
+                    <Button variant="cancel" onClick={() => setDialogOpen(false)}>
                         {t("brand.cancel")}
                     </Button>
-                    <Button variant="brand" onClick={() => setDialogOpen(false)}>
+                    <Button variant="confirm" onClick={() => setDialogOpen(false)}>
                         {t("brand.continue")}
                     </Button>
                 </div>

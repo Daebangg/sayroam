@@ -1,13 +1,12 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Avatar, Button, Icon, KeyboardShortcut, Tooltip, MenuItem } from "@/components/ui";
+import { Avatar, Button, Icon, KeyboardShortcut, MenuItem, Tooltip } from "@/components/ui";
 
 type ProfileMenuProps = {
     onLogin: () => void;
     onBrand: () => void;
     onSettings: () => void;
     onProfile: () => void;
-    mobile?: boolean;
     member: { nickname: string; email: string | null } | null;
     profileImageUrl?: string | null;
     busy: boolean;
@@ -19,7 +18,6 @@ export function ProfileMenu({
     onBrand,
     onSettings,
     onProfile,
-    mobile = false,
     member,
     profileImageUrl,
     busy,
@@ -49,7 +47,7 @@ export function ProfileMenu({
     return (
         <div
             ref={root}
-            className={`profile-menu ${mobile ? "profile-menu--mobile" : "desktop-only"}`}
+            className="profile-menu"
             onBlur={(event) => {
                 if (
                     !(event.relatedTarget instanceof Node) ||
@@ -77,11 +75,11 @@ export function ProfileMenu({
                 }
             }}
         >
-            <Tooltip content={t("common.account")}>
+            <Tooltip content={t("settings.profile")} touchHint>
                 <Button
                     ref={trigger}
                     variant="ghost"
-                    className={`profile-menu__trigger ${mobile ? "mobile-nav__item" : "icon-button"}`}
+                    className="profile-menu__trigger icon-button"
                     aria-label={t("common.account")}
                     aria-haspopup="menu"
                     aria-expanded={open}

@@ -63,7 +63,7 @@ export function Toast({ message, onDismiss, tone = "success", durationMs = 3000 
             aria-live="polite"
             aria-atomic="true"
         >
-            <p className="ui-toast__message">{message}</p>
+            <p className="ui-toast__message">{message.trimEnd().replace(/(?<!\.)[.。]$/u, "")}</p>
         </div>,
         host,
     );
