@@ -8,6 +8,9 @@ import lombok.RequiredArgsConstructor;
 @Getter
 @RequiredArgsConstructor
 public enum CompanionSearchErrorCode implements ErrorCode {
+    COMPANION_CANDIDATE_UNAVAILABLE(ErrorType.CONFLICT, "COMPANION_CANDIDATE_UNAVAILABLE", "Candidate is unavailable"),
+    COMPANION_REQUEST_NOT_FOUND(ErrorType.NOT_FOUND, "COMPANION_REQUEST_NOT_FOUND", "Companion request does not exist"),
+    COMPANION_REQUEST_ALREADY_ANSWERED(ErrorType.CONFLICT, "COMPANION_REQUEST_ALREADY_ANSWERED", "Request has already been answered"),
     COMPANION_SEARCH_LIMIT_EXCEEDED(ErrorType.CONFLICT, "COMPANION_SEARCH_LIMIT_EXCEEDED",
             "A maximum of 3 active companion searches is allowed. Close an existing search before creating or reopening one"),
     TRAVEL_STYLE_REQUIRED(ErrorType.CONFLICT, "TRAVEL_STYLE_REQUIRED", "Complete all four travel style questions first"),

@@ -16,7 +16,9 @@ import java.util.Optional;
 
 public interface NotificationJpaRepository extends NotificationRepository, JpaRepository<Notification, Long> {
     // 이전 DB ENUM 값은 보존하되 현재 서비스에서 지원하는 알림만 노출한다.
-    String CURRENT_TYPES = " n.type in (WELCOME, COMPANION_MATCH_FOUND) ";
+    String CURRENT_TYPES = " (n.type in (WELCOME, COMPANION_MATCH_FOUND) or ("
+            + "n.type in (COMPANION_REQUEST, COMPANION_ACCEPTED, COMPANION_REJECTED) "
+            + "and n.targetType = COMPANION_REQUEST and n.eventKey like 'companion-request:%')) ";
 
     @Override
     <S extends Notification> S save(S notification);

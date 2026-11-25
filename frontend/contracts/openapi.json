@@ -95,6 +95,30 @@
                 },
                 "description": "409: COMPANION_SEARCH_CLOSED(종료), COMPANION_SEARCH_DESTINATION_REQUIRED(기준 여행지 선택 필요), TRAVEL_STYLE_REQUIRED(STYLE 정렬에 4문항 응답 필요)"
             },
+            "CompanionCandidateUnavailable": {
+                "content": {
+                    "application/problem+json": {
+                        "schema": { "$ref": "#/components/schemas/ApiProblem" }
+                    }
+                },
+                "description": "409: COMPANION_CANDIDATE_UNAVAILABLE. 현재 두 모집 간에 동행 요청을 보낼 수 없음"
+            },
+            "CompanionRequestAlreadyAnswered": {
+                "content": {
+                    "application/problem+json": {
+                        "schema": { "$ref": "#/components/schemas/ApiProblem" }
+                    }
+                },
+                "description": "409: COMPANION_REQUEST_ALREADY_ANSWERED. 기존 응답과 다른 결정으로 변경할 수 없음"
+            },
+            "CompanionRequestNotFound": {
+                "content": {
+                    "application/problem+json": {
+                        "schema": { "$ref": "#/components/schemas/ApiProblem" }
+                    }
+                },
+                "description": "404: COMPANION_REQUEST_NOT_FOUND. 요청이 없거나 당사자가 아님"
+            },
             "CompanionSearchClosed": {
                 "content": {
                     "application/problem+json": {
@@ -786,6 +810,9 @@
                     "ACCOUNT_VERIFICATION_NOT_ALLOWED",
                     "AUTHENTICATION_REVOKED",
                     "AUTHENTICATION_UNAVAILABLE",
+                    "COMPANION_CANDIDATE_UNAVAILABLE",
+                    "COMPANION_REQUEST_ALREADY_ANSWERED",
+                    "COMPANION_REQUEST_NOT_FOUND",
                     "COMPANION_SEARCH_CLOSED",
                     "COMPANION_SEARCH_DESTINATION_REQUIRED",
                     "COMPANION_SEARCH_LIMIT_EXCEEDED",
@@ -920,6 +947,8 @@
                         "format": "int32",
                         "type": ["integer", "null"]
                     },
+                    "canRequest": { "type": "boolean" },
+                    "direction": { "enum": ["SENT", "RECEIVED"], "type": ["string", "null"] },
                     "endDate": { "format": "date", "type": "string" },
                     "gender": {
                         "description": "후보가 공개한 성별. 비공개 또는 프로필 미입력 시 null",
@@ -931,6 +960,11 @@
                     "overlapEndDate": { "format": "date", "type": "string" },
                     "overlapStartDate": { "format": "date", "type": "string" },
                     "profileImageUrl": { "type": ["string", "null"] },
+                    "requestId": { "format": "int64", "type": ["integer", "null"] },
+                    "requestStatus": {
+                        "enum": ["PENDING", "ACCEPTED", "REJECTED", "EXPIRED"],
+                        "type": ["string", "null"]
+                    },
                     "searchId": { "format": "int64", "type": "integer" },
                     "startDate": { "format": "date", "type": "string" },
                     "title": { "type": ["string", "null"] },
@@ -1045,6 +1079,33 @@
                     }
                 },
                 "required": ["matchingRevision", "searchId", "status"],
+                "type": "object"
+            },
+            "CompanionRequestResponse": {
+                "properties": {
+                    "candidate": {
+                        "oneOf": [
+                            { "$ref": "#/components/schemas/RequestCandidate" },
+                            { "type": "null" }
+                        ]
+                    },
+                    "candidateSearchId": { "format": "int64", "type": "integer" },
+                    "direction": { "enum": ["SENT", "RECEIVED"], "type": "string" },
+                    "requestId": { "format": "int64", "type": "integer" },
+                    "searchId": { "format": "int64", "type": "integer" },
+                    "status": {
+                        "enum": ["PENDING", "ACCEPTED", "REJECTED", "EXPIRED"],
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "candidate",
+                    "candidateSearchId",
+                    "direction",
+                    "requestId",
+                    "searchId",
+                    "status"
+                ],
                 "type": "object"
             },
             "CompanionSearchListResponse": {
@@ -1560,8 +1621,20 @@
                 "required": ["totalCount", "unreadCount"],
                 "type": "object"
             },
-            "NotificationTargetType": { "enum": ["COMPANION_SEARCH"], "type": "string" },
-            "NotificationType": { "enum": ["WELCOME", "COMPANION_MATCH_FOUND"], "type": "string" },
+            "NotificationTargetType": {
+                "enum": ["COMPANION_SEARCH", "COMPANION_REQUEST"],
+                "type": "string"
+            },
+            "NotificationType": {
+                "enum": [
+                    "WELCOME",
+                    "COMPANION_MATCH_FOUND",
+                    "COMPANION_REQUEST",
+                    "COMPANION_ACCEPTED",
+                    "COMPANION_REJECTED"
+                ],
+                "type": "string"
+            },
             "PasswordChangeRequest": {
                 "properties": {
                     "accountProof": {
@@ -1736,6 +1809,41 @@
                 "required": ["daily-pace", "planning", "spending", "time-together"],
                 "type": "object"
             },
+            "RequestCandidate": {
+                "properties": {
+                    "age": { "format": "int32", "type": ["integer", "null"] },
+                    "endDate": { "format": "date", "type": "string" },
+                    "gender": { "enum": ["MALE", "FEMALE"], "type": ["string", "null"] },
+                    "introduction": { "type": ["string", "null"] },
+                    "nickname": { "type": "string" },
+                    "profileImageUrl": { "type": ["string", "null"] },
+                    "startDate": { "format": "date", "type": "string" },
+                    "title": { "type": ["string", "null"] },
+                    "travelStyleMatch": {
+                        "oneOf": [
+                            { "$ref": "#/components/schemas/TravelStyleMatchResponse" },
+                            { "type": "null" }
+                        ]
+                    }
+                },
+                "required": [
+                    "age",
+                    "endDate",
+                    "gender",
+                    "introduction",
+                    "nickname",
+                    "profileImageUrl",
+                    "startDate",
+                    "title",
+                    "travelStyleMatch"
+                ],
+                "type": "object"
+            },
+            "RespondCompanionRequest": {
+                "properties": { "status": { "enum": ["ACCEPTED", "REJECTED"], "type": "string" } },
+                "required": ["status"],
+                "type": "object"
+            },
             "RoomMemberListResponse": {
                 "properties": {
                     "members": {
@@ -1826,6 +1934,17 @@
                     }
                 },
                 "required": ["destinationId", "endDate", "startDate"],
+                "type": "object"
+            },
+            "SendCompanionRequest": {
+                "properties": {
+                    "candidateSearchId": {
+                        "exclusiveMinimum": 0,
+                        "format": "int64",
+                        "type": "integer"
+                    }
+                },
+                "required": ["candidateSearchId"],
                 "type": "object"
             },
             "Signup": {
@@ -3177,6 +3296,77 @@
                 "tags": ["CompanionSearch"]
             }
         },
+        "/api/companion-requests/{requestId}": {
+            "get": {
+                "operationId": "getCompanionRequest",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "requestId",
+                        "required": true,
+                        "schema": { "format": "int64", "type": "integer" }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/CompanionRequestResponse"
+                                }
+                            }
+                        },
+                        "description": "처리 결과"
+                    },
+                    "400": { "$ref": "#/components/responses/BadRequest" },
+                    "401": { "$ref": "#/components/responses/Unauthorized" },
+                    "404": { "$ref": "#/components/responses/CompanionRequestNotFound" }
+                },
+                "security": [{ "bearerAuth": [] }],
+                "summary": "당사자의 롬 메이트 요청 상세",
+                "tags": ["CompanionRequest"]
+            },
+            "patch": {
+                "description": "이미 만료된 요청에는 EXPIRED를 반환합니다. 같은 응답은 반복해도 결과가 유지됩니다.",
+                "operationId": "respondToCompanionRequest",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "requestId",
+                        "required": true,
+                        "schema": { "format": "int64", "type": "integer" }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": { "$ref": "#/components/schemas/RespondCompanionRequest" }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/CompanionRequestResponse"
+                                }
+                            }
+                        },
+                        "description": "처리 결과"
+                    },
+                    "400": { "$ref": "#/components/responses/BadRequest" },
+                    "401": { "$ref": "#/components/responses/Unauthorized" },
+                    "403": { "$ref": "#/components/responses/Forbidden" },
+                    "404": { "$ref": "#/components/responses/CompanionRequestNotFound" },
+                    "409": { "$ref": "#/components/responses/CompanionRequestAlreadyAnswered" }
+                },
+                "security": [{ "bearerAuth": [] }],
+                "summary": "받은 요청 수락 또는 거절",
+                "tags": ["CompanionRequest"]
+            }
+        },
         "/api/companion-searches": {
             "post": {
                 "description": "활성 여행지와 여행 기간, 선택한 상대 조건, 제목, 소개글과 내 정보 공개 설정을 저장합니다. 회원당 활성 모집은 최대 3개입니다. 종료한 모집은 개수에서 제외합니다. 모집에 저장할 여행 스타일 4문항 응답이 필요하며 프로필과 별도로 보관합니다.",
@@ -3413,6 +3603,88 @@
                 "security": [{ "bearerAuth": [] }],
                 "summary": "본인 모집의 후보 탐색 상태 조회",
                 "tags": ["CompanionSearch"]
+            }
+        },
+        "/api/companion-searches/{searchId}/requests": {
+            "get": {
+                "description": "최신 요청 순서로 반환합니다. 거절된 매칭 목록은 status=REJECTED로 조회합니다.",
+                "operationId": "listCompanionRequests",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "searchId",
+                        "required": true,
+                        "schema": { "format": "int64", "type": "integer" }
+                    },
+                    {
+                        "in": "query",
+                        "name": "status",
+                        "required": false,
+                        "schema": {
+                            "enum": ["PENDING", "ACCEPTED", "REJECTED", "EXPIRED"],
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "items": {
+                                        "$ref": "#/components/schemas/CompanionRequestResponse"
+                                    },
+                                    "type": "array"
+                                }
+                            }
+                        },
+                        "description": "처리 결과"
+                    },
+                    "400": { "$ref": "#/components/responses/BadRequest" },
+                    "401": { "$ref": "#/components/responses/Unauthorized" },
+                    "404": { "$ref": "#/components/responses/CompanionSearchNotFound" }
+                },
+                "security": [{ "bearerAuth": [] }],
+                "summary": "내 모집의 보낸·받은 요청 조회",
+                "tags": ["CompanionRequest"]
+            },
+            "post": {
+                "operationId": "sendCompanionRequest",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "searchId",
+                        "required": true,
+                        "schema": { "format": "int64", "type": "integer" }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": { "$ref": "#/components/schemas/SendCompanionRequest" }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/CompanionRequestResponse"
+                                }
+                            }
+                        },
+                        "description": "처리 결과"
+                    },
+                    "400": { "$ref": "#/components/responses/BadRequest" },
+                    "401": { "$ref": "#/components/responses/Unauthorized" },
+                    "404": { "$ref": "#/components/responses/CompanionSearchNotFound" },
+                    "409": { "$ref": "#/components/responses/CompanionCandidateUnavailable" }
+                },
+                "security": [{ "bearerAuth": [] }],
+                "summary": "두 모집 사이의 롬 메이트 요청 생성 또는 기존 요청 확인",
+                "tags": ["CompanionRequest"]
             }
         },
         "/api/destinations": {

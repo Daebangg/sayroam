@@ -212,6 +212,9 @@ public class OpenApiConfig {
                 .addResponses("CompanionSearchNotFound", problemResponse("404: COMPANION_SEARCH_NOT_FOUND. 등록이 없거나 다른 회원의 등록"))
                 .addResponses("TravelStyleRequired", problemResponse(
                         "409: TRAVEL_STYLE_REQUIRED. 모집 수정에서 여행 스타일 4문항을 저장한 뒤 다시 요청. 등록 전 조회는 4문항 점수를 전달"))
+                .addResponses("CompanionCandidateUnavailable", problemResponse("409: COMPANION_CANDIDATE_UNAVAILABLE. 현재 두 모집 간에 동행 요청을 보낼 수 없음"))
+                .addResponses("CompanionRequestNotFound", problemResponse("404: COMPANION_REQUEST_NOT_FOUND. 요청이 없거나 당사자가 아님"))
+                .addResponses("CompanionRequestAlreadyAnswered", problemResponse("409: COMPANION_REQUEST_ALREADY_ANSWERED. 기존 응답과 다른 결정으로 변경할 수 없음"))
                 .addResponses("CompanionSearchClosed", problemResponse("409: COMPANION_SEARCH_CLOSED. 종료된 등록으로 후보를 조회할 수 없음"))
                 .addResponses("CompanionSearchDestinationRequired", problemResponse(
                         "409: COMPANION_SEARCH_DESTINATION_REQUIRED. 재개할 등록에 기준 여행지가 없음"))

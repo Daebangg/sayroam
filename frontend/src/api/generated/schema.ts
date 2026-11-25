@@ -400,6 +400,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/companion-requests/{requestId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 당사자의 롬 메이트 요청 상세 */
+        get: operations["getCompanionRequest"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * 받은 요청 수락 또는 거절
+         * @description 이미 만료된 요청에는 EXPIRED를 반환합니다. 같은 응답은 반복해도 결과가 유지됩니다.
+         */
+        patch: operations["respondToCompanionRequest"];
+        trace?: never;
+    };
     "/api/companion-searches": {
         parameters: {
             query?: never;
@@ -478,6 +499,27 @@ export interface paths {
         get: operations["getCompanionMatchingStatus"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/companion-searches/{searchId}/requests": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 내 모집의 보낸·받은 요청 조회
+         * @description 최신 요청 순서로 반환합니다. 거절된 매칭 목록은 status=REJECTED로 조회합니다.
+         */
+        get: operations["listCompanionRequests"];
+        put?: never;
+        /** 두 모집 사이의 롬 메이트 요청 생성 또는 기존 요청 확인 */
+        post: operations["sendCompanionRequest"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1069,6 +1111,9 @@ export interface components {
             | "ACCOUNT_VERIFICATION_NOT_ALLOWED"
             | "AUTHENTICATION_REVOKED"
             | "AUTHENTICATION_UNAVAILABLE"
+            | "COMPANION_CANDIDATE_UNAVAILABLE"
+            | "COMPANION_REQUEST_ALREADY_ANSWERED"
+            | "COMPANION_REQUEST_NOT_FOUND"
             | "COMPANION_SEARCH_CLOSED"
             | "COMPANION_SEARCH_DESTINATION_REQUIRED"
             | "COMPANION_SEARCH_LIMIT_EXCEEDED"
@@ -1190,6 +1235,9 @@ export interface components {
              * @description 후보가 공개한 만 나이. 비공개 또는 프로필 미입력 시 null
              */
             age: number | null;
+            canRequest?: boolean;
+            /** @enum {string|null} */
+            direction?: "SENT" | "RECEIVED" | null;
             /** Format: date */
             endDate: string;
             /** @description 후보가 공개한 성별. 비공개 또는 프로필 미입력 시 null */
@@ -1203,6 +1251,10 @@ export interface components {
             /** Format: date */
             overlapStartDate: string;
             profileImageUrl: string | null;
+            /** Format: int64 */
+            requestId?: number | null;
+            /** @enum {string|null} */
+            requestStatus?: "PENDING" | "ACCEPTED" | "REJECTED" | "EXPIRED" | null;
             /** Format: int64 */
             searchId: number;
             /** Format: date */
@@ -1268,6 +1320,19 @@ export interface components {
             searchId: number;
             /** @description 최초 탐색 상태. SUCCEEDED는 탐색 완료이며 후보 존재나 동행 확정을 의미하지 않습니다. NOT_REQUESTED는 현재 조건의 작업 없음, SKIPPED는 종료·만료·기존 지역 등으로 탐색 불가입니다. */
             status: components["schemas"]["CompanionMatchingStatus"];
+        };
+        CompanionRequestResponse: {
+            candidate: components["schemas"]["RequestCandidate"] | null;
+            /** Format: int64 */
+            candidateSearchId: number;
+            /** @enum {string} */
+            direction: "SENT" | "RECEIVED";
+            /** Format: int64 */
+            requestId: number;
+            /** Format: int64 */
+            searchId: number;
+            /** @enum {string} */
+            status: "PENDING" | "ACCEPTED" | "REJECTED" | "EXPIRED";
         };
         CompanionSearchListResponse: {
             searches: components["schemas"]["CompanionSearchResponse"][];
@@ -1609,9 +1674,14 @@ export interface components {
             unreadCount: number;
         };
         /** @enum {string} */
-        NotificationTargetType: "COMPANION_SEARCH";
+        NotificationTargetType: "COMPANION_SEARCH" | "COMPANION_REQUEST";
         /** @enum {string} */
-        NotificationType: "WELCOME" | "COMPANION_MATCH_FOUND";
+        NotificationType:
+            | "WELCOME"
+            | "COMPANION_MATCH_FOUND"
+            | "COMPANION_REQUEST"
+            | "COMPANION_ACCEPTED"
+            | "COMPANION_REJECTED";
         PasswordChangeRequest: {
             /** @description PASSWORD_CHANGE 본인 확인에서 발급한 일회성 증명 */
             accountProof: string;
@@ -1703,6 +1773,25 @@ export interface components {
             /** Format: int32 */
             "time-together": number | null;
         };
+        RequestCandidate: {
+            /** Format: int32 */
+            age: number | null;
+            /** Format: date */
+            endDate: string;
+            /** @enum {string|null} */
+            gender: "MALE" | "FEMALE" | null;
+            introduction: string | null;
+            nickname: string;
+            profileImageUrl: string | null;
+            /** Format: date */
+            startDate: string;
+            title: string | null;
+            travelStyleMatch: components["schemas"]["TravelStyleMatchResponse"] | null;
+        };
+        RespondCompanionRequest: {
+            /** @enum {string} */
+            status: "ACCEPTED" | "REJECTED";
+        };
         RoomMemberListResponse: {
             /** @description 방 멤버. 나간 멤버도 포함하며 순서는 보장하지 않음 */
             members: components["schemas"]["RoomMemberProfileResponse"][];
@@ -1758,6 +1847,10 @@ export interface components {
             title?: string | null;
             /** @description 모집에만 저장할 4문항 점수(1~5). 신규 등록에서 생략하면 프로필을 복사하고 수정에서 생략하면 모집 저장값을 유지합니다. */
             travelStyle?: components["schemas"]["RecruitmentTravelStyleRequest"] | null;
+        };
+        SendCompanionRequest: {
+            /** Format: int64 */
+            candidateSearchId: number;
         };
         Signup: {
             /** @description 항상 false. 소셜 가입에 별도 인증 메일을 발송하지 않음 */
@@ -2147,6 +2240,33 @@ export interface components {
         };
         /** @description 409: COMPANION_SEARCH_CLOSED(종료), COMPANION_SEARCH_DESTINATION_REQUIRED(기준 여행지 선택 필요), TRAVEL_STYLE_REQUIRED(STYLE 정렬에 4문항 응답 필요) */
         CompanionCandidateSearchUnavailable: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/problem+json": components["schemas"]["ApiProblem"];
+            };
+        };
+        /** @description 409: COMPANION_CANDIDATE_UNAVAILABLE. 현재 두 모집 간에 동행 요청을 보낼 수 없음 */
+        CompanionCandidateUnavailable: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/problem+json": components["schemas"]["ApiProblem"];
+            };
+        };
+        /** @description 409: COMPANION_REQUEST_ALREADY_ANSWERED. 기존 응답과 다른 결정으로 변경할 수 없음 */
+        CompanionRequestAlreadyAnswered: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/problem+json": components["schemas"]["ApiProblem"];
+            };
+        };
+        /** @description 404: COMPANION_REQUEST_NOT_FOUND. 요청이 없거나 당사자가 아님 */
+        CompanionRequestNotFound: {
             headers: {
                 [name: string]: unknown;
             };
@@ -3321,6 +3441,62 @@ export interface operations {
             409: components["responses"]["TravelStyleRequired"];
         };
     };
+    getCompanionRequest: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                requestId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 처리 결과 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CompanionRequestResponse"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["CompanionRequestNotFound"];
+        };
+    };
+    respondToCompanionRequest: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                requestId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RespondCompanionRequest"];
+            };
+        };
+        responses: {
+            /** @description 처리 결과 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CompanionRequestResponse"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["CompanionRequestNotFound"];
+            409: components["responses"]["CompanionRequestAlreadyAnswered"];
+        };
+    };
     createCompanionSearch: {
         parameters: {
             query?: never;
@@ -3466,6 +3642,63 @@ export interface operations {
             400: components["responses"]["BadRequest"];
             401: components["responses"]["Unauthorized"];
             404: components["responses"]["CompanionSearchNotFound"];
+        };
+    };
+    listCompanionRequests: {
+        parameters: {
+            query?: {
+                status?: "PENDING" | "ACCEPTED" | "REJECTED" | "EXPIRED";
+            };
+            header?: never;
+            path: {
+                searchId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 처리 결과 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CompanionRequestResponse"][];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["CompanionSearchNotFound"];
+        };
+    };
+    sendCompanionRequest: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                searchId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SendCompanionRequest"];
+            };
+        };
+        responses: {
+            /** @description 처리 결과 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CompanionRequestResponse"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["CompanionSearchNotFound"];
+            409: components["responses"]["CompanionCandidateUnavailable"];
         };
     };
     listMyCompanionSearches: {
@@ -4459,6 +4692,13 @@ export const apiRoutes = {
         csrf: false,
         responses: { "200": true },
     },
+    getCompanionRequest: {
+        method: "get",
+        path: "/api/companion-requests/{requestId}",
+        auth: "required",
+        csrf: false,
+        responses: { "200": true },
+    },
     getMyNotificationSummary: {
         method: "get",
         path: "/api/notifications/summary",
@@ -4497,6 +4737,13 @@ export const apiRoutes = {
     listCompanionCandidates: {
         method: "get",
         path: "/api/companion-searches/{searchId}/candidates",
+        auth: "required",
+        csrf: false,
+        responses: { "200": true },
+    },
+    listCompanionRequests: {
+        method: "get",
+        path: "/api/companion-searches/{searchId}/requests",
         auth: "required",
         csrf: false,
         responses: { "200": true },
@@ -4620,9 +4867,23 @@ export const apiRoutes = {
         csrf: true,
         responses: { "204": false },
     },
+    respondToCompanionRequest: {
+        method: "patch",
+        path: "/api/companion-requests/{requestId}",
+        auth: "required",
+        csrf: false,
+        responses: { "200": true },
+    },
     searchPlaces: {
         method: "get",
         path: "/api/places",
+        auth: "required",
+        csrf: false,
+        responses: { "200": true },
+    },
+    sendCompanionRequest: {
+        method: "post",
+        path: "/api/companion-searches/{searchId}/requests",
         auth: "required",
         csrf: false,
         responses: { "200": true },

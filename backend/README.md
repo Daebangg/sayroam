@@ -24,6 +24,7 @@ cp -n backend/config/application-local.properties.example backend/config/applica
 내 정보 조회·닉네임·선택 정보의 부분 수정과 null 처리 기준은 [프로필 문서](docs/user-profile.md)를 따릅니다.
 Google·Kakao·Naver OAuth의 클라이언트 발급·개인 설정과 단계별 구현 범위는 [소셜 인증 문서](docs/social-auth.md)를 참고합니다.
 운영 Refresh 쿠키는 기본 Secure=true이고, HTTP `local` 프로필에서만 false를 사용합니다.
+롬 메이트 요청·수락·거절 API와 만료·알림 정책은 [롬 메이트 요청](docs/companion-requests.md)을 참고하세요.
 알림함의 목록 조회·읽음 상태 변경·삭제 API는 [알림함 기본 API](docs/notification-inbox.md)를 참고하세요.
 
 ```properties

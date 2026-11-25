@@ -6,6 +6,8 @@ import java.util.Optional;
 public interface UserRepository {
     Optional<User> findByIdAndDeletedAtIsNull(Long userId);
 
+    List<User> findByIdInAndDeletedAtIsNull(List<Long> userIds);
+
     boolean hasPassword(long userId);
 
     List<SocialProvider> findSocialProviders(long userId);

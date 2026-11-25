@@ -23,7 +23,7 @@ public interface CompanionCandidateQueryRepository {
 
     List<TravelStyleAnswerResult> findTravelStyleAnswers(List<Long> userIds);
 
-    record CandidateQuery(long ownerId, long destinationId, TravelPeriod period, Gender preferredGender,
+    record CandidateQuery(Long searchId, long ownerId, long destinationId, TravelPeriod period, Gender preferredGender,
                           AgeRange preferredAgeRange, String titleQuery, LocalDate ageReferenceDate,
                           long offset, int limit, boolean styleSort, Map<String, Integer> travelStyle) {
     }

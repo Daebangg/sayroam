@@ -206,9 +206,4 @@ public class CompanionSearch extends BaseTimeEntity {
             throw new BusinessException(CompanionSearchErrorCode.COMPANION_SEARCH_DESTINATION_REQUIRED);
         }
     }
-
-    public CompanionRequest requestBy(Long senderId, String message) {
-        return new CompanionRequest(senderId, userId, this, message);
-    }
-
 }
