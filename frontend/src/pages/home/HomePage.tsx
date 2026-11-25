@@ -16,12 +16,10 @@ import type { PageContext } from "@/routing/context";
 export function HomePage() {
     const hero = useRef<HTMLElement>(null);
     const { scrollYProgress } = useScroll({ target: hero, offset: ["start start", "end start"] });
-    const [overDashboard, setOverDashboard] = useState(false);
     const [docked, setDocked] = useState(false);
     const reduceMotion = useReducedMotion();
     useMotionValueEvent(scrollYProgress, "change", (progress) => {
         setDocked(progress >= 0.28);
-        setOverDashboard(progress >= 0.93);
     });
     const { member, onOpenAuth } = useOutletContext<PageContext>();
     const { t, i18n } = useTranslation();
@@ -69,7 +67,6 @@ export function HomePage() {
             tabIndex={-1}
             className="home-planner"
             data-docked={docked || undefined}
-            data-over-dashboard={overDashboard || undefined}
         >
             <div className="home-planner__rail">
                 <motion.div

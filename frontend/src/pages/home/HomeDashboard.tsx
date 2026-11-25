@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { motion, useReducedMotion } from "motion/react";
 import { useTranslation } from "react-i18next";
 import { Badge, Button, Card, Icon } from "@/components/ui";
@@ -36,6 +36,19 @@ export function HomeDashboard() {
     const reduced = useReducedMotion();
     const [selected, setSelected] = useState<Item | null>(null);
     const [closing, setClosing] = useState(false);
+    const dashboard = useRef<HTMLDivElement>(null);
+    const [scrollable, setScrollable] = useState(false);
+    useEffect(() => {
+        const node = dashboard.current;
+        if (!node) return;
+        // 패널이 화면에 모두 들어온 뒤 카드 목록이 네이티브 스크롤을 이어받는다.
+        const observer = new IntersectionObserver(
+            ([entry]) => setScrollable(Boolean(entry && entry.intersectionRatio >= 0.99)),
+            { threshold: 0.99 },
+        );
+        observer.observe(node);
+        return () => observer.disconnect();
+    }, []);
     const title = (item: Item) =>
         t(`home.dashboard.${item.status ? "matchTitles" : "tripTitles"}.${item.trip.place}`);
     const period = (trip: Trip) =>
@@ -57,7 +70,15 @@ export function HomeDashboard() {
     }
 
     return (
-        <div className="home-dashboard" id="home-dashboard">
+        <div
+            ref={dashboard}
+            className="home-dashboard"
+            id="home-dashboard"
+            role="region"
+            aria-labelledby="home-trips home-matches"
+            tabIndex={0}
+            data-scrollable={scrollable || undefined}
+        >
             <div
                 className={`panel-list-layout panel-list-layout--animated${selected && !closing ? " panel-list-layout--open" : ""}`}
             >
