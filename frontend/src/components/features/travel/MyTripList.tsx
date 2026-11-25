@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { Badge, ButtonLink, Card, Icon, TravelArtwork } from "@/components/ui";
+import { ButtonLink, Card, Icon, TravelArtwork } from "@/components/ui";
 import { formatDateRange } from "@/i18n/locale";
 import type { MyTrip } from "@/hooks/trip.types";
 import { tripDetailPath } from "@/routing/paths";
@@ -13,16 +13,12 @@ function sceneOf(trip: MyTrip): (typeof scenes)[number] {
 }
 
 function TripMeta({ trip }: { trip: MyTrip }) {
-    const { t, i18n } = useTranslation();
+    const { i18n } = useTranslation();
     return (
         <span className="travel-meta">
             <span>
                 <Icon name="calendar" variant="outline" />
                 {formatDateRange(i18n.resolvedLanguage ?? "ko", trip.startDate, trip.endDate)}
-            </span>
-            <span>
-                <Icon name="matching" variant="outline" />
-                {t(trip.roomId === null ? "trips.solo" : "trips.withRoom")}
             </span>
         </span>
     );
@@ -47,7 +43,6 @@ export function MyTripList({ trips }: MyTripListProps) {
                                 aria-hidden="true"
                             >
                                 <TravelArtwork scene={sceneOf(trip)} />
-                                {trip.roomId !== null && <Badge label={t("trips.withRoom")} />}
                             </ButtonLink>
                             <div className="destination-card__body">
                                 <h2>

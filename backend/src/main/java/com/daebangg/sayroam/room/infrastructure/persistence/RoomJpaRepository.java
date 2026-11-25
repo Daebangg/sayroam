@@ -8,4 +8,7 @@ public interface RoomJpaRepository extends RoomRepository, JpaRepository<Room, L
 
     @Override
     <S extends Room> S save(S room);
+
+    @Override
+    Room getReferenceById(Long roomId);
 }

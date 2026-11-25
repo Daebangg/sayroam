@@ -21,12 +21,9 @@ type TripDetail = {
         name: string,
         day: number | null,
     ) => Promise<boolean | null>;
-    /** 초대 코드를 새로 발급한다. 채팅방이 없는 여행이면 채팅방을 먼저 만들어 연결한다. 실패하면 null */
-    createInvitation: () => Promise<string | null>;
+    /** 지금 쓸 수 있는 초대 코드. 없거나 만료됐으면 새로 발급한다. 실패하면 null */
+    loadInvitation: () => Promise<string | null>;
 };
-
-// 방 이름은 서버 기준 20자(코드 포인트)까지다. 더 긴 여행 이름은 앞부분만 쓴다.
-const ROOM_NAME_MAX_LENGTH = 20;
 
 /** 여행이 바뀌면 호출하는 쪽에서 key로 다시 마운트해 이전 여행의 상태를 남기지 않는다. */
 export function useTripDetail(tripId: number): TripDetail {
@@ -124,31 +121,13 @@ export function useTripDetail(tripId: number): TripDetail {
         );
     }
 
-    async function linkedRoomId(): Promise<number> {
-        if (trip?.roomId) return trip.roomId;
-        const name = trip?.title ? [...trip.title].slice(0, ROOM_NAME_MAX_LENGTH).join("") : null;
+    // 보기만 하는 조회는 잠그지 않는다. 링크가 없을 때만 발급을 요청해 서버가 잠근다.
+    async function loadInvitation(): Promise<string | null> {
+        const params = { path: { tripId } };
         try {
-            const { roomId } = await api.call("createTripRoom", {
-                params: { path: { tripId } },
-                body: { name },
-            });
-            setTrip((current) => (current ? { ...current, roomId } : current));
-            return roomId;
-        } catch (error) {
-            // 다른 요청이 먼저 채팅방을 연결했으면 여행을 다시 조회해 그 방을 쓴다.
-            if (!(error instanceof ApiError && error.status === 409)) throw error;
-            const found = await api.call("getTrip", { params: { path: { tripId } } });
-            setTrip(found);
-            if (found.roomId === null) throw error;
-            return found.roomId;
-        }
-    }
-
-    async function createInvitation(): Promise<string | null> {
-        try {
-            const roomId = await linkedRoomId();
-            const { code } = await api.call("createInvitation", { params: { path: { roomId } } });
-            return code;
+            const { code } = await api.call("getTripInvitation", { params });
+            if (code) return code;
+            return (await api.call("issueTripInvitation", { params })).code;
         } catch {
             return null;
         }
@@ -163,6 +142,6 @@ export function useTripDetail(tripId: number): TripDetail {
         rename,
         addPlace,
         addCustomPlace,
-        createInvitation,
+        loadInvitation,
     };
 }

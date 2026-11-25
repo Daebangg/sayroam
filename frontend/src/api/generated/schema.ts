@@ -654,26 +654,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/room-members": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * 초대 코드로 방 참여
-         * @description 유효한 초대 코드로 방 멤버가 됩니다. 나간 멤버도 유효한 코드로 다시 참여할 수 있습니다. 이미 참여 중인 회원은 코드 만료 여부와 무관하게 방 ID를 응답합니다.
-         */
-        post: operations["joinByInvitation"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/rooms": {
         parameters: {
             query?: never;
@@ -688,26 +668,6 @@ export interface paths {
          * @description 로그인한 회원을 방장으로 하여 방을 생성합니다.
          */
         post: operations["create"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/rooms/{roomId}/invitations": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * 초대 링크 생성
-         * @description 방 멤버가 7일 동안 유효한 초대 코드를 발급받습니다. 하나의 코드로 여러 명이 참여할 수 있습니다.
-         */
-        post: operations["createInvitation"];
         delete?: never;
         options?: never;
         head?: never;
@@ -776,6 +736,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/trip-members": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 초대 코드로 여행 참여
+         * @description 초대 링크의 코드로 여행 멤버가 되어 여행 채팅방에 들어갑니다. 나간 멤버도 유효한 코드로 다시 참여할 수 있고, 이미 참여 중이면 그대로 여행 ID를 응답합니다.
+         */
+        post: operations["joinTrip"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/trips": {
         parameters: {
             query?: never;
@@ -785,13 +765,13 @@ export interface paths {
         };
         /**
          * 내 여행 목록 조회
-         * @description 로그인한 회원이 볼 수 있는 여행을 나중에 만든 여행부터 조회합니다. 채팅방이 없는 여행은 만든 회원이, 채팅방이 연결된 여행은 그 방에 참여 중인 멤버가 볼 수 있습니다. 지난 여행도 포함합니다.
+         * @description 로그인한 회원이 볼 수 있는 여행을 나중에 만든 여행부터 조회합니다. 여행 채팅방에 참여 중인 멤버가 볼 수 있습니다. 지난 여행도 포함합니다.
          */
         get: operations["listMyTrips"];
         put?: never;
         /**
          * 여행 생성
-         * @description 로그인한 회원이 방 없이 혼자 가는 여행을 만듭니다. 기간과 선택값인 여행 이름을 받습니다. 생성 화면은 고른 목적지로 "제주 여행" 같은 기본 이름을 만들어 보냅니다. 이름을 생략하거나 비우면 이름 없이 만들어집니다.
+         * @description 로그인한 회원이 여행을 만듭니다. 여행 채팅방을 함께 만들고 만든 회원을 첫 멤버로 넣습니다. 기간과 선택값인 여행 이름을 받습니다. 생성 화면은 고른 목적지로 "제주 여행" 같은 기본 이름을 만들어 보냅니다. 이름을 생략하거나 비우면 이름 없이 만들어집니다.
          */
         post: operations["createTrip"];
         delete?: never;
@@ -809,7 +789,7 @@ export interface paths {
         };
         /**
          * 여행 조회
-         * @description 로그인한 회원이 볼 수 있는 여행 하나를 조회합니다. 채팅방이 없는 여행은 만든 회원이, 채팅방이 연결된 여행은 그 방에 참여 중인 멤버가 볼 수 있습니다. 볼 수 없는 여행은 없는 여행과 같이 404로 응답합니다.
+         * @description 로그인한 회원이 볼 수 있는 여행 하나를 조회합니다. 여행 채팅방에 참여 중인 멤버가 볼 수 있습니다. 볼 수 없는 여행은 없는 여행과 같이 404로 응답합니다.
          */
         get: operations["getTrip"];
         put?: never;
@@ -819,7 +799,7 @@ export interface paths {
         head?: never;
         /**
          * 여행 수정
-         * @description 여행 이름을 바꿉니다. 바꿀 필드만 보내며, 보내지 않은 필드는 그대로 둡니다. 빈 이름을 보내면 이름 없는 여행이 됩니다. 채팅방이 없는 여행은 만든 회원이, 채팅방이 연결된 여행은 그 방에 참여 중인 멤버가 수정할 수 있습니다. 수정할 수 없는 여행은 없는 여행과 같이 404로 응답합니다.
+         * @description 여행 이름을 바꿉니다. 바꿀 필드만 보내며, 보내지 않은 필드는 그대로 둡니다. 빈 이름을 보내면 이름 없는 여행이 됩니다. 여행 채팅방에 참여 중인 멤버가 수정할 수 있습니다. 수정할 수 없는 여행은 없는 여행과 같이 404로 응답합니다.
          */
         patch: operations["updateTrip"];
         trace?: never;
@@ -844,6 +824,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/trips/{tripId}/invitation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 여행 초대 링크 조회
+         * @description 지금 쓸 수 있는 초대 코드를 조회합니다. 발급한 적이 없거나 만료됐으면 code가 null이며, 이때 화면은 초대 링크 발급을 요청합니다. 코드를 새로 만들지 않습니다.
+         */
+        get: operations["getTripInvitation"];
+        put?: never;
+        /**
+         * 여행 초대 링크 발급
+         * @description 친구에게 보낼 초대 코드를 발급합니다. 여행마다 링크는 하나이며, 7일 동안 유효합니다. 유효한 코드가 있으면 같은 코드를 돌려주고, 없거나 만료됐으면 새 코드로 바꿔 돌려줍니다. 여행 채팅방에 참여 중인 멤버면 누구나 발급할 수 있습니다.
+         */
+        post: operations["issueTripInvitation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/trips/{tripId}/places": {
         parameters: {
             query?: never;
@@ -853,35 +857,15 @@ export interface paths {
         };
         /**
          * 여행에 담긴 장소 목록 조회
-         * @description 여행에 담긴 장소를 한 번에 조회합니다. 장소 검색으로 추가한 장소(TOUR)와 지도에서 직접 추가한 장소(CUSTOM)를 함께 돌려주며, 일차 순서대로, 일차 미정 장소는 마지막에, 같은 일차 안에서는 추가한 순서로 정렬합니다. 저장된 정보로 응답하고 TourAPI를 다시 호출하지 않습니다. 채팅방이 없는 여행은 만든 회원이, 채팅방이 연결된 여행은 그 방에 참여 중인 멤버가 볼 수 있습니다.
+         * @description 여행에 담긴 장소를 한 번에 조회합니다. 장소 검색으로 추가한 장소(TOUR)와 지도에서 직접 추가한 장소(CUSTOM)를 함께 돌려주며, 일차 순서대로, 일차 미정 장소는 마지막에, 같은 일차 안에서는 추가한 순서로 정렬합니다. 저장된 정보로 응답하고 TourAPI를 다시 호출하지 않습니다. 여행 채팅방에 참여 중인 멤버가 볼 수 있습니다.
          */
         get: operations["listTripPlaces"];
         put?: never;
         /**
          * 여행에 장소 추가
-         * @description 장소 검색에서 고른 장소를 여행에 추가합니다. 장소 ID만 받고, 이름·분류·주소·좌표는 서버가 TourAPI에서 받아 저장합니다. 이미 저장된 장소는 TourAPI를 다시 조회하지 않습니다. 같은 장소를 한 여행에 여러 번 추가할 수 있습니다. 채팅방이 없는 여행은 만든 회원이, 채팅방이 연결된 여행은 그 방에 참여 중인 멤버가 추가할 수 있습니다.
+         * @description 장소 검색에서 고른 장소를 여행에 추가합니다. 장소 ID만 받고, 이름·분류·주소·좌표는 서버가 TourAPI에서 받아 저장합니다. 이미 저장된 장소는 TourAPI를 다시 조회하지 않습니다. 같은 장소를 한 여행에 여러 번 추가할 수 있습니다. 여행 채팅방에 참여 중인 멤버가 추가할 수 있습니다.
          */
         post: operations["addTripPlace"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/trips/{tripId}/room": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * 여행에 채팅방 만들어 연결
-         * @description 방이 없는 여행에 채팅방을 만들고, 요청한 회원을 방장으로 등록한 뒤 여행에 연결합니다. 여행을 만든 회원만 사용할 수 있습니다. 이미 방이 연결된 여행은 여행 조회 응답의 roomId로 초대 링크를 발급합니다.
-         */
-        post: operations["createTripRoom"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1159,8 +1143,6 @@ export interface components {
             | "REFRESH_TOKEN_INVALID"
             | "REFRESH_TOKEN_REUSED"
             | "ROOM_ACCESS_DENIED"
-            | "ROOM_INVITATION_EXPIRED"
-            | "ROOM_INVITATION_NOT_FOUND"
             | "ROOM_NAME_TOO_LONG"
             | "SIGNUP_PROOF_ALREADY_USED"
             | "SIGNUP_PROOF_EXPIRED"
@@ -1180,6 +1162,7 @@ export interface components {
             | "TRIP_DAY_OUT_OF_RANGE"
             | "TRIP_DESTINATION_REQUIRED"
             | "TRIP_DESTINATION_UNAVAILABLE"
+            | "TRIP_INVITATION_NOT_FOUND"
             | "TRIP_NOT_FOUND"
             | "TRIP_PERIOD_REQUIRED"
             | "TRIP_PLACE_MEMO_TOO_LONG"
@@ -1376,13 +1359,6 @@ export interface components {
         };
         /** @enum {string} */
         CompanionSearchStatus: "ACTIVE" | "CLOSED";
-        CreateRoomInvitationResponse: {
-            /**
-             * @description 초대 코드
-             * @example k3Xv9qLm2Tz8RwYb7NfA
-             */
-            code: string;
-        };
         CreateRoomRequest: {
             /**
              * @description 방 이름. 선택값이며 앞뒤 공백 제거 후 20자 이내. 공백뿐이면 이름 없는 방으로 저장
@@ -1431,20 +1407,12 @@ export interface components {
              */
             tripId: number;
         };
-        CreateTripRoomRequest: {
+        CurrentTripInvitationResponse: {
             /**
-             * @description 방 이름. 선택값이며 앞뒤 공백 제거 후 20자 이내. 공백뿐이면 이름 없는 방으로 저장
-             * @example 제주 3박 4일
+             * @description 지금 쓸 수 있는 초대 코드. 발급한 적이 없거나 만료됐으면 null이며, 이때 화면은 초대 링크 발급을 요청한다
+             * @example k3Xv9qLm2Tz8RwYb7NfA
              */
-            name?: string | null;
-        };
-        CreateTripRoomResponse: {
-            /**
-             * Format: int64
-             * @description 생성해 여행에 연결한 방 ID
-             * @example 7
-             */
-            roomId: number;
+            code: string | null;
         };
         CurrentUserResponse: {
             /**
@@ -1546,20 +1514,20 @@ export interface components {
              */
             score: number | null;
         };
-        JoinRoomRequest: {
+        JoinTripRequest: {
             /**
              * @description 초대 링크의 코드
              * @example k3Xv9qLm2Tz8RwYb7NfA
              */
             invitationCode: string;
         };
-        JoinRoomResponse: {
+        JoinTripResponse: {
             /**
              * Format: int64
-             * @description 참여한 방 ID
-             * @example 7
+             * @description 참여한 여행 ID
+             * @example 12
              */
-            roomId: number;
+            tripId: number;
         };
         LoginRateLimitedProblem: components["schemas"]["ApiProblem"] & {
             /** @enum {string} */
@@ -1956,6 +1924,13 @@ export interface components {
         };
         TravelStyleResponse: {
             items: components["schemas"]["Item"][];
+        };
+        TripInvitationResponse: {
+            /**
+             * @description 초대 링크에 넣는 코드. 링크를 받은 사람이 이 코드로 여행에 참여한다
+             * @example k3Xv9qLm2Tz8RwYb7NfA
+             */
+            code: string;
         };
         TripListResponse: {
             /** @description 볼 수 있는 여행. 나중에 만든 여행부터 정렬 */
@@ -2746,6 +2721,15 @@ export interface components {
                 "application/problem+json": components["schemas"]["ApiProblem"];
             };
         };
+        /** @description 404: TRIP_INVITATION_NOT_FOUND. 없거나 만료된 초대 코드. 둘을 구분하지 않음 */
+        TripInvitationNotFound: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/problem+json": components["schemas"]["ApiProblem"];
+            };
+        };
         /** @description 404: TRIP_NOT_FOUND. 없는 여행이거나 접근할 수 없는 여행. 둘을 구분하지 않음 */
         TripNotFound: {
             headers: {
@@ -2766,15 +2750,6 @@ export interface components {
         };
         /** @description 404: TRIP_NOT_FOUND(없는 여행이거나 장소를 추가할 수 없는 여행. 둘을 구분하지 않음) 또는 PLACE_NOT_FOUND(TourAPI에 없거나 여행에 담을 수 없는 장소) */
         TripPlaceNotFound: {
-            headers: {
-                [name: string]: unknown;
-            };
-            content: {
-                "application/problem+json": components["schemas"]["ApiProblem"];
-            };
-        };
-        /** @description 409: TRIP_ROOM_ALREADY_LINKED. 이미 방이 연결된 여행. 여행을 다시 조회해 roomId로 초대 링크 발급 */
-        TripRoomAlreadyLinked: {
             headers: {
                 [name: string]: unknown;
             };
@@ -3938,60 +3913,6 @@ export interface operations {
             503: components["responses"]["PlaceSearchUnavailable"];
         };
     };
-    joinByInvitation: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["JoinRoomRequest"];
-            };
-        };
-        responses: {
-            /** @description 참여·재참여 완료 또는 이미 참여 중 */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["JoinRoomResponse"];
-                };
-            };
-            /** @description INVALID_INPUT. 초대 코드 누락 */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["ApiProblem"];
-                };
-            };
-            401: components["responses"]["Unauthorized"];
-            /** @description ROOM_INVITATION_NOT_FOUND. 없는 초대 코드 */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["ApiProblem"];
-                };
-            };
-            /** @description ROOM_INVITATION_EXPIRED. 만료된 초대 코드 */
-            410: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["ApiProblem"];
-                };
-            };
-            500: components["responses"]["InternalServerError"];
-            503: components["responses"]["AuthenticationUnavailable"];
-        };
-    };
     create: {
         parameters: {
             query?: never;
@@ -4016,36 +3937,6 @@ export interface operations {
             };
             400: components["responses"]["RoomBadRequest"];
             401: components["responses"]["Unauthorized"];
-            500: components["responses"]["InternalServerError"];
-            503: components["responses"]["AuthenticationUnavailable"];
-        };
-    };
-    createInvitation: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /**
-                 * @description 방 ID
-                 * @example 7
-                 */
-                roomId: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description 초대 코드 발급 완료 */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["CreateRoomInvitationResponse"];
-                };
-            };
-            401: components["responses"]["Unauthorized"];
-            403: components["responses"]["RoomAccessDenied"];
             500: components["responses"]["InternalServerError"];
             503: components["responses"]["AuthenticationUnavailable"];
         };
@@ -4140,6 +4031,43 @@ export interface operations {
             400: components["responses"]["BadRequest"];
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["RoomAccessDenied"];
+            500: components["responses"]["InternalServerError"];
+            503: components["responses"]["AuthenticationUnavailable"];
+        };
+    };
+    joinTrip: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["JoinTripRequest"];
+            };
+        };
+        responses: {
+            /** @description 참여·재참여 완료 또는 이미 참여 중 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JoinTripResponse"];
+                };
+            };
+            /** @description INVALID_INPUT. 초대 코드 누락 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ApiProblem"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["TripInvitationNotFound"];
             500: components["responses"]["InternalServerError"];
             503: components["responses"]["AuthenticationUnavailable"];
         };
@@ -4295,6 +4223,66 @@ export interface operations {
             503: components["responses"]["AuthenticationUnavailable"];
         };
     };
+    getTripInvitation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /**
+                 * @description 여행 ID
+                 * @example 12
+                 */
+                tripId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 현재 초대 코드 또는 null */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CurrentTripInvitationResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["TripNotFound"];
+            500: components["responses"]["InternalServerError"];
+            503: components["responses"]["AuthenticationUnavailable"];
+        };
+    };
+    issueTripInvitation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /**
+                 * @description 여행 ID
+                 * @example 12
+                 */
+                tripId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 유효한 초대 코드 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TripInvitationResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["TripNotFound"];
+            500: components["responses"]["InternalServerError"];
+            503: components["responses"]["AuthenticationUnavailable"];
+        };
+    };
     listTripPlaces: {
         parameters: {
             query?: never;
@@ -4359,42 +4347,6 @@ export interface operations {
             500: components["responses"]["InternalServerError"];
             502: components["responses"]["PlaceSearchFailed"];
             503: components["responses"]["PlaceSearchUnavailable"];
-        };
-    };
-    createTripRoom: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /**
-                 * @description 여행 ID
-                 * @example 12
-                 */
-                tripId: number;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["CreateTripRoomRequest"];
-            };
-        };
-        responses: {
-            /** @description 방 생성, 방장 등록, 여행 연결 완료 */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["CreateTripRoomResponse"];
-                };
-            };
-            400: components["responses"]["RoomBadRequest"];
-            401: components["responses"]["Unauthorized"];
-            404: components["responses"]["TripNotFound"];
-            409: components["responses"]["TripRoomAlreadyLinked"];
-            500: components["responses"]["InternalServerError"];
-            503: components["responses"]["AuthenticationUnavailable"];
         };
     };
     me: {
@@ -4623,23 +4575,9 @@ export const apiRoutes = {
         csrf: false,
         responses: { "201": true },
     },
-    createInvitation: {
-        method: "post",
-        path: "/api/rooms/{roomId}/invitations",
-        auth: "required",
-        csrf: false,
-        responses: { "201": true },
-    },
     createTrip: {
         method: "post",
         path: "/api/trips",
-        auth: "required",
-        csrf: false,
-        responses: { "201": true },
-    },
-    createTripRoom: {
-        method: "post",
-        path: "/api/trips/{tripId}/room",
         auth: "required",
         csrf: false,
         responses: { "201": true },
@@ -4721,9 +4659,23 @@ export const apiRoutes = {
         csrf: false,
         responses: { "200": true },
     },
-    joinByInvitation: {
+    getTripInvitation: {
+        method: "get",
+        path: "/api/trips/{tripId}/invitation",
+        auth: "required",
+        csrf: false,
+        responses: { "200": true },
+    },
+    issueTripInvitation: {
         method: "post",
-        path: "/api/room-members",
+        path: "/api/trips/{tripId}/invitation",
+        auth: "required",
+        csrf: false,
+        responses: { "200": true },
+    },
+    joinTrip: {
+        method: "post",
+        path: "/api/trip-members",
         auth: "required",
         csrf: false,
         responses: { "200": true },

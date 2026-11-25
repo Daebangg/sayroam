@@ -75,16 +75,14 @@ public class RoomMember extends BaseTimeEntity {
         return new RoomMember(room, userId, RoomMemberRole.OWNER, now);
     }
 
-    public static RoomMember joinAsMember(RoomInvitation invitation, Long userId, LocalDateTime now) {
-        invitation.ensureValid(now);
-        return new RoomMember(invitation.getRoom(), userId, RoomMemberRole.MEMBER, now);
+    public static RoomMember join(Room room, Long userId, LocalDateTime now) {
+        return new RoomMember(room, userId, RoomMemberRole.MEMBER, now);
     }
 
-    public void rejoin(RoomInvitation invitation, LocalDateTime now) {
+    public void rejoin(LocalDateTime now) {
         if (status == RoomMemberStatus.JOINED) {
             return;
         }
-        invitation.ensureValid(now);
         this.status = RoomMemberStatus.JOINED;
         this.joinedAt = now;
         this.leftAt = null;
@@ -94,10 +92,6 @@ public class RoomMember extends BaseTimeEntity {
         ensureJoined();
         this.status = RoomMemberStatus.LEFT;
         this.leftAt = leftAt;
-    }
-
-    public RoomInvitation createShareInvitation(LocalDateTime issuedAt) {
-        return RoomInvitation.byShare(room, userId, issuedAt);
     }
 
     public void ensureJoined() {

@@ -22,7 +22,10 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 @Transactional(readOnly = true)
@@ -40,6 +43,9 @@ public class TripService {
         TravelPeriod period = new TravelPeriod(command.startDate(), command.endDate());
         Trip trip = new Trip(userId, command.destinationId(), period, command.title());
         requireActiveDestination(command.destinationId());
+        Long roomId = roomService.createForTrip();
+        roomService.join(roomId, userId);
+        trip.linkRoom(roomId);
         return tripRepository.save(trip).getId();
     }
 
@@ -62,14 +68,25 @@ public class TripService {
     }
 
     @Transactional
-    public Long createRoom(Long userId, Long tripId, String roomName) {
-        Trip trip = tripRepository.findByIdForUpdate(tripId)
-                .filter(t -> t.isCreatedBy(userId))
+    public String issueInvitation(Long userId, Long tripId) {
+        Trip trip = tripRepository.findAccessibleForUpdate(userId, tripId)
                 .orElseThrow(() -> new BusinessException(TripErrorCode.TRIP_NOT_FOUND));
-        trip.ensureRoomLinkable();
-        Long roomId = roomService.create(userId, roomName);
-        trip.linkRoom(roomId);
-        return roomId;
+        return trip.issueInvitation(LocalDateTime.now(ZoneOffset.UTC));
+    }
+
+    @Transactional
+    public Long join(Long userId, String invitationCode) {
+        Trip trip = tripRepository.findByInvitationCode(invitationCode)
+                .orElseThrow(() -> new BusinessException(TripErrorCode.TRIP_INVITATION_NOT_FOUND));
+        trip.ensureInvitationValid(LocalDateTime.now(ZoneOffset.UTC));
+        roomService.join(trip.getRoomId(), userId);
+        return trip.getId();
+    }
+
+    public Optional<String> findInvitation(Long userId, Long tripId) {
+        Trip trip = tripRepository.findAccessible(userId, tripId)
+                .orElseThrow(() -> new BusinessException(TripErrorCode.TRIP_NOT_FOUND));
+        return trip.findValidInvitationCode(LocalDateTime.now(ZoneOffset.UTC));
     }
 
     @Transactional

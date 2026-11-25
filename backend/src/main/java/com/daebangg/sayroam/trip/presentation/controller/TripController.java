@@ -12,8 +12,10 @@ import com.daebangg.sayroam.trip.presentation.dto.AddTripPlaceRequest;
 import com.daebangg.sayroam.trip.presentation.dto.AddTripPlaceResponse;
 import com.daebangg.sayroam.trip.presentation.dto.CreateTripRequest;
 import com.daebangg.sayroam.trip.presentation.dto.CreateTripResponse;
-import com.daebangg.sayroam.trip.presentation.dto.CreateTripRoomRequest;
-import com.daebangg.sayroam.trip.presentation.dto.CreateTripRoomResponse;
+import com.daebangg.sayroam.trip.presentation.dto.CurrentTripInvitationResponse;
+import com.daebangg.sayroam.trip.presentation.dto.JoinTripRequest;
+import com.daebangg.sayroam.trip.presentation.dto.JoinTripResponse;
+import com.daebangg.sayroam.trip.presentation.dto.TripInvitationResponse;
 import com.daebangg.sayroam.trip.presentation.dto.TripListResponse;
 import com.daebangg.sayroam.trip.presentation.dto.TripPlaceListResponse;
 import com.daebangg.sayroam.trip.presentation.dto.TripSummaryResponse;
@@ -59,13 +61,27 @@ public class TripController implements TripApi {
     }
 
     @Override
-    @PostMapping(value = "/api/trips/{tripId}/room", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<CreateTripRoomResponse> createRoom(@AuthenticationPrincipal AuthenticatedAccount account,
-                                                             @PathVariable Long tripId,
-                                                             @RequestBody CreateTripRoomRequest request) {
-        Long roomId = tripService.createRoom(account.userId(), tripId, request.name());
-        return ResponseEntity.status(HttpStatus.CREATED)
-                .body(new CreateTripRoomResponse(roomId));
+    @PostMapping(value = "/api/trip-members", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<JoinTripResponse> join(@AuthenticationPrincipal AuthenticatedAccount account,
+                                                 @Valid @RequestBody JoinTripRequest request) {
+        Long tripId = tripService.join(account.userId(), request.invitationCode());
+        return ResponseEntity.ok(new JoinTripResponse(tripId));
+    }
+
+    @Override
+    @GetMapping(value = "/api/trips/{tripId}/invitation", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<CurrentTripInvitationResponse> findInvitation(@AuthenticationPrincipal AuthenticatedAccount account,
+                                                                        @PathVariable Long tripId) {
+        String code = tripService.findInvitation(account.userId(), tripId).orElse(null);
+        return ResponseEntity.ok(new CurrentTripInvitationResponse(code));
+    }
+
+    @Override
+    @PostMapping(value = "/api/trips/{tripId}/invitation", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<TripInvitationResponse> issueInvitation(@AuthenticationPrincipal AuthenticatedAccount account,
+                                                                  @PathVariable Long tripId) {
+        String code = tripService.issueInvitation(account.userId(), tripId);
+        return ResponseEntity.ok(new TripInvitationResponse(code));
     }
 
     @Override
