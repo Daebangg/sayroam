@@ -37,8 +37,10 @@ public record CompanionCandidateListResponse(List<Candidate> candidates, boolean
                     enumAsRef = true) @Nullable Gender gender,
             @Schema(description = "4문항 비교 결과. 날짜순 조회에서 응답이 부족하면 null")
             @Nullable TravelStyleMatchResponse travelStyleMatch,
-            @Nullable Long requestId, @Nullable CompanionRequestStatus requestStatus,
-            CompanionRequest.@Nullable Direction direction, boolean canRequest
+            @Nullable Long requestId,
+            @Schema(enumAsRef = true) @Nullable CompanionRequestStatus requestStatus,
+            @Schema(enumAsRef = true) CompanionRequest.@Nullable Direction direction,
+            boolean canRequest
     ) {
         private static Candidate from(CompanionCandidateResult result) {
             return new Candidate(result.searchId(), result.nickname(), result.profileImageUrl(),

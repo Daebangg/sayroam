@@ -948,7 +948,9 @@
                         "type": ["integer", "null"]
                     },
                     "canRequest": { "type": "boolean" },
-                    "direction": { "enum": ["SENT", "RECEIVED"], "type": ["string", "null"] },
+                    "direction": {
+                        "oneOf": [{ "$ref": "#/components/schemas/Direction" }, { "type": "null" }]
+                    },
                     "endDate": { "format": "date", "type": "string" },
                     "gender": {
                         "description": "후보가 공개한 성별. 비공개 또는 프로필 미입력 시 null",
@@ -962,8 +964,10 @@
                     "profileImageUrl": { "type": ["string", "null"] },
                     "requestId": { "format": "int64", "type": ["integer", "null"] },
                     "requestStatus": {
-                        "enum": ["PENDING", "ACCEPTED", "REJECTED", "EXPIRED"],
-                        "type": ["string", "null"]
+                        "oneOf": [
+                            { "$ref": "#/components/schemas/CompanionRequestStatus" },
+                            { "type": "null" }
+                        ]
                     },
                     "searchId": { "format": "int64", "type": "integer" },
                     "startDate": { "format": "date", "type": "string" },
@@ -1107,6 +1111,10 @@
                     "status"
                 ],
                 "type": "object"
+            },
+            "CompanionRequestStatus": {
+                "enum": ["PENDING", "ACCEPTED", "REJECTED", "EXPIRED"],
+                "type": "string"
             },
             "CompanionSearchListResponse": {
                 "properties": {
@@ -1338,6 +1346,7 @@
                 "required": ["id", "name"],
                 "type": "object"
             },
+            "Direction": { "enum": ["SENT", "RECEIVED"], "type": "string" },
             "EmailRequest": {
                 "properties": {
                     "email": {
@@ -1813,7 +1822,9 @@
                 "properties": {
                     "age": { "format": "int32", "type": ["integer", "null"] },
                     "endDate": { "format": "date", "type": "string" },
-                    "gender": { "enum": ["MALE", "FEMALE"], "type": ["string", "null"] },
+                    "gender": {
+                        "oneOf": [{ "$ref": "#/components/schemas/Gender" }, { "type": "null" }]
+                    },
                     "introduction": { "type": ["string", "null"] },
                     "nickname": { "type": "string" },
                     "profileImageUrl": { "type": ["string", "null"] },

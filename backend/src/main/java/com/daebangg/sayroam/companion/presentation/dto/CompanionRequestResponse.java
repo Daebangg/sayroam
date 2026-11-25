@@ -23,7 +23,8 @@ public record CompanionRequestResponse(long requestId, long searchId, long candi
             "age", "gender", "travelStyleMatch"})
     public record RequestCandidate(@Nullable String title, @Nullable String introduction, String nickname,
                                    @Nullable String profileImageUrl, LocalDate startDate, LocalDate endDate,
-                                   @Nullable Integer age, @Nullable Gender gender,
+                                   @Nullable Integer age,
+                                   @Schema(enumAsRef = true) @Nullable Gender gender,
                                    @Nullable TravelStyleMatchResponse travelStyleMatch) {
         private static RequestCandidate from(CompanionRequestResult.CandidateProfile profile) {
             return new RequestCandidate(profile.title(), profile.introduction(), profile.nickname(),

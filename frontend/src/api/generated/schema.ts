@@ -1236,8 +1236,7 @@ export interface components {
              */
             age: number | null;
             canRequest?: boolean;
-            /** @enum {string|null} */
-            direction?: "SENT" | "RECEIVED" | null;
+            direction?: components["schemas"]["Direction"] | null;
             /** Format: date */
             endDate: string;
             /** @description 후보가 공개한 성별. 비공개 또는 프로필 미입력 시 null */
@@ -1253,8 +1252,7 @@ export interface components {
             profileImageUrl: string | null;
             /** Format: int64 */
             requestId?: number | null;
-            /** @enum {string|null} */
-            requestStatus?: "PENDING" | "ACCEPTED" | "REJECTED" | "EXPIRED" | null;
+            requestStatus?: components["schemas"]["CompanionRequestStatus"] | null;
             /** Format: int64 */
             searchId: number;
             /** Format: date */
@@ -1334,6 +1332,8 @@ export interface components {
             /** @enum {string} */
             status: "PENDING" | "ACCEPTED" | "REJECTED" | "EXPIRED";
         };
+        /** @enum {string} */
+        CompanionRequestStatus: "PENDING" | "ACCEPTED" | "REJECTED" | "EXPIRED";
         CompanionSearchListResponse: {
             searches: components["schemas"]["CompanionSearchResponse"][];
         };
@@ -1488,6 +1488,8 @@ export interface components {
             id: number;
             name: string;
         };
+        /** @enum {string} */
+        Direction: "SENT" | "RECEIVED";
         EmailRequest: {
             /**
              * Format: email
@@ -1778,8 +1780,7 @@ export interface components {
             age: number | null;
             /** Format: date */
             endDate: string;
-            /** @enum {string|null} */
-            gender: "MALE" | "FEMALE" | null;
+            gender: components["schemas"]["Gender"] | null;
             introduction: string | null;
             nickname: string;
             profileImageUrl: string | null;

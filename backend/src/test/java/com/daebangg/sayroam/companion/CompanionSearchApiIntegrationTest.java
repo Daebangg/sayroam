@@ -202,6 +202,18 @@ class CompanionSearchApiIntegrationTest extends DatabaseIntegrationTest {
     }
 
     @Test
+    void publishesNullableEnumsForRequestStateAndPrivateGender() throws Exception {
+        ResultActions contract = mvc.perform(get("/v3/api-docs").servletPath("/v3/api-docs"))
+                .andExpect(status().isOk());
+        for (String property : List.of("Candidate.properties.requestStatus", "Candidate.properties.direction",
+                "RequestCandidate.properties.gender")) {
+            String schema = "$.components.schemas." + property;
+            contract.andExpect(jsonPath(schema + ".oneOf[*].type").value(contains("null")))
+                    .andExpect(jsonPath(schema + ".enum").doesNotExist());
+        }
+    }
+
+    @Test
     void countsUnicodeCodePointsInTitle() throws Exception {
         String title = "😀".repeat(80);
         submit(post(PATH), PATH, authorization, conditions(seoulId, "2030-04-21", "2030-04-23",
