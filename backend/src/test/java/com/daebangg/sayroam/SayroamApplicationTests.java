@@ -45,11 +45,11 @@ class SayroamApplicationTests extends DatabaseIntegrationTest {
     void schemaMatchesEntitiesAndRepeatedMigrationDoesNotReapply() {
         assertThat(environment.getProperty("spring.flyway.enabled")).isEqualTo("false");
         assertThat(environment.getProperty("spring.jpa.hibernate.ddl-auto")).isEqualTo("validate");
-        assertThat(entityManagerFactory.getMetamodel().getEntities()).hasSize(21);
+        assertThat(entityManagerFactory.getMetamodel().getEntities()).hasSize(20);
         assertThat(jdbc.queryForObject("""
                 SELECT COUNT(*) FROM information_schema.tables
                 WHERE table_schema = DATABASE() AND table_type = 'BASE TABLE'
-                """, Integer.class)).isEqualTo(22);
+                """, Integer.class)).isEqualTo(21);
         assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("24");
         flyway.validate();
         assertThat(flyway.migrate().migrationsExecuted).isZero();
@@ -297,7 +297,7 @@ class SayroamApplicationTests extends DatabaseIntegrationTest {
     }
 
     @Test
-    void 버전_24는_채팅방_없는_여행에_채팅방을_만들어_만든_회원을_넣고_채팅방을_필수로_만든다() {
+    void 버전_24는_채팅방_없는_여행에_채팅방을_만들어_만든_회원을_넣고_채팅방을_필수로_만들고_방_초대를_지운다() {
         try (MySQLContainer mysql = new MySQLContainer("mysql:8.4")
                 .withCommand("--log-bin-trust-function-creators=1")) {
             // given
@@ -344,6 +344,10 @@ class SayroamApplicationTests extends DatabaseIntegrationTest {
                     INSERT INTO trip (created_by, destination_id, title, start_date, end_date, created_at, updated_at)
                     VALUES (10, ?, '채팅방 없는 여행', '2026-12-01', '2026-12-04', NOW(), NOW())
                     """, destinationId)).isInstanceOf(DataAccessException.class);
+            assertThat(legacy.queryForObject("""
+                    SELECT COUNT(*) FROM information_schema.tables
+                    WHERE table_schema = DATABASE() AND table_name = 'room_invitation'
+                    """, Integer.class)).isZero();
         }
     }
 

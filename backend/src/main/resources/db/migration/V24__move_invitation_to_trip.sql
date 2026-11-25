@@ -20,3 +20,6 @@ UPDATE trip t JOIN room r ON r.migrated_trip_id = t.id SET t.room_id = r.id;
 ALTER TABLE room DROP COLUMN migrated_trip_id;
 
 ALTER TABLE trip MODIFY COLUMN room_id BIGINT NOT NULL;
+
+-- 초대는 여행이 가진다. 방 초대는 여행 초대로 대체되어 쓰지 않는다.
+DROP TABLE room_invitation;

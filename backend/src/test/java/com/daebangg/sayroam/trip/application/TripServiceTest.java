@@ -15,7 +15,6 @@ import com.daebangg.sayroam.place.domain.error.PlaceErrorCode;
 import com.daebangg.sayroam.place.infrastructure.persistence.PlaceJpaRepository;
 import com.daebangg.sayroam.room.application.service.RoomService;
 import com.daebangg.sayroam.room.domain.RoomMember;
-import com.daebangg.sayroam.room.infrastructure.persistence.RoomInvitationJpaRepository;
 import com.daebangg.sayroam.room.infrastructure.persistence.RoomJpaRepository;
 import com.daebangg.sayroam.room.infrastructure.persistence.RoomMemberJpaRepository;
 import com.daebangg.sayroam.support.DatabaseIntegrationTest;
@@ -103,9 +102,6 @@ class TripServiceTest extends DatabaseIntegrationTest {
     RoomMemberJpaRepository roomMemberJpaRepository;
 
     @Autowired
-    RoomInvitationJpaRepository roomInvitationJpaRepository;
-
-    @Autowired
     DestinationJpaRepository destinationJpaRepository;
 
     @Autowired
@@ -124,7 +120,6 @@ class TripServiceTest extends DatabaseIntegrationTest {
         tripPlaceJpaRepository.deleteAllInBatch();
         placeJpaRepository.deleteAllInBatch();
         tripJpaRepository.deleteAllInBatch();
-        roomInvitationJpaRepository.deleteAllInBatch();
         roomMemberJpaRepository.deleteAllInBatch();
         roomJpaRepository.deleteAllInBatch();
         userRepository.deleteAllInBatch();

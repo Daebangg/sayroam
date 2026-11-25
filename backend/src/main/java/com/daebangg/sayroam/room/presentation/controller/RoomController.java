@@ -3,13 +3,9 @@ package com.daebangg.sayroam.room.presentation.controller;
 import com.daebangg.sayroam.auth.domain.AuthenticatedAccount;
 import com.daebangg.sayroam.room.application.service.RoomService;
 import com.daebangg.sayroam.room.presentation.api.RoomApi;
-import com.daebangg.sayroam.room.presentation.dto.CreateRoomInvitationResponse;
 import com.daebangg.sayroam.room.presentation.dto.CreateRoomRequest;
 import com.daebangg.sayroam.room.presentation.dto.CreateRoomResponse;
-import com.daebangg.sayroam.room.presentation.dto.JoinRoomRequest;
-import com.daebangg.sayroam.room.presentation.dto.JoinRoomResponse;
 import com.daebangg.sayroam.room.presentation.dto.RoomMemberListResponse;
-import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -34,23 +30,6 @@ public class RoomController implements RoomApi {
         Long roomId = roomService.create(account.userId(), request.name());
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(new CreateRoomResponse(roomId));
-    }
-
-    @Override
-    @PostMapping(value = "/api/rooms/{roomId}/invitations", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<CreateRoomInvitationResponse> createInvitation(@AuthenticationPrincipal AuthenticatedAccount account,
-                                                                         @PathVariable Long roomId) {
-        String code = roomService.createInvitation(roomId, account.userId());
-        return ResponseEntity.status(HttpStatus.CREATED)
-                .body(new CreateRoomInvitationResponse(code));
-    }
-
-    @Override
-    @PostMapping(value = "/api/room-members", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<JoinRoomResponse> joinByInvitation(@AuthenticationPrincipal AuthenticatedAccount account,
-                                                             @Valid @RequestBody JoinRoomRequest request) {
-        Long roomId = roomService.joinByInvitation(request.invitationCode(), account.userId());
-        return ResponseEntity.ok(new JoinRoomResponse(roomId));
     }
 
     @Override
