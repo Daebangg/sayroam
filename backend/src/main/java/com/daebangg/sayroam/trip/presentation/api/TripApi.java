@@ -7,6 +7,8 @@ import com.daebangg.sayroam.trip.presentation.dto.AddTripPlaceResponse;
 import com.daebangg.sayroam.trip.presentation.dto.CreateTripRequest;
 import com.daebangg.sayroam.trip.presentation.dto.CreateTripResponse;
 import com.daebangg.sayroam.trip.presentation.dto.CurrentTripInvitationResponse;
+import com.daebangg.sayroam.trip.presentation.dto.JoinTripRequest;
+import com.daebangg.sayroam.trip.presentation.dto.JoinTripResponse;
 import com.daebangg.sayroam.trip.presentation.dto.TripInvitationResponse;
 import com.daebangg.sayroam.trip.presentation.dto.TripListResponse;
 import com.daebangg.sayroam.trip.presentation.dto.TripPlaceListResponse;
@@ -15,6 +17,8 @@ import com.daebangg.sayroam.trip.presentation.dto.UpdateTripRequest;
 import com.daebangg.sayroam.trip.presentation.dto.UpdateTripResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -55,6 +59,23 @@ public interface TripApi {
     ResponseEntity<UpdateTripResponse> update(@Parameter(hidden = true) @AuthenticationPrincipal AuthenticatedAccount account,
                                               @Parameter(description = "여행 ID", example = "12") Long tripId,
                                               @RequestBody UpdateTripRequest request);
+
+    @Operation(operationId = "joinTrip", summary = "초대 코드로 여행 참여",
+            description = "초대 링크의 코드로 여행 멤버가 되어 여행 채팅방에 들어갑니다. "
+                    + "나간 멤버도 유효한 코드로 다시 참여할 수 있고, 이미 참여 중이면 그대로 여행 ID를 응답합니다.",
+            security = @SecurityRequirement(name = "bearerAuth"))
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "참여·재참여 완료 또는 이미 참여 중"),
+            @ApiResponse(responseCode = "400", description = "INVALID_INPUT. 초대 코드 누락",
+                    content = @Content(mediaType = "application/problem+json",
+                            schema = @Schema(ref = "#/components/schemas/ApiProblem"))),
+            @ApiResponse(responseCode = "401", ref = "#/components/responses/Unauthorized"),
+            @ApiResponse(responseCode = "404", ref = "#/components/responses/TripInvitationNotFound"),
+            @ApiResponse(responseCode = "503", ref = "#/components/responses/AuthenticationUnavailable"),
+            @ApiResponse(responseCode = "500", ref = "#/components/responses/InternalServerError")
+    })
+    ResponseEntity<JoinTripResponse> join(@Parameter(hidden = true) @AuthenticationPrincipal AuthenticatedAccount account,
+                                          @RequestBody JoinTripRequest request);
 
     @Operation(operationId = "getTripInvitation", summary = "여행 초대 링크 조회",
             description = "지금 쓸 수 있는 초대 코드를 조회합니다. 발급한 적이 없거나 만료됐으면 code가 null이며, "

@@ -120,7 +120,6 @@ public class Trip extends BaseTimeEntity {
         return stripped;
     }
 
-    // 링크를 만든 적이 없거나 만료됐으면 쓸 수 있는 초대가 없다
     private boolean hasValidInvitation(LocalDateTime now) {
         return invitation != null && !invitation.isExpired(now);
     }

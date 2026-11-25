@@ -13,6 +13,8 @@ import com.daebangg.sayroam.trip.presentation.dto.AddTripPlaceResponse;
 import com.daebangg.sayroam.trip.presentation.dto.CreateTripRequest;
 import com.daebangg.sayroam.trip.presentation.dto.CreateTripResponse;
 import com.daebangg.sayroam.trip.presentation.dto.CurrentTripInvitationResponse;
+import com.daebangg.sayroam.trip.presentation.dto.JoinTripRequest;
+import com.daebangg.sayroam.trip.presentation.dto.JoinTripResponse;
 import com.daebangg.sayroam.trip.presentation.dto.TripInvitationResponse;
 import com.daebangg.sayroam.trip.presentation.dto.TripListResponse;
 import com.daebangg.sayroam.trip.presentation.dto.TripPlaceListResponse;
@@ -56,6 +58,14 @@ public class TripController implements TripApi {
                                                      @RequestBody UpdateTripRequest request) {
         TripTitleResult result = tripService.rename(account.userId(), tripId, request.title());
         return ResponseEntity.ok(UpdateTripResponse.from(result));
+    }
+
+    @Override
+    @PostMapping(value = "/api/trip-members", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<JoinTripResponse> join(@AuthenticationPrincipal AuthenticatedAccount account,
+                                                 @Valid @RequestBody JoinTripRequest request) {
+        Long tripId = tripService.join(account.userId(), request.invitationCode());
+        return ResponseEntity.ok(new JoinTripResponse(tripId));
     }
 
     @Override

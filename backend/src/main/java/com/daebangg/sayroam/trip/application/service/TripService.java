@@ -67,12 +67,20 @@ public class TripService {
         return TripTitleResult.from(trip);
     }
 
-    // 동시에 발급해도 코드가 하나만 생기도록 잠근다.
     @Transactional
     public String issueInvitation(Long userId, Long tripId) {
         Trip trip = tripRepository.findAccessibleForUpdate(userId, tripId)
                 .orElseThrow(() -> new BusinessException(TripErrorCode.TRIP_NOT_FOUND));
         return trip.issueInvitation(LocalDateTime.now(ZoneOffset.UTC));
+    }
+
+    @Transactional
+    public Long join(Long userId, String invitationCode) {
+        Trip trip = tripRepository.findByInvitationCode(invitationCode)
+                .orElseThrow(() -> new BusinessException(TripErrorCode.TRIP_INVITATION_NOT_FOUND));
+        trip.ensureInvitationValid(LocalDateTime.now(ZoneOffset.UTC));
+        roomService.join(trip.getRoomId(), userId);
+        return trip.getId();
     }
 
     public Optional<String> findInvitation(Long userId, Long tripId) {

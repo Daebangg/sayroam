@@ -23,6 +23,10 @@ public interface TripJpaRepository extends TripRepository, JpaRepository<Trip, L
     Optional<Trip> findByIdForUpdate(@Param("tripId") Long tripId);
 
     @Override
+    @Query("select t from Trip t where t.invitation.code = :invitationCode")
+    Optional<Trip> findByInvitationCode(@Param("invitationCode") String invitationCode);
+
+    @Override
     @Query("""
             select t
             from Trip t

@@ -357,6 +357,54 @@ class TripControllerTest {
     }
 
     @Test
+    void 초대_코드로_참여하면_200과_여행_ID를_응답한다() throws Exception {
+        // given
+        given(tripService.join(USER_ID, INVITATION_CODE)).willReturn(TRIP_ID);
+
+        // when & then
+        mvc.perform(joinTripRequest("""
+                        {"invitationCode": "%s"}
+                        """.formatted(INVITATION_CODE)).with(login()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.tripId").value(TRIP_ID));
+    }
+
+    @Test
+    void 없거나_만료된_초대_코드면_참여에_404와_에러_코드를_응답한다() throws Exception {
+        // given
+        given(tripService.join(USER_ID, INVITATION_CODE))
+                .willThrow(new BusinessException(TripErrorCode.TRIP_INVITATION_NOT_FOUND));
+
+        // when & then
+        mvc.perform(joinTripRequest("""
+                        {"invitationCode": "%s"}
+                        """.formatted(INVITATION_CODE)).with(login()))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("TRIP_INVITATION_NOT_FOUND"));
+    }
+
+    @Test
+    void 초대_코드_없이_참여하면_400과_에러_코드를_응답한다() throws Exception {
+        // when & then
+        mvc.perform(joinTripRequest("{}").with(login()))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("INVALID_INPUT"));
+
+        then(tripService).shouldHaveNoInteractions();
+    }
+
+    @Test
+    void 로그인하지_않으면_참여에_401을_응답한다() throws Exception {
+        // when & then
+        mvc.perform(joinTripRequest("""
+                        {"invitationCode": "%s"}
+                        """.formatted(INVITATION_CODE)))
+                .andExpect(status().isUnauthorized());
+
+        then(tripService).shouldHaveNoInteractions();
+    }
+
+    @Test
     void 여행에_장소를_추가하면_201과_여행_장소_ID를_응답한다() throws Exception {
         // given
         given(tripService.addPlace(USER_ID, TRIP_ID, new AddTripPlaceCommand(SOURCE_ID, 2, "오전에 가기")))
@@ -806,6 +854,12 @@ class TripControllerTest {
 
     private MockHttpServletRequestBuilder updateTripRequest(Long tripId, String body) {
         return patch("/api/trips/{tripId}", tripId)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(body);
+    }
+
+    private MockHttpServletRequestBuilder joinTripRequest(String body) {
+        return post("/api/trip-members")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(body);
     }

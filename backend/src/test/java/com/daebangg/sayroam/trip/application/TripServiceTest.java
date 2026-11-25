@@ -459,6 +459,117 @@ class TripServiceTest extends DatabaseIntegrationTest {
                         e -> assertThat(e.getErrorCode()).isEqualTo(TripErrorCode.TRIP_NOT_FOUND));
     }
 
+    @Test
+    void 초대_링크로_참여하면_여행_채팅방의_멤버가_되고_여행_ID를_받는다() {
+        // given
+        Long ownerId = saveUser();
+        Long memberId = saveUser("친구");
+        Long tripId = createTrip(ownerId);
+        String code = tripService.issueInvitation(ownerId, tripId);
+
+        // when
+        Long joinedTripId = tripService.join(memberId, code);
+
+        // then
+        assertThat(joinedTripId).isEqualTo(tripId);
+        Long roomId = findTrip(tripId).getRoomId();
+        assertThatCode(() -> roomService.ensureJoined(roomId, memberId)).doesNotThrowAnyException();
+        assertThat(roomService.countJoinedMembers(roomId)).isEqualTo(2);
+    }
+
+    @Test
+    void 초대_링크로_참여하면_그_여행을_목록과_상세에서_볼_수_있다() {
+        // given
+        Long ownerId = saveUser();
+        Long memberId = saveUser("친구");
+        Long tripId = createTrip(ownerId);
+        String code = tripService.issueInvitation(ownerId, tripId);
+
+        // when
+        tripService.join(memberId, code);
+
+        // then
+        assertThat(tripService.findMine(memberId)).extracting(TripSummaryResult::tripId).containsExactly(tripId);
+        assertThat(tripService.find(memberId, tripId).tripId()).isEqualTo(tripId);
+    }
+
+    @Test
+    void 이미_참여_중인_회원이_다시_참여해도_멤버가_늘지_않는다() {
+        // given
+        Long ownerId = saveUser();
+        Long memberId = saveUser("친구");
+        Long tripId = createTrip(ownerId);
+        String code = tripService.issueInvitation(ownerId, tripId);
+        tripService.join(memberId, code);
+
+        // when
+        Long joinedTripId = tripService.join(memberId, code);
+
+        // then
+        assertThat(joinedTripId).isEqualTo(tripId);
+        assertThat(roomService.countJoinedMembers(findTrip(tripId).getRoomId())).isEqualTo(2);
+    }
+
+    @Test
+    void 여행을_만든_회원이_자기_초대로_참여해도_멤버가_늘지_않는다() {
+        // given
+        Long ownerId = saveUser();
+        Long tripId = createTrip(ownerId);
+        String code = tripService.issueInvitation(ownerId, tripId);
+
+        // when
+        Long joinedTripId = tripService.join(ownerId, code);
+
+        // then
+        assertThat(joinedTripId).isEqualTo(tripId);
+        assertThat(roomService.countJoinedMembers(findTrip(tripId).getRoomId())).isEqualTo(1);
+    }
+
+    @Test
+    void 나갔던_멤버가_다시_참여하면_여행_채팅방에_돌아온다() {
+        // given
+        Long ownerId = saveUser();
+        Long memberId = saveUser("친구");
+        Long tripId = createTrip(ownerId);
+        String code = tripService.issueInvitation(ownerId, tripId);
+        tripService.join(memberId, code);
+        Long roomId = findTrip(tripId).getRoomId();
+        roomService.leave(roomId, memberId);
+
+        // when
+        tripService.join(memberId, code);
+
+        // then
+        assertThatCode(() -> roomService.ensureJoined(roomId, memberId)).doesNotThrowAnyException();
+    }
+
+    @Test
+    void 없는_초대_코드로는_참여할_수_없다() {
+        // given
+        Long memberId = saveUser("친구");
+
+        // when & then
+        assertThatThrownBy(() -> tripService.join(memberId, "missing-code"))
+                .isInstanceOfSatisfying(BusinessException.class,
+                        e -> assertThat(e.getErrorCode()).isEqualTo(TripErrorCode.TRIP_INVITATION_NOT_FOUND));
+    }
+
+    @Test
+    void 만료된_초대_코드로는_참여할_수_없고_멤버도_늘지_않는다() {
+        // given
+        Long ownerId = saveUser();
+        Long memberId = saveUser("친구");
+        Long tripId = createTrip(ownerId);
+        String code = tripService.issueInvitation(ownerId, tripId);
+        expireInvitation(tripId);
+
+        // when & then
+        assertThatThrownBy(() -> tripService.join(memberId, code))
+                .isInstanceOfSatisfying(BusinessException.class,
+                        e -> assertThat(e.getErrorCode()).isEqualTo(TripErrorCode.TRIP_INVITATION_NOT_FOUND));
+        assertThat(roomService.countJoinedMembers(findTrip(tripId).getRoomId())).isEqualTo(1);
+    }
+
     private List<Throwable> runTwiceConcurrently(Callable<?> action) throws Exception {
         return runConcurrently(action, action);
     }
