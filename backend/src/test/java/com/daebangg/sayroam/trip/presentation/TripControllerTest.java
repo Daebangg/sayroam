@@ -11,7 +11,6 @@ import com.daebangg.sayroam.global.security.SecurityConfig;
 import com.daebangg.sayroam.place.domain.PlaceCategory;
 import com.daebangg.sayroam.place.domain.PlaceSource;
 import com.daebangg.sayroam.place.domain.error.PlaceErrorCode;
-import com.daebangg.sayroam.room.domain.error.RoomErrorCode;
 import com.daebangg.sayroam.trip.application.dto.AddTripCustomPlaceCommand;
 import com.daebangg.sayroam.trip.application.dto.AddTripPlaceCommand;
 import com.daebangg.sayroam.trip.application.dto.CreateTripCommand;
@@ -38,6 +37,7 @@ import org.springframework.test.web.servlet.request.RequestPostProcessor;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
@@ -59,6 +59,7 @@ class TripControllerTest {
     private static final LocalDate END_DATE = LocalDate.of(2026, 12, 4);
     private static final Long OTHER_TRIP_ID = 13L;
     private static final Long ROOM_ID = 7L;
+    private static final String INVITATION_CODE = "k3Xv9qLm2Tz8RwYb7NfA";
     private static final String SOURCE_ID = "126081";
     private static final Long TRIP_PLACE_ID = 31L;
     private static final BigDecimal LATITUDE = new BigDecimal("33.4996213");
@@ -281,61 +282,123 @@ class TripControllerTest {
     }
 
     @Test
-    void 여행에_채팅방을_만들면_201과_채팅방_ID를_응답한다() throws Exception {
+    void 초대_링크를_발급하면_200과_초대_코드를_응답한다() throws Exception {
         // given
-        given(tripService.createRoom(USER_ID, TRIP_ID, "제주 여행")).willReturn(ROOM_ID);
+        given(tripService.issueInvitation(USER_ID, TRIP_ID)).willReturn(INVITATION_CODE);
 
         // when & then
-        mvc.perform(createTripRoomRequest(TRIP_ID, """
-                        {"name": "제주 여행"}
-                        """).with(login()))
-                .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.roomId").value(ROOM_ID));
+        mvc.perform(issueInvitationRequest(TRIP_ID).with(login()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(INVITATION_CODE));
     }
 
     @Test
-    void 채팅방을_만들_수_없는_여행이면_404와_에러_코드를_응답한다() throws Exception {
+    void 볼_수_없는_여행이면_초대_링크_발급에_404와_에러_코드를_응답한다() throws Exception {
         // given
-        given(tripService.createRoom(USER_ID, TRIP_ID, null))
+        given(tripService.issueInvitation(USER_ID, TRIP_ID))
                 .willThrow(new BusinessException(TripErrorCode.TRIP_NOT_FOUND));
 
         // when & then
-        mvc.perform(createTripRoomRequest(TRIP_ID, "{}").with(login()))
+        mvc.perform(issueInvitationRequest(TRIP_ID).with(login()))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code").value("TRIP_NOT_FOUND"));
     }
 
     @Test
-    void 이미_채팅방이_연결된_여행이면_409와_에러_코드를_응답한다() throws Exception {
-        // given
-        given(tripService.createRoom(USER_ID, TRIP_ID, null))
-                .willThrow(new BusinessException(TripErrorCode.TRIP_ROOM_ALREADY_LINKED));
-
+    void 로그인하지_않으면_401을_응답하고_초대_링크를_발급하지_않는다() throws Exception {
         // when & then
-        mvc.perform(createTripRoomRequest(TRIP_ID, "{}").with(login()))
-                .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.code").value("TRIP_ROOM_ALREADY_LINKED"));
+        mvc.perform(issueInvitationRequest(TRIP_ID))
+                .andExpect(status().isUnauthorized());
+
+        then(tripService).shouldHaveNoInteractions();
     }
 
     @Test
-    void 채팅방_이름이_20자를_넘으면_400과_에러_코드를_응답한다() throws Exception {
+    void 초대_코드를_조회하면_200과_코드를_응답한다() throws Exception {
         // given
-        String longName = "가".repeat(21);
-        given(tripService.createRoom(USER_ID, TRIP_ID, longName))
-                .willThrow(new BusinessException(RoomErrorCode.ROOM_NAME_TOO_LONG));
+        given(tripService.findInvitation(USER_ID, TRIP_ID)).willReturn(Optional.of(INVITATION_CODE));
 
         // when & then
-        mvc.perform(createTripRoomRequest(TRIP_ID, """
-                        {"name": "%s"}
-                        """.formatted(longName)).with(login()))
+        mvc.perform(findInvitationRequest(TRIP_ID).with(login()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(INVITATION_CODE));
+    }
+
+    @Test
+    void 유효한_초대가_없으면_200과_빈_코드를_응답한다() throws Exception {
+        // given
+        given(tripService.findInvitation(USER_ID, TRIP_ID)).willReturn(Optional.empty());
+
+        // when & then
+        mvc.perform(findInvitationRequest(TRIP_ID).with(login()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").isEmpty());
+    }
+
+    @Test
+    void 볼_수_없는_여행이면_초대_조회에_404와_에러_코드를_응답한다() throws Exception {
+        // given
+        given(tripService.findInvitation(USER_ID, TRIP_ID))
+                .willThrow(new BusinessException(TripErrorCode.TRIP_NOT_FOUND));
+
+        // when & then
+        mvc.perform(findInvitationRequest(TRIP_ID).with(login()))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("TRIP_NOT_FOUND"));
+    }
+
+    @Test
+    void 로그인하지_않으면_초대_조회에_401을_응답한다() throws Exception {
+        // when & then
+        mvc.perform(findInvitationRequest(TRIP_ID))
+                .andExpect(status().isUnauthorized());
+
+        then(tripService).shouldHaveNoInteractions();
+    }
+
+    @Test
+    void 초대_코드로_참여하면_200과_여행_ID를_응답한다() throws Exception {
+        // given
+        given(tripService.join(USER_ID, INVITATION_CODE)).willReturn(TRIP_ID);
+
+        // when & then
+        mvc.perform(joinTripRequest("""
+                        {"invitationCode": "%s"}
+                        """.formatted(INVITATION_CODE)).with(login()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.tripId").value(TRIP_ID));
+    }
+
+    @Test
+    void 없거나_만료된_초대_코드면_참여에_404와_에러_코드를_응답한다() throws Exception {
+        // given
+        given(tripService.join(USER_ID, INVITATION_CODE))
+                .willThrow(new BusinessException(TripErrorCode.TRIP_INVITATION_NOT_FOUND));
+
+        // when & then
+        mvc.perform(joinTripRequest("""
+                        {"invitationCode": "%s"}
+                        """.formatted(INVITATION_CODE)).with(login()))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("TRIP_INVITATION_NOT_FOUND"));
+    }
+
+    @Test
+    void 초대_코드_없이_참여하면_400과_에러_코드를_응답한다() throws Exception {
+        // when & then
+        mvc.perform(joinTripRequest("{}").with(login()))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value("ROOM_NAME_TOO_LONG"));
+                .andExpect(jsonPath("$.code").value("INVALID_INPUT"));
+
+        then(tripService).shouldHaveNoInteractions();
     }
 
     @Test
-    void 로그인하지_않으면_401을_응답하고_채팅방을_만들지_않는다() throws Exception {
+    void 로그인하지_않으면_참여에_401을_응답한다() throws Exception {
         // when & then
-        mvc.perform(createTripRoomRequest(TRIP_ID, "{}"))
+        mvc.perform(joinTripRequest("""
+                        {"invitationCode": "%s"}
+                        """.formatted(INVITATION_CODE)))
                 .andExpect(status().isUnauthorized());
 
         then(tripService).shouldHaveNoInteractions();
@@ -795,10 +858,18 @@ class TripControllerTest {
                 .content(body);
     }
 
-    private MockHttpServletRequestBuilder createTripRoomRequest(Long tripId, String body) {
-        return post("/api/trips/{tripId}/room", tripId)
+    private MockHttpServletRequestBuilder joinTripRequest(String body) {
+        return post("/api/trip-members")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(body);
+    }
+
+    private MockHttpServletRequestBuilder findInvitationRequest(Long tripId) {
+        return get("/api/trips/{tripId}/invitation", tripId);
+    }
+
+    private MockHttpServletRequestBuilder issueInvitationRequest(Long tripId) {
+        return post("/api/trips/{tripId}/invitation", tripId);
     }
 
     private MockHttpServletRequestBuilder addTripPlaceRequest(Long tripId, String body) {

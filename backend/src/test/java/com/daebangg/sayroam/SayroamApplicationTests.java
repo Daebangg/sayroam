@@ -2,6 +2,7 @@ package com.daebangg.sayroam;
 
 import com.daebangg.sayroam.common.domain.TravelPeriod;
 import com.daebangg.sayroam.support.DatabaseIntegrationTest;
+import com.daebangg.sayroam.room.domain.Room;
 import com.daebangg.sayroam.trip.domain.Trip;
 import com.daebangg.sayroam.user.domain.User;
 import com.daebangg.sayroam.user.domain.Role;
@@ -44,16 +45,16 @@ class SayroamApplicationTests extends DatabaseIntegrationTest {
     void schemaMatchesEntitiesAndRepeatedMigrationDoesNotReapply() {
         assertThat(environment.getProperty("spring.flyway.enabled")).isEqualTo("false");
         assertThat(environment.getProperty("spring.jpa.hibernate.ddl-auto")).isEqualTo("validate");
-        assertThat(entityManagerFactory.getMetamodel().getEntities()).hasSize(21);
+        assertThat(entityManagerFactory.getMetamodel().getEntities()).hasSize(20);
         assertThat(jdbc.queryForObject("""
                 SELECT COUNT(*) FROM information_schema.tables
                 WHERE table_schema = DATABASE() AND table_type = 'BASE TABLE'
-                """, Integer.class)).isEqualTo(22);
-        assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("23");
+                """, Integer.class)).isEqualTo(21);
+        assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("24");
         flyway.validate();
         assertThat(flyway.migrate().migrationsExecuted).isZero();
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM flyway_schema_history WHERE success = 1",
-                Integer.class)).isEqualTo(23);
+                Integer.class)).isEqualTo(24);
     }
 
     @Test
@@ -296,6 +297,61 @@ class SayroamApplicationTests extends DatabaseIntegrationTest {
     }
 
     @Test
+    void 버전_24는_채팅방_없는_여행에_채팅방을_만들어_만든_회원을_넣고_채팅방을_필수로_만들고_방_초대를_지운다() {
+        try (MySQLContainer mysql = new MySQLContainer("mysql:8.4")
+                .withCommand("--log-bin-trust-function-creators=1")) {
+            // given
+            mysql.start();
+            DriverManagerDataSource dataSource = new DriverManagerDataSource(
+                    mysql.getJdbcUrl(), mysql.getUsername(), mysql.getPassword());
+            Flyway.configure().dataSource(dataSource).target("23").load().migrate();
+            JdbcTemplate legacy = new JdbcTemplate(dataSource);
+            Long destinationId = legacy.queryForObject("SELECT MIN(id) FROM destination", Long.class);
+            legacy.update("""
+                    INSERT INTO users (id, nickname, role, created_at, updated_at)
+                    VALUES (10, '혼자 회원', 'USER', NOW(), NOW()), (20, '함께 회원', 'USER', NOW(), NOW())
+                    """);
+            legacy.update("""
+                    INSERT INTO room (id, name, created_at, updated_at) VALUES (5, '기존 방', NOW(), NOW())
+                    """);
+            legacy.update("""
+                    INSERT INTO room_member (room_id, user_id, role, status, notification_muted, joined_at,
+                        created_at, updated_at)
+                    VALUES (5, 20, 'OWNER', 'JOINED', 0, NOW(), NOW(), NOW())
+                    """);
+            legacy.update("""
+                    INSERT INTO trip (id, created_by, room_id, destination_id, title, start_date, end_date,
+                        created_at, updated_at)
+                    VALUES (1, 10, NULL, ?, '혼자 여행', '2026-12-01', '2026-12-04', NOW(), NOW()),
+                           (2, 20, 5, ?, '함께 여행', '2026-12-01', '2026-12-04', NOW(), NOW())
+                    """, destinationId, destinationId);
+
+            // when
+            int executed = Flyway.configure().dataSource(dataSource).target("24").load().migrate().migrationsExecuted;
+
+            // then
+            assertThat(executed).isEqualTo(1);
+            Long soloRoomId = legacy.queryForObject("SELECT room_id FROM trip WHERE id = 1", Long.class);
+            assertThat(soloRoomId).isNotNull().isNotEqualTo(5L);
+            assertThat(legacy.queryForObject("""
+                    SELECT COUNT(*) FROM room_member
+                    WHERE room_id = ? AND user_id = 10 AND status = 'JOINED'
+                    """, Integer.class, soloRoomId)).isEqualTo(1);
+            assertThat(legacy.queryForObject("SELECT room_id FROM trip WHERE id = 2", Long.class)).isEqualTo(5L);
+            assertThat(legacy.queryForObject("SELECT COUNT(*) FROM room_member WHERE room_id = 5", Integer.class))
+                    .isEqualTo(1);
+            assertThatThrownBy(() -> legacy.update("""
+                    INSERT INTO trip (created_by, destination_id, title, start_date, end_date, created_at, updated_at)
+                    VALUES (10, ?, '채팅방 없는 여행', '2026-12-01', '2026-12-04', NOW(), NOW())
+                    """, destinationId)).isInstanceOf(DataAccessException.class);
+            assertThat(legacy.queryForObject("""
+                    SELECT COUNT(*) FROM information_schema.tables
+                    WHERE table_schema = DATABASE() AND table_name = 'room_invitation'
+                    """, Integer.class)).isZero();
+        }
+    }
+
+    @Test
     void 버전_22의_여행과_딸린_데이터를_지우고_목적지를_필수로_만든다() {
         try (MySQLContainer mysql = new MySQLContainer("mysql:8.4")
                 .withCommand("--log-bin-trust-function-creators=1")) {
@@ -398,7 +454,10 @@ class SayroamApplicationTests extends DatabaseIntegrationTest {
         Long destinationId = entityManager.createQuery(
                 "select d.id from Destination d where d.name = :name", Long.class)
                 .setParameter("name", "제주").getSingleResult();
+        Room room = new Room(null);
+        entityManager.persist(room);
         Trip trip = new Trip(user.getId(), destinationId, period, "제주 여행");
+        trip.linkRoom(room.getId());
         entityManager.persist(trip);
         entityManager.flush();
         Object tripId = entityManagerFactory.getPersistenceUnitUtil().getIdentifier(trip);
@@ -408,8 +467,8 @@ class SayroamApplicationTests extends DatabaseIntegrationTest {
                 Integer.class)).isEqualTo(1);
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM trip WHERE start_date = ? AND end_date = ?",
                 Integer.class, period.startDate(), period.endDate())).isEqualTo(1);
-        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM trip WHERE room_id IS NULL AND created_by = ?",
-                Integer.class, user.getId())).isEqualTo(1);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM trip WHERE room_id = ? AND created_by = ?",
+                Integer.class, room.getId(), user.getId())).isEqualTo(1);
     }
 
     @Test

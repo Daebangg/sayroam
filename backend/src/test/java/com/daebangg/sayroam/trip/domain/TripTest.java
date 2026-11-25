@@ -6,6 +6,8 @@ import com.daebangg.sayroam.trip.domain.error.TripErrorCode;
 import org.junit.jupiter.api.Test;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
@@ -20,6 +22,7 @@ class TripTest {
     private static final TravelPeriod PERIOD =
             new TravelPeriod(LocalDate.of(2026, 12, 1), LocalDate.of(2026, 12, 4));
     private static final String TITLE = "제주 여행";
+    private static final LocalDateTime INVITED_AT = LocalDateTime.of(2026, 11, 7, 12, 0);
 
     @Test
     void 기간이_없으면_여행을_만들_수_없다() {
@@ -162,16 +165,6 @@ class TripTest {
     }
 
     @Test
-    void 여행을_만든_회원인지_알_수_있다() {
-        // given
-        Trip trip = newTrip();
-
-        // when & then
-        assertThat(trip.isCreatedBy(USER_ID)).isTrue();
-        assertThat(trip.isCreatedBy(OTHER_USER_ID)).isFalse();
-    }
-
-    @Test
     void 새로_만든_여행에는_채팅방을_연결할_수_있다() {
         // given
         Trip trip = newTrip();
@@ -204,6 +197,105 @@ class TripTest {
                 .isInstanceOfSatisfying(BusinessException.class,
                         e -> assertThat(e.getErrorCode()).isEqualTo(TripErrorCode.TRIP_ROOM_ALREADY_LINKED));
         assertThat(trip.getRoomId()).isEqualTo(ROOM_ID);
+    }
+
+    @Test
+    void 처음_발급하면_초대_코드를_준다() {
+        // given
+        Trip trip = newTrip();
+
+        // when
+        String code = trip.issueInvitation(INVITED_AT);
+
+        // then
+        assertThat(code).isNotBlank();
+    }
+
+    @Test
+    void 유효한_초대가_있으면_같은_코드를_준다() {
+        // given
+        Trip trip = newTrip();
+        String first = trip.issueInvitation(INVITED_AT);
+
+        // when
+        String second = trip.issueInvitation(INVITED_AT.plusDays(7));
+
+        // then
+        assertThat(second).isEqualTo(first);
+    }
+
+    @Test
+    void 초대가_만료됐으면_새_코드를_준다() {
+        // given
+        Trip trip = newTrip();
+        String first = trip.issueInvitation(INVITED_AT);
+
+        // when
+        String second = trip.issueInvitation(INVITED_AT.plusDays(7).plusNanos(1));
+
+        // then
+        assertThat(second).isNotEqualTo(first);
+    }
+
+    @Test
+    void 초대가_없으면_유효한_코드가_없다() {
+        // given
+        Trip trip = newTrip();
+
+        // when
+        Optional<String> code = trip.findValidInvitationCode(INVITED_AT);
+
+        // then
+        assertThat(code).isEmpty();
+    }
+
+    @Test
+    void 유효한_초대가_있으면_그_코드를_돌려준다() {
+        // given
+        Trip trip = newTrip();
+        String issued = trip.issueInvitation(INVITED_AT);
+
+        // when
+        Optional<String> code = trip.findValidInvitationCode(INVITED_AT.plusDays(7));
+
+        // then
+        assertThat(code).contains(issued);
+    }
+
+    @Test
+    void 만료된_초대는_유효한_코드가_없다() {
+        // given
+        Trip trip = newTrip();
+        trip.issueInvitation(INVITED_AT);
+
+        // when
+        Optional<String> code = trip.findValidInvitationCode(INVITED_AT.plusDays(7).plusNanos(1));
+
+        // then
+        assertThat(code).isEmpty();
+    }
+
+    @Test
+    void 유효한_초대가_있으면_참여할_수_있다() {
+        // given
+        Trip trip = newTrip();
+        trip.issueInvitation(INVITED_AT);
+
+        // when & then
+        assertThatCode(() -> trip.ensureInvitationValid(INVITED_AT.plusDays(7)))
+                .doesNotThrowAnyException();
+    }
+
+    @Test
+    void 만료된_초대로는_참여할_수_없다() {
+        // given
+        Trip trip = newTrip();
+        trip.issueInvitation(INVITED_AT);
+
+        // when & then
+        assertThatThrownBy(() -> trip.ensureInvitationValid(INVITED_AT.plusDays(7).plusNanos(1)))
+                .isInstanceOfSatisfying(BusinessException.class,
+                        e -> assertThat(e.getErrorCode()).isEqualTo(TripErrorCode.TRIP_INVITATION_NOT_FOUND));
     }
 
     @Test

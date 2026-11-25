@@ -8,7 +8,6 @@ import com.daebangg.sayroam.chat.domain.event.ChatMessageSent;
 import com.daebangg.sayroam.global.exception.BusinessException;
 import com.daebangg.sayroam.room.application.service.RoomService;
 import com.daebangg.sayroam.room.domain.error.RoomErrorCode;
-import com.daebangg.sayroam.room.infrastructure.persistence.RoomInvitationJpaRepository;
 import com.daebangg.sayroam.room.infrastructure.persistence.RoomJpaRepository;
 import com.daebangg.sayroam.room.infrastructure.persistence.RoomMemberJpaRepository;
 import com.daebangg.sayroam.support.DatabaseIntegrationTest;
@@ -56,15 +55,11 @@ class ChatMessageServiceTest extends DatabaseIntegrationTest {
     private RoomJpaRepository roomRepository;
 
     @Autowired
-    private RoomInvitationJpaRepository roomInvitationRepository;
-
-    @Autowired
     ApplicationEvents events;
 
     @AfterEach
     void cleanUp() {
         chatMessageRepository.deleteAllInBatch();
-        roomInvitationRepository.deleteAllInBatch();
         roomMemberRepository.deleteAllInBatch();
         roomRepository.deleteAllInBatch();
         userRepository.deleteAllInBatch();
@@ -126,7 +121,7 @@ class ChatMessageServiceTest extends DatabaseIntegrationTest {
         Long ownerId = saveUser();
         Long senderId = saveUser();
         Long roomId = roomService.create(ownerId, "제주");
-        joinRoom(roomId, ownerId, senderId);
+        joinRoom(roomId, senderId);
         chatMessageService.send(roomId, ownerId, CLIENT_MESSAGE_ID, content);
 
         chatMessageService.send(roomId, senderId, CLIENT_MESSAGE_ID, content);
@@ -248,7 +243,7 @@ class ChatMessageServiceTest extends DatabaseIntegrationTest {
         chatMessageService.send(roomId, ownerId, UUID.randomUUID().toString(), "1");
         chatMessageService.send(roomId, ownerId, UUID.randomUUID().toString(), "2");
         chatMessageService.send(roomId, ownerId, UUID.randomUUID().toString(), "3");
-        joinRoom(roomId, ownerId, otherId);
+        joinRoom(roomId, otherId);
         chatMessageService.send(roomId, ownerId, UUID.randomUUID().toString(), "4");
         chatMessageService.send(roomId, ownerId, UUID.randomUUID().toString(), "5");
         chatMessageService.send(roomId, ownerId, UUID.randomUUID().toString(), "6");
@@ -286,10 +281,10 @@ class ChatMessageServiceTest extends DatabaseIntegrationTest {
         Long ownerId = saveUser();
         Long memberId = saveUser();
         Long roomId = roomService.create(ownerId, "제주 3박 4일");
-        joinRoom(roomId, ownerId, memberId);
+        joinRoom(roomId, memberId);
         chatMessageService.send(roomId, ownerId, UUID.randomUUID().toString(), "재입장 전");
         roomService.leave(roomId, memberId);
-        joinRoom(roomId, ownerId, memberId);
+        joinRoom(roomId, memberId);
         chatMessageService.send(roomId, ownerId, UUID.randomUUID().toString(), "재입장 후");
 
         // when
@@ -301,9 +296,8 @@ class ChatMessageServiceTest extends DatabaseIntegrationTest {
                 .containsExactly("재입장 후");
     }
 
-    private void joinRoom(Long roomId, Long ownerId, Long userId) {
-        String code = roomService.createInvitation(roomId, ownerId);
-        roomService.joinByInvitation(code, userId);
+    private void joinRoom(Long roomId, Long userId) {
+        roomService.join(roomId, userId);
     }
 
     private Long saveUser() {

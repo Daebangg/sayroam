@@ -152,27 +152,33 @@ export function validatePlaceSearch(
     return { hasNext: value.hasNext, places: value.places };
 }
 
-export function validateCreatedRoom(
-    value: unknown,
-    status: number,
-): components["schemas"]["CreateTripRoomResponse"] {
-    if (!record(value) || !id(value.roomId)) throw new ApiError("invalid-response", { status });
-    return { roomId: value.roomId };
+// 링크에 넣는 코드라 URL에 안전한 문자만 받는다
+function invitationCode(value: unknown): value is string {
+    return text(value) && /^[A-Za-z0-9_-]{1,100}$/.test(value);
 }
 
-export function validateInvitation(
+export function validateIssuedInvitation(
     value: unknown,
     status: number,
-): components["schemas"]["CreateRoomInvitationResponse"] {
-    if (!record(value) || !text(value.code) || !/^[A-Za-z0-9_-]{1,100}$/.test(value.code))
+): components["schemas"]["TripInvitationResponse"] {
+    if (!record(value) || !invitationCode(value.code))
         throw new ApiError("invalid-response", { status });
     return { code: value.code };
 }
 
-export function validateJoinedRoom(
+export function validateCurrentInvitation(
     value: unknown,
     status: number,
-): components["schemas"]["JoinRoomResponse"] {
-    if (!record(value) || !id(value.roomId)) throw new ApiError("invalid-response", { status });
-    return { roomId: value.roomId };
+): components["schemas"]["CurrentTripInvitationResponse"] {
+    if (!record(value) || !(value.code === null || invitationCode(value.code)))
+        throw new ApiError("invalid-response", { status });
+    return { code: value.code };
+}
+
+export function validateJoinedTrip(
+    value: unknown,
+    status: number,
+): components["schemas"]["JoinTripResponse"] {
+    if (!record(value) || !id(value.tripId)) throw new ApiError("invalid-response", { status });
+    return { tripId: value.tripId };
 }

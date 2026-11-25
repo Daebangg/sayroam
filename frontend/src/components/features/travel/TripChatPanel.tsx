@@ -18,7 +18,6 @@ const BOTTOM_THRESHOLD_PX = 80;
 type TripChatPanelProps = {
     title: string;
     myUserId: number;
-    hasRoom: boolean;
     status: TripChatStatus;
     connection: ChatConnection;
     messages: ChatMessage[];
@@ -37,7 +36,6 @@ type TripChatPanelProps = {
 export function TripChatPanel({
     title,
     myUserId,
-    hasRoom,
     status,
     connection,
     messages,
@@ -64,6 +62,8 @@ export function TripChatPanel({
         [members],
     );
     const joinedCount = members.filter((member) => member.status === "JOINED").length;
+    // 참여 멤버가 나뿐이면 대화할 사람이 없어 채팅 대신 초대를 안내한다.
+    const alone = status === "ready" && joinedCount <= 1;
     const connected = connection === "connected";
     const text = draft.trim();
 
@@ -86,7 +86,7 @@ export function TripChatPanel({
             <header className="trip-side-panel__header">
                 <div>
                     <h2 id="trip-chat-title">{title}</h2>
-                    {hasRoom && status === "ready" && (
+                    {status === "ready" && (
                         <span>{t("tripDetail.chatMembers", { count: joinedCount })}</span>
                     )}
                 </div>
@@ -99,7 +99,7 @@ export function TripChatPanel({
                     <Icon name="close" variant="outline" />
                 </Button>
             </header>
-            {!hasRoom ? (
+            {alone ? (
                 <div className="trip-chat__state">
                     <p>{t("tripDetail.chatNoRoom")}</p>
                     <Button variant="outline" onClick={onInvite}>

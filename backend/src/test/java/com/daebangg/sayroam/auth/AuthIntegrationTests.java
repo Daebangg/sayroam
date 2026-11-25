@@ -78,7 +78,7 @@ class AuthIntegrationTests extends DatabaseIntegrationTest {
     private static final String REFRESH = "sayroam_refresh";
     private static final String TRAVEL_STYLE = "/api/users/me/travel-style";
     private static final String[] TABLES = {"expense_share", "expense", "trip_place", "trip",
-            "companion_request", "companion_search", "room_invitation", "room_member", "chat_message",
+            "companion_request", "companion_search", "room_member", "chat_message",
             "room", "place", "user_travel_style", "notification",
             "user_social_account", "user_credential", "user_profile_image", "users"};
 

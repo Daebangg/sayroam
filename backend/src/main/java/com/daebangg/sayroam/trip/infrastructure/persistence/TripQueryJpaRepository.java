@@ -19,8 +19,7 @@ public interface TripQueryJpaRepository extends TripQueryRepository, Repository<
                        d.id, d.name, d.boundsSouth, d.boundsWest, d.boundsNorth, d.boundsEast)
             from Trip t
             join Destination d on d.id = t.destinationId
-            where (t.roomId is null and t.createdById = :userId)
-               or t.roomId in (select m.room.id
+            where t.roomId in (select m.room.id
                                from RoomMember m
                                where m.userId = :userId
                                  and m.status = com.daebangg.sayroam.room.domain.RoomMemberStatus.JOINED)
@@ -36,11 +35,10 @@ public interface TripQueryJpaRepository extends TripQueryRepository, Repository<
             from Trip t
             join Destination d on d.id = t.destinationId
             where t.id = :tripId
-              and ((t.roomId is null and t.createdById = :userId)
-                   or t.roomId in (select m.room.id
-                                   from RoomMember m
-                                   where m.userId = :userId
-                                     and m.status = com.daebangg.sayroam.room.domain.RoomMemberStatus.JOINED))
+              and t.roomId in (select m.room.id
+                               from RoomMember m
+                               where m.userId = :userId
+                                 and m.status = com.daebangg.sayroam.room.domain.RoomMemberStatus.JOINED)
             """)
     Optional<TripSummaryResult> findReadable(@Param("userId") Long userId, @Param("tripId") Long tripId);
 
