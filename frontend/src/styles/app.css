@@ -1791,7 +1791,6 @@ p {
 }
 :root:has(.home-planner) {
     --home-photo-peek: max(72px, 18svh);
-    scroll-padding-top: 64px;
     scrollbar-gutter: auto;
 }
 .app-shell:has(.home-planner) .site-header {
@@ -1973,7 +1972,6 @@ p {
     }
     :root:has(.home-planner) {
         --home-photo-peek: max(112px, 18svh);
-        scroll-padding-top: 112px;
     }
 }
 @media (prefers-reduced-motion: no-preference) {
