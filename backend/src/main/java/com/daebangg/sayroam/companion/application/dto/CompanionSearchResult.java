@@ -7,6 +7,7 @@ import com.daebangg.sayroam.companion.domain.CompanionSearchStatus;
 import com.daebangg.sayroam.user.domain.Gender;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.Map;
 
 public record CompanionSearchResult(
@@ -20,6 +21,7 @@ public record CompanionSearchResult(
         Integer preferredMaxAge,
         CompanionSearchStatus status,
         String title,
+        LocalDateTime updatedAt,
         String introduction,
         boolean showAge,
         boolean showGender,
@@ -33,7 +35,7 @@ public record CompanionSearchResult(
         return new CompanionSearchResult(search.getId(), search.getDestinationId(), search.getRegion(),
                 search.getPeriod().startDate(), search.getPeriod().endDate(), search.getPreferredGender(),
                 ageRange == null ? null : ageRange.minAge(), ageRange == null ? null : ageRange.maxAge(),
-                search.getStatus(), search.getTitle(), search.getIntroduction(), search.isShowAge(), search.isShowGender(),
+                search.getStatus(), search.getTitle(), search.getUpdatedAt(), search.getIntroduction(), search.isShowAge(), search.isShowGender(),
                 search.travelStyleAnswers(), search.getMatchingRevision(), matchingStatus);
     }
 }

@@ -6,6 +6,8 @@ import java.util.Optional;
 public interface CompanionSearchRepository {
     <S extends CompanionSearch> S save(S search);
 
+    void flush();
+
     Optional<Long> findOwnerId(long searchId);
 
     long countByUserIdAndStatus(Long userId, CompanionSearchStatus status);

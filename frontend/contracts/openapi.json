@@ -977,7 +977,8 @@
                             { "$ref": "#/components/schemas/TravelStyleMatchResponse" },
                             { "type": "null" }
                         ]
-                    }
+                    },
+                    "updatedAt": { "format": "date-time", "type": "string" }
                 },
                 "required": [
                     "age",
@@ -992,7 +993,8 @@
                     "searchId",
                     "startDate",
                     "title",
-                    "travelStyleMatch"
+                    "travelStyleMatch",
+                    "updatedAt"
                 ],
                 "type": "object"
             },
@@ -1162,7 +1164,8 @@
                         "additionalProperties": { "format": "int32", "type": "integer" },
                         "description": "모집에 저장된 4문항 점수. 기존 미설정 모집은 빈 객체이며 수정으로 보완해야 합니다.",
                         "type": "object"
-                    }
+                    },
+                    "updatedAt": { "format": "date-time", "type": "string" }
                 },
                 "required": [
                     "destinationId",
@@ -1178,7 +1181,8 @@
                     "startDate",
                     "status",
                     "title",
-                    "travelStyle"
+                    "travelStyle",
+                    "updatedAt"
                 ],
                 "type": "object"
             },

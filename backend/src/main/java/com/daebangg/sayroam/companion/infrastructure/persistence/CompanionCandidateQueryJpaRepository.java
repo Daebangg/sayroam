@@ -99,7 +99,7 @@ interface CompanionCandidateQueryJpaRepository
             )
             select new com.daebangg.sayroam.companion.application.dto.CompanionCandidateResult(
                 r.searchId, r.nickname, r.profileImageUrl, r.startDate, r.endDate,
-                r.overlapStart, r.overlapEnd, r.overlapDays, r.title, search.introduction,
+                r.overlapStart, r.overlapEnd, r.overlapDays, r.title, search.updatedAt, search.introduction,
                 case when search.showAge then cast((:ageReferenceDate - profile.birthDate) by year as Integer)
                      else null end,
                 case when search.showGender then profile.gender else null end, r.userId, search.travelStyle,
