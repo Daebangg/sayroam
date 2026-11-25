@@ -37,6 +37,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
@@ -178,6 +179,19 @@ class TripServiceTest extends DatabaseIntegrationTest {
                         e -> assertThat(e.getErrorCode()).isEqualTo(TripErrorCode.TRIP_DESTINATION_UNAVAILABLE));
         assertThat(tripJpaRepository.count()).isZero();
         assertThat(roomJpaRepository.count()).isZero();
+    }
+
+    @Test
+    void 채팅방을_저장한_뒤_멤버_저장이_실패하면_여행도_채팅방도_남지_않는다() {
+        // given
+        Long missingUserId = 999_999L;
+
+        // when & then
+        assertThatThrownBy(() -> createTrip(missingUserId))
+                .isInstanceOf(DataIntegrityViolationException.class);
+        assertThat(tripJpaRepository.count()).isZero();
+        assertThat(roomJpaRepository.count()).isZero();
+        assertThat(roomMemberJpaRepository.count()).isZero();
     }
 
     @Test
