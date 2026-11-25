@@ -2,22 +2,20 @@ import { useTranslation } from "react-i18next";
 import { Button, Icon } from "@/components/ui";
 
 type TripInvitePanelProps = {
-    /** 이미 채팅방이 연결된 여행인지. 아니면 처음 초대할 때 채팅방이 만들어진다. */
-    hasRoom: boolean;
     link: string | null;
-    creating: boolean;
+    loading: boolean;
     failed: boolean;
-    onCreate: () => void;
+    onRetry: () => void;
     onCopy: () => void;
     onClose: () => void;
 };
 
+// 패널을 열면 페이지가 지금 쓸 수 있는 링크를 받아 온다. 링크를 따로 만드는 단계는 없다.
 export function TripInvitePanel({
-    hasRoom,
     link,
-    creating,
+    loading,
     failed,
-    onCreate,
+    onRetry,
     onCopy,
     onClose,
 }: TripInvitePanelProps) {
@@ -42,8 +40,12 @@ export function TripInvitePanel({
                 </Button>
             </header>
             <p className="trip-invite__text">{t("tripDetail.inviteDescription")}</p>
-            {!hasRoom && <p className="trip-invite__text">{t("tripDetail.inviteNeedsRoom")}</p>}
-            {link && (
+            {loading && (
+                <p className="trip-invite__text" role="status">
+                    {t("tripDetail.inviteLoading")}
+                </p>
+            )}
+            {!loading && link && (
                 <div className="trip-invite__link">
                     <span className="trip-invite__label" id="trip-invite-link">
                         {t("tripDetail.inviteLink")}
@@ -55,14 +57,16 @@ export function TripInvitePanel({
                     <span className="trip-invite__text">{t("tripDetail.inviteExpires")}</span>
                 </div>
             )}
-            {failed && (
-                <p className="trip-invite__error" role="alert">
-                    {t("tripDetail.inviteFailed")}
-                </p>
+            {!loading && failed && (
+                <>
+                    <p className="trip-invite__error" role="alert">
+                        {t("tripDetail.inviteFailed")}
+                    </p>
+                    <Button variant="outline" onClick={onRetry}>
+                        {t("tripDetail.retry")}
+                    </Button>
+                </>
             )}
-            <Button variant={link ? "outline" : "primary"} loading={creating} onClick={onCreate}>
-                {t(link ? "tripDetail.inviteRenew" : "tripDetail.inviteCreate")}
-            </Button>
         </section>
     );
 }

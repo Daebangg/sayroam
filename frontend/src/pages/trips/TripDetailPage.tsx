@@ -95,7 +95,7 @@ function TripDetail({ tripId, myUserId }: { tripId: number; myUserId: number }) 
 
 type Picking = { location: PickedLocation | null };
 type Notice = { id: number; message: string; tone: ToastTone };
-type Invite = { link: string | null; creating: boolean; failed: boolean };
+type Invite = { link: string | null; loading: boolean; failed: boolean };
 
 type TripPlannerProps = {
     trip: MyTrip;
@@ -134,7 +134,7 @@ function TripPlanner({ trip, detail, myUserId }: TripPlannerProps) {
     const [picking, setPicking] = useState<Picking | null>(null);
     const [notice, setNotice] = useState<Notice | null>(null);
     const [panel, setPanel] = useState<"chat" | "invite" | null>(null);
-    const [invite, setInvite] = useState<Invite>({ link: null, creating: false, failed: false });
+    const [invite, setInvite] = useState<Invite>({ link: null, loading: false, failed: false });
     const search = usePlaceSearch(addingKey === null ? "" : query);
     // 패널을 닫아도 연결과 받은 메시지를 유지하도록 페이지에서 연결한다. 채팅방이 없으면 연결하지 않는다.
     const chat = useTripChat(trip.roomId, myUserId);
@@ -188,15 +188,32 @@ function TripPlanner({ trip, detail, myUserId }: TripPlannerProps) {
         setPicking(null);
     }
 
-    async function createInvite() {
-        if (invite.creating) return;
-        setInvite((current) => ({ ...current, creating: true, failed: false }));
-        const code = await detail.createInvitation();
-        setInvite((current) => ({
-            link: code ? invitationUrl(window.location.origin, code) : current.link,
-            creating: false,
+    // 열 때마다 서버에 물어 만료된 링크를 보여 주지 않는다. 받는 중이면 다시 요청하지 않는다.
+    async function loadInvite() {
+        if (invite.loading) return;
+        setInvite({ link: null, loading: true, failed: false });
+        const code = await detail.loadInvitation();
+        setInvite({
+            link: code ? invitationUrl(window.location.origin, code) : null,
+            loading: false,
             failed: code === null,
-        }));
+        });
+    }
+
+    function toggleChat() {
+        if (panel === "chat") return setPanel(null);
+        setPanel("chat");
+        chat.recheck();
+    }
+
+    function openInvite() {
+        setPanel("invite");
+        void loadInvite();
+    }
+
+    function toggleInvite() {
+        if (panel === "invite") setPanel(null);
+        else openInvite();
     }
 
     async function copyInvite() {
@@ -233,11 +250,9 @@ function TripPlanner({ trip, detail, myUserId }: TripPlannerProps) {
                 activeKey={activeKey}
                 onSelect={goToSection}
                 chatOpen={panel === "chat"}
-                onToggleChat={() => setPanel((current) => (current === "chat" ? null : "chat"))}
+                onToggleChat={toggleChat}
                 inviteOpen={panel === "invite"}
-                onToggleInvite={() =>
-                    setPanel((current) => (current === "invite" ? null : "invite"))
-                }
+                onToggleInvite={toggleInvite}
             />
             <div className="trip-detail__panel">
                 <TripTitleEditor
@@ -311,11 +326,10 @@ function TripPlanner({ trip, detail, myUserId }: TripPlannerProps) {
             </TripMap>
             {panel === "invite" && (
                 <TripInvitePanel
-                    hasRoom={trip.roomId !== null}
                     link={invite.link}
-                    creating={invite.creating}
+                    loading={invite.loading}
                     failed={invite.failed}
-                    onCreate={() => void createInvite()}
+                    onRetry={() => void loadInvite()}
                     onCopy={() => void copyInvite()}
                     onClose={() => setPanel(null)}
                 />
@@ -324,7 +338,6 @@ function TripPlanner({ trip, detail, myUserId }: TripPlannerProps) {
                 <TripChatPanel
                     title={trip.title ?? t("trips.untitled")}
                     myUserId={myUserId}
-                    hasRoom={trip.roomId !== null}
                     status={chat.status}
                     connection={chat.connection}
                     messages={chat.messages}
@@ -336,7 +349,7 @@ function TripPlanner({ trip, detail, myUserId }: TripPlannerProps) {
                     onDiscard={chat.discard}
                     onRetrySync={chat.retrySync}
                     onReload={chat.reload}
-                    onInvite={() => setPanel("invite")}
+                    onInvite={openInvite}
                     onClose={() => setPanel(null)}
                 />
             )}

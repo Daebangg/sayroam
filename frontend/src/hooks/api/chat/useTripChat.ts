@@ -24,6 +24,8 @@ type TripChat = {
     discard: (clientMessageId: string) => void;
     retrySync: () => void;
     reload: () => void;
+    /** 채팅을 열 때 참여 멤버를 다시 확인한다. 친구가 들어와 있으면 연결을 시작한다. */
+    recheck: () => void;
 };
 
 const PAGE_SIZE = 100;
@@ -108,7 +110,7 @@ function mergeMessages(current: ChatMessage[], incoming: ChatMessage[]): ChatMes
 }
 
 /**
- * 여행 상세에 있는 동안 채팅방에 연결해 둔다. 채팅방이 없는 여행이면 아무것도 하지 않는다.
+ * 여행 상세에 있는 동안 채팅방에 연결해 둔다. 참여 멤버가 나뿐이면 대화할 사람이 없어 연결하지 않는다.
  * 패널을 닫아도 받은 메시지와 연결을 유지해 다시 열면 바로 보여 준다.
  */
 export function useTripChat(roomId: number | null, myUserId: number): TripChat {
@@ -122,6 +124,7 @@ export function useTripChat(roomId: number | null, myUserId: number): TripChat {
     const socket = useRef<ChatSocket | null>(null);
     const loadAll = useRef<() => void>(() => undefined);
     const resync = useRef<() => void>(() => undefined);
+    const recheckMembers = useRef<() => void>(() => undefined);
 
     useEffect(() => {
         if (roomId === null) return;
@@ -133,7 +136,7 @@ export function useTripChat(roomId: number | null, myUserId: number): TripChat {
         let fetchedUntil = 0;
         let catchingUp: Promise<void> | null = null;
         let catchUpAgain = false;
-        let loadingMembers: Promise<void> | null = null;
+        let loadingMembers: Promise<RoomMember[]> | null = null;
         let connectedBefore = false;
 
         function receive(incoming: ChatMessage[]) {
@@ -154,13 +157,15 @@ export function useTripChat(roomId: number | null, myUserId: number): TripChat {
                 void loadMembers().catch(() => undefined);
         }
 
-        function loadMembers(): Promise<void> {
+        function loadMembers(): Promise<RoomMember[]> {
             loadingMembers ??= api
                 .call("findMembers", { params: { path: { roomId: room } }, signal })
                 .then(({ members: list }) => {
-                    if (signal.aborted) return;
-                    list.forEach((member) => memberIds.add(member.userId));
-                    setMembers(list);
+                    if (!signal.aborted) {
+                        list.forEach((member) => memberIds.add(member.userId));
+                        setMembers(list);
+                    }
+                    return list;
                 })
                 .finally(() => {
                     loadingMembers = null;
@@ -227,25 +232,42 @@ export function useTripChat(roomId: number | null, myUserId: number): TripChat {
         };
 
         // 구독을 마친 뒤 이어 받아야 그 사이에 온 메시지가 빠지지 않는다. 중복은 messageId로 거른다.
-        socket.current = openChatSocket(room, {
-            onConnected: () => {
-                setConnection("connected");
-                resync.current();
-                if (connectedBefore) void loadMembers().catch(() => undefined);
-                connectedBefore = true;
-            },
-            onDisconnected: () => {
-                setConnection("reconnecting");
-                outbox.failAll();
-            },
-            onMessage: (message) => receive([message]),
-            onSendError: (error) => outbox.fail(error.clientMessageId),
-            onClosed: () => {
-                setConnection("closed");
-                outbox.failAll();
-            },
-        });
-        loadAll.current();
+        function startChat() {
+            if (socket.current || signal.aborted) return;
+            socket.current = openChatSocket(room, {
+                onConnected: () => {
+                    setConnection("connected");
+                    resync.current();
+                    if (connectedBefore) void loadMembers().catch(() => undefined);
+                    connectedBefore = true;
+                },
+                onDisconnected: () => {
+                    setConnection("reconnecting");
+                    outbox.failAll();
+                },
+                onMessage: (message) => receive([message]),
+                onSendError: (error) => outbox.fail(error.clientMessageId),
+                onClosed: () => {
+                    setConnection("closed");
+                    outbox.failAll();
+                },
+            });
+            loadAll.current();
+        }
+
+        // 친구가 들어와 둘 이상이 되면 그때 연결한다. 혼자면 명단만 받고 끝낸다.
+        recheckMembers.current = () => {
+            loadMembers()
+                .then((list) => {
+                    if (signal.aborted) return;
+                    if (list.filter((member) => member.status === "JOINED").length > 1) startChat();
+                    else setStatus("ready");
+                })
+                .catch(() => {
+                    if (!signal.aborted && !socket.current) setStatus("failed");
+                });
+        };
+        recheckMembers.current();
 
         return () => {
             controller.abort();
@@ -282,7 +304,13 @@ export function useTripChat(roomId: number | null, myUserId: number): TripChat {
 
     function reload() {
         setStatus("loading");
-        loadAll.current();
+        if (socket.current) loadAll.current();
+        else recheckMembers.current();
+    }
+
+    // 채팅 패널을 열 때 부른다. 그사이 친구가 참여했으면 연결을 시작한다.
+    function recheck() {
+        if (!socket.current) recheckMembers.current();
     }
 
     if (roomId === null)
@@ -298,6 +326,7 @@ export function useTripChat(roomId: number | null, myUserId: number): TripChat {
             discard,
             retrySync,
             reload,
+            recheck,
         };
     return {
         status,
@@ -311,5 +340,6 @@ export function useTripChat(roomId: number | null, myUserId: number): TripChat {
         discard,
         retrySync,
         reload,
+        recheck,
     };
 }
