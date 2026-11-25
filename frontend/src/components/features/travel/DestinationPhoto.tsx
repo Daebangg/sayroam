@@ -1,24 +1,26 @@
-import type { ComponentProps } from "react";
-import type { destinationPhotos } from "@/data/destinationPhotos";
+import { useState } from "react";
+import { destinationPhotos } from "@/data/destinationPhotos";
+import { useTheme } from "@/hooks/useTheme";
 
-type DestinationPhotoProps = Pick<ComponentProps<"img">, "fetchPriority" | "onError" | "onLoad"> & {
-    place: (typeof destinationPhotos)[keyof typeof destinationPhotos][number];
-    zoom?: boolean;
-};
+export function DestinationPhoto() {
+    const { resolved } = useTheme();
+    const [selection] = useState(Math.random);
+    const photos = destinationPhotos[resolved];
+    const photo = photos[Math.floor(selection * photos.length)];
+    const path = `/images/destinations/${photo}`;
 
-export function DestinationPhoto({ place, zoom, ...imageProps }: DestinationPhotoProps) {
-    const path = `/images/destinations/${place}`;
     return (
-        <picture>
-            <source media="(max-aspect-ratio: 3/4)" srcSet={`${path}-mobile.webp`} />
-            <img
-                src={`${path}.webp`}
-                srcSet={`${path}.webp 1920w, ${path}-large.webp 3840w`}
-                sizes="100vw"
-                alt=""
-                data-zoom={zoom}
-                {...imageProps}
-            />
-        </picture>
+        <div className="home-planner__background" aria-hidden="true">
+            <picture>
+                <source media="(max-aspect-ratio: 3/4)" srcSet={`${path}-mobile.webp`} />
+                <img
+                    src={`${path}.webp`}
+                    srcSet={`${path}.webp 1920w, ${path}-large.webp 3840w`}
+                    sizes="100vw"
+                    fetchPriority="high"
+                    alt=""
+                />
+            </picture>
+        </div>
     );
 }

@@ -85,6 +85,7 @@ const multipleDifferences: NonNullable<Candidate["travelStyleMatch"]> = {
 const featuredCandidates: Candidate[] = [
     {
         searchId: 31,
+        updatedAt: "2026-12-11T15:30:00Z",
         nickname: "모래",
         profileImageUrl: "/brand/avatars/explorer.svg",
         age: 27,
@@ -100,6 +101,7 @@ const featuredCandidates: Candidate[] = [
     },
     {
         searchId: 42,
+        updatedAt: "2026-12-12T15:30:00Z",
         nickname: "파도",
         profileImageUrl: "/brand/avatars/traveler.svg",
         age: null,
@@ -116,6 +118,7 @@ const featuredCandidates: Candidate[] = [
     },
     {
         searchId: 53,
+        updatedAt: "2026-12-13T15:30:00Z",
         nickname: "윤슬",
         profileImageUrl: "/brand/avatars/poet.svg",
         age: 29,
@@ -182,6 +185,7 @@ export const roamMateCandidates: CandidateResult["candidates"] = [
         gender: sampleGenders[index % sampleGenders.length] ?? null,
         travelStyleMatch: index % 2 === 0 ? similarStyle : styleToDiscuss,
         searchId: 100 + index,
+        updatedAt: "2026-12-14T15:30:00Z",
         nickname,
         title,
         introduction,

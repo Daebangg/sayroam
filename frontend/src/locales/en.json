@@ -40,55 +40,36 @@
         "descriptionFirst": "From travel plans to people and places,",
         "descriptionSecond": "get ready for it all in one place.",
         "start": "Start your journey",
-        "slider": {
-            "label": "Destinations in Korea",
-            "haeundae": {
-                "city": "Busan",
-                "name": "Haeundae Beach"
+        "dashboard": {
+            "trips": "My trips",
+            "matches": "My recruitments",
+            "owner": "Created by me",
+            "member": "Joined",
+            "people": "{{count}} travelers",
+            "places": {
+                "busan": "Busan",
+                "jeju": "Jeju",
+                "seoul": "Seoul"
             },
-            "cherryBlossoms": {
-                "city": "Jeju",
-                "name": "Jeonnong-ro Cherry Blossom Street"
+            "tripTitles": {
+                "busan": "A weekend in the lanes of Busan",
+                "jeju": "A winter walk in eastern Jeju",
+                "seoul": "Seoul after dark"
             },
-            "hyangwonjeong": {
-                "city": "Seoul",
-                "name": "Hyangwonjeong Pavilion"
+            "matchTitles": {
+                "busan": "A walk through Gamcheon",
+                "jeju": "Company for the Jeju Olle Trail",
+                "seoul": "An evening at Gwangjang Market"
             },
-            "gamcheon": {
-                "city": "Busan",
-                "name": "Gamcheon Culture Village"
+            "tripNotes": {
+                "busan": "Walk through Gamcheon on Saturday and visit Songdo Beach on Sunday morning.",
+                "jeju": "Explore eastern Jeju on foot, with a stop to rest in Sehwa.",
+                "seoul": "Have dinner at Gwangjang Market, then walk along Cheonggyecheon Stream."
             },
-            "pinkMuhly": {
-                "city": "Gyeongju",
-                "name": "Cheomseongdae Area"
-            },
-            "gwanganDay": {
-                "city": "Busan",
-                "name": "Gwangandaegyo Bridge"
-            },
-            "sunsetFlowers": {
-                "city": "Gyeongju",
-                "name": "Cheomseongdae, Inwang-dong"
-            },
-            "namsan": {
-                "city": "Seoul",
-                "name": "N Seoul Tower"
-            },
-            "donggung": {
-                "city": "Gyeongju",
-                "name": "Donggung Palace and Wolji Pond"
-            },
-            "gwanganNight": {
-                "city": "Busan",
-                "name": "Gwangandaegyo Bridge"
-            },
-            "gwangjang": {
-                "city": "Seoul",
-                "name": "Gwangjang Market"
-            },
-            "gwanghwamun": {
-                "city": "Seoul",
-                "name": "Gwanghwamun Gate"
+            "matchNotes": {
+                "busan": "Meet at the entrance to Gamcheon Culture Village and walk up to the lookout.",
+                "jeju": "Walk the stretch of the Jeju Olle Trail that passes Sehwa Beach together.",
+                "seoul": "Meet for an evening exploring the food stalls at Gwangjang Market."
             }
         }
     },
@@ -843,6 +824,7 @@
         "invalid": "Please check your input."
     },
     "matchingFlow": {
+        "lastUpdated": "Last updated",
         "searchMyPosts": "Search title or destination",
         "statusFilter": "Recruitment status",
         "allPosts": "All",

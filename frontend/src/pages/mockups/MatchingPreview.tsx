@@ -23,6 +23,7 @@ function recruitment(
 ): MatchingRegistration {
     return {
         id,
+        updatedAt: new Date().toISOString(),
         destinationId: conditions.destinationId,
         startDate: conditions.startDate,
         endDate: conditions.endDate,
@@ -106,7 +107,13 @@ export function MatchingPreview({ screen }: { screen: Screen }) {
     }
     function status(id: number, next: MatchingRegistration["status"]) {
         if (next === "ACTIVE" && limitReached) return Promise.resolve(false);
-        update(searches.map((post) => (post.id === id ? { ...post, status: next } : post)));
+        update(
+            searches.map((post) =>
+                post.id === id && post.status !== next
+                    ? { ...post, status: next, updatedAt: new Date().toISOString() }
+                    : post,
+            ),
+        );
         return Promise.resolve(true);
     }
     function open(screen: Screen, searchId: number, replace = false) {

@@ -219,7 +219,7 @@ export function BrandPage() {
                                     <ButtonLink to="/">{t("pageState.home")}</ButtonLink>
                                     {pageState === "error" && (
                                         <Button
-                                            variant="outline"
+                                            variant="cancel"
                                             onClick={() => setPageState("loading")}
                                         >
                                             {t("pageState.retry")}

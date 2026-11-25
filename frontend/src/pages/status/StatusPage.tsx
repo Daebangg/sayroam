@@ -31,7 +31,7 @@ export function StatusPage({ kind, reloadHome = false, onRetry }: StatusPageProp
                             </ButtonLink>
                             {(kind === "error" || kind === "serverError") && (
                                 <Button
-                                    variant="outline"
+                                    variant="cancel"
                                     onClick={onRetry ?? (() => window.location.reload())}
                                 >
                                     {t("pageState.retry")}

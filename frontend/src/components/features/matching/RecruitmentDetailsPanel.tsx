@@ -1,6 +1,7 @@
+import { RecruitmentUpdatedDate } from "./RecruitmentUpdatedDate";
 import { RecruitmentTextAction } from "./RecruitmentTextAction";
-import { useEffect, useEffectEvent, useId, useRef, useState } from "react";
-import { createPortal } from "react-dom";
+import { useEffect, useId, useRef, useState } from "react";
+import { DetailsSidebar } from "@/components/layout/DetailsSidebar";
 import { useTranslation } from "react-i18next";
 import { Avatar, Button, Icon, Tag, Tooltip } from "@/components/ui";
 import { RecruitmentStatusBadge } from "./RecruitmentStatusBadge";
@@ -60,63 +61,7 @@ function PanelContent({
     const postId = registration?.id ?? candidate?.searchId;
     const status = registration?.status;
     const titleId = useId();
-    const panel = useRef<HTMLElement>(null);
     const content = useRef<HTMLDivElement>(null);
-    const close = useEffectEvent(onClose);
-    useEffect(() => {
-        const opener = document.activeElement;
-        const media = window.matchMedia("(max-width: 700px)");
-        const page = document.getElementById("main-content");
-        const previousOverflow = document.body.style.overflow;
-        function update(): void {
-            if (page) page.inert = media.matches;
-            document.body.style.overflow = media.matches ? "hidden" : previousOverflow;
-        }
-        update();
-        panel.current?.focus({ preventScroll: true });
-        function keydown(event: KeyboardEvent): void {
-            if (event.defaultPrevented || document.querySelector("dialog[open]")) return;
-            if (
-                event.target instanceof Element &&
-                event.target.closest(".site-header, .chat-sidebar")
-            )
-                return;
-            if (event.key === "Escape" && !event.isComposing) {
-                event.preventDefault();
-                close();
-                return;
-            }
-        }
-        function outside(event: PointerEvent): void {
-            const target = event.target;
-            if (
-                !(target instanceof Element) ||
-                panel.current?.contains(target) ||
-                document.querySelector("dialog[open]")
-            )
-                return;
-            // Let another recruitment card handle selection without closing its new panel.
-            if (
-                target.closest(
-                    ".matching-registration__open, .matching-registration, .roam-match-card, .ui-dropdown__menu, .chat-sidebar, [aria-keyshortcuts='Alt+C']",
-                )
-            )
-                return;
-            close();
-        }
-        document.addEventListener("pointerdown", outside);
-        media.addEventListener("change", update);
-        document.addEventListener("keydown", keydown);
-        return () => {
-            document.removeEventListener("pointerdown", outside);
-            media.removeEventListener("change", update);
-            document.removeEventListener("keydown", keydown);
-            if (page) page.inert = false;
-            document.body.style.overflow = previousOverflow;
-            if (opener instanceof HTMLElement && opener.isConnected)
-                opener.focus({ preventScroll: true });
-        };
-    }, []);
     useEffect(() => {
         content.current?.scrollTo({ top: 0 });
     }, [postId]);
@@ -127,26 +72,17 @@ function PanelContent({
             day: "numeric",
             timeZone: "UTC",
         }).format(new Date(`${value}T00:00:00Z`));
-    return createPortal(
-        <aside
-            ref={panel}
+    return (
+        <DetailsSidebar
             id="recruitment-details-panel"
-            tabIndex={-1}
-            role="region"
-            aria-labelledby={titleId}
-            className={`edge-panel matching-details-panel${closing ? " matching-details-panel--closing" : ""}`}
-            onAnimationEnd={(event) => {
-                if (
-                    closing &&
-                    event.target === event.currentTarget &&
-                    event.animationName === "matching-panel-exit"
-                )
-                    onExited();
-            }}
+            titleId={titleId}
+            closing={closing}
+            onClose={onClose}
+            onExited={onExited}
         >
             <div ref={content} className="matching-details-panel__body">
                 <header className="matching-details-panel__header">
-                    <div>
+                    <div className="recruitment-heading-row">
                         {registration && (
                             <div className="matching-details-panel__status">
                                 <RecruitmentStatusBadge
@@ -176,15 +112,16 @@ function PanelContent({
                                 <strong>{candidate.nickname}</strong>
                             </div>
                         )}
-                        <h2 id={titleId} aria-live="polite">
-                            {post.title || t("matchingFlow.untitled")}
-                        </h2>
-                        {post.introduction && (
-                            <div className="matching-details-introduction">
-                                <p>{post.introduction}</p>
-                            </div>
-                        )}
+                        <RecruitmentUpdatedDate updatedAt={post.updatedAt} />
                     </div>
+                    <h2 id={titleId} aria-live="polite">
+                        {post.title || t("matchingFlow.untitled")}
+                    </h2>
+                    {post.introduction && (
+                        <div className="matching-details-introduction">
+                            <p>{post.introduction}</p>
+                        </div>
+                    )}
                 </header>
                 <dl className="matching-details-panel__meta">
                     <div>
@@ -438,7 +375,6 @@ function PanelContent({
                     </p>
                 )}
             </footer>
-        </aside>,
-        document.querySelector(".app-shell") ?? document.body,
+        </DetailsSidebar>
     );
 }
