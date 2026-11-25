@@ -16,6 +16,7 @@ import {
 } from "@/components/ui";
 import { MatchingFilterPopover } from "./MatchingFilterPopover";
 import { RecruitmentStatusBadge } from "./RecruitmentStatusBadge";
+import { RecruitmentUpdatedDate } from "./RecruitmentUpdatedDate";
 import { RecruitmentDetailsPanel } from "./RecruitmentDetailsPanel";
 import type { CandidateQuery, CandidateResult, MatchingDestination } from "@/hooks/matching.types";
 
@@ -287,7 +288,12 @@ export function CompanionSearch({
                                         className={`matching-registration${selectedId === candidate.searchId ? " is-selected" : ""}`}
                                     >
                                         <div>
-                                            <RecruitmentStatusBadge status="ACTIVE" />
+                                            <div className="recruitment-heading-row">
+                                                <RecruitmentStatusBadge status="ACTIVE" />
+                                                <RecruitmentUpdatedDate
+                                                    updatedAt={candidate.updatedAt}
+                                                />
+                                            </div>
                                             <h3>
                                                 <Button
                                                     variant="plain"

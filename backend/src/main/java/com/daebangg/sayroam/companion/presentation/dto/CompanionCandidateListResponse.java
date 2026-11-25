@@ -8,7 +8,9 @@ import com.daebangg.sayroam.companion.domain.TravelStyleMatch;
 import io.swagger.v3.oas.annotations.media.Schema;
 import org.jspecify.annotations.Nullable;
 
+import java.time.Instant;
 import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.util.List;
 
 @Schema(requiredProperties = {"candidates", "hasNext"})
@@ -19,7 +21,7 @@ public record CompanionCandidateListResponse(List<Candidate> candidates, boolean
     }
 
     @Schema(requiredProperties = {"searchId", "nickname", "profileImageUrl", "startDate", "endDate",
-            "overlapStartDate", "overlapEndDate", "overlapDays", "title", "introduction", "age", "gender", "travelStyleMatch"})
+            "overlapStartDate", "overlapEndDate", "overlapDays", "title", "updatedAt", "introduction", "age", "gender", "travelStyleMatch"})
     public record Candidate(
             long searchId,
             String nickname,
@@ -30,6 +32,7 @@ public record CompanionCandidateListResponse(List<Candidate> candidates, boolean
             LocalDate overlapEndDate,
             int overlapDays,
             @Schema(types = {"string", "null"}) String title,
+            Instant updatedAt,
             @Schema(types = {"string", "null"}) @Nullable String introduction,
             @Schema(description = "후보가 공개한 만 나이. 비공개 또는 프로필 미입력 시 null",
                     types = {"integer", "null"}, format = "int32") @Nullable Integer age,
@@ -45,7 +48,8 @@ public record CompanionCandidateListResponse(List<Candidate> candidates, boolean
         private static Candidate from(CompanionCandidateResult result) {
             return new Candidate(result.searchId(), result.nickname(), result.profileImageUrl(),
                     result.startDate(), result.endDate(), result.overlapStartDate(), result.overlapEndDate(),
-                    result.overlapDays(), result.title(), result.introduction(), result.age(), result.gender(),
+                    result.overlapDays(), result.title(), result.updatedAt().toInstant(ZoneOffset.UTC),
+                    result.introduction(), result.age(), result.gender(),
                     result.travelStyleMatch() == null ? null : TravelStyleMatchResponse.from(result.travelStyleMatch()),
                     result.requestId(), result.requestStatus(), result.direction(), result.canRequest());
         }

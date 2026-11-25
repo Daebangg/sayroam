@@ -24,6 +24,8 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.not;
+import static org.hamcrest.Matchers.startsWith;
 import static org.hamcrest.Matchers.nullValue;
 import static org.hamcrest.Matchers.contains;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -76,11 +78,14 @@ class CompanionSearchApiIntegrationTest extends DatabaseIntegrationTest {
                 .andExpect(jsonPath("$.status").value("ACTIVE"));
         long id = jdbc.queryForObject("SELECT id FROM companion_search WHERE destination_id = ?", Long.class, seoulId);
         String resource = PATH + "/" + id;
+        jdbc.update("UPDATE companion_search SET updated_at = ? WHERE id = ?", "2020-01-01 00:00:00", id);
+        entityManager.clear();
 
         mvc.perform(get(MINE).servletPath(MINE).header("Authorization", authorization))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.searches.length()").value(1))
                 .andExpect(jsonPath("$.searches[0].title").value("카페 투어"))
+                .andExpect(jsonPath("$.searches[0].updatedAt").value("2020-01-01T00:00:00Z"))
                 .andExpect(jsonPath("$.searches[0].id").value(id));
         String other = createAuthorization("다른 회원");
         mvc.perform(get(MINE).servletPath(MINE).header("Authorization", other))
@@ -95,6 +100,8 @@ class CompanionSearchApiIntegrationTest extends DatabaseIntegrationTest {
         submit(put(resource), resource, authorization, updated).andExpect(status().isOk())
                 .andExpect(jsonPath("$.destinationId").value(busanId))
                 .andExpect(jsonPath("$.title").value("해변 산책"))
+                .andExpect(jsonPath("$.updatedAt").isString())
+                .andExpect(jsonPath("$.updatedAt").value(not(startsWith("2020-01-01"))))
                 .andExpect(jsonPath("$.preferredGender").value(nullValue()))
                 .andExpect(jsonPath("$.preferredMinAge").value(nullValue()));
         submit(put(resource), resource, authorization, conditions(busanId, "2030-04-24", "2030-04-24",

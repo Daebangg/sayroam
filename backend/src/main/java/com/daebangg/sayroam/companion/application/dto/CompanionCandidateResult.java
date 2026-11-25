@@ -8,6 +8,7 @@ import com.daebangg.sayroam.user.domain.Gender;
 import org.jspecify.annotations.Nullable;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 
 public record CompanionCandidateResult(
@@ -20,6 +21,7 @@ public record CompanionCandidateResult(
         LocalDate overlapEndDate,
         int overlapDays,
         String title,
+        LocalDateTime updatedAt,
         @Nullable String introduction,
         @Nullable Integer age,
         @Nullable Gender gender,
@@ -31,11 +33,11 @@ public record CompanionCandidateResult(
 ) {
     public CompanionCandidateResult(long searchId, String nickname, String profileImageUrl, LocalDate startDate,
                                     LocalDate endDate, LocalDate overlapStartDate, LocalDate overlapEndDate,
-                                    int overlapDays, String title, String introduction, Integer age, Gender gender,
+                                    int overlapDays, String title, LocalDateTime updatedAt, String introduction, Integer age, Gender gender,
                                     long userId, RecruitmentTravelStyle travelStyle, Long requestId, CompanionRequestStatus status,
                                     Long senderId, long ownerId, boolean eligibleNow) {
         this(searchId, nickname, profileImageUrl, startDate, endDate, overlapStartDate, overlapEndDate,
-                overlapDays, title, introduction, age, gender, userId, travelStyle, null, requestId,
+                overlapDays, title, updatedAt, introduction, age, gender, userId, travelStyle, null, requestId,
                 status == CompanionRequestStatus.PENDING && !eligibleNow ? CompanionRequestStatus.EXPIRED : status,
                 requestDirection(senderId, ownerId), eligibleNow && requestId == null);
     }
@@ -47,7 +49,7 @@ public record CompanionCandidateResult(
 
     public CompanionCandidateResult withTravelStyleMatch(TravelStyleMatch match) {
         return new CompanionCandidateResult(searchId, nickname, profileImageUrl, startDate, endDate, overlapStartDate,
-                overlapEndDate, overlapDays, title, introduction, age, gender, userId, travelStyle, match,
+                overlapEndDate, overlapDays, title, updatedAt, introduction, age, gender, userId, travelStyle, match,
                 requestId, requestStatus, direction, canRequest);
     }
 

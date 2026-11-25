@@ -186,6 +186,7 @@ public class CompanionSearchService {
         search.update(command.destinationId(), new TravelPeriod(command.startDate(), command.endDate()),
                 command.preferredGender(), new AgeRange(command.preferredMinAge(), command.preferredMaxAge()),
                 command.title(), command.introduction(), command.showAge(), command.showGender());
+        searches.flush();
         requests.refreshPending(id);
         enqueueMatching(search);
         return result(search);
@@ -203,6 +204,7 @@ public class CompanionSearchService {
             }
         }
         search.changeStatus(status);
+        searches.flush();
         if (status == CompanionSearchStatus.CLOSED) requests.refreshPending(id);
         if (reopening) {
             enqueueMatching(search);

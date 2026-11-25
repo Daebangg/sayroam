@@ -1243,6 +1243,8 @@ export interface components {
             title: string | null;
             /** @description 4문항 비교 결과. 날짜순 조회에서 응답이 부족하면 null */
             travelStyleMatch: components["schemas"]["TravelStyleMatchResponse"] | null;
+            /** Format: date-time */
+            updatedAt: string;
         };
         ChangeCompanionSearchStatusRequest: {
             /** @description ACTIVE는 모집 재개, CLOSED는 모집 종료 */
@@ -1356,6 +1358,8 @@ export interface components {
             travelStyle: {
                 [key: string]: number;
             };
+            /** Format: date-time */
+            updatedAt: string;
         };
         /** @enum {string} */
         CompanionSearchStatus: "ACTIVE" | "CLOSED";

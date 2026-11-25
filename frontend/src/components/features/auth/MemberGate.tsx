@@ -29,7 +29,7 @@ export function MemberGate({ checking, unavailable, onLogin }: MemberGateProps) 
                             <Button variant="brand" onClick={onLogin}>
                                 {t("auth.login")}
                             </Button>
-                            <ButtonLink to="/" variant="outline">
+                            <ButtonLink to="/" variant="cancel">
                                 {t("navigation.home")}
                             </ButtonLink>
                         </>

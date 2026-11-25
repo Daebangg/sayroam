@@ -2,24 +2,21 @@
 
 ## 홈 여행지 사진
 
-홈 슬라이드는 라이트 테마에서 낮·노을 사진 7장, 다크 테마에서 야경·점등 풍경 5장을 순환합니다. 최종 파일은 모두 `destinations/`에 있습니다. 제공된 JPG에서 가로 16:9(1920px·3840px)와 세로 9:16(최대 1440×2560px) WebP를 만들었습니다.
+홈에 들어올 때 현재 테마에서 한 장을 무작위로 고릅니다. 각 사진은 가로 16:9(1920px·3840px)와 세로 9:16(1440×2560px) WebP로 제공합니다.
 
-| 테마   | 여행지                | 파일                                                    | 촬영자와 원본                                                 |
-| ------ | --------------------- | ------------------------------------------------------- | ------------------------------------------------------------- |
-| 라이트 | 부산 · 해운대해수욕장 | [haeundae.webp](destinations/haeundae.webp)             | [Minku Kang](https://unsplash.com/photos/ss2eCCSjSQo)         |
-| 라이트 | 제주 · 전농로 벚꽃길  | [cherryBlossoms.webp](destinations/cherryBlossoms.webp) | [Ji Seongkwang](https://unsplash.com/photos/CX7fI2LXJgo)      |
-| 라이트 | 서울 · 경복궁 향원정  | [hyangwonjeong.webp](destinations/hyangwonjeong.webp)   | [Louie Nicolo Nimor](https://unsplash.com/photos/1Tf8X648BfA) |
-| 라이트 | 부산 · 감천문화마을   | [gamcheon.webp](destinations/gamcheon.webp)             | [Sean Lee](https://unsplash.com/photos/Jr8as6DTews)           |
-| 라이트 | 경주 · 첨성대 일대    | [pinkMuhly.webp](destinations/pinkMuhly.webp)           | [Dmitry Voronov](https://unsplash.com/photos/y5GM2u8cCiA)     |
-| 라이트 | 부산 · 광안대교       | [gwanganDay.webp](destinations/gwanganDay.webp)         | [Christopher Lee](https://unsplash.com/photos/ZaMyD-31snk)    |
-| 라이트 | 경주 · 인왕동 첨성대  | [sunsetFlowers.webp](destinations/sunsetFlowers.webp)   | [Taisia Karaseva](https://unsplash.com/photos/2L5lTezAh1M)    |
-| 다크   | 서울 · N서울타워      | [namsan.webp](destinations/namsan.webp)                 | [Hyeok Jang](https://www.pexels.com/photo/31414677/)          |
-| 다크   | 경주 · 동궁과 월지    | [donggung.webp](destinations/donggung.webp)             | [John Ko](https://unsplash.com/photos/mgVMtZiOaeo)            |
-| 다크   | 부산 · 광안대교       | [gwanganNight.webp](destinations/gwanganNight.webp)     | [Sehoon Ye](https://unsplash.com/photos/UJkVOzI8wQo)          |
-| 다크   | 서울 · 광장시장       | [gwangjang.webp](destinations/gwangjang.webp)           | [Mike Swigunski](https://unsplash.com/photos/dbUCy23Bn8g)     |
-| 다크   | 서울 · 광화문         | [gwanghwamun.webp](destinations/gwanghwamun.webp)       | [Zero Take](https://unsplash.com/photos/L2Q6kH8dwug)          |
+| 테마   | 사진                                                   | 촬영자와 원본                                                |
+| ------ | ------------------------------------------------------ | ------------------------------------------------------------ |
+| 라이트 | [부산 감천문화마을](destinations/gamcheon.webp)        | [Sean Lee](https://unsplash.com/photos/Jr8as6DTews)          |
+| 라이트 | [귤나무 돌담](destinations/citrusWall.webp)            | [Insung Yoon](https://unsplash.com/photos/yd0fvnhs5QM)       |
+| 라이트 | [흰 등](destinations/whiteLanterns.webp)               | [Valery Rabchenyuk](https://unsplash.com/photos/5I_oFqB0n6g) |
+| 라이트 | [제주 전농로 벚꽃길](destinations/cherryBlossoms.webp) | [Ji Seongkwang](https://unsplash.com/photos/CX7fI2LXJgo)     |
+| 라이트 | [꽃이 핀 가게 앞](destinations/blossomStorefront.webp) | [Timothy Ries](https://unsplash.com/photos/S5XsDlChGAQ)      |
+| 다크   | [자물쇠](destinations/loveLocks.webp)                  | [Clark Gu](https://unsplash.com/photos/jQSDCkMnvFg)          |
+| 다크   | [단청 야경](destinations/litEaves.webp)                | [Clark Gu](https://unsplash.com/photos/WrSuADjF_fI)          |
+| 다크   | [서울 광장시장](destinations/gwangjang.webp)           | [Mike Swigunski](https://unsplash.com/photos/dbUCy23Bn8g)    |
+| 다크   | [궁궐 대문 야경](destinations/palaceGateNight.webp)    | 사용자 제공 사진                                             |
 
-원본 제공처의 이용 조건은 [Unsplash](https://unsplash.com/license)와 [Pexels](https://www.pexels.com/license/)에서 확인할 수 있습니다.
+Unsplash 사진의 이용 조건은 [Unsplash 라이선스](https://unsplash.com/license)에서 확인할 수 있습니다.
 
 ## 여행 일러스트
 

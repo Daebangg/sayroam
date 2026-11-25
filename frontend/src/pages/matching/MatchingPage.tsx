@@ -32,6 +32,7 @@ import {
     type RecruitmentAction,
 } from "@/components/features/matching/RecruitmentActionDialog";
 import { RecruitmentStatusBadge } from "@/components/features/matching/RecruitmentStatusBadge";
+import { RecruitmentUpdatedDate } from "@/components/features/matching/RecruitmentUpdatedDate";
 import { RecruitmentDetailsPanel } from "@/components/features/matching/RecruitmentDetailsPanel";
 import { TravelStyleChoices } from "@/components/features/matching/TravelStyleChoices";
 import { MatchingFilterPopover } from "@/components/features/matching/MatchingFilterPopover";
@@ -527,7 +528,7 @@ function MatchingWorkspace({
         <main
             id="main-content"
             tabIndex={-1}
-            className={`matching-workspace${view === "entry" ? " matching-workspace--entry" : ""}${view === "mine" ? " matching-workspace--mine" : ""}${view === "mine" && animatePanelLayout ? " matching-workspace--panel-transition" : ""}${view === "mine" && selectedRegistration ? " matching-workspace--details" : ""}`}
+            className={`matching-workspace${view === "entry" ? " matching-workspace--entry" : ""}${view === "mine" ? " matching-workspace--mine panel-list-layout" : ""}${view === "mine" && animatePanelLayout ? " panel-list-layout--animated" : ""}${view === "mine" && selectedRegistration ? " matching-workspace--details panel-list-layout--open" : ""}`}
         >
             <div key={view} className="matching-view page-enter">
                 {view !== "entry" && (
@@ -1425,9 +1426,14 @@ function MatchingWorkspace({
                                             key={registration.id}
                                         >
                                             <div>
-                                                <RecruitmentStatusBadge
-                                                    status={listingStatus(registration)}
-                                                />
+                                                <div className="recruitment-heading-row">
+                                                    <RecruitmentStatusBadge
+                                                        status={listingStatus(registration)}
+                                                    />
+                                                    <RecruitmentUpdatedDate
+                                                        updatedAt={registration.updatedAt}
+                                                    />
+                                                </div>
                                                 <h3>
                                                     <Button
                                                         variant="plain"
@@ -1485,23 +1491,31 @@ function MatchingWorkspace({
                                                             <Icon name="arrow" variant="outline" />
                                                         </Button>
                                                     )}
-                                                    <RecruitmentTextAction
-                                                        action="edit"
-                                                        disabled={
-                                                            matching.busy ||
-                                                            !registration.destinationId
-                                                        }
-                                                        onClick={() =>
-                                                            requestAction(registration.id, "edit")
-                                                        }
-                                                    />
-                                                    <RecruitmentTextAction
-                                                        action="close"
-                                                        disabled={matching.busy}
-                                                        onClick={() =>
-                                                            requestAction(registration.id, "close")
-                                                        }
-                                                    />
+                                                    <div className="matching-registration__manage">
+                                                        <RecruitmentTextAction
+                                                            action="edit"
+                                                            disabled={
+                                                                matching.busy ||
+                                                                !registration.destinationId
+                                                            }
+                                                            onClick={() =>
+                                                                requestAction(
+                                                                    registration.id,
+                                                                    "edit",
+                                                                )
+                                                            }
+                                                        />
+                                                        <RecruitmentTextAction
+                                                            action="close"
+                                                            disabled={matching.busy}
+                                                            onClick={() =>
+                                                                requestAction(
+                                                                    registration.id,
+                                                                    "close",
+                                                                )
+                                                            }
+                                                        />
+                                                    </div>
                                                 </div>
                                             )}
                                             {registration.status === "CLOSED" && (

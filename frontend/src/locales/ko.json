@@ -40,55 +40,36 @@
         "descriptionFirst": "여행 계획부터 롬 메이트, 일정까지",
         "descriptionSecond": "한곳에서 준비하세요.",
         "start": "여행 시작하기",
-        "slider": {
-            "label": "국내 여행지 사진",
-            "haeundae": {
-                "city": "부산",
-                "name": "해운대해수욕장"
+        "dashboard": {
+            "trips": "내 여행",
+            "matches": "내 모집",
+            "owner": "내가 만든 여행",
+            "member": "참여 중",
+            "people": "{{count}}명",
+            "places": {
+                "busan": "부산",
+                "jeju": "제주",
+                "seoul": "서울"
             },
-            "cherryBlossoms": {
-                "city": "제주",
-                "name": "전농로 벚꽃길"
+            "tripTitles": {
+                "busan": "부산, 골목을 따라 걷는 주말",
+                "jeju": "제주 동쪽의 겨울 산책",
+                "seoul": "서울의 밤과 시장 한 바퀴"
             },
-            "hyangwonjeong": {
-                "city": "서울",
-                "name": "경복궁 향원정"
+            "matchTitles": {
+                "busan": "감천 골목길 같이 걸어요",
+                "jeju": "제주 올레길 동행을 찾아요",
+                "seoul": "광장시장 저녁 나들이"
             },
-            "gamcheon": {
-                "city": "부산",
-                "name": "감천문화마을"
+            "tripNotes": {
+                "busan": "토요일에는 감천문화마을 골목을 걷고, 일요일 아침에는 송도 바다를 보러 가요.",
+                "jeju": "제주 동쪽에 머물며 올레길을 걷고 세화에서 쉬는 일정이에요.",
+                "seoul": "광장시장에서 저녁을 먹고 청계천을 따라 걸어요."
             },
-            "pinkMuhly": {
-                "city": "경주",
-                "name": "첨성대 일대"
-            },
-            "gwanganDay": {
-                "city": "부산",
-                "name": "광안대교"
-            },
-            "sunsetFlowers": {
-                "city": "경주",
-                "name": "인왕동 첨성대"
-            },
-            "namsan": {
-                "city": "서울",
-                "name": "N서울타워"
-            },
-            "donggung": {
-                "city": "경주",
-                "name": "동궁과 월지"
-            },
-            "gwanganNight": {
-                "city": "부산",
-                "name": "광안대교"
-            },
-            "gwangjang": {
-                "city": "서울",
-                "name": "광장시장"
-            },
-            "gwanghwamun": {
-                "city": "서울",
-                "name": "광화문"
+            "matchNotes": {
+                "busan": "감천문화마을 입구에서 만나 골목길과 전망대를 함께 걸어요.",
+                "jeju": "세화 해변을 지나는 올레길 구간을 함께 걸을 동행을 구해요.",
+                "seoul": "광장시장 먹거리 골목을 함께 둘러보는 저녁 모임이에요."
             }
         }
     },
@@ -843,6 +824,7 @@
         "invalid": "입력 내용을 확인해 주세요."
     },
     "matchingFlow": {
+        "lastUpdated": "최근 수정일",
         "searchMyPosts": "제목·여행지 검색",
         "statusFilter": "모집 상태",
         "allPosts": "전체",

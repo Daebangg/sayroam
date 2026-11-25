@@ -1,9 +1,10 @@
-import { useEffect, useId, useRef, type ReactNode } from "react";
+import { useEffect, useId, useRef, type ReactNode, type RefObject } from "react";
 import { Button, Icon } from "@/components/ui";
 
 type MatchingFilterPopoverProps = {
     label: string;
     fieldLabel?: string;
+    anchorBounds?: RefObject<HTMLElement | null>;
     /** 함수로 넘기면 선택을 마친 내용이 팝오버를 닫을 수 있다. 닫으면 포커스는 트리거로 돌아간다. */
     children: ReactNode | ((close: () => void) => ReactNode);
     className?: string;
@@ -17,6 +18,7 @@ type MatchingFilterPopoverProps = {
 export function MatchingFilterPopover({
     label,
     fieldLabel,
+    anchorBounds,
     children,
     className = "",
     panelClassName = "matching-filter-popover ui-menu-surface",
@@ -39,8 +41,16 @@ export function MatchingFilterPopover({
                 const above = rect.top - 2 * gap;
                 const height = element.offsetHeight;
                 const openAbove = height > below && above > below;
-                const left = rect.left + (rect.width - element.offsetWidth) / 2;
-                element.style.left = `${Math.max(gap, Math.min(left, window.innerWidth - element.offsetWidth - gap))}px`;
+                const width = element.offsetWidth;
+                let left = rect.left + (rect.width - width) / 2;
+                const bounds = anchorBounds?.current?.getBoundingClientRect();
+                if (bounds) {
+                    left =
+                        bounds.width >= width
+                            ? Math.max(bounds.left, Math.min(left, bounds.right - width))
+                            : bounds.left + (bounds.width - width) / 2;
+                }
+                element.style.left = `${Math.max(gap, Math.min(left, window.innerWidth - width - gap))}px`;
                 const top = openAbove ? rect.top - height - gap : rect.bottom + gap;
                 element.style.top = `${Math.max(gap, Math.min(top, window.innerHeight - height - gap))}px`;
                 return;
@@ -51,15 +61,28 @@ export function MatchingFilterPopover({
                 placement === "top" && (above >= 8 || rect.top > window.innerHeight - rect.bottom);
             element.style.top = `${Math.max(8, Math.min(up ? above : rect.bottom + 8, window.innerHeight - element.offsetHeight - 8))}px`;
         };
-        element.addEventListener("toggle", position);
+        let frame = 0;
+        // 열린 달력은 스크롤이 끝난 뒤에도 이동 중인 검색바를 따라간다.
+        function trackAnchor() {
+            if (!element?.matches(":popover-open")) return;
+            position();
+            frame = requestAnimationFrame(trackAnchor);
+        }
+        function toggle() {
+            cancelAnimationFrame(frame);
+            if (anchorBounds) trackAnchor();
+            else position();
+        }
+        element.addEventListener("toggle", toggle);
         window.addEventListener("resize", position);
         window.addEventListener("scroll", position, true);
         return () => {
-            element.removeEventListener("toggle", position);
+            cancelAnimationFrame(frame);
+            element.removeEventListener("toggle", toggle);
             window.removeEventListener("resize", position);
             window.removeEventListener("scroll", position, true);
         };
-    }, [placement, fieldLabel]);
+    }, [placement, fieldLabel, anchorBounds]);
     // 렌더 중 넘기는 함수라 ref 대신 id로 찾는다.
     function close(): void {
         const element = document.getElementById(id);
