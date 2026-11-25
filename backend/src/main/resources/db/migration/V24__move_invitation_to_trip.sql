@@ -9,10 +9,10 @@ ALTER TABLE trip
 ALTER TABLE room ADD COLUMN migrated_trip_id BIGINT NULL;
 
 INSERT INTO room (name, created_at, updated_at, migrated_trip_id)
-SELECT NULL, NOW(6), NOW(6), t.id FROM trip t WHERE t.room_id IS NULL;
+SELECT NULL, UTC_TIMESTAMP(6), UTC_TIMESTAMP(6), t.id FROM trip t WHERE t.room_id IS NULL;
 
 INSERT INTO room_member (room_id, user_id, role, status, notification_muted, joined_at, created_at, updated_at)
-SELECT r.id, t.created_by, 'MEMBER', 'JOINED', 0, NOW(6), NOW(6), NOW(6)
+SELECT r.id, t.created_by, 'MEMBER', 'JOINED', 0, UTC_TIMESTAMP(6), UTC_TIMESTAMP(6), UTC_TIMESTAMP(6)
 FROM room r JOIN trip t ON t.id = r.migrated_trip_id;
 
 UPDATE trip t JOIN room r ON r.migrated_trip_id = t.id SET t.room_id = r.id;
