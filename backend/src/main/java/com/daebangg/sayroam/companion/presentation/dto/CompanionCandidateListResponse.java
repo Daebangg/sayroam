@@ -2,6 +2,8 @@ package com.daebangg.sayroam.companion.presentation.dto;
 
 import com.daebangg.sayroam.companion.application.dto.CompanionCandidateResult;
 import com.daebangg.sayroam.user.domain.Gender;
+import com.daebangg.sayroam.companion.domain.CompanionRequest;
+import com.daebangg.sayroam.companion.domain.CompanionRequestStatus;
 import com.daebangg.sayroam.companion.domain.TravelStyleMatch;
 import io.swagger.v3.oas.annotations.media.Schema;
 import org.jspecify.annotations.Nullable;
@@ -34,19 +36,24 @@ public record CompanionCandidateListResponse(List<Candidate> candidates, boolean
             @Schema(description = "후보가 공개한 성별. 비공개 또는 프로필 미입력 시 null",
                     enumAsRef = true) @Nullable Gender gender,
             @Schema(description = "4문항 비교 결과. 날짜순 조회에서 응답이 부족하면 null")
-            @Nullable TravelStyleMatchResponse travelStyleMatch
+            @Nullable TravelStyleMatchResponse travelStyleMatch,
+            @Nullable Long requestId,
+            @Schema(enumAsRef = true) @Nullable CompanionRequestStatus requestStatus,
+            @Schema(enumAsRef = true) CompanionRequest.@Nullable Direction direction,
+            boolean canRequest
     ) {
         private static Candidate from(CompanionCandidateResult result) {
             return new Candidate(result.searchId(), result.nickname(), result.profileImageUrl(),
                     result.startDate(), result.endDate(), result.overlapStartDate(), result.overlapEndDate(),
                     result.overlapDays(), result.title(), result.introduction(), result.age(), result.gender(),
-                    result.travelStyleMatch() == null ? null : TravelStyleMatchResponse.from(result.travelStyleMatch()));
+                    result.travelStyleMatch() == null ? null : TravelStyleMatchResponse.from(result.travelStyleMatch()),
+                    result.requestId(), result.requestStatus(), result.direction(), result.canRequest());
         }
     }
 
     @Schema(requiredProperties = {"score", "category", "items"})
     public record TravelStyleMatchResponse(double score, TravelStyleMatch.Category category, List<StyleItem> items) {
-        private static TravelStyleMatchResponse from(TravelStyleMatch match) {
+        static TravelStyleMatchResponse from(TravelStyleMatch match) {
             return new TravelStyleMatchResponse(match.score(), match.category(),
                     match.items().stream().map(item -> new StyleItem(item.code(), item.myScore(), item.candidateScore(),
                             item.difference(), item.similarity())).toList());

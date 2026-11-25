@@ -39,7 +39,7 @@ interface CompanionCandidateQueryJpaRepository
     @Override
     default List<CompanionCandidateResult> findCandidates(CandidateQuery query) {
         AgeRange ageRange = query.preferredAgeRange();
-        return findCandidates(query.ownerId(), query.destinationId(), query.period().startDate(),
+        return findCandidates(query.searchId(), query.ownerId(), query.destinationId(), query.period().startDate(),
                 query.period().endDate(), query.preferredGender(), ageRange == null ? null : ageRange.minAge(),
                 ageRange == null ? null : ageRange.maxAge(), query.titleQuery(), query.ageReferenceDate(),
                 query.offset(), query.limit(), query.styleSort(), query.travelStyle().get("planning"),
@@ -60,6 +60,9 @@ interface CompanionCandidateQueryJpaRepository
                 join User owner on owner.id = :ownerId and owner.deletedAt is null
                 join User candidate on candidate.id = c.userId and candidate.deletedAt is null
             """ + ELIGIBLE_CANDIDATES + """
+                  and not exists (select rejected.id from CompanionRequest rejected
+                        where rejected.firstSearchId = least(:searchId, c.id)
+                          and rejected.secondSearchId = greatest(:searchId, c.id) and rejected.status = REJECTED)
                   and (:titleQuery = '' or locate(:titleQuery, c.title) > 0)
                   and (:styleSort = false or (c.travelStyle.planning is not null
                        and c.travelStyle.dailyPace is not null and c.travelStyle.timeTogether is not null
@@ -99,16 +102,23 @@ interface CompanionCandidateQueryJpaRepository
                 r.overlapStart, r.overlapEnd, r.overlapDays, r.title, search.introduction,
                 case when search.showAge then cast((:ageReferenceDate - profile.birthDate) by year as Integer)
                      else null end,
-                case when search.showGender then profile.gender else null end, r.userId, search.travelStyle
+                case when search.showGender then profile.gender else null end, r.userId, search.travelStyle,
+                req.id, req.status, req.senderId, :ownerId,
+                case when :searchId is not null and r.overlapEnd >= :ageReferenceDate
+                     and exists (select d.id from Destination d where d.id = :destinationId and d.active = true)
+                     then true else false end
             )
             from orderedCandidates r
             join CompanionSearch search on search.id = r.searchId
             join User profile on profile.id = search.userId
+            left join CompanionRequest req on req.firstSearchId = least(:searchId, r.searchId)
+                and req.secondSearchId = greatest(:searchId, r.searchId)
             where r.candidateRank > :offset
             order by r.candidateRank
             limit :limit
             """)
     List<CompanionCandidateResult> findCandidates(
+            @Param("searchId") Long searchId,
             @Param("ownerId") long ownerId,
             @Param("destinationId") long destinationId,
             @Param("startDate") LocalDate startDate,

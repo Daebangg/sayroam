@@ -50,11 +50,11 @@ class SayroamApplicationTests extends DatabaseIntegrationTest {
                 SELECT COUNT(*) FROM information_schema.tables
                 WHERE table_schema = DATABASE() AND table_type = 'BASE TABLE'
                 """, Integer.class)).isEqualTo(21);
-        assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("24");
+        assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("25");
         flyway.validate();
         assertThat(flyway.migrate().migrationsExecuted).isZero();
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM flyway_schema_history WHERE success = 1",
-                Integer.class)).isEqualTo(24);
+                Integer.class)).isEqualTo(25);
     }
 
     @Test
@@ -401,6 +401,31 @@ class SayroamApplicationTests extends DatabaseIntegrationTest {
                     INSERT INTO trip (created_by, title, start_date, end_date, created_at, updated_at)
                     VALUES (10, '목적지 없는 여행', '2026-12-01', '2026-12-04', NOW(), NOW())
                     """)).isInstanceOf(DataAccessException.class);
+        }
+    }
+
+    @Test
+    void upgradesSingleSearchRequestsWithoutGuessingTheSenderSearch() {
+        try (MySQLContainer mysql = new MySQLContainer("mysql:8.4")
+                .withCommand("--log-bin-trust-function-creators=1")) {
+            mysql.start();
+            DriverManagerDataSource source = new DriverManagerDataSource(
+                    mysql.getJdbcUrl(), mysql.getUsername(), mysql.getPassword());
+            Flyway.configure().dataSource(source).target("24").load().migrate();
+            JdbcTemplate db = new JdbcTemplate(source);
+            db.update("INSERT INTO users (id, nickname, role, created_at, updated_at) VALUES "
+                    + "(10, '회원 가', 'USER', NOW(), NOW()), (20, '회원 나', 'USER', NOW(), NOW())");
+            db.update("INSERT INTO companion_search (id, user_id, region, start_date, end_date, status, created_at, updated_at) "
+                    + "VALUES (1, 10, '서울', CURRENT_DATE, CURRENT_DATE, 'ACTIVE', NOW(), NOW()), "
+                    + "(2, 20, '서울', CURRENT_DATE, CURRENT_DATE, 'ACTIVE', NOW(), NOW())");
+            String insert = "INSERT INTO companion_request (sender_id, receiver_id, companion_search_id, status, created_at, updated_at";
+            db.update(insert + ") VALUES (10, 20, 2, 'ACCEPTED', NOW(), NOW())");
+            Flyway.configure().dataSource(source).target("25").load().migrate();
+            assertThat(db.queryForObject("SELECT COUNT(*) FROM companion_request WHERE sender_search_id IS NULL "
+                    + "AND status = 'ACCEPTED' AND companion_search_id = 2", Long.class)).isOne();
+            String paired = insert + ", sender_search_id) VALUES (?, ?, ?, 'PENDING', NOW(), NOW(), ?)";
+            db.update(paired, 10, 20, 2, 1);
+            assertThatThrownBy(() -> db.update(paired, 20, 10, 1, 2)).isInstanceOf(DataAccessException.class);
         }
     }
 

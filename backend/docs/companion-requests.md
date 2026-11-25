@@ -1,0 +1,18 @@
+# 롬 메이트 요청
+
+본인 모집의 후보 카드와 상세는 같은 요청 API를 사용한다. 요청의 기준은 두 모집글의 조합이다. 같은 회원이 올린 다른 모집에는 별도로 요청할 수 있다. 기존 후보 발견 이력과 알림은 [백그라운드 매칭](companion-background-matching.md)에서 다룬다.
+
+| 동작 | API | 결과 |
+| --- | --- | --- |
+| 요청 보내기 | `POST /api/companion-searches/{searchId}/requests` + `{"candidateSearchId":205}` | 최신 요청을 200으로 반환한다. 양방향 동시 요청의 두 번째 호출에는 최초 요청 기준으로 RECEIVED가 반환된다. |
+| 내 모집의 요청 | `GET /api/companion-searches/{searchId}/requests` | 양쪽 방향의 요청을 최신순으로 반환한다. `?status=REJECTED`는 거절된 매칭 목록이다. |
+| 알림에서 상세 열기 | `GET /api/companion-requests/{requestId}` | 내 모집과 상대 모집 ID, 나를 기준으로 한 방향, 최신 상태, 상대의 일정·공개 프로필·여행 스타일 비교를 반환한다. 상대가 탈퇴하면 candidate는 null이다. |
+| 받은 요청에 응답 | `PATCH /api/companion-requests/{requestId}` + `{"status":"ACCEPTED"}` 또는 `{"status":"REJECTED"}` | 같은 응답을 반복해도 같은 결과를 반환한다. 결정을 뒤집으면 409, 발신자가 응답하면 403, 제삼자가 조회·응답하면 404다. |
+
+후보 카드의 `canRequest`가 true이면 **롬 메이트 요청하기**를 표시한다. 대기 중이면 `requestStatus=PENDING`이며 SENT는 **응답 기다리는 중**, RECEIVED는 **받은 요청**이다. 대표 후보가 바뀌어도 요청 목록과 알림은 원래 모집 조합으로 연결된다. 거절된 조합은 후보의 회원별 순위와 페이지를 계산하기 전에 제외한다. 기간이 지난 기존 모집의 겹치는 일정은 조회할 수 있고 새 요청은 보낼 수 없다.
+
+모집 종료·수정 시 유효성을 잃은 대기 요청을 만료시킨다. 요청 상세·목록과 응답 시에도 유효성을 재검증한다. 만료 후 수락을 시도하면 EXPIRED가 반환되며, 종료·거절·만료된 요청을 다시 보내도 새 요청이 만들어지지 않는다. 수락된 요청 ID는 후속 채팅방 개설의 기준이다.
+
+요청 생성과 응답은 알림과 같은 트랜잭션에서 저장한다. 수신자는 COMPANION_REQUEST를, 최초 발신자는 COMPANION_ACCEPTED 또는 COMPANION_REJECTED를 받는다. targetType은 COMPANION_REQUEST이며 targetId는 요청 ID다. 사건 키는 요청 ID와 사건 종류로 고정해 같은 사건을 다시 처리해도 한 건만 전달한다.
+
+V25는 기존 수신 모집에 발신 모집을 추가하고 두 ID의 최솟값·최댓값에 유일 제약을 둔다. 발신 모집이 기록되지 않은 과거 행과 기존 방 연결은 보존하며, 해당 행은 두 모집 기반 API에서 제외한다. 새 알림 유형을 처리하고 요청 상세로 연결하는 화면은 [#186](https://github.com/Daebangg/sayroam/issues/186)에서 배포한다. 기존 프론트는 새 알림 유형을 거부하므로 호환 화면을 먼저 또는 서버와 함께 배포한다.

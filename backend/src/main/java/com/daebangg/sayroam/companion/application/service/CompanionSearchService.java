@@ -27,6 +27,7 @@ import com.daebangg.sayroam.user.domain.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
@@ -49,6 +50,7 @@ public class CompanionSearchService {
     private final CompanionCandidateQueryRepository candidates;
     private final UserRepository users;
     private final CompanionMatchingJobRepository matchingJobs;
+    private final CompanionRequestService requests;
     private final ApplicationEventPublisher events;
 
     @Transactional
@@ -109,7 +111,7 @@ public class CompanionSearchService {
         CompanionSearch search = searches.findByIdAndUserId(searchId, userId)
                 .orElseThrow(() -> new BusinessException(CompanionSearchErrorCode.COMPANION_SEARCH_NOT_FOUND));
         search.validateCandidateSearch();
-        return queryCandidates(userId, search.getDestinationId(), search.getPeriod(),
+        return queryCandidates(searchId, userId, search.getDestinationId(), search.getPeriod(),
                 search.getPreferredGender(), search.getPreferredAgeRange(), titleQuery, page, size, sort,
                 search.travelStyleAnswers());
     }
@@ -121,7 +123,7 @@ public class CompanionSearchService {
         TravelPeriod period = new TravelPeriod(query.startDate(), query.endDate());
         AgeRange preferredAgeRange = new AgeRange(query.preferredMinAge(), query.preferredMaxAge());
         requireActiveDestination(query.destinationId());
-        return queryCandidates(userId, query.destinationId(), period, query.preferredGender(), preferredAgeRange,
+        return queryCandidates(null, userId, query.destinationId(), period, query.preferredGender(), preferredAgeRange,
                 query.titleQuery(), page, size, sort,
                 query.travelStyle() == null ? findTravelStyleAnswers(userId)
                         : new RecruitmentTravelStyle(query.travelStyle()).answers());
@@ -133,7 +135,7 @@ public class CompanionSearchService {
         }
     }
 
-    private CompanionCandidateResult.Page queryCandidates(long userId, long destinationId, TravelPeriod period,
+    private CompanionCandidateResult.Page queryCandidates(Long searchId, long userId, long destinationId, TravelPeriod period,
                                                           Gender preferredGender, AgeRange preferredAgeRange,
                                                           String titleQuery, int page, int size, CompanionCandidateSort sort,
                                                           Map<String, Integer> myAnswers) {
@@ -146,7 +148,7 @@ public class CompanionSearchService {
         }
         LocalDate ageReferenceDate = LocalDate.now(KOREA_ZONE);
         CompanionCandidateQueryRepository.CandidateQuery query = new CompanionCandidateQueryRepository.CandidateQuery(
-                userId, destinationId, period, preferredGender, preferredAgeRange, keyword, ageReferenceDate,
+                searchId, userId, destinationId, period, preferredGender, preferredAgeRange, keyword, ageReferenceDate,
                 (long) page * size, size + 1, sort == CompanionCandidateSort.STYLE, myAnswers);
         List<CompanionCandidateResult> results = candidates.findCandidates(query);
         boolean hasNext = results.size() > size;
@@ -173,7 +175,7 @@ public class CompanionSearchService {
                 .collect(Collectors.toMap(TravelStyleAnswerResult::code, TravelStyleAnswerResult::score));
     }
 
-    @Transactional
+    @Transactional(isolation = Isolation.READ_COMMITTED)
     public CompanionSearchResult update(long userId, long id, SaveCompanionSearchCommand command) {
         CompanionSearch search = findMineForUpdate(userId, id);
         requireActiveDestination(command.destinationId());
@@ -184,11 +186,12 @@ public class CompanionSearchService {
         search.update(command.destinationId(), new TravelPeriod(command.startDate(), command.endDate()),
                 command.preferredGender(), new AgeRange(command.preferredMinAge(), command.preferredMaxAge()),
                 command.title(), command.introduction(), command.showAge(), command.showGender());
+        requests.refreshPending(id);
         enqueueMatching(search);
         return result(search);
     }
 
-    @Transactional
+    @Transactional(isolation = Isolation.READ_COMMITTED)
     public CompanionSearchResult changeStatus(long userId, long id, CompanionSearchStatus status) {
         lockOwner(userId);
         CompanionSearch search = findMineForUpdate(userId, id);
@@ -200,6 +203,7 @@ public class CompanionSearchService {
             }
         }
         search.changeStatus(status);
+        if (status == CompanionSearchStatus.CLOSED) requests.refreshPending(id);
         if (reopening) {
             enqueueMatching(search);
         }
