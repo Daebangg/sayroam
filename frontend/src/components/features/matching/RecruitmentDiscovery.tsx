@@ -42,6 +42,8 @@ type DiscoveryProps = {
           }
         | undefined;
     initialRequestId?: number | undefined;
+    historyUnavailable?: boolean;
+    onRecheckHistory?: () => void;
     onBack: () => void;
     onEdit?: (() => void) | undefined;
     onKeepRecruiting?: (() => void) | undefined;
@@ -88,6 +90,8 @@ export function RecruitmentDiscovery({
     destination,
     onBack,
     initialRequestId,
+    historyUnavailable = false,
+    onRecheckHistory,
     requestActions,
     onEdit,
     onKeepRecruiting,
@@ -178,7 +182,7 @@ export function RecruitmentDiscovery({
             candidate.searchId === recipientId && candidate.canRequest && !candidate.requestStatus,
     );
     async function confirmRequest() {
-        if (!recipient || !requestActions) return;
+        if (!recipient || !requestActions || historyUnavailable) return;
         setRecipientId(undefined);
         if (await requestActions.send(recipient.searchId)) setSentNotice(recipient.searchId);
     }
@@ -189,11 +193,17 @@ export function RecruitmentDiscovery({
         const entry = entries.find(
             (item) => (item.candidate?.requestId ?? item.archivedRequest?.requestId) === requestId,
         );
-        if (!entry) return;
+        if (!entry || historyUnavailable) return;
         setResponse({ requestId, status });
     }
     async function confirmResponse() {
-        if (!response || !requestActions || requestActions.responseBusyId !== undefined) return;
+        if (
+            !response ||
+            !requestActions ||
+            historyUnavailable ||
+            requestActions.responseBusyId !== undefined
+        )
+            return;
         const { requestId, status } = response;
         if (await requestActions.respond(requestId, status)) {
             setResponseNotice(status);
@@ -214,7 +224,10 @@ export function RecruitmentDiscovery({
                     onReject={(id) => prepareResponse(id, "REJECTED")}
                     placement={placement}
                     candidate={candidate}
-                    busyId={requestActions.busyId ?? requestActions.responseBusyId}
+                    busyId={requestActions.busyId}
+                    actionsDisabled={
+                        historyUnavailable || requestActions.responseBusyId !== undefined
+                    }
                     onApply={setRecipientId}
                     recheck={
                         requestActions.uncertain?.has(candidate.searchId) ||
@@ -365,6 +378,14 @@ export function RecruitmentDiscovery({
                                 {t("roamMatePreview.empty.close")}
                             </Button>
                         )}
+                    </div>
+                )}
+                {phase === "found" && historyUnavailable && (
+                    <div className="roam-request-history-notice" role="alert">
+                        <p>{t("companionRequests.historyUnavailable")}</p>
+                        <Button variant="soft" onClick={onRecheckHistory}>
+                            {t("companionRequests.recheck")}
+                        </Button>
                     </div>
                 )}
                 {phase === "found" && visible.length === 0 && (

@@ -33,16 +33,25 @@ export function RecruitmentResultsPage({
     const targetId =
         Number(new URLSearchParams(location.search).get("selectedRequestId")) || undefined;
     const initialSearch = from === "create" || from === "edit" || from === "resume";
-    const { state, retry, send, busyId, uncertain, respond, responseBusyId, responseUncertain } =
-        useRecruitmentResults(
-            post.id,
-            post.matchingRevision,
-            initialSearch,
-            reloadPost,
-            post.status === "ACTIVE" &&
-                post.matchingStatus !== "SKIPPED" &&
-                post.destinationId !== null,
-        );
+    const {
+        state,
+        retry,
+        send,
+        busyId,
+        uncertain,
+        respond,
+        responseBusyId,
+        responseUncertain,
+        retryHistory,
+    } = useRecruitmentResults(
+        post.id,
+        post.matchingRevision,
+        initialSearch,
+        reloadPost,
+        post.status === "ACTIVE" &&
+            post.matchingStatus !== "SKIPPED" &&
+            post.destinationId !== null,
+    );
     function list() {
         return navigate(pagePaths.matching, { replace: true, state: { matchingView: "mine" } });
     }
@@ -101,6 +110,8 @@ export function RecruitmentResultsPage({
             candidates={candidates}
             archived={archived}
             initialRequestId={targetId}
+            historyUnavailable={state.phase === "loaded" && state.historyUnavailable}
+            onRecheckHistory={retryHistory}
             requestActions={{
                 send,
                 busyId,

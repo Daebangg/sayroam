@@ -10894,3 +10894,18 @@ div.trip-chat__notice .ui-button-plain {
     --action-facet: #ffdf9b2b;
     --action-edge: transparent;
 }
+
+.roam-request-history-notice {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--space-3);
+    margin-block-start: var(--space-3);
+    padding: var(--space-3) var(--space-4);
+    border-radius: var(--radius-card);
+    background: var(--surface);
+    color: var(--text);
+}
+.roam-request-history-notice p {
+    flex: 1 1 240px;
+}

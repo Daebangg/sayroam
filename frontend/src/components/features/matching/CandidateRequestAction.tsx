@@ -9,6 +9,7 @@ type CandidateRequestActionProps = {
     >;
     placement: "card" | "details";
     busyId?: number | undefined;
+    actionsDisabled?: boolean;
     onRespond?: (requestId: number) => void;
     onReject?: (requestId: number) => void;
     onApply?: (id: number) => void;
@@ -26,6 +27,7 @@ export function CandidateRequestAction({
     candidate,
     placement,
     busyId,
+    actionsDisabled = false,
     onApply,
     onRespond,
     onReject,
@@ -51,7 +53,7 @@ export function CandidateRequestAction({
                     className={className}
                     data-request-action="respond"
                     onClick={() => onRespond?.(requestId)}
-                    disabled={!onRespond || busyId !== undefined}
+                    disabled={!onRespond || busyId !== undefined || actionsDisabled}
                 >
                     {placement === "card" && <Icon name="mail" />}
                     {t("companionRequests.respond")}
@@ -60,7 +62,7 @@ export function CandidateRequestAction({
                     <Button
                         variant="delete"
                         onClick={() => onReject(requestId)}
-                        disabled={busyId !== undefined}
+                        disabled={busyId !== undefined || actionsDisabled}
                     >
                         {t("companionRequests.reject")}
                     </Button>
@@ -88,7 +90,7 @@ export function CandidateRequestAction({
             className={className}
             data-request-status={requestStatus ?? undefined}
             onClick={() => onApply?.(candidate.searchId)}
-            disabled={!!requestStatus || busyId !== undefined}
+            disabled={!!requestStatus || busyId !== undefined || actionsDisabled}
             loading={!requestStatus && busyId === candidate.searchId}
             aria-live="polite"
         >

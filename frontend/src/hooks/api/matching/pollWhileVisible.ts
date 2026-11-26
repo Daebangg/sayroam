@@ -16,6 +16,7 @@ export function pollWhileVisible(
             if (delay !== null && !request.signal.aborted)
                 timer = window.setTimeout(() => void refresh(), delay);
         } finally {
+            request.abort();
             if (controller === request) controller = undefined;
         }
     }

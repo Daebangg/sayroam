@@ -29,7 +29,12 @@ async function readCandidates(searchId: number, signal: AbortSignal) {
 
 type ResultState =
     | { phase: "searching" | "delayed" | "unavailable" | "offline" | "error" }
-    | { phase: "loaded"; candidates: CandidateResult["candidates"]; archived: CompanionRequest[] };
+    | {
+          phase: "loaded";
+          candidates: CandidateResult["candidates"];
+          archived: CompanionRequest[];
+          historyUnavailable: boolean;
+      };
 
 export function useRecruitmentResults(
     searchId: number,
@@ -87,7 +92,7 @@ export function useRecruitmentResults(
                             return delayed ? 10000 : 2000;
                         }
                     }
-                    const [candidates, history] = await Promise.all([
+                    const [candidateResult, historyResult] = await Promise.allSettled([
                         includeCandidates
                             ? readCandidates(searchId, signal)
                             : Promise.resolve(
@@ -100,21 +105,47 @@ export function useRecruitmentResults(
                     ]);
                     if (signal.aborted) return null;
                     if (readGeneration !== generation.current) return null;
+                    if (candidateResult.status === "rejected") throw candidateResult.reason;
+                    const candidates = candidateResult.value;
+                    if (historyResult.status === "rejected") {
+                        if (!includeCandidates || candidates.size === 0) throw historyResult.reason;
+                        setState({
+                            phase: "loaded",
+                            candidates: [...candidates.values()],
+                            archived: [],
+                            historyUnavailable: true,
+                        });
+                        return null;
+                    }
+                    const history = historyResult.value;
                     const archived = history.filter(
                         (request) => !candidates.has(request.candidateSearchId),
                     );
                     for (const request of history) {
                         const candidate = candidates.get(request.candidateSearchId);
-                        if (candidate)
+                        if (candidate) {
+                            // 이력의 식별 정보를 사용하되 같은 요청의 최종 상태는 대기로 되돌리지 않는다.
+                            const finalCandidateStatus =
+                                candidate.requestId === request.requestId &&
+                                candidate.requestStatus &&
+                                candidate.requestStatus !== "PENDING"
+                                    ? candidate.requestStatus
+                                    : undefined;
                             candidates.set(candidate.searchId, {
                                 ...candidate,
-                                requestStatus: request.status,
+                                requestStatus: finalCandidateStatus ?? request.status,
                                 direction: request.direction,
                                 requestId: request.requestId,
                                 canRequest: false,
                             });
+                        }
                     }
-                    setState({ phase: "loaded", candidates: [...candidates.values()], archived });
+                    setState({
+                        phase: "loaded",
+                        candidates: [...candidates.values()],
+                        archived,
+                        historyUnavailable: false,
+                    });
                     return null;
                 } catch (error) {
                     if (!signal.aborted && readGeneration === generation.current)
@@ -136,6 +167,7 @@ export function useRecruitmentResults(
         responseBusyId: responseMutation.busyKey,
         responseUncertain: responseMutation.uncertain,
         async respond(requestId: number, status: RequestDecision) {
+            if (state.phase !== "loaded" || state.historyUnavailable) return false;
             const result = await responseMutation.run(requestId, (signal) =>
                 api.call("respondToCompanionRequest", {
                     params: { path: { requestId } },
@@ -170,6 +202,7 @@ export function useRecruitmentResults(
         },
         uncertain: mutation.uncertain,
         async send(candidateSearchId: number) {
+            if (state.phase !== "loaded" || state.historyUnavailable) return false;
             const result = await mutation.run(candidateSearchId, (signal) =>
                 api.call("sendCompanionRequest", {
                     params: { path: { searchId } },
@@ -199,6 +232,10 @@ export function useRecruitmentResults(
             );
             setAttempt((n) => n + 1);
             return result.status === "PENDING" && result.direction === "SENT";
+        },
+        retryHistory: () => {
+            generation.current++;
+            setAttempt((value) => value + 1);
         },
         retry: () => {
             mutation.clearUncertain();

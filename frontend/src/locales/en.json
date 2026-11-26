@@ -1227,6 +1227,7 @@
             "REJECTED_SENT": "The other person declined your Roam Mate request",
             "REJECTED_RECEIVED": "You declined this Roam Mate request",
             "EXPIRED": "This request has expired and can no longer receive a response"
-        }
+        },
+        "historyUnavailable": "Request status is unavailable. Check the current status to continue."
     }
 }

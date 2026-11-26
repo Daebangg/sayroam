@@ -20,10 +20,7 @@ export function MockupPage({ screen }: { screen: MockupScreen }) {
         screen === "matching-found" ||
         screen === "matching-empty" ||
         screen === "matching-delayed";
-    const needsParent =
-        discovery &&
-        !location.state?.fromMatchingMain &&
-        !new URLSearchParams(location.search).has("requestId");
+    const needsParent = discovery && !location.state?.fromMatchingMain;
 
     // 직접 열거나 알림에서 들어온 목업도 브라우저 뒤로가기의 목적지가 롬 메이트 메인이 되게 한다.
     useEffect(() => {
