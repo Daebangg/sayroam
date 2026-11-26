@@ -8,7 +8,9 @@ import com.daebangg.sayroam.user.application.dto.UserProfileResult;
 import com.daebangg.sayroam.user.domain.User;
 import com.daebangg.sayroam.user.domain.error.UserErrorCode;
 import com.daebangg.sayroam.user.domain.UserRepository;
+import com.daebangg.sayroam.user.domain.event.UserProfileChanged;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -39,6 +41,7 @@ public class UserService {
     private static final Set<String> IMAGE_FORMATS = Set.of("jpeg", "jpg", "png");
 
     private final UserRepository userRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Transactional(readOnly = true)
     public UserLoginMethodsResult getLoginMethods(long userId, long expectedAuthVersion) {
@@ -79,6 +82,10 @@ public class UserService {
         if (command.birthDate().present()) {
             user.changeBirthDate(command.birthDate().value(), LocalDate.now());
         }
+
+        if (command.nickname().present() || command.profileImageUrl().present()) {
+            eventPublisher.publishEvent(new UserProfileChanged(userId));
+        }
         return UserProfileResult.from(user);
     }
 
@@ -92,6 +99,7 @@ public class UserService {
         byte[] content = processProfileImage(dataUrl);
         User user = requireCurrentUser(userRepository.findForUpdateByIdAndDeletedAtIsNull(userId), expectedAuthVersion);
         user.uploadProfileImage(content);
+        eventPublisher.publishEvent(new UserProfileChanged(userId));
         return UserProfileResult.from(user);
     }
 
