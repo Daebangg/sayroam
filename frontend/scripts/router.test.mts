@@ -38,16 +38,25 @@ afterEach(() => {
     else Reflect.deleteProperty(globalThis, "document");
 });
 
-test("별도 호출 함수 없이 operationId와 입력만으로 방 생성 요청을 구성", async (t) => {
+test("별도 호출 함수 없이 operationId와 입력만으로 여행 생성 요청을 구성", async (t) => {
     setAccessToken(token);
     t.mock.method(globalThis, "fetch", async (path: unknown, options?: RequestInit) => {
-        assert.equal(path, "/api/rooms");
+        assert.equal(path, "/api/trips");
         assert.equal(options?.method, "POST");
         assert.equal(new Headers(options?.headers).get("Authorization"), "Bearer router-token");
-        assert.deepEqual(JSON.parse(String(options?.body)), { name: "여행" });
-        return Response.json({ roomId: 3 }, { status: 201 });
+        assert.deepEqual(JSON.parse(String(options?.body)), {
+            destinationId: 3,
+            startDate: "2026-12-01",
+            endDate: "2026-12-04",
+        });
+        return Response.json({ tripId: 3 }, { status: 201 });
     });
-    assert.deepEqual(await api.call("create", { body: { name: "여행" } }), { roomId: 3 });
+    assert.deepEqual(
+        await api.call("createTrip", {
+            body: { destinationId: 3, startDate: "2026-12-01", endDate: "2026-12-04" },
+        }),
+        { tripId: 3 },
+    );
 });
 
 test("명세의 Bearer·CSRF 조합과 PATCH 메서드를 호출 옵션 없이 적용", async (t) => {
@@ -192,13 +201,18 @@ test("런타임의 추가 옵션도 인증·fetch·출처 정책을 바꿀 수 �
 
 test("명세와 다른 성공 상태는 HTTP 상태를 보존해 거절", async (t) => {
     setAccessToken(token);
-    t.mock.method(globalThis, "fetch", async () => Response.json({ roomId: 3 }));
-    await assert.rejects(api.call("create", { body: { name: "여행" } }), (error: unknown) => {
-        assert(error instanceof ApiError);
-        assert.equal(error.kind, "invalid-response");
-        assert.equal(error.status, 200);
-        return true;
-    });
+    t.mock.method(globalThis, "fetch", async () => Response.json({ tripId: 3 }));
+    await assert.rejects(
+        api.call("createTrip", {
+            body: { destinationId: 3, startDate: "2026-12-01", endDate: "2026-12-04" },
+        }),
+        (error: unknown) => {
+            assert(error instanceof ApiError);
+            assert.equal(error.kind, "invalid-response");
+            assert.equal(error.status, 200);
+            return true;
+        },
+    );
 });
 
 test("본문 없는 성공 계약은 빈 200도 허용하고 예상하지 않은 본문은 거절", async (t) => {

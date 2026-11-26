@@ -69,7 +69,6 @@ import static org.mockito.Mockito.verifyNoInteractions;
 class TripServiceTest extends DatabaseIntegrationTest {
     private static final LocalDate START_DATE = LocalDate.of(2026, 12, 1);
     private static final LocalDate END_DATE = LocalDate.of(2026, 12, 4);
-    private static final String ROOM_NAME = "제주 여행";
     private static final String TITLE = "제주 여행";
     private static final Long MISSING_TRIP_ID = 999_999L;
     private static final Long MISSING_DESTINATION_ID = Long.MAX_VALUE;

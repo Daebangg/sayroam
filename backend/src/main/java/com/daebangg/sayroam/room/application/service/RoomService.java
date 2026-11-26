@@ -31,16 +31,8 @@ public class RoomService {
     private final ApplicationEventPublisher eventPublisher;
 
     @Transactional
-    public Long create(Long userId, String name) {
-        Room room = roomRepository.save(new Room(name));
-        roomMemberRepository.save(RoomMember.joinAsOwner(room, userId, LocalDateTime.now(ZoneOffset.UTC)));
-        return room.getId();
-    }
-
-    // 여행 방은 이름이 없다. 화면은 여행 이름을 보여 준다
-    @Transactional
     public Long createForTrip() {
-        return roomRepository.save(new Room(null)).getId();
+        return roomRepository.save(new Room()).getId();
     }
 
     @Transactional

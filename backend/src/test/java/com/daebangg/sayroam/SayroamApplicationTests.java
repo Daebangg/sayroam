@@ -50,11 +50,11 @@ class SayroamApplicationTests extends DatabaseIntegrationTest {
                 SELECT COUNT(*) FROM information_schema.tables
                 WHERE table_schema = DATABASE() AND table_type = 'BASE TABLE'
                 """, Integer.class)).isEqualTo(21);
-        assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("25");
+        assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("26");
         flyway.validate();
         assertThat(flyway.migrate().migrationsExecuted).isZero();
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM flyway_schema_history WHERE success = 1",
-                Integer.class)).isEqualTo(25);
+                Integer.class)).isEqualTo(26);
     }
 
     @Test
@@ -479,7 +479,7 @@ class SayroamApplicationTests extends DatabaseIntegrationTest {
         Long destinationId = entityManager.createQuery(
                 "select d.id from Destination d where d.name = :name", Long.class)
                 .setParameter("name", "제주").getSingleResult();
-        Room room = new Room(null);
+        Room room = new Room();
         entityManager.persist(room);
         Trip trip = new Trip(user.getId(), destinationId, period, "제주 여행");
         trip.linkRoom(room.getId());
@@ -515,8 +515,8 @@ class SayroamApplicationTests extends DatabaseIntegrationTest {
         jdbc.update("INSERT INTO room (created_at, updated_at) VALUES (NOW(), NOW())");
         Long roomId = jdbc.queryForObject("SELECT id FROM room", Long.class);
         String insertMember = """
-                INSERT INTO room_member (room_id, user_id, role, status, notification_muted, joined_at, created_at, updated_at)
-                VALUES (?, ?, 'MEMBER', 'JOINED', 0, NOW(), NOW(), NOW())
+                INSERT INTO room_member (room_id, user_id, status, notification_muted, joined_at, created_at, updated_at)
+                VALUES (?, ?, 'JOINED', 0, NOW(), NOW(), NOW())
                 """;
         jdbc.update(insertMember, roomId, userId);
         assertThatThrownBy(() -> jdbc.update(insertMember, roomId, userId))

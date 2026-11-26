@@ -8,7 +8,9 @@ export function verifyApiTypes(client: typeof api): void {
     void [user, empty];
     void client.call("login", { body: { email: "user@example.test", password: "password" } });
     void client.call("refresh");
-    void client.call("create", { body: { name: "여행" } });
+    void client.call("createTrip", {
+        body: { destinationId: 3, startDate: "2026-12-01", endDate: "2026-12-04" },
+    });
     void client.call("me").then((profile) => {
         const id: number = profile.userId;
         const role: "USER" | "ADMIN" = profile.role;
@@ -16,10 +18,14 @@ export function verifyApiTypes(client: typeof api): void {
         // @ts-expect-error 응답에 없는 필드
         void profile.password;
     });
-    void client.call("create", { body: { name: "여행" } }).then((room) => {
-        const id: number = room.roomId;
-        void id;
-    });
+    void client
+        .call("createTrip", {
+            body: { destinationId: 3, startDate: "2026-12-01", endDate: "2026-12-04" },
+        })
+        .then((trip) => {
+            const id: number = trip.tripId;
+            void id;
+        });
     // @ts-expect-error 명세에 없는 operationId
     void client.call("unknownOperation");
     // @ts-expect-error 로그인 본문은 필수

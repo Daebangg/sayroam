@@ -3,7 +3,6 @@ package com.daebangg.sayroam.room.application;
 import com.daebangg.sayroam.global.exception.BusinessException;
 import com.daebangg.sayroam.room.application.dto.RoomMemberProfileResult;
 import com.daebangg.sayroam.room.application.service.RoomService;
-import com.daebangg.sayroam.room.domain.RoomMember;
 import com.daebangg.sayroam.room.domain.RoomMemberStatus;
 import com.daebangg.sayroam.room.domain.error.RoomErrorCode;
 import com.daebangg.sayroam.room.domain.event.RoomMemberJoined;
@@ -18,7 +17,6 @@ import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.test.context.event.ApplicationEvents;
 import org.springframework.test.context.event.RecordApplicationEvents;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -64,37 +62,10 @@ class RoomServiceTest extends DatabaseIntegrationTest {
     }
 
     @Test
-    void 방을_만들면_방과_방장이_함께_저장된다() {
-        // given
-        Long userId = saveUser();
-
-        // when
-        Long roomId = roomService.create(userId, "제주 3박 4일");
-
-        // then
-        assertThat(roomRepository.count()).isEqualTo(1);
-        RoomMember owner = roomMemberRepository.findByRoomIdAndUserId(roomId, userId).orElseThrow();
-        assertThat(owner.isOwner()).isTrue();
-    }
-
-    @Test
-    void 방장_저장에_실패하면_방도_저장되지_않는다() {
-        // given
-        Long 없는_회원 = 999L;
-
-        // when
-        assertThatThrownBy(() -> roomService.create(없는_회원, "제주 3박 4일"))
-                .isInstanceOf(DataIntegrityViolationException.class);
-
-        // then
-        assertThat(roomRepository.count()).isZero();
-    }
-
-    @Test
     void 방_멤버가_아니면_접근을_거부한다() {
         // given
         Long owner_id = saveUser();
-        Long roomId = roomService.create(owner_id, "제주 3박 4일");
+        Long roomId = createRoomJoinedBy(owner_id);
         Long noneMemberId = 999L;
 
         assertThatThrownBy(() -> roomService.ensureJoined(roomId, noneMemberId))
@@ -106,7 +77,7 @@ class RoomServiceTest extends DatabaseIntegrationTest {
     void 참여_중인_멤버면_접근을_허용한다() {
         Long userId = saveUser();
 
-        Long roomId = roomService.create(userId, "제주 3박 4일");
+        Long roomId = createRoomJoinedBy(userId);
 
         assertThatCode(() -> roomService.ensureJoined(roomId, userId))
                 .doesNotThrowAnyException();
@@ -127,7 +98,7 @@ class RoomServiceTest extends DatabaseIntegrationTest {
     void 나가면_방에_접근할_수_없다() {
         // given
         Long userId = saveUser();
-        Long roomId = roomService.create(userId, "제주");
+        Long roomId = createRoomJoinedBy(userId);
 
         // when
         roomService.leave(roomId, userId);
@@ -144,7 +115,7 @@ class RoomServiceTest extends DatabaseIntegrationTest {
     void 나가면_멤버_나감_이벤트를_발행한다() {
         // given
         Long userId = saveUser();
-        Long roomId = roomService.create(userId, "제주 3박 4일");
+        Long roomId = createRoomJoinedBy(userId);
 
         // when
         roomService.leave(roomId, userId);
@@ -158,7 +129,7 @@ class RoomServiceTest extends DatabaseIntegrationTest {
     void 이미_나간_멤버가_다시_나가면_이벤트를_발행하지_않는다() {
         // given
         Long userId = saveUser();
-        Long roomId = roomService.create(userId, "제주 3박 4일");
+        Long roomId = createRoomJoinedBy(userId);
         roomService.leave(roomId, userId);
         events.clear();
 
@@ -174,7 +145,7 @@ class RoomServiceTest extends DatabaseIntegrationTest {
     void 참여하지_않은_방은_나갈_수_없다() {
         // given
         Long ownerId = saveUser();
-        Long roomId = roomService.create(ownerId, "제주 3박 4일");
+        Long roomId = createRoomJoinedBy(ownerId);
         Long outsiderId = saveUser();
 
         // when & then
@@ -188,7 +159,7 @@ class RoomServiceTest extends DatabaseIntegrationTest {
         // given
         Long ownerId = saveUser("민수", "https://example.com/minsu.png");
         Long memberId = saveUser("지영", null);
-        Long roomId = roomService.create(ownerId, "제주 3박 4일");
+        Long roomId = createRoomJoinedBy(ownerId);
         roomService.join(roomId, memberId);
 
         // when
@@ -208,7 +179,7 @@ class RoomServiceTest extends DatabaseIntegrationTest {
         // given
         Long ownerId = saveUser();
         Long leftId = saveUser();
-        Long roomId = roomService.create(ownerId, "제주 3박 4일");
+        Long roomId = createRoomJoinedBy(ownerId);
         roomService.join(roomId, leftId);
         roomService.leave(roomId, leftId);
 
@@ -228,7 +199,7 @@ class RoomServiceTest extends DatabaseIntegrationTest {
         // given
         Long ownerId = saveUser();
         Long withdrawnId = saveUser("지영", "https://example.com/jiyoung.png");
-        Long roomId = roomService.create(ownerId, "제주 3박 4일");
+        Long roomId = createRoomJoinedBy(ownerId);
         roomService.join(roomId, withdrawnId);
         withdraw(withdrawnId);
 
@@ -250,7 +221,7 @@ class RoomServiceTest extends DatabaseIntegrationTest {
         // given
         Long ownerId = saveUser();
         Long outsiderId = saveUser();
-        Long roomId = roomService.create(ownerId, "제주 3박 4일");
+        Long roomId = createRoomJoinedBy(ownerId);
 
         // when & then
         assertThatThrownBy(() -> roomService.findMembers(roomId, outsiderId))
@@ -263,7 +234,7 @@ class RoomServiceTest extends DatabaseIntegrationTest {
         // given
         Long ownerId = saveUser();
         Long leftId = saveUser();
-        Long roomId = roomService.create(ownerId, "제주 3박 4일");
+        Long roomId = createRoomJoinedBy(ownerId);
         roomService.join(roomId, leftId);
         roomService.leave(roomId, leftId);
 
@@ -424,4 +395,9 @@ class RoomServiceTest extends DatabaseIntegrationTest {
                 .withdraw(LocalDateTime.now(ZoneOffset.UTC)));
     }
 
+    private Long createRoomJoinedBy(Long userId) {
+        Long roomId = roomService.createForTrip();
+        roomService.join(roomId, userId);
+        return roomId;
+    }
 }

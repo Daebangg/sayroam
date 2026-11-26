@@ -21,6 +21,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.then;
+import static org.mockito.Mockito.clearInvocations;
 
 class ChatMessageBroadcasterTest extends DatabaseIntegrationTest {
     private static final String CLIENT_MESSAGE_ID = "6f1c2b6e-8a57-4b7a-9d3e-2f4a1c7e9b10";
@@ -61,7 +62,7 @@ class ChatMessageBroadcasterTest extends DatabaseIntegrationTest {
     void 커밋되면_방_구독자에게_메시지를_전달한다() {
         // given
         Long userId = saveUser();
-        Long roomId = roomService.create(userId, "제주");
+        Long roomId = createRoomJoinedBy(userId);
 
         // when
         chatMessageService.send(roomId, userId, CLIENT_MESSAGE_ID, "1");
@@ -76,7 +77,8 @@ class ChatMessageBroadcasterTest extends DatabaseIntegrationTest {
     void 저장이_롤백되면_메시지를_전달하지_않는다() {
         // given
         Long userId = saveUser();
-        Long roomId = roomService.create(userId, "제주 3박 4일");
+        Long roomId = createRoomJoinedBy(userId);
+        clearInvocations(messagingTemplate);
 
         // when
         transactionTemplate.executeWithoutResult(status -> {
@@ -92,5 +94,11 @@ class ChatMessageBroadcasterTest extends DatabaseIntegrationTest {
     private Long saveUser() {
         User user = User.builder().nickname("방장").role(Role.USER).build();
         return userRepository.save(user).getId();
+    }
+
+    private Long createRoomJoinedBy(Long userId) {
+        Long roomId = roomService.createForTrip();
+        roomService.join(roomId, userId);
+        return roomId;
     }
 }

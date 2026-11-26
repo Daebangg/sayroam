@@ -43,10 +43,6 @@ public class RoomMember extends BaseTimeEntity {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
-    private RoomMemberRole role;
-
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 20)
     private RoomMemberStatus status;
 
     // 안 읽은 메시지 수 계산용. 연관관계 없이 값으로만 둔다
@@ -63,20 +59,15 @@ public class RoomMember extends BaseTimeEntity {
     // 지금 나가 있는 경우에만 나간 시각을 가진다. 다시 참여하면 비운다
     private LocalDateTime leftAt;
 
-    private RoomMember(Room room, Long userId, RoomMemberRole role, LocalDateTime joinedAt) {
+    private RoomMember(Room room, Long userId, LocalDateTime joinedAt) {
         this.room = room;
         this.userId = userId;
-        this.role = role;
         this.status = RoomMemberStatus.JOINED;
         this.joinedAt = joinedAt;
     }
 
-    public static RoomMember joinAsOwner(Room room, Long userId, LocalDateTime now) {
-        return new RoomMember(room, userId, RoomMemberRole.OWNER, now);
-    }
-
     public static RoomMember join(Room room, Long userId, LocalDateTime now) {
-        return new RoomMember(room, userId, RoomMemberRole.MEMBER, now);
+        return new RoomMember(room, userId, now);
     }
 
     public boolean rejoin(LocalDateTime now) {
@@ -100,9 +91,4 @@ public class RoomMember extends BaseTimeEntity {
             throw new BusinessException(RoomErrorCode.ROOM_ACCESS_DENIED);
         }
     }
-
-    public boolean isOwner() {
-        return role.equals(RoomMemberRole.OWNER);
-    }
-
 }

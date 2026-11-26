@@ -70,7 +70,7 @@ class ChatMessageServiceTest extends DatabaseIntegrationTest {
     void 멤버가_아니면_메시지_전송을_거부한다() {
         // given
         Long ownerId = saveUser();
-        Long roomId = roomService.create(ownerId, "제주 3박 4일");
+        Long roomId = createRoomJoinedBy(ownerId);
         Long nonMemberId = saveUser();
 
         assertThatThrownBy(() -> chatMessageService.send(roomId, nonMemberId, CLIENT_MESSAGE_ID, "안녕"))
@@ -85,7 +85,7 @@ class ChatMessageServiceTest extends DatabaseIntegrationTest {
         // given
         String content = "안녕";
         Long ownerId = saveUser();
-        Long roomId = roomService.create(ownerId, "제주 3박 4일");
+        Long roomId = createRoomJoinedBy(ownerId);
 
         // when
         chatMessageService.send(roomId, ownerId, CLIENT_MESSAGE_ID, content);
@@ -106,7 +106,7 @@ class ChatMessageServiceTest extends DatabaseIntegrationTest {
         // given
         String content = "hello";
         Long ownerId = saveUser();
-        Long roomId = roomService.create(ownerId, "제주");
+        Long roomId = createRoomJoinedBy(ownerId);
         chatMessageService.send(roomId, ownerId, CLIENT_MESSAGE_ID, content);
 
         chatMessageService.send(roomId, ownerId, CLIENT_MESSAGE_ID, content);
@@ -120,7 +120,7 @@ class ChatMessageServiceTest extends DatabaseIntegrationTest {
         String content = "hello";
         Long ownerId = saveUser();
         Long senderId = saveUser();
-        Long roomId = roomService.create(ownerId, "제주");
+        Long roomId = createRoomJoinedBy(ownerId);
         joinRoom(roomId, senderId);
         chatMessageService.send(roomId, ownerId, CLIENT_MESSAGE_ID, content);
 
@@ -134,7 +134,7 @@ class ChatMessageServiceTest extends DatabaseIntegrationTest {
         // given
         String content = "dad";
         Long userId = saveUser();
-        Long roomId = roomService.create(userId, "제주 1박 2일");
+        Long roomId = createRoomJoinedBy(userId);
 
         // when
         chatMessageService.send(roomId, userId, CLIENT_MESSAGE_ID, content);
@@ -155,7 +155,7 @@ class ChatMessageServiceTest extends DatabaseIntegrationTest {
     void 같은_클라이언트_ID로_재전송하면_저장된_값을_반환한다() {
         // given
         Long userId = saveUser();
-        Long roomId = roomService.create(userId, "제주 3박 4일");
+        Long roomId = createRoomJoinedBy(userId);
         ChatMessageResult first = chatMessageService.send(roomId, userId, CLIENT_MESSAGE_ID, "원본");
         events.clear();
 
@@ -175,7 +175,7 @@ class ChatMessageServiceTest extends DatabaseIntegrationTest {
     void 같은_회원과_클라이언트_ID의_메시지는_DB에_중복_저장할_수_없다() {
         // given
         Long userId = saveUser();
-        Long roomId = roomService.create(userId, "제주 3박 4일");
+        Long roomId = createRoomJoinedBy(userId);
         chatMessageRepository.save(ChatMessage.text(roomId, userId, CLIENT_MESSAGE_ID, "안녕"));
 
         // when & then
@@ -187,7 +187,7 @@ class ChatMessageServiceTest extends DatabaseIntegrationTest {
     void afterId_이후_메시지를_ID_오름차순으로_조회한다() {
         // given
         Long userId = saveUser();
-        Long roomId = roomService.create(userId, "제주");
+        Long roomId = createRoomJoinedBy(userId);
         ChatMessageResult first = chatMessageService.send(roomId, userId, UUID.randomUUID().toString(), "1");
         chatMessageService.send(roomId, userId, UUID.randomUUID().toString(), "2");
         chatMessageService.send(roomId, userId, UUID.randomUUID().toString(), "3");
@@ -206,8 +206,8 @@ class ChatMessageServiceTest extends DatabaseIntegrationTest {
     void 다른_방의_메시지는_조회되지_않는다() {
         // given
         Long userId = saveUser();
-        Long roomId = roomService.create(userId, "제주");
-        Long otherRoomId = roomService.create(userId, "부산");
+        Long roomId = createRoomJoinedBy(userId);
+        Long otherRoomId = createRoomJoinedBy(userId);
         chatMessageService.send(roomId, userId, UUID.randomUUID().toString(), "제주 방");
         chatMessageService.send(otherRoomId, userId, UUID.randomUUID().toString(), "부산 방");
 
@@ -226,7 +226,7 @@ class ChatMessageServiceTest extends DatabaseIntegrationTest {
         // given
         Long ownerId = saveUser();
         Long nonMemberId = saveUser();
-        Long roomId = roomService.create(ownerId, "제주");
+        Long roomId = createRoomJoinedBy(ownerId);
 
         assertThatThrownBy(() ->
                 chatMessageService.findAfter(roomId, nonMemberId, 0L, 10))
@@ -239,7 +239,7 @@ class ChatMessageServiceTest extends DatabaseIntegrationTest {
         // given
         Long ownerId = saveUser();
         Long otherId = saveUser();
-        Long roomId = roomService.create(ownerId, "제주");
+        Long roomId = createRoomJoinedBy(ownerId);
         chatMessageService.send(roomId, ownerId, UUID.randomUUID().toString(), "1");
         chatMessageService.send(roomId, ownerId, UUID.randomUUID().toString(), "2");
         chatMessageService.send(roomId, ownerId, UUID.randomUUID().toString(), "3");
@@ -261,7 +261,7 @@ class ChatMessageServiceTest extends DatabaseIntegrationTest {
     void 조회_개수를_넘는_메시지는_반환하지_않는다() {
         // given
         Long userId = saveUser();
-        Long roomId = roomService.create(userId, "제주 3박 4일");
+        Long roomId = createRoomJoinedBy(userId);
         chatMessageService.send(roomId, userId, UUID.randomUUID().toString(), "1");
         chatMessageService.send(roomId, userId, UUID.randomUUID().toString(), "2");
         chatMessageService.send(roomId, userId, UUID.randomUUID().toString(), "3");
@@ -280,7 +280,7 @@ class ChatMessageServiceTest extends DatabaseIntegrationTest {
         // given
         Long ownerId = saveUser();
         Long memberId = saveUser();
-        Long roomId = roomService.create(ownerId, "제주 3박 4일");
+        Long roomId = createRoomJoinedBy(ownerId);
         joinRoom(roomId, memberId);
         chatMessageService.send(roomId, ownerId, UUID.randomUUID().toString(), "재입장 전");
         roomService.leave(roomId, memberId);
@@ -303,5 +303,11 @@ class ChatMessageServiceTest extends DatabaseIntegrationTest {
     private Long saveUser() {
         User user = User.builder().nickname("방장").role(Role.USER).build();
         return userRepository.save(user).getId();
+    }
+
+    private Long createRoomJoinedBy(Long userId) {
+        Long roomId = roomService.createForTrip();
+        roomService.join(roomId, userId);
+        return roomId;
     }
 }
