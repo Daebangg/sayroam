@@ -14,6 +14,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
 
+import java.util.Set;
 import java.util.function.Predicate;
 
 // 수신만 하는 연결은 다시 확인할 시점이 없으므로 권한이 사라진 커밋 직후 서버가 직접 연결을 끊는다.
@@ -37,8 +38,9 @@ public class StompSessionRevoker {
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onRoomMemberLeft(RoomMemberLeft event) {
         String roomTopic = "/topic/rooms/" + event.roomId();
+        Set<String> roomDestinations = Set.of(roomTopic, roomTopic + "/members");
         closeSessions(event.userId(), session -> session.getSubscriptions().stream()
-                        .anyMatch(subscription -> subscription.getDestination().equals(roomTopic)),
+                        .anyMatch(subscription -> roomDestinations.contains(subscription.getDestination())),
                 RoomErrorCode.ROOM_ACCESS_DENIED);
     }
 

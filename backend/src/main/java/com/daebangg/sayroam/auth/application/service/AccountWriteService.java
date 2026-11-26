@@ -15,6 +15,7 @@ import com.daebangg.sayroam.travelstyle.application.port.out.TravelStyleDeletion
 import com.daebangg.sayroam.user.domain.User;
 import com.daebangg.sayroam.user.domain.UserCredential;
 import com.daebangg.sayroam.user.domain.UserRepository;
+import com.daebangg.sayroam.user.domain.event.UserWithdrawn;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
@@ -114,6 +115,7 @@ public class AccountWriteService {
             notifications.deleteForUser(userId);
             user.withdraw(LocalDateTime.now(ZoneOffset.UTC));
             publishInvalidation(userId);
+            events.publishEvent(new UserWithdrawn(userId));
             return null;
         });
     }

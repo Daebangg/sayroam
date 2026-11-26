@@ -15,6 +15,8 @@ type ChatSocketHandlers = {
     onDisconnected: () => void;
     /** 방 채널과 내 전송 확인 채널로 받은 메시지. 같은 메시지가 두 채널로 올 수 있다. */
     onMessage: (message: ChatMessage) => void;
+    /** 참여·나감·프로필 변경·탈퇴로 멤버 명단이 바뀌었다. 내용은 없으므로 명단을 다시 받는다. */
+    onMembersChanged: () => void;
     onSendError: (error: ChatSendError) => void;
     /** 방에 참여 중이 아니거나 로그인이 풀려 더 연결하지 않는다. */
     onClosed: () => void;
@@ -30,6 +32,8 @@ const RECONNECT_DELAY_MS = 3000;
 const HEARTBEAT_MS = 10000;
 // 연결 중 만료되지 않도록 남은 시간이 이보다 짧으면 연결 전에 갱신한다.
 const TOKEN_REFRESH_MARGIN_MS = 30000;
+// 허용되지 않은 구독은 ACCESS_DENIED, 방 멤버가 아니거나 방을 나간 경우는 ROOM_ACCESS_DENIED로 온다.
+const ACCESS_DENIED_CODES = new Set(["ACCESS_DENIED", "ROOM_ACCESS_DENIED"]);
 
 function socketUrl(): string {
     const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
@@ -69,6 +73,7 @@ export function openChatSocket(roomId: number, handlers: ChatSocketHandlers): Ch
                 if (message?.roomId === roomId) handlers.onMessage(message);
             };
             client.subscribe(`/topic/rooms/${roomId}`, receive);
+            client.subscribe(`/topic/rooms/${roomId}/members`, () => handlers.onMembersChanged());
             client.subscribe("/user/queue/messages", receive);
             client.subscribe("/user/queue/errors", (frame) => {
                 const error = parseChatSendError(frame.body);
@@ -78,7 +83,7 @@ export function openChatSocket(roomId: number, handlers: ChatSocketHandlers): Ch
         },
         onStompError: (frame: IFrame) => {
             // 방을 나갔거나 내보내져 구독이 거절되면 다시 연결해도 같은 결과라 멈춘다.
-            if (frame.headers.message === "ACCESS_DENIED") stop();
+            if (ACCESS_DENIED_CODES.has(frame.headers.message ?? "")) stop();
             else refreshBeforeConnect = true;
         },
         onWebSocketClose: () => {
