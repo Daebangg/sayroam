@@ -52,6 +52,7 @@ domain은 어떤 계층도 참조하지 않습니다. infrastructure는 applicat
     event/         도메인 이벤트
   application/
     service/       유스케이스 서비스
+    listener/      서버 안에서 발행된 도메인 이벤트에 반응해 유스케이스를 이어가는 리스너
     dto/           서비스 입출력 객체
     port/out/      외부 의존 인터페이스
   presentation/
@@ -77,7 +78,8 @@ domain은 어떤 계층도 참조하지 않습니다. infrastructure는 applicat
 - 저장 외의 역할(메일 발송, 결제 등)을 구현할 때는 역할 이름의 하위 패키지를 위 목록에 먼저 추가합니다.
 - 여러 도메인이 쓰는 값 객체는 `common/domain`, 전역 설정·예외·범용 헬퍼는 `global`에 둡니다.
 - REST 외 진입점은 `presentation` 아래 프로토콜 이름의 하위 패키지(예: `stomp/`)에 두고, 그 안은 종류별로 나누지 않습니다.
-- 이벤트 또는 주기 실행으로 서비스를 호출하는 백그라운드 진입점은 `presentation/scheduling/`에 둡니다. 작업 선점·재시도·트랜잭션은 application 서비스가 담당합니다.
+- 서버 안에서 발행된 도메인 이벤트에 반응해 조회·판단을 거쳐 다른 서비스나 out 포트를 호출하는 리스너는 `application/listener/`에 둡니다. 판단 없이 이벤트를 그대로 내보내기만 하는 리스너(`ChatMessageBroadcaster`)는 `infrastructure/messaging/`에 둘 수 있습니다.
+- 주기 실행처럼 서비스를 시작시키는 백그라운드 진입점은 `presentation/scheduling/`에 둡니다. 이벤트·주기 실행을 함께 받아 작업을 돌리는 워커(`CompanionMatchingWorker`)도 여기에 둡니다. 작업 선점·재시도·트랜잭션은 application 서비스가 담당합니다.
 
 ### DTO 이름
 
