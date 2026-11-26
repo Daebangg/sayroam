@@ -203,7 +203,6 @@ public class OpenApiConfig {
                 .addResponses("SignupProofExpired", problemResponse("410: SIGNUP_PROOF_EXPIRED. 없거나 만료된 증명. 새 이메일 인증 필요"))
                 .addResponses("SignupUnavailable", problemResponse("503: EMAIL_VERIFICATION_UNAVAILABLE 또는 SIGNUP_UNAVAILABLE. 증명 소비·DB 커밋 결과가 불확실할 수 있음. 자동 재시도 없이 새 인증 필요; 계정은 이미 생성됐을 수도 있음"))
                 .addResponses("RoomAccessDenied", problemResponse("403: ROOM_ACCESS_DENIED. 없는 방이거나 현재 참여 중인 멤버가 아님"))
-                .addResponses("RoomBadRequest", problemResponse("400: ROOM_NAME_TOO_LONG 또는 Spring 요청 오류. 이름을 20자 이내로 수정 후 재요청"))
                 .addResponses("TripBadRequest", problemResponse("400: INVALID_INPUT(여행지·시작일·종료일 누락, errors 포함), TRIP_DESTINATION_UNAVAILABLE(목록에 없거나 비활성인 여행지), TRAVEL_PERIOD_END_BEFORE_START(종료일이 시작일보다 앞섬), TRIP_TITLE_TOO_LONG(여행 이름 30자 초과) 또는 Spring 요청 오류(날짜 형식 오류). 날짜는 yyyy-MM-dd"))
                 .addResponses("TripUpdateBadRequest", problemResponse("400: TRIP_TITLE_TOO_LONG(여행 이름 30자 초과) 또는 Spring 요청 오류"))
                 .addResponses("TripInvitationNotFound", problemResponse("404: TRIP_INVITATION_NOT_FOUND. 없거나 만료된 초대 코드. 둘을 구분하지 않음"))

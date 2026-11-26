@@ -654,26 +654,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/rooms": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * 채팅방 생성
-         * @description 로그인한 회원을 방장으로 하여 방을 생성합니다.
-         */
-        post: operations["create"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/rooms/{roomId}/members": {
         parameters: {
             query?: never;
@@ -1143,7 +1123,6 @@ export interface components {
             | "REFRESH_TOKEN_INVALID"
             | "REFRESH_TOKEN_REUSED"
             | "ROOM_ACCESS_DENIED"
-            | "ROOM_NAME_TOO_LONG"
             | "SIGNUP_PROOF_ALREADY_USED"
             | "SIGNUP_PROOF_EXPIRED"
             | "SIGNUP_PROOF_INVALID"
@@ -1363,21 +1342,6 @@ export interface components {
         };
         /** @enum {string} */
         CompanionSearchStatus: "ACTIVE" | "CLOSED";
-        CreateRoomRequest: {
-            /**
-             * @description 방 이름. 선택값이며 앞뒤 공백 제거 후 20자 이내. 공백뿐이면 이름 없는 방으로 저장
-             * @example 제주 3박 4일
-             */
-            name?: string | null;
-        };
-        CreateRoomResponse: {
-            /**
-             * Format: int64
-             * @description 생성된 방 ID
-             * @example 7
-             */
-            roomId: number;
-        };
         CreateTripRequest: {
             /**
              * Format: int64
@@ -2601,15 +2565,6 @@ export interface components {
         };
         /** @description 403: ROOM_ACCESS_DENIED. 없는 방이거나 현재 참여 중인 멤버가 아님 */
         RoomAccessDenied: {
-            headers: {
-                [name: string]: unknown;
-            };
-            content: {
-                "application/problem+json": components["schemas"]["ApiProblem"];
-            };
-        };
-        /** @description 400: ROOM_NAME_TOO_LONG 또는 Spring 요청 오류. 이름을 20자 이내로 수정 후 재요청 */
-        RoomBadRequest: {
             headers: {
                 [name: string]: unknown;
             };
@@ -3917,34 +3872,6 @@ export interface operations {
             503: components["responses"]["PlaceSearchUnavailable"];
         };
     };
-    create: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["CreateRoomRequest"];
-            };
-        };
-        responses: {
-            /** @description 방과 방장 멤버 생성 완료 */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["CreateRoomResponse"];
-                };
-            };
-            400: components["responses"]["RoomBadRequest"];
-            401: components["responses"]["Unauthorized"];
-            500: components["responses"]["InternalServerError"];
-            503: components["responses"]["AuthenticationUnavailable"];
-        };
-    };
     findMembers: {
         parameters: {
             query?: never;
@@ -4564,13 +4491,6 @@ export const apiRoutes = {
         auth: "none",
         csrf: true,
         responses: { "200": true },
-    },
-    create: {
-        method: "post",
-        path: "/api/rooms",
-        auth: "required",
-        csrf: false,
-        responses: { "201": true },
     },
     createCompanionSearch: {
         method: "post",

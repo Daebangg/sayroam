@@ -159,7 +159,7 @@ class ChatStompIntegrationTest extends DatabaseIntegrationTest {
         // given
         Long ownerId = saveUser();
         Long otherUserId = saveUser();
-        Long roomId = roomService.create(ownerId, "제주 3박 4일");
+        Long roomId = createRoomJoinedBy(ownerId);
         ConnectionEvents events = new ConnectionEvents();
         StompSession session = connect(tokenOf(otherUserId), events).get(5, TimeUnit.SECONDS);
 
@@ -175,7 +175,7 @@ class ChatStompIntegrationTest extends DatabaseIntegrationTest {
     void 방_멤버면_방을_구독한다() throws Exception {
         // given
         Long userId = saveUser();
-        Long roomId = roomService.create(userId, "제주 3박 4일");
+        Long roomId = createRoomJoinedBy(userId);
         StompSession session = connect(tokenOf(userId)).get(5, TimeUnit.SECONDS);
         String destination = "/topic/rooms/" + roomId;
 
@@ -192,7 +192,7 @@ class ChatStompIntegrationTest extends DatabaseIntegrationTest {
     void 방_멤버면_멤버_채널을_구독한다() throws Exception {
         // given
         Long userId = saveUser();
-        Long roomId = roomService.create(userId, "제주 3박 4일");
+        Long roomId = createRoomJoinedBy(userId);
         StompSession session = connect(tokenOf(userId)).get(5, TimeUnit.SECONDS);
         String destination = "/topic/rooms/" + roomId + "/members";
 
@@ -210,7 +210,7 @@ class ChatStompIntegrationTest extends DatabaseIntegrationTest {
         // given
         Long ownerId = saveUser();
         Long otherUserId = saveUser();
-        Long roomId = roomService.create(ownerId, "제주 3박 4일");
+        Long roomId = createRoomJoinedBy(ownerId);
         ConnectionEvents events = new ConnectionEvents();
         StompSession session = connect(tokenOf(otherUserId), events).get(5, TimeUnit.SECONDS);
 
@@ -242,7 +242,7 @@ class ChatStompIntegrationTest extends DatabaseIntegrationTest {
     void 방_채널을_receipt와_함께_구독하면_등록_뒤_RECEIPT를_받는다() throws Exception {
         // given
         Long userId = saveUser();
-        Long roomId = roomService.create(userId, "제주 3박 4일");
+        Long roomId = createRoomJoinedBy(userId);
         StompSession session = connect(tokenOf(userId)).get(5, TimeUnit.SECONDS);
 
         // when
@@ -277,7 +277,7 @@ class ChatStompIntegrationTest extends DatabaseIntegrationTest {
         // given
         Long ownerId = saveUser();
         Long otherUserId = saveUser();
-        Long roomId = roomService.create(ownerId, "제주 3박 4일");
+        Long roomId = createRoomJoinedBy(ownerId);
         ConnectionEvents events = new ConnectionEvents();
         StompSession session = connect(tokenOf(otherUserId), events).get(5, TimeUnit.SECONDS);
 
@@ -340,7 +340,7 @@ class ChatStompIntegrationTest extends DatabaseIntegrationTest {
     void 토픽으로_직접_전송하면_거부한다() throws Exception {
         // given
         Long userId = saveUser();
-        Long roomId = roomService.create(userId, "제주 3박 4일");
+        Long roomId = createRoomJoinedBy(userId);
         ConnectionEvents events = new ConnectionEvents();
         StompSession session = connect(tokenOf(userId), events).get(5, TimeUnit.SECONDS);
 
@@ -356,7 +356,7 @@ class ChatStompIntegrationTest extends DatabaseIntegrationTest {
         // given
         Long ownerId = saveUser();
         Long memberId = saveUser();
-        Long roomId = roomService.create(ownerId, "제주 3박 4일");
+        Long roomId = createRoomJoinedBy(ownerId);
         joinRoom(roomId, memberId);
         StompSession ownerSession = connect(tokenOf(ownerId)).get(5, TimeUnit.SECONDS);
         ReceivedFrames memberFrames = subscribeRoom(connect(tokenOf(memberId)).get(5, TimeUnit.SECONDS), roomId);
@@ -379,7 +379,7 @@ class ChatStompIntegrationTest extends DatabaseIntegrationTest {
     void 메시지를_보내면_보낸_사람에게_전송_결과를_전달한다() throws Exception {
         // given
         Long userId = saveUser();
-        Long roomId = roomService.create(userId, "제주 3박 4일");
+        Long roomId = createRoomJoinedBy(userId);
         StompSession session = connect(tokenOf(userId)).get(5, TimeUnit.SECONDS);
         ReceivedFrames results = subscribeUserQueue(session, userId, "/queue/messages");
 
@@ -399,7 +399,7 @@ class ChatStompIntegrationTest extends DatabaseIntegrationTest {
         // given
         Long ownerId = saveUser();
         Long memberId = saveUser();
-        Long roomId = roomService.create(ownerId, "제주 3박 4일");
+        Long roomId = createRoomJoinedBy(ownerId);
         joinRoom(roomId, memberId);
         StompSession ownerSession = connect(tokenOf(ownerId)).get(5, TimeUnit.SECONDS);
         ReceivedFrames ownerResults = subscribeUserQueue(ownerSession, ownerId, "/queue/messages");
@@ -424,7 +424,7 @@ class ChatStompIntegrationTest extends DatabaseIntegrationTest {
         // given
         Long ownerId = saveUser();
         Long nonMemberId = saveUser();
-        Long roomId = roomService.create(ownerId, "제주 3박 4일");
+        Long roomId = createRoomJoinedBy(ownerId);
         StompSession session = connect(tokenOf(nonMemberId)).get(5, TimeUnit.SECONDS);
         ReceivedFrames errors = subscribeUserQueue(session, nonMemberId, "/queue/errors");
 
@@ -457,7 +457,7 @@ class ChatStompIntegrationTest extends DatabaseIntegrationTest {
         // given
         Long ownerId = saveUser();
         Long otherUserId = saveUser();
-        Long roomId = roomService.create(ownerId, "제주 3박 4일");
+        Long roomId = createRoomJoinedBy(ownerId);
         ConnectionEvents events = new ConnectionEvents();
         StompSession session = connect(tokenOf(otherUserId), events).get(5, TimeUnit.SECONDS);
 
@@ -474,7 +474,7 @@ class ChatStompIntegrationTest extends DatabaseIntegrationTest {
     void 비밀번호_변경으로_인증_버전이_바뀌면_전송을_거부한다() throws Exception {
         // given
         Long userId = saveUser();
-        Long roomId = roomService.create(userId, "제주 3박 4일");
+        Long roomId = createRoomJoinedBy(userId);
         ConnectionEvents events = new ConnectionEvents();
         StompSession session = connect(tokenOf(userId), events).get(5, TimeUnit.SECONDS);
         increaseAuthVersion(userId);
@@ -491,7 +491,7 @@ class ChatStompIntegrationTest extends DatabaseIntegrationTest {
     void 비밀번호_변경으로_인증_버전이_바뀌면_구독을_거부한다() throws Exception {
         // given
         Long userId = saveUser();
-        Long roomId = roomService.create(userId, "제주 3박 4일");
+        Long roomId = createRoomJoinedBy(userId);
         ConnectionEvents events = new ConnectionEvents();
         StompSession session = connect(tokenOf(userId), events).get(5, TimeUnit.SECONDS);
         increaseAuthVersion(userId);
@@ -508,7 +508,7 @@ class ChatStompIntegrationTest extends DatabaseIntegrationTest {
     void 탈퇴한_회원의_연결은_전송을_거부한다() throws Exception {
         // given
         Long userId = saveUser();
-        Long roomId = roomService.create(userId, "제주 3박 4일");
+        Long roomId = createRoomJoinedBy(userId);
         ConnectionEvents events = new ConnectionEvents();
         StompSession session = connect(tokenOf(userId), events).get(5, TimeUnit.SECONDS);
         withdrawUser(userId);
@@ -525,7 +525,7 @@ class ChatStompIntegrationTest extends DatabaseIntegrationTest {
     void 토큰이_만료되면_수신만_하는_연결도_종료한다() throws Exception {
         // given
         Long userId = saveUser();
-        Long roomId = roomService.create(userId, "제주 3박 4일");
+        Long roomId = createRoomJoinedBy(userId);
         ConnectionEvents events = new ConnectionEvents();
         StompSession session = connect(tokenExpiringAt(userId, Instant.now().plusSeconds(2)), events)
                 .get(5, TimeUnit.SECONDS);
@@ -541,7 +541,7 @@ class ChatStompIntegrationTest extends DatabaseIntegrationTest {
     void 비밀번호를_변경하면_수신만_하는_연결도_즉시_종료한다() throws Exception {
         // given
         Long userId = saveVerifiedUser();
-        Long roomId = roomService.create(userId, "제주 3박 4일");
+        Long roomId = createRoomJoinedBy(userId);
         ConnectionEvents events = new ConnectionEvents();
         StompSession session = connect(tokenOf(userId), events).get(5, TimeUnit.SECONDS);
         subscribeRoom(session, roomId);
@@ -559,7 +559,7 @@ class ChatStompIntegrationTest extends DatabaseIntegrationTest {
     void 탈퇴하면_수신만_하는_연결도_즉시_종료한다() throws Exception {
         // given
         Long userId = saveVerifiedUser();
-        Long roomId = roomService.create(userId, "제주 3박 4일");
+        Long roomId = createRoomJoinedBy(userId);
         ConnectionEvents events = new ConnectionEvents();
         StompSession session = connect(tokenOf(userId), events).get(5, TimeUnit.SECONDS);
         subscribeRoom(session, roomId);
@@ -577,7 +577,7 @@ class ChatStompIntegrationTest extends DatabaseIntegrationTest {
     void 방을_나가면_그_방을_구독한_연결을_즉시_종료한다() throws Exception {
         // given
         Long userId = saveUser();
-        Long roomId = roomService.create(userId, "제주 3박 4일");
+        Long roomId = createRoomJoinedBy(userId);
         ConnectionEvents events = new ConnectionEvents();
         StompSession session = connect(tokenOf(userId), events).get(5, TimeUnit.SECONDS);
         subscribeRoom(session, roomId);
@@ -595,7 +595,7 @@ class ChatStompIntegrationTest extends DatabaseIntegrationTest {
     void 방을_나가면_멤버_채널을_구독한_연결도_종료한다() throws Exception {
         // given
         Long userId = saveUser();
-        Long roomId = roomService.create(userId, "제주 3박 4일");
+        Long roomId = createRoomJoinedBy(userId);
         ConnectionEvents events = new ConnectionEvents();
         StompSession session = connect(tokenOf(userId), events).get(5, TimeUnit.SECONDS);
         subscribeMembers(session, roomId);
@@ -727,7 +727,7 @@ class ChatStompIntegrationTest extends DatabaseIntegrationTest {
 
     private void joinRoom(Long roomId, Long userId) {
         Room room = roomRepository.findById(roomId).orElseThrow();
-        roomMemberRepository.save(RoomMember.joinAsOwner(room, userId, LocalDateTime.now(ZoneOffset.UTC)));
+        roomMemberRepository.save(RoomMember.join(room, userId, LocalDateTime.now(ZoneOffset.UTC)));
     }
 
     private static class ReceivedFrames extends StompSessionHandlerAdapter {
@@ -785,5 +785,11 @@ class ChatStompIntegrationTest extends DatabaseIntegrationTest {
         scheduler.setThreadNamePrefix("stomp-test-receipt-");
         scheduler.initialize();
         return scheduler;
+    }
+
+    private Long createRoomJoinedBy(Long userId) {
+        Long roomId = roomService.createForTrip();
+        roomService.join(roomId, userId);
+        return roomId;
     }
 }

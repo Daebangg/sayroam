@@ -460,14 +460,6 @@
                 },
                 "description": "403: ROOM_ACCESS_DENIED. 없는 방이거나 현재 참여 중인 멤버가 아님"
             },
-            "RoomBadRequest": {
-                "content": {
-                    "application/problem+json": {
-                        "schema": { "$ref": "#/components/schemas/ApiProblem" }
-                    }
-                },
-                "description": "400: ROOM_NAME_TOO_LONG 또는 Spring 요청 오류. 이름을 20자 이내로 수정 후 재요청"
-            },
             "SignupBadRequest": {
                 "content": {
                     "application/problem+json": {
@@ -858,7 +850,6 @@
                     "REFRESH_TOKEN_INVALID",
                     "REFRESH_TOKEN_REUSED",
                     "ROOM_ACCESS_DENIED",
-                    "ROOM_NAME_TOO_LONG",
                     "SIGNUP_PROOF_ALREADY_USED",
                     "SIGNUP_PROOF_EXPIRED",
                     "SIGNUP_PROOF_INVALID",
@@ -1187,29 +1178,6 @@
                 "type": "object"
             },
             "CompanionSearchStatus": { "enum": ["ACTIVE", "CLOSED"], "type": "string" },
-            "CreateRoomRequest": {
-                "properties": {
-                    "name": {
-                        "description": "방 이름. 선택값이며 앞뒤 공백 제거 후 20자 이내. 공백뿐이면 이름 없는 방으로 저장",
-                        "example": "제주 3박 4일",
-                        "maxLength": 20,
-                        "type": ["string", "null"]
-                    }
-                },
-                "type": "object"
-            },
-            "CreateRoomResponse": {
-                "properties": {
-                    "roomId": {
-                        "description": "생성된 방 ID",
-                        "example": 7,
-                        "format": "int64",
-                        "type": "integer"
-                    }
-                },
-                "required": ["roomId"],
-                "type": "object"
-            },
             "CreateTripRequest": {
                 "properties": {
                     "destinationId": {
@@ -3966,37 +3934,6 @@
                 "security": [{ "bearerAuth": [] }],
                 "summary": "장소 키워드 검색",
                 "tags": ["Place"]
-            }
-        },
-        "/api/rooms": {
-            "post": {
-                "description": "로그인한 회원을 방장으로 하여 방을 생성합니다.",
-                "operationId": "create",
-                "requestBody": {
-                    "content": {
-                        "application/json": {
-                            "schema": { "$ref": "#/components/schemas/CreateRoomRequest" }
-                        }
-                    },
-                    "required": true
-                },
-                "responses": {
-                    "201": {
-                        "content": {
-                            "application/json": {
-                                "schema": { "$ref": "#/components/schemas/CreateRoomResponse" }
-                            }
-                        },
-                        "description": "방과 방장 멤버 생성 완료"
-                    },
-                    "400": { "$ref": "#/components/responses/RoomBadRequest" },
-                    "401": { "$ref": "#/components/responses/Unauthorized" },
-                    "500": { "$ref": "#/components/responses/InternalServerError" },
-                    "503": { "$ref": "#/components/responses/AuthenticationUnavailable" }
-                },
-                "security": [{ "bearerAuth": [] }],
-                "summary": "채팅방 생성",
-                "tags": ["Room"]
             }
         },
         "/api/rooms/{roomId}/members": {

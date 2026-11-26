@@ -14,8 +14,10 @@ import {
 import { api } from "../src/api/api.ts";
 import { getCurrentUser as me } from "../src/api/users/userApi.ts";
 
-function create(): Promise<unknown> {
-    return api.call("create", { body: { name: "여행" } });
+function createTrip(): Promise<unknown> {
+    return api.call("createTrip", {
+        body: { destinationId: 3, startDate: "2026-12-01", endDate: "2026-12-04" },
+    });
 }
 
 const originalDocument = Object.getOwnPropertyDescriptor(globalThis, "document");
@@ -212,8 +214,8 @@ test("변경 요청의 401은 자동 갱신·재전송 없이 전달", async (t)
         paths.push(path);
         return Response.json({ code: "UNAUTHENTICATED" }, { status: 401 });
     });
-    await assert.rejects(create(), hasKind("http"));
-    assert.deepEqual(paths, ["/api/rooms"]);
+    await assert.rejects(createTrip(), hasKind("http"));
+    assert.deepEqual(paths, ["/api/trips"]);
     assert.equal(getAccessToken(), undefined);
 });
 
@@ -222,7 +224,7 @@ test("변경 요청의 응답 유실은 토큰을 유지하고 자동 반복하�
     const fetchMock = t.mock.method(globalThis, "fetch", async () => {
         throw new TypeError("lost");
     });
-    await assert.rejects(create(), hasKind("network"));
+    await assert.rejects(createTrip(), hasKind("network"));
     assert.equal(fetchMock.mock.callCount(), 1);
     assert.equal(getAccessToken(), "old-token");
 });

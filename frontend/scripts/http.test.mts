@@ -69,15 +69,20 @@ test("보호 API는 공통 Bearer 정책을 사용하고 쿠키 준비 GET은 �
         globalThis,
         "fetch",
         async (path: unknown, options?: RequestInit) => {
-            assert.equal(path, "/api/rooms");
+            assert.equal(path, "/api/trips");
             assert.equal(options?.method, "POST");
             const headers = new Headers(options?.headers);
             assert.equal(headers.get("Authorization"), "Bearer http-token");
             assert.equal(headers.get("X-XSRF-TOKEN"), null);
-            return Response.json({ roomId: 123 }, { status: 201 });
+            return Response.json({ tripId: 123 }, { status: 201 });
         },
     );
-    assert.deepEqual(await api.call("create", { body: { name: "여행" } }), { roomId: 123 });
+    assert.deepEqual(
+        await api.call("createTrip", {
+            body: { destinationId: 3, startDate: "2026-12-01", endDate: "2026-12-04" },
+        }),
+        { tripId: 123 },
+    );
     assert.equal(fetchMock.mock.callCount(), 1);
 });
 
