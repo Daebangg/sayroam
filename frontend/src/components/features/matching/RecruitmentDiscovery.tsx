@@ -1,16 +1,49 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { PageLeaveDialog } from "@/components/layout/PageLeaveDialog";
-import { Button, Icon, DiscoveryWordmark, FilterChips } from "@/components/ui";
+import {
+    Button,
+    Icon,
+    DiscoveryWordmark,
+    DropdownMenu,
+    Card,
+    Avatar,
+    type IconName,
+    Modal,
+    Toast,
+} from "@/components/ui";
+import { DetailsSidebar } from "@/components/layout/DetailsSidebar";
+import { CompanionResponseDialog } from "./CompanionResponseDialog";
+import { CandidateRequestAction } from "./CandidateRequestAction";
 import { RecruitmentActionDialog } from "@/components/features/matching/RecruitmentActionDialog";
 import { RecruitmentDetailsPanel } from "@/components/features/matching/RecruitmentDetailsPanel";
 import { RoamMatchCard } from "@/components/features/matching/RoamMatchCard";
-import type { CandidateResult } from "@/hooks/matching.types";
+import type {
+    Candidate,
+    CandidateResult,
+    CompanionRequest,
+    RequestDecision,
+} from "@/hooks/matching.types";
 
 type DiscoveryProps = {
     phase: "searching" | "found" | "empty";
     candidates: CandidateResult["candidates"];
+    archived?: CompanionRequest[];
     destination: string;
+    requestActions?:
+        | {
+              send: (candidateId: number) => boolean | Promise<boolean>;
+              respond: (requestId: number, status: RequestDecision) => boolean | Promise<boolean>;
+              responseBusyId?: number | undefined;
+              responseUncertain?: ReadonlySet<number>;
+              busyId?: number | undefined;
+              uncertain?: ReadonlySet<number>;
+              recheck?: () => void;
+          }
+        | undefined;
+    initialRequestId?: number | undefined;
+    historyUnavailable?: boolean;
+    onRecheckHistory?: () => void;
     onBack: () => void;
     onEdit?: (() => void) | undefined;
     onKeepRecruiting?: (() => void) | undefined;
@@ -22,10 +55,30 @@ type DiscoveryProps = {
     failed?: boolean;
 };
 
+const statusOrder = ["ACCEPTED", "RECEIVED", "SENT", "UNSENT", "REJECTED", "EXPIRED"] as const;
+type StatusGroup = (typeof statusOrder)[number];
+
+const groupIcons = {
+    ACCEPTED: "check",
+    RECEIVED: "mail",
+    SENT: "arrow",
+    UNSENT: "matching",
+    REJECTED: "close",
+    EXPIRED: "calendar",
+} as const satisfies Record<StatusGroup, IconName>;
+
+function statusGroup(
+    status: Candidate["requestStatus"],
+    direction: Candidate["direction"],
+): StatusGroup {
+    if (status === "PENDING") return direction === "RECEIVED" ? "RECEIVED" : "SENT";
+    return status ?? "UNSENT";
+}
+
 const MIN_FINDING_DURATION_MS = 4000;
 
 const filterOptions = [
-    ["ALL", "mockup.filters.all"],
+    ["ALL", "matchingFlow.style"],
     ["SIMILAR", "roamMatePreview.found.filterSimilar"],
     ["NEEDS_DISCUSSION", "roamMatePreview.found.filterDiscussion"],
 ] as const;
@@ -33,8 +86,13 @@ const filterOptions = [
 export function RecruitmentDiscovery({
     phase: resultPhase,
     candidates,
+    archived = [],
     destination,
     onBack,
+    initialRequestId,
+    historyUnavailable = false,
+    onRecheckHistory,
+    requestActions,
     onEdit,
     onKeepRecruiting,
     onCloseRecruitment,
@@ -60,30 +118,169 @@ export function RecruitmentDiscovery({
     useEffect(() => {
         document.title = `${t(`roamMatePreview.${phase}.title`)} · ${t("app.name")}`;
     }, [phase, t]);
-    const candidateFilters = filterOptions.map(([value, label]) => ({
-        value,
-        label,
-        candidates:
-            value === "ALL"
-                ? candidates
-                : candidates.filter((candidate) => candidate.travelStyleMatch?.category === value),
-    }));
+    const initialCandidate = candidates.find(
+        (candidate) => initialRequestId !== undefined && candidate.requestId === initialRequestId,
+    );
+    const initialArchived = archived.find(
+        (request) => initialRequestId !== undefined && request.requestId === initialRequestId,
+    );
+    const [chosenStatus, setStatusFilter] = useState<StatusGroup | "ALL" | undefined>(() =>
+        initialCandidate
+            ? statusGroup(initialCandidate.requestStatus, initialCandidate.direction)
+            : initialArchived
+              ? statusGroup(initialArchived.status, initialArchived.direction)
+              : undefined,
+    );
 
+    const statusFilter = chosenStatus ?? "ALL";
+    const [chosenStyle, setStyleFilter] = useState<string>();
+    const [filtersChanged, setFiltersChanged] = useState(false);
+    const [resultsReady, setResultsReady] = useState(
+        () => window.matchMedia("(prefers-reduced-motion: reduce)").matches,
+    );
+    const styleFilter = chosenStyle ?? "ALL";
+    const entries = [
+        ...candidates.map((candidate) => ({
+            group: statusGroup(candidate.requestStatus, candidate.direction),
+            profile: candidate,
+            candidate,
+            archivedRequest: null,
+        })),
+        ...archived.map((request) => ({
+            group: statusGroup(request.status, request.direction),
+            profile: request.candidate,
+            candidate: null,
+            archivedRequest: request,
+        })),
+    ];
+    const styleMatches = entries.filter(
+        ({ profile }) =>
+            styleFilter === "ALL" || profile?.travelStyleMatch?.category === styleFilter,
+    );
+    const groups = statusOrder.map((value) => ({
+        value,
+        entries: styleMatches.filter((item) => item.group === value),
+    }));
+    const visible = groups
+        .filter((group) => statusFilter === "ALL" || group.value === statusFilter)
+        .flatMap((group) => group.entries);
+    const statusButtons = [
+        { value: "ALL" as const, count: styleMatches.length },
+        ...groups
+            .filter(
+                (group) =>
+                    group.value !== "EXPIRED" || group.entries.length || statusFilter === "EXPIRED",
+            )
+            .map((group) => ({ value: group.value, count: group.entries.length })),
+    ];
+
+    const dialogTitleId = useId();
+    const [recipientId, setRecipientId] = useState<number>();
+    const [sentNotice, setSentNotice] = useState<number>();
+    const recipient = candidates.find(
+        (candidate) =>
+            candidate.searchId === recipientId && candidate.canRequest && !candidate.requestStatus,
+    );
+    async function confirmRequest() {
+        if (!recipient || !requestActions || historyUnavailable) return;
+        setRecipientId(undefined);
+        if (await requestActions.send(recipient.searchId)) setSentNotice(recipient.searchId);
+    }
+    const [response, setResponse] = useState<{ requestId: number; status: RequestDecision }>();
+    const [responseNotice, setResponseNotice] = useState<RequestDecision>();
+    const missingTitleId = useId();
+    function prepareResponse(requestId: number, status: RequestDecision) {
+        const entry = entries.find(
+            (item) => (item.candidate?.requestId ?? item.archivedRequest?.requestId) === requestId,
+        );
+        if (!entry || historyUnavailable) return;
+        setResponse({ requestId, status });
+    }
+    async function confirmResponse() {
+        if (
+            !response ||
+            !requestActions ||
+            historyUnavailable ||
+            requestActions.responseBusyId !== undefined
+        )
+            return;
+        const { requestId, status } = response;
+        if (await requestActions.respond(requestId, status)) {
+            setResponseNotice(status);
+        }
+        setResponse(undefined);
+    }
+    function requestAction(
+        candidate: Pick<
+            Candidate,
+            "searchId" | "requestId" | "requestStatus" | "direction" | "canRequest"
+        >,
+        placement: "card" | "details",
+    ) {
+        return (
+            requestActions && (
+                <CandidateRequestAction
+                    onRespond={(id) => prepareResponse(id, "ACCEPTED")}
+                    onReject={(id) => prepareResponse(id, "REJECTED")}
+                    placement={placement}
+                    candidate={candidate}
+                    busyId={requestActions.busyId}
+                    actionsDisabled={
+                        historyUnavailable || requestActions.responseBusyId !== undefined
+                    }
+                    onApply={setRecipientId}
+                    recheck={
+                        requestActions.uncertain?.has(candidate.searchId) ||
+                        (candidate.requestId !== null &&
+                            candidate.requestId !== undefined &&
+                            requestActions.responseUncertain?.has(candidate.requestId))
+                            ? requestActions.recheck
+                            : undefined
+                    }
+                />
+            )
+        );
+    }
     const [confirmingClose, setConfirmingClose] = useState(false);
-    const [styleFilter, setStyleFilter] = useState<string>();
     const list = useRef<HTMLDivElement>(null);
-    const activeFilter =
-        candidateFilters.find(
-            ({ value, candidates }) => value === styleFilter && candidates.length > 0,
-        ) ?? candidateFilters[0]!;
-    const visibleCandidates = activeFilter.candidates;
-    const [selectedId, setSelectedId] = useState<number>();
-    const selected = candidates.find((candidate) => candidate.searchId === selectedId);
+    const [selectedId, setSelectedId] = useState<number | undefined>(
+        () => initialCandidate?.searchId ?? initialArchived?.candidateSearchId,
+    );
+    const selectedEntry = entries.find(
+        (item) =>
+            (item.candidate?.searchId ?? item.archivedRequest?.candidateSearchId) === selectedId,
+    );
+    const selectedArchived = selectedEntry?.archivedRequest;
+    const selected =
+        selectedEntry?.candidate ??
+        (selectedArchived?.candidate
+            ? { ...selectedArchived.candidate, searchId: selectedArchived.candidateSearchId }
+            : undefined);
+    const selectedAction =
+        selectedEntry?.candidate ??
+        (selectedArchived
+            ? {
+                  searchId: selectedArchived.candidateSearchId,
+                  requestId: selectedArchived.requestId,
+                  requestStatus: selectedArchived.status,
+                  direction: selectedArchived.direction,
+              }
+            : undefined);
+    const responseEntry = entries.find(
+        (item) =>
+            (item.candidate?.requestId ?? item.archivedRequest?.requestId) === response?.requestId,
+    );
+    function resetList() {
+        setFiltersChanged(true);
+        setResultsReady(true);
+        setSelectedId(undefined);
+        list.current?.scrollTo({ top: 0 });
+    }
     return (
         <main
             id="main-content"
             tabIndex={-1}
-            className={`roam-preview roam-preview--discovery${phase === "found" ? " roam-preview--found" : ""}${phase === "empty" ? " roam-preview--empty" : ""}${selected ? " roam-preview--with-panel" : ""}`}
+            className={`roam-preview roam-preview--discovery${phase === "found" ? " roam-preview--found" : ""}${phase === "empty" ? " roam-preview--empty" : ""}${selectedEntry && resultsReady ? " roam-preview--with-panel" : ""}`}
         >
             <div key={phase} className="roam-discovery-stage">
                 {(phase === "found" || phase === "empty") && (
@@ -115,22 +312,52 @@ export function RecruitmentDiscovery({
                     </div>
                     {phase === "found" && (
                         <div className="roam-match-filters">
-                            <FilterChips
+                            <div
+                                className="ui-filter-chips roam-status-filters"
+                                role="group"
+                                aria-label={t("companionRequests.statusLabel")}
+                            >
+                                {statusButtons.map(({ value, count }) => (
+                                    <Button
+                                        key={value}
+                                        variant="plain"
+                                        className="ui-filter-chip roam-status-chip"
+                                        data-request-status={value === "SENT" ? "PENDING" : value}
+                                        data-request-action={
+                                            value === "RECEIVED" ? "respond" : undefined
+                                        }
+                                        aria-pressed={statusFilter === value}
+                                        onClick={() => {
+                                            if (value !== statusFilter) {
+                                                setStatusFilter(value);
+                                                resetList();
+                                            }
+                                        }}
+                                    >
+                                        {value !== "ALL" && <Icon name={groupIcons[value]} />}
+                                        {t("roamMatePreview.found.filterCount", {
+                                            label:
+                                                value === "ALL"
+                                                    ? t("mockup.filters.all")
+                                                    : t(`companionRequests.resultFilters.${value}`),
+                                            count,
+                                        })}
+                                    </Button>
+                                ))}
+                            </div>
+                            <DropdownMenu
+                                icon="filter"
                                 label={t("roamMatePreview.found.filterLabel")}
-                                value={activeFilter.value}
-                                options={candidateFilters.map(({ value, label, candidates }) => ({
+                                value={styleFilter}
+                                options={filterOptions.map(([value, label]) => ({
                                     value,
-                                    label: t("roamMatePreview.found.filterCount", {
-                                        label: t(label),
-                                        count: candidates.length,
-                                    }),
-                                    disabled: candidates.length === 0,
+                                    label: t(label),
                                 }))}
                                 onChange={(value) => {
-                                    if (value === activeFilter.value) return;
-                                    setStyleFilter(value);
-                                    setSelectedId(undefined);
-                                    list.current?.scrollTo({ top: 0 });
+                                    if (value !== styleFilter) {
+                                        setStyleFilter(value);
+                                        resetList();
+                                    }
                                 }}
                             />
                         </div>
@@ -153,34 +380,133 @@ export function RecruitmentDiscovery({
                         )}
                     </div>
                 )}
-                {phase === "found" && (
-                    <div ref={list} className="roam-match-scroll">
+                {phase === "found" && historyUnavailable && (
+                    <div className="roam-request-history-notice" role="alert">
+                        <p>{t("companionRequests.historyUnavailable")}</p>
+                        <Button variant="soft" onClick={onRecheckHistory}>
+                            {t("companionRequests.recheck")}
+                        </Button>
+                    </div>
+                )}
+                {phase === "found" && visible.length === 0 && (
+                    <div className="matching-filter-empty roam-filter-empty" role="status">
+                        <div className="matching-filter-empty__illustration" aria-hidden="true">
+                            <Icon name="search" />
+                        </div>
+                        <h3>{t("companionRequests.noFilterResults")}</h3>
+                        <p>{t("companionRequests.adjustFilters")}</p>
+                    </div>
+                )}
+                {phase === "found" && visible.length > 0 && (
+                    <div
+                        className="roam-match-scroll"
+                        ref={list}
+                        data-filtered={filtersChanged || undefined}
+                        onAnimationEnd={(event) => {
+                            if (
+                                event.target === event.currentTarget &&
+                                event.animationName === "roam-scroll-ready"
+                            )
+                                setResultsReady(true);
+                        }}
+                    >
                         <ul
-                            key={styleFilter ?? "initial"}
                             className="roam-match-list"
-                            data-filtered={styleFilter !== undefined || undefined}
                             aria-label={t("roamMatePreview.found.title")}
                         >
-                            {visibleCandidates.map((candidate) => (
-                                <li key={candidate.searchId}>
-                                    <RoamMatchCard
-                                        candidate={candidate}
-                                        destination={destination}
-                                        selected={selectedId === candidate.searchId}
-                                        onSelect={() =>
-                                            setSelectedId(
-                                                selectedId === candidate.searchId
-                                                    ? undefined
-                                                    : candidate.searchId,
-                                            )
-                                        }
-                                    />
-                                </li>
-                            ))}
+                            {visible.map(({ candidate, archivedRequest: request }) =>
+                                candidate ? (
+                                    <li key={candidate.searchId}>
+                                        <RoamMatchCard
+                                            candidate={candidate}
+                                            destination={destination}
+                                            selected={selectedId === candidate.searchId}
+                                            onSelect={() =>
+                                                setSelectedId(
+                                                    selectedId === candidate.searchId
+                                                        ? undefined
+                                                        : candidate.searchId,
+                                                )
+                                            }
+                                            requestAction={requestAction(candidate, "card")}
+                                        />
+                                    </li>
+                                ) : (
+                                    <li key={`request-${request.requestId}`}>
+                                        <Card className="roam-match-card">
+                                            <header className="roam-match-card__person">
+                                                <Avatar
+                                                    src={request.candidate?.profileImageUrl ?? null}
+                                                />
+                                                <strong>
+                                                    {request.candidate?.nickname ??
+                                                        t("companionRequests.missingProfile")}
+                                                </strong>
+                                            </header>
+                                            <h3>
+                                                <Button
+                                                    variant="plain"
+                                                    className="matching-registration__open"
+                                                    onClick={() =>
+                                                        setSelectedId(request.candidateSearchId)
+                                                    }
+                                                >
+                                                    {request.candidate?.title ||
+                                                        t("matchingFlow.untitled")}
+                                                </Button>
+                                            </h3>
+                                            {request.candidate?.introduction && (
+                                                <p>{request.candidate.introduction}</p>
+                                            )}
+                                            <div className="roam-match-card__request">
+                                                {requestAction(
+                                                    {
+                                                        searchId: request.candidateSearchId,
+                                                        requestId: request.requestId,
+                                                        requestStatus: request.status,
+                                                        direction: request.direction,
+                                                    },
+                                                    "card",
+                                                )}
+                                            </div>
+                                        </Card>
+                                    </li>
+                                ),
+                            )}
                         </ul>
                     </div>
                 )}
             </div>
+            {recipient && (
+                <Modal
+                    open
+                    labelledBy={dialogTitleId}
+                    onClose={() => setRecipientId(undefined)}
+                    className="matching-end-dialog"
+                >
+                    <h2 id={dialogTitleId}>
+                        {t("companionRequests.confirmSend", { nickname: recipient.nickname })}
+                    </h2>
+                    <p className="matching-end-dialog__title">
+                        {recipient.title || t("matchingFlow.untitled")}
+                    </p>
+                    <div className="matching-end-dialog__actions">
+                        <Button variant="cancel" onClick={() => setRecipientId(undefined)}>
+                            {t("common.cancel")}
+                        </Button>
+                        <Button variant="confirm" onClick={() => void confirmRequest()}>
+                            {t("companionRequests.apply")}
+                        </Button>
+                    </div>
+                </Modal>
+            )}
+            {sentNotice !== undefined && (
+                <Toast
+                    key={sentNotice}
+                    message={t("companionRequests.sentNotice")}
+                    onDismiss={() => setSentNotice(undefined)}
+                />
+            )}
             {confirmingClose && onCloseRecruitment && (
                 <RecruitmentActionDialog
                     action="close"
@@ -204,11 +530,55 @@ export function RecruitmentDiscovery({
                     leaveLabel={t("profileSetup.leave")}
                 />
             )}
+            {response && (
+                <CompanionResponseDialog
+                    status={response.status}
+                    candidate={responseEntry?.profile ?? null}
+                    busy={requestActions?.responseBusyId !== undefined}
+                    onCancel={() => setResponse(undefined)}
+                    onConfirm={() => void confirmResponse()}
+                />
+            )}
+            {responseNotice && (
+                <Toast
+                    message={t(
+                        responseNotice === "ACCEPTED"
+                            ? "companionRequests.acceptedNotice"
+                            : "companionRequests.rejectedNotice",
+                    )}
+                    onDismiss={() => setResponseNotice(undefined)}
+                />
+            )}
+            {resultsReady && selectedArchived && !selected && (
+                <DetailsSidebar
+                    id="recruitment-details-panel"
+                    titleId={missingTitleId}
+                    closing={false}
+                    onClose={() => setSelectedId(undefined)}
+                    onExited={() => {}}
+                >
+                    <div className="matching-details-panel__body">
+                        <h2 id={missingTitleId}>{t("companionRequests.missingProfile")}</h2>
+                    </div>
+                    <footer className="matching-details-panel__footer">
+                        {selectedAction && requestAction(selectedAction, "details")}
+                        <Button variant="close" onClick={() => setSelectedId(undefined)}>
+                            {t("common.close")}
+                        </Button>
+                    </footer>
+                </DetailsSidebar>
+            )}
             <RecruitmentDetailsPanel
                 details={
-                    selected
+                    selected && resultsReady
                         ? {
                               candidate: selected,
+                              requestAction:
+                                  selectedAction && requestAction(selectedAction, "details"),
+                              ...(requestActions && {
+                                  ownRecruitmentTitle:
+                                      recruitmentTitle || t("matchingFlow.untitled"),
+                              }),
                               destination: destination,
                               onClose: () => setSelectedId(undefined),
                               busy: false,

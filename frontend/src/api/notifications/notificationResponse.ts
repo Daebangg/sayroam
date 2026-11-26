@@ -20,8 +20,14 @@ function notification(value: unknown): value is Notification {
         typeof value.createdAt === "string" &&
         value.createdAt.endsWith("Z") &&
         Number.isFinite(Date.parse(value.createdAt)) &&
-        (value.type === "WELCOME" || value.type === "COMPANION_MATCH_FOUND") &&
-        (value.targetType === null || value.targetType === "COMPANION_SEARCH") &&
+        (value.type === "WELCOME" ||
+            value.type === "COMPANION_MATCH_FOUND" ||
+            value.type === "COMPANION_REQUEST" ||
+            value.type === "COMPANION_ACCEPTED" ||
+            value.type === "COMPANION_REJECTED") &&
+        (value.targetType === null ||
+            value.targetType === "COMPANION_SEARCH" ||
+            value.targetType === "COMPANION_REQUEST") &&
         (value.targetId === null || integer(value.targetId, 1))
     );
 }

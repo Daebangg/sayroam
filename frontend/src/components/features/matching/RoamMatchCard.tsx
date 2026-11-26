@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { Avatar, Badge, Button, Card, Icon } from "@/components/ui";
 import type { CandidateResult } from "@/hooks/matching.types";
@@ -8,10 +9,17 @@ type RoamMatchCardProps = {
     candidate: CandidateResult["candidates"][number];
     destination: string;
     selected: boolean;
+    requestAction?: ReactNode;
     onSelect: () => void;
 };
 
-export function RoamMatchCard({ candidate, destination, selected, onSelect }: RoamMatchCardProps) {
+export function RoamMatchCard({
+    candidate,
+    destination,
+    selected,
+    onSelect,
+    requestAction,
+}: RoamMatchCardProps) {
     const { t, i18n } = useTranslation();
     const { age, gender, nickname, travelStyleMatch: style } = candidate;
     const language = i18n.resolvedLanguage ?? "ko";
@@ -75,7 +83,7 @@ export function RoamMatchCard({ candidate, destination, selected, onSelect }: Ro
                     tone={!style ? "neutral" : similar ? "success" : "warm"}
                 />
             </header>
-            <h2>
+            <h3>
                 <Button
                     variant="plain"
                     className="matching-registration__open"
@@ -85,7 +93,7 @@ export function RoamMatchCard({ candidate, destination, selected, onSelect }: Ro
                 >
                     {candidate.title || t("matchingFlow.untitled")}
                 </Button>
-            </h2>
+            </h3>
             {candidate.introduction && <p>{candidate.introduction}</p>}
             <dl className="roam-match-card__facts">
                 <div>
@@ -116,6 +124,7 @@ export function RoamMatchCard({ candidate, destination, selected, onSelect }: Ro
                     </dd>
                 </div>
             </dl>
+            {requestAction && <div className="roam-match-card__request">{requestAction}</div>}
         </Card>
     );
 }

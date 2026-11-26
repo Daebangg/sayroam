@@ -21,7 +21,7 @@ export type InboxItem = {
     section: "today" | "earlier";
     icon: IconName;
     isRead: boolean;
-    action?: { to: string };
+    action?: { to: string; state?: unknown };
 };
 
 type NotificationInboxProps = {
@@ -436,6 +436,10 @@ export function NotificationInbox({
                                                                                 variant="plain"
                                                                                 className="notification-inbox__action notification-inbox__go"
                                                                                 to={item.action.to}
+                                                                                state={
+                                                                                    item.action
+                                                                                        .state
+                                                                                }
                                                                                 aria-label={t(
                                                                                     "inbox.goToRecruitment",
                                                                                     {

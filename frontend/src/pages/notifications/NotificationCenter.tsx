@@ -1,14 +1,20 @@
+import { useLocation } from "react-router";
 import { useTranslation } from "react-i18next";
 import {
     NotificationInbox,
     type InboxItem,
 } from "@/components/features/notifications/NotificationInbox";
 import { useNotifications } from "@/hooks/api/notifications/useNotifications";
-import { localizeNotificationContent } from "@/i18n/notification";
+import { localizeNotificationContent, notificationMessageKeys } from "@/i18n/notification";
 import { formatDate } from "@/i18n/locale";
-import { recruitmentResultsUrl } from "@/routing/paths";
+import {
+    companionRequestUrl,
+    recruitmentResultsUrl,
+    matchingNotificationState,
+} from "@/routing/paths";
 
 export function NotificationCenter({ enabled }: { enabled: boolean }) {
+    const location = useLocation();
     const inbox = useNotifications(enabled);
     const { t, i18n } = useTranslation();
     const now = new Date();
@@ -22,13 +28,25 @@ export function NotificationCenter({ enabled }: { enabled: boolean }) {
             : undefined;
         return {
             id: String(item.id),
-            title: t(match ? "inbox.messages.match.title" : "inbox.messages.welcome.title"),
+            title: t(`inbox.messages.${notificationMessageKeys[item.type]}.title`),
             content: localizeNotificationContent(item, t),
             time: formatDate(i18n.resolvedLanguage ?? "ko", item.createdAt),
             section: date.toDateString() === now.toDateString() ? "today" : "earlier",
-            icon: match ? "matching" : "compass",
+            icon: item.type === "WELCOME" ? "compass" : "matching",
+            ...(item.targetType === "COMPANION_REQUEST" &&
+                item.targetId !== null && {
+                    action: {
+                        to: companionRequestUrl(item.targetId),
+                        state: matchingNotificationState(location),
+                    },
+                }),
             ...(match && item.targetType === "COMPANION_SEARCH" && item.targetId !== null
-                ? { action: { to: recruitmentResultsUrl(item.targetId) } }
+                ? {
+                      action: {
+                          to: recruitmentResultsUrl(item.targetId),
+                          state: matchingNotificationState(location),
+                      },
+                  }
                 : {}),
             ...(context && { context }),
             isRead: item.isRead,

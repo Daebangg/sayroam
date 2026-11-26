@@ -23,3 +23,7 @@ export function getMockupScreen(pathname: string, search: string): MockupScreen 
 export function mockupUrl(screen: MockupScreen): string {
     return `/brand?preview=${screen}`;
 }
+
+export function mockupRequestUrl(requestId: number, searchId = 1) {
+    return `${mockupUrl("matching-found")}&requestId=${requestId}&searchId=${searchId}`;
+}

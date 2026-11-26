@@ -1,19 +1,23 @@
+import { useLocation } from "react-router";
+import { matchingNotificationState } from "@/routing/paths";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { mockupUrl } from "@/routing/mockups";
-import { localizeNotificationContent } from "@/i18n/notification";
+import { mockupRequestUrl, mockupUrl } from "@/routing/mockups";
+import { previewRequestIds } from "@/data/preview";
 import { NotificationInbox, type InboxItem } from "./NotificationInbox";
 
 type PreviewItem = {
     id: string;
-    sample: "match" | "welcome";
+    sample: "match" | "welcome" | "request" | "accepted";
     icon: InboxItem["icon"];
     section: InboxItem["section"];
     time: "justNow" | "fiveMinutes" | "halfHour" | "oneHour" | "yesterday";
 };
 
 const samples: readonly PreviewItem[] = [
-    { id: "match", sample: "match", icon: "matching", section: "today", time: "fiveMinutes" },
+    { id: "request", sample: "request", icon: "mail", section: "today", time: "justNow" },
+    { id: "accepted", sample: "accepted", icon: "check", section: "today", time: "fiveMinutes" },
+    { id: "match", sample: "match", icon: "matching", section: "today", time: "halfHour" },
     { id: "welcome", sample: "welcome", icon: "compass", section: "earlier", time: "yesterday" },
 ];
 
@@ -24,6 +28,7 @@ export function NotificationInboxPreview({
     simulateArrival?: boolean;
     inline?: boolean;
 }) {
+    const location = useLocation();
     const { t } = useTranslation();
     const [readIds, setReadIds] = useState(() => new Set<string>(["welcome"]));
     const [deletedIds, setDeletedIds] = useState(() => new Set<string>());
@@ -50,29 +55,23 @@ export function NotificationInboxPreview({
             id: item.id,
             icon: item.icon,
             section: item.section,
-            title:
-                item.sample === "welcome"
-                    ? t("inbox.messages.welcome.title")
-                    : t("inbox.messages.match.title"),
-            content:
-                item.sample === "welcome"
-                    ? localizeNotificationContent(
-                          {
-                              type: "WELCOME",
-                              content: t("inbox.messages.welcome.content", { lng: "en" }),
-                          },
-                          t,
-                      )
-                    : t("inbox.messages.match.content"),
-            ...(item.sample === "welcome"
-                ? {}
-                : { context: t(`inbox.samples.${item.sample}.context`) }),
+            title: t(`inbox.messages.${item.sample}.title`),
+            content: t(`inbox.messages.${item.sample}.content`),
+            ...(item.sample === "match" && { context: t("inbox.samples.match.context") }),
             time: t(`inbox.time.${item.time}`),
             isRead: readIds.has(item.id),
-            ...(item.sample === "match"
+            ...(item.sample !== "welcome"
                 ? {
                       action: {
-                          to: mockupUrl("matching-found"),
+                          state: matchingNotificationState(location),
+                          to:
+                              item.sample === "match"
+                                  ? mockupUrl("matching-found")
+                                  : mockupRequestUrl(
+                                        item.sample === "request"
+                                            ? previewRequestIds.received
+                                            : previewRequestIds.accepted,
+                                    ),
                       },
                   }
                 : {}),

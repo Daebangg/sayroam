@@ -501,7 +501,7 @@
             "rooms": "My rooms",
             "notifications": "Notification inbox",
             "matching-searching": "Roam Mate · Discovery flow",
-            "matching-found": "Roam Mate · Candidates found",
+            "matching-found": "Roam Mate · Potential Roam Mates",
             "matching-delayed": "Roam Mate · Delayed search",
             "matching-empty": "Roam Mate · No candidates"
         },
@@ -951,9 +951,9 @@
         "detailsOpen": "Looking for someone to travel with.",
         "detailsClosed": "This trip is no longer accepting companions.",
         "pagination": "Recruitment pages",
-        "editMatchedConfirmation": "Edit this matched post?",
-        "editMatchedWarning": "“{{title}}” already has matches. Saving new preferences may change which Roam Mates appear.",
-        "endMatchedWarning": "“{{title}}” already has matches. Closing the post stops the search and hides its matches from your recruitment list.",
+        "editMatchedConfirmation": "Edit this recruitment with candidates?",
+        "editMatchedWarning": "Changing the criteria for “{{title}}” may change its candidates.",
+        "endMatchedWarning": "Closing “{{title}}” stops the candidate search. Its request history is still available.",
         "endConfirmation": "Close this recruitment?",
         "endFailed": "Could not close the recruitment. Check its status in your listings before trying again.",
         "placeFilter": "All destinations",
@@ -1044,7 +1044,8 @@
         "keepEditing": "Keep editing",
         "resultsUnavailable": "Match results are unavailable",
         "resultsOffline": "You’re offline. We’ll check your matches when you reconnect.",
-        "resultsRetryHint": "We couldn’t load the candidates. Please try again shortly."
+        "resultsRetryHint": "We couldn’t load the candidates. Please try again shortly.",
+        "loadingResults": "Loading Roam Mates."
     },
     "matchingEntry": {
         "heading": "How would you like to find companions?",
@@ -1130,6 +1131,18 @@
             "match": {
                 "title": "New Roam Mate candidates found",
                 "content": "New candidates match your post. Take a look at your latest results."
+            },
+            "request": {
+                "title": "New Roam Mate request",
+                "content": "Someone requested to travel with you. View their recruitment to respond."
+            },
+            "accepted": {
+                "title": "Roam Mate request accepted",
+                "content": "Your Roam Mate accepted your request. View your matching results."
+            },
+            "rejected": {
+                "title": "Roam Mate request declined",
+                "content": "You can also find it under declined requests."
             }
         },
         "loadError": "Could not load notifications.",
@@ -1151,8 +1164,8 @@
             "stay": "Stay for results"
         },
         "found": {
-            "title": "Meet Your Matches",
-            "description": "We found travelers for your trip",
+            "title": "Roam Mate candidates",
+            "description": "Meet travelers whose dates overlap with yours",
             "similar": "Similar travel styles",
             "discussion": "Worth discussing",
             "region": "Destination",
@@ -1170,7 +1183,51 @@
             "keep": "Keep recruiting"
         },
         "viewResults": "View matching results",
-        "matched": "Matched",
-        "openMatches": "See your matched Roam Mates"
+        "matched": "Potential Roam Mates"
+    },
+    "companionRequests": {
+        "adjustFilters": "Try another request status or travel style.",
+        "noFilterResults": "No Roam Mates match these filters.",
+        "resultFilters": {
+            "ACCEPTED": "Confirmed",
+            "RECEIVED": "Received",
+            "SENT": "Sent",
+            "UNSENT": "Recommended",
+            "REJECTED": "Declined requests",
+            "EXPIRED": "Expired requests"
+        },
+        "ownPost": "My recruitment · {{title}}",
+        "send": "Send Roam Mate request",
+        "respond": "Accept request",
+        "accept": "Accept request",
+        "reject": "Decline request",
+        "apply": "Send request",
+        "confirmAccept": "Accept this Roam Mate request?",
+        "confirmReject": "Decline this Roam Mate request?",
+        "acceptedNotice": "Roam Mate request accepted.",
+        "rejectedNotice": "Roam Mate request declined.",
+        "confirmSend": "Send a Roam Mate request to {{nickname}}?",
+        "sentNotice": "Roam Mate request sent",
+        "sent": "Request sent",
+        "waiting": "Awaiting response",
+        "incoming": "Incoming request",
+        "ACCEPTED": "Roam Mate confirmed",
+        "REJECTED": "Declined",
+        "EXPIRED": "Expired",
+        "missingProfile": "The other recruitment is unavailable.",
+        "uncertain": "The result is unknown. Check the current status.",
+        "recheck": "Check current status",
+        "unavailable": "This request history is unavailable.",
+        "loadError": "Could not load requests.",
+        "statusLabel": "Request status",
+        "hints": {
+            "sent": "Waiting for a response to your Roam Mate request",
+            "incoming": "You can accept or decline the incoming Roam Mate request",
+            "ACCEPTED": "The Roam Mate request has been accepted",
+            "REJECTED_SENT": "The other person declined your Roam Mate request",
+            "REJECTED_RECEIVED": "You declined this Roam Mate request",
+            "EXPIRED": "This request has expired and can no longer receive a response"
+        },
+        "historyUnavailable": "Request status is unavailable. Check the current status to continue."
     }
 }

@@ -1,5 +1,7 @@
+import { RecruitmentResultsLoading } from "@/components/features/matching/RecruitmentResultsLoading";
 import { recruitmentResultsUrl, pagePaths } from "@/routing/paths";
 import { useMatchedRecruitments } from "@/hooks/api/matching/useRecruitmentResults";
+import { CompanionRequestRedirect } from "./CompanionRequestRedirect";
 import { RecruitmentResultsPage } from "./RecruitmentResultsPage";
 import { RecruitmentTextAction } from "@/components/features/matching/RecruitmentTextAction";
 import { useRef, useState } from "react";
@@ -83,18 +85,33 @@ function MatchingSession({ preview }: { preview: RecruitmentPreview | undefined 
     const live = useCompanionMatching(preview ? undefined : member?.userId);
     const matching = preview?.data ?? live;
     const navigate = useNavigate();
-    const resultsParam = preview ? null : new URLSearchParams(location.search).get("searchId");
+    const params = new URLSearchParams(location.search);
+    const resultsParam = preview ? null : params.get("searchId");
+    const requestParam = preview ? null : params.get("requestId");
+    const history = !preview && params.get("view") === "requests";
     const available = useMatchedRecruitments(
         live.searches,
-        !preview && !!member && location.state?.matchingView === "mine" && resultsParam === null,
+        !preview &&
+            !!member &&
+            location.state?.matchingView === "mine" &&
+            resultsParam === null &&
+            requestParam === null,
     );
     const openResults = (id: number, from: "create" | "edit" | "resume" | "list") =>
         void navigate(recruitmentResultsUrl(id), {
             replace: from === "create" || from === "edit",
             state: { resultsFrom: from },
         });
+    if (member && history && requestParam === null && resultsParam !== null)
+        return <Navigate to={recruitmentResultsUrl(Number(resultsParam))} replace />;
+    if (member && requestParam !== null) {
+        const value = requestParam ?? resultsParam ?? "";
+        if (!/^[1-9]\d*$/.test(value) || !Number.isSafeInteger(Number(value)))
+            return <Navigate to={pagePaths.matching} replace state={{ matchingView: "mine" }} />;
+        return <CompanionRequestRedirect key={location.key} id={Number(value)} />;
+    }
     if (resultsParam !== null && member) {
-        if (live.catalogLoading) return <Spinner label={t("matchingFlow.loading")} />;
+        if (live.catalogLoading) return <RecruitmentResultsLoading />;
         const post = live.searches.find((item) => String(item.id) === resultsParam);
         if (live.catalogFailed) {
             return (
@@ -121,14 +138,8 @@ function MatchingSession({ preview }: { preview: RecruitmentPreview | undefined 
                 />
             );
         }
-        if (
-            !post ||
-            post.status !== "ACTIVE" ||
-            post.matchingStatus === "SKIPPED" ||
-            !post.destinationId
-        ) {
+        if (!post)
             return <Navigate to={pagePaths.matching} replace state={{ matchingView: "mine" }} />;
-        }
         return (
             <RecruitmentResultsPage
                 key={`${location.key}-${post.id}-${post.matchingRevision}`}
@@ -157,6 +168,7 @@ function MatchingSession({ preview }: { preview: RecruitmentPreview | undefined 
             canManage={preview !== undefined || member?.userId !== undefined}
             matching={matching}
             matchedIds={preview?.matchedIds ?? available.matchedIds}
+            resultIds={preview?.matchedIds ?? available.resultIds}
             openResults={preview?.openResults ?? ((id) => openResults(id, "list"))}
             startDiscovery={preview?.startDiscovery ?? openResults}
             resultsCheckFailed={!preview && available.failed}
@@ -178,6 +190,7 @@ type MatchingWorkspaceProps = {
     canManage: boolean;
     matching: MatchingData;
     matchedIds: RecruitmentPreview["matchedIds"];
+    resultIds: ReadonlySet<number>;
     openResults: RecruitmentPreview["openResults"];
     startDiscovery: RecruitmentPreview["startDiscovery"];
     resultsCheckFailed: boolean;
@@ -235,6 +248,7 @@ function MatchingWorkspace({
     canManage,
     matching,
     matchedIds,
+    resultIds,
     openResults,
     startDiscovery,
     resultsCheckFailed,
@@ -1478,10 +1492,10 @@ function MatchingWorkspace({
                                             </div>
                                             {registration.status === "ACTIVE" && (
                                                 <div className="matching-registration__actions">
-                                                    {listingStatus(registration) === "MATCHED" && (
+                                                    {resultIds.has(registration.id) && (
                                                         <Button
                                                             variant="brand"
-                                                            className="matching-results-link"
+                                                            className="matching-card-action"
                                                             onClick={() =>
                                                                 openResults(registration.id)
                                                             }
@@ -1613,8 +1627,10 @@ function MatchingWorkspace({
                                                   matching.errorKey !==
                                                       "matchingFlow.travelStyleRequired",
                                               onClose: () => setSelectedRegistrationId(undefined),
-                                              ...(listingStatus(selectedRegistration) ===
-                                                  "MATCHED" && {
+                                              hasCandidateMatches: matchedIds.has(
+                                                  selectedRegistration.id,
+                                              ),
+                                              ...(resultIds.has(selectedRegistration.id) && {
                                                   onViewResults: () =>
                                                       openResults(selectedRegistration.id),
                                               }),

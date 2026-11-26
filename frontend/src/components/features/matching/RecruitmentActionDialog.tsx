@@ -66,7 +66,7 @@ export function RecruitmentActionDialog({
                     {t("common.cancel")}
                 </Button>
                 <Button
-                    variant={action === "close" ? "danger" : "confirm"}
+                    variant={action === "close" ? "delete" : action === "edit" ? "edit" : "confirm"}
                     loading={busy}
                     onClick={onConfirm}
                 >
