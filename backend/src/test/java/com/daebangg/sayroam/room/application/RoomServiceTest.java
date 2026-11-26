@@ -6,6 +6,7 @@ import com.daebangg.sayroam.room.application.service.RoomService;
 import com.daebangg.sayroam.room.domain.RoomMember;
 import com.daebangg.sayroam.room.domain.RoomMemberStatus;
 import com.daebangg.sayroam.room.domain.error.RoomErrorCode;
+import com.daebangg.sayroam.room.domain.event.RoomMemberJoined;
 import com.daebangg.sayroam.room.domain.event.RoomMemberLeft;
 import com.daebangg.sayroam.room.infrastructure.persistence.RoomJpaRepository;
 import com.daebangg.sayroam.room.infrastructure.persistence.RoomMemberJpaRepository;
@@ -340,6 +341,72 @@ class RoomServiceTest extends DatabaseIntegrationTest {
 
         // then
         assertThat(count).isEqualTo(1);
+    }
+
+    @Test
+    void 방에_참여하면_멤버_참여_이벤트를_발행한다() {
+        // given
+        Long userId = saveUser();
+        Long roomId = roomService.createForTrip();
+
+        // when
+        roomService.join(roomId, userId);
+
+        // then
+        assertThat(events.stream(RoomMemberJoined.class))
+                .containsExactly(new RoomMemberJoined(roomId, userId));
+    }
+
+    @Test
+    void 나갔던_회원을_다시_참여시키면_멤버_참여_이벤트를_발행한다() {
+        // given
+        Long userId = saveUser();
+        Long roomId = roomService.createForTrip();
+        roomService.join(roomId, userId);
+        roomService.leave(roomId, userId);
+        events.clear();
+
+        // when
+        roomService.join(roomId, userId);
+
+        // then
+        assertThat(events.stream(RoomMemberJoined.class))
+                .containsExactly(new RoomMemberJoined(roomId, userId));
+    }
+
+    @Test
+    void 이미_참여_중인_회원을_다시_참여시키면_이벤트를_발행하지_않는다() {
+        // given
+        Long userId = saveUser();
+        Long roomId = roomService.createForTrip();
+        roomService.join(roomId, userId);
+        events.clear();
+
+        // when
+        roomService.join(roomId, userId);
+
+        // then
+        assertThat(events.stream(RoomMemberJoined.class)).isEmpty();
+    }
+
+    @Test
+    void 회원의_방_목록에는_나간_방도_포함된다() {
+        // given
+        Long userId = saveUser();
+        Long otherId = saveUser();
+        Long joinedRoomId = roomService.createForTrip();
+        Long leftRoomId = roomService.createForTrip();
+        Long otherRoomId = roomService.createForTrip();
+        roomService.join(joinedRoomId, userId);
+        roomService.join(leftRoomId, userId);
+        roomService.leave(leftRoomId, userId);
+        roomService.join(otherRoomId, otherId);
+
+        // when
+        List<Long> roomIds = roomService.findRoomIds(userId);
+
+        // then
+        assertThat(roomIds).containsExactlyInAnyOrder(joinedRoomId, leftRoomId);
     }
 
     private Long saveUser() {

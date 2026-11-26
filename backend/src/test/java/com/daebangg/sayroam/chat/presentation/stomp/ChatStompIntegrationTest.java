@@ -186,6 +186,56 @@ class ChatStompIntegrationTest extends DatabaseIntegrationTest {
     }
 
     @Test
+    void 방_멤버면_멤버_채널을_구독한다() throws Exception {
+        // given
+        Long userId = saveUser();
+        Long roomId = roomService.create(userId, "제주 3박 4일");
+        StompSession session = connect(tokenOf(userId)).get(5, TimeUnit.SECONDS);
+        String destination = "/topic/rooms/" + roomId + "/members";
+
+        // when
+        ReceivedFrames frames = new ReceivedFrames();
+        session.subscribe(destination, frames);
+
+        // then
+        awaitSubscribed(frames, () -> messagingTemplate.convertAndSend(destination, PROBE));
+        session.disconnect();
+    }
+
+    @Test
+    void 다른_방의_멤버_채널을_구독하면_거부한다() throws Exception {
+        // given
+        Long ownerId = saveUser();
+        Long otherUserId = saveUser();
+        Long roomId = roomService.create(ownerId, "제주 3박 4일");
+        ConnectionEvents events = new ConnectionEvents();
+        StompSession session = connect(tokenOf(otherUserId), events).get(5, TimeUnit.SECONDS);
+
+        // when
+        session.subscribe("/topic/rooms/" + roomId + "/members", new StompSessionHandlerAdapter() {
+        });
+
+        // then
+        assertThat(events.closed.get(5, TimeUnit.SECONDS)).isNotNull();
+    }
+
+    @Test
+    void 친구가_참여하면_멤버_채널로_신호를_받는다() throws Exception {
+        // given
+        Long ownerId = saveUser();
+        Long friendId = saveUser();
+        Long roomId = roomService.createForTrip();
+        roomService.join(roomId, ownerId);
+        ReceivedFrames frames = subscribeMembers(connect(tokenOf(ownerId)).get(5, TimeUnit.SECONDS), roomId);
+
+        // when
+        roomService.join(roomId, friendId);
+
+        // then
+        assertThat(frames.messages.poll(5, TimeUnit.SECONDS)).isEmpty();
+    }
+
+    @Test
     void 허용되지_않은_destination을_구독하면_거부한다() throws Exception {
         // given
         Long userId = saveUser();
@@ -472,6 +522,24 @@ class ChatStompIntegrationTest extends DatabaseIntegrationTest {
     }
 
     @Test
+    void 방을_나가면_멤버_채널을_구독한_연결도_종료한다() throws Exception {
+        // given
+        Long userId = saveUser();
+        Long roomId = roomService.create(userId, "제주 3박 4일");
+        ConnectionEvents events = new ConnectionEvents();
+        StompSession session = connect(tokenOf(userId), events).get(5, TimeUnit.SECONDS);
+        subscribeMembers(session, roomId);
+
+        // when
+        roomService.leave(roomId, userId);
+
+        // then
+        // 나간 회원에게도 멤버 변화 신호가 같은 연결로 동시에 나가 ERROR 프레임보다 연결 종료가 먼저 도착할 수 있다.
+        // 오류 코드는 방 채널 종료 테스트가 확인하고, 여기서는 연결이 끊기는지만 확인한다.
+        assertThat(events.closed.get(5, TimeUnit.SECONDS)).isNotNull();
+    }
+
+    @Test
     void 토큰이_만료되면_ERROR_프레임에_인증_오류_코드를_담는다() throws Exception {
         // given
         Long userId = saveUser();
@@ -509,6 +577,14 @@ class ChatStompIntegrationTest extends DatabaseIntegrationTest {
 
     private ReceivedFrames subscribeRoom(StompSession session, Long roomId) throws Exception {
         String destination = "/topic/rooms/" + roomId;
+        ReceivedFrames frames = new ReceivedFrames();
+        session.subscribe(destination, frames);
+        awaitSubscribed(frames, () -> messagingTemplate.convertAndSend(destination, PROBE));
+        return frames;
+    }
+
+    private ReceivedFrames subscribeMembers(StompSession session, Long roomId) throws Exception {
+        String destination = "/topic/rooms/" + roomId + "/members";
         ReceivedFrames frames = new ReceivedFrames();
         session.subscribe(destination, frames);
         awaitSubscribed(frames, () -> messagingTemplate.convertAndSend(destination, PROBE));

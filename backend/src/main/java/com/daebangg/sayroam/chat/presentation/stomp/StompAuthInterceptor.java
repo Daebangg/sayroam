@@ -26,7 +26,8 @@ import java.util.regex.Pattern;
 @Component
 @RequiredArgsConstructor
 public class StompAuthInterceptor implements ChannelInterceptor {
-    private static final Pattern ROOM_TOPIC = Pattern.compile("/topic/rooms/(\\d+)");
+    // 방 메시지 채널과 멤버 변화 채널. 둘 다 참여 중인 멤버만 구독할 수 있다.
+    private static final Pattern ROOM_TOPIC = Pattern.compile("/topic/rooms/(\\d+)(/members)?");
     private static final Pattern ROOM_MESSAGES = Pattern.compile("/app/rooms/\\d+/messages");
     private static final Set<String> USER_QUEUES = Set.of("/user/queue/messages", "/user/queue/errors");
     private static final String BEARER_PREFIX = "Bearer ";

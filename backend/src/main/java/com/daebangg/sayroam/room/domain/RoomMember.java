@@ -79,13 +79,14 @@ public class RoomMember extends BaseTimeEntity {
         return new RoomMember(room, userId, RoomMemberRole.MEMBER, now);
     }
 
-    public void rejoin(LocalDateTime now) {
+    public boolean rejoin(LocalDateTime now) {
         if (status == RoomMemberStatus.JOINED) {
-            return;
+            return false;
         }
         this.status = RoomMemberStatus.JOINED;
         this.joinedAt = now;
         this.leftAt = null;
+        return true;
     }
 
     public void leave(LocalDateTime leftAt) {
