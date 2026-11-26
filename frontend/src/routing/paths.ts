@@ -51,6 +51,36 @@ export function legacyPageUrl(url: URL): string | null {
     return result.pathname + result.search + result.hash;
 }
 
+export function companionRequestUrl(requestId: number): string {
+    return `${pagePaths.matching}?requestId=${requestId}`;
+}
+
 export function recruitmentResultsUrl(searchId: number): string {
     return `${pagePaths.matching}?searchId=${searchId}`;
+}
+
+// 알림으로 같은 매칭 결과를 연속해서 열면 이전 결과 화면들을 건너뛴다.
+export function matchingNotificationState(location: {
+    pathname: string;
+    search: string;
+    state: unknown;
+}) {
+    const params = new URLSearchParams(location.search);
+    const isResults =
+        (location.pathname === pagePaths.matching &&
+            params.has("searchId") &&
+            params.get("view") !== "requests") ||
+        (location.pathname === pagePaths.brand &&
+            ["matching-found", "matching-searching", "matching-empty", "matching-delayed"].includes(
+                params.get("preview") ?? "",
+            ));
+    const state = location.state && typeof location.state === "object" ? location.state : {};
+    const prior =
+        "resultsBackSteps" in state &&
+        typeof state.resultsBackSteps === "number" &&
+        Number.isSafeInteger(state.resultsBackSteps) &&
+        state.resultsBackSteps > 0
+            ? state.resultsBackSteps
+            : 1;
+    return { resultsBackSteps: isResults ? prior + 1 : 1, fromMatchingMain: true };
 }

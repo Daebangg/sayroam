@@ -1,6 +1,7 @@
+import { RecruitmentResultsLoading } from "@/components/features/matching/RecruitmentResultsLoading";
 import { useEffect, useEffectEvent } from "react";
 import { useTranslation } from "react-i18next";
-import { useNavigate } from "react-router";
+import { useNavigate, useLocation } from "react-router";
 import type { MatchingRegistration } from "@/hooks/matching.types";
 import { useRecruitmentResults } from "@/hooks/api/matching/useRecruitmentResults";
 import { RecruitmentDiscovery } from "@/components/features/matching/RecruitmentDiscovery";
@@ -28,18 +29,27 @@ export function RecruitmentResultsPage({
 }: ResultsProps) {
     const { t } = useTranslation();
     const navigate = useNavigate();
+    const location = useLocation();
+    const targetId =
+        Number(new URLSearchParams(location.search).get("selectedRequestId")) || undefined;
     const initialSearch = from === "create" || from === "edit" || from === "resume";
-    const { state, retry } = useRecruitmentResults(
-        post.id,
-        post.matchingRevision,
-        initialSearch,
-        reloadPost,
-    );
+    const { state, retry, send, busyId, uncertain, respond, responseBusyId, responseUncertain } =
+        useRecruitmentResults(
+            post.id,
+            post.matchingRevision,
+            initialSearch,
+            reloadPost,
+            post.status === "ACTIVE" &&
+                post.matchingStatus !== "SKIPPED" &&
+                post.destinationId !== null,
+        );
     function list() {
         return navigate(pagePaths.matching, { replace: true, state: { matchingView: "mine" } });
     }
     function back() {
-        if (from) void navigate(-1);
+        const steps = location.state?.resultsBackSteps;
+        if (Number.isSafeInteger(steps) && steps > 0) void navigate(-steps);
+        else if (from) void navigate(-1);
         else void list();
     }
     const leaveUnavailablePost = useEffectEvent(() => {
@@ -74,19 +84,32 @@ export function RecruitmentResultsPage({
             />
         );
     }
+    if (!initialSearch && state.phase === "searching") return <RecruitmentResultsLoading />;
     const candidates = state.phase === "loaded" ? state.candidates : [];
+    const archived = state.phase === "loaded" ? state.archived : [];
     return (
         <RecruitmentDiscovery
             phase={
                 state.phase === "searching" || state.phase === "delayed"
                     ? "searching"
-                    : candidates.length
+                    : candidates.length || archived.length
                       ? "found"
                       : "empty"
             }
             showFindingIntro={initialSearch}
             delayed={state.phase === "delayed"}
             candidates={candidates}
+            archived={archived}
+            initialRequestId={targetId}
+            requestActions={{
+                send,
+                busyId,
+                uncertain,
+                recheck: retry,
+                respond,
+                responseBusyId,
+                responseUncertain,
+            }}
             destination={destination}
             recruitmentTitle={post.title}
             busy={busy}

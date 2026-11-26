@@ -92,3 +92,5 @@ export const roomPreviews = [
     },
 ] as const;
 export type PreviewRoom = (typeof roomPreviews)[number];
+
+export const previewRequestIds = { accepted: 501, received: 502 } as const;

@@ -157,8 +157,9 @@ export function MatchingPreview({ screen }: { screen: Screen }) {
     }
     const sample =
         screen === "matching-empty" || screen === "matching-delayed" ? busanPost : jejuPost;
-    const post =
-        searches.find((post) => post.id === (location.state?.searchId ?? sample.id)) ?? sample;
+    const params = new URLSearchParams(location.search);
+    const searchId = Number(params.get("searchId")) || location.state?.searchId || sample.id;
+    const post = searches.find((post) => post.id === searchId) ?? sample;
     const candidates = candidatesFor(post);
     async function goToList(edit: boolean) {
         await navigate(mockupUrl("matching"), { replace: true, state: { matchingView: "mine" } });
@@ -171,6 +172,8 @@ export function MatchingPreview({ screen }: { screen: Screen }) {
         <RoamMatePreview
             key={location.key}
             screen={screen}
+            requestId={Number(params.get("requestId"))}
+            searchId={post.id}
             candidates={candidates}
             recruitmentTitle={post.title}
             onCloseRecruitment={() => {

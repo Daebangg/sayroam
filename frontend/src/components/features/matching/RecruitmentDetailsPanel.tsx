@@ -1,15 +1,23 @@
+import { RecruitmentStyleDetails } from "./RecruitmentStyleDetails";
 import { RecruitmentUpdatedDate } from "./RecruitmentUpdatedDate";
 import { RecruitmentTextAction } from "./RecruitmentTextAction";
-import { useEffect, useId, useRef, useState } from "react";
+import { type ReactNode, useEffect, useId, useRef, useState } from "react";
 import { DetailsSidebar } from "@/components/layout/DetailsSidebar";
 import { useTranslation } from "react-i18next";
 import { Avatar, Button, Icon, Tag, Tooltip } from "@/components/ui";
 import { RecruitmentStatusBadge } from "./RecruitmentStatusBadge";
-import type { CandidateResult, MatchingRegistration } from "@/hooks/matching.types";
+import type { Candidate, CompanionRequest, MatchingRegistration } from "@/hooks/matching.types";
+
+type PanelCandidate = NonNullable<CompanionRequest["candidate"]> &
+    Pick<Candidate, "searchId"> &
+    Partial<Pick<Candidate, "updatedAt" | "overlapStartDate" | "overlapEndDate" | "overlapDays">>;
 
 type RecruitmentDetailsPanelProps = {
     destination: string;
     onClose: () => void;
+    ownRecruitmentTitle?: string;
+    requestAction?: ReactNode;
+    hasCandidateMatches?: boolean;
     onViewResults?: () => void;
     onEdit?: () => void;
     onFinish?: () => void;
@@ -21,7 +29,7 @@ type RecruitmentDetailsPanelProps = {
     failed: boolean;
 } & (
     | { registration: MatchingRegistration; candidate?: never }
-    | { candidate: CandidateResult["candidates"][number]; registration?: never }
+    | { candidate: PanelCandidate; registration?: never }
 );
 
 export function RecruitmentDetailsPanel({
@@ -48,6 +56,9 @@ function PanelContent({
     onClose,
     onEdit,
     onViewResults,
+    hasCandidateMatches = false,
+    requestAction,
+    ownRecruitmentTitle,
     onFinish,
     onResume,
     resumeDisabled = false,
@@ -82,11 +93,14 @@ function PanelContent({
         >
             <div ref={content} className="matching-details-panel__body">
                 <header className="matching-details-panel__header">
+                    {ownRecruitmentTitle && (
+                        <p>{t("companionRequests.ownPost", { title: ownRecruitmentTitle })}</p>
+                    )}
                     <div className="recruitment-heading-row">
                         {registration && (
                             <div className="matching-details-panel__status">
                                 <RecruitmentStatusBadge
-                                    status={onViewResults ? "MATCHED" : registration.status}
+                                    status={hasCandidateMatches ? "MATCHED" : registration.status}
                                 />
                                 {status === "ACTIVE" && onFinish && (
                                     <RecruitmentTextAction
@@ -112,7 +126,7 @@ function PanelContent({
                                 <strong>{candidate.nickname}</strong>
                             </div>
                         )}
-                        <RecruitmentUpdatedDate updatedAt={post.updatedAt} />
+                        <RecruitmentUpdatedDate updatedAt={post.updatedAt ?? ""} />
                     </div>
                     <h2 id={titleId} aria-live="polite">
                         {post.title || t("matchingFlow.untitled")}
@@ -206,18 +220,22 @@ function PanelContent({
                     }
                 >
                     {candidate ? (
-                        <div>
-                            <dt>
-                                <Icon name="calendar" />
-                                {t("matchingFlow.overlap", { count: candidate.overlapDays })}
-                            </dt>
-                            <dd>
-                                {t("matchingFlow.dateRange", {
-                                    start: date(candidate.overlapStartDate),
-                                    end: date(candidate.overlapEndDate),
-                                })}
-                            </dd>
-                        </div>
+                        candidate.overlapStartDate &&
+                        candidate.overlapEndDate &&
+                        candidate.overlapDays !== undefined && (
+                            <div>
+                                <dt>
+                                    <Icon name="calendar" />
+                                    {t("matchingFlow.overlap", { count: candidate.overlapDays })}
+                                </dt>
+                                <dd>
+                                    {t("matchingFlow.dateRange", {
+                                        start: date(candidate.overlapStartDate),
+                                        end: date(candidate.overlapEndDate),
+                                    })}
+                                </dd>
+                            </div>
+                        )
                     ) : (
                         <>
                             <div>
@@ -258,104 +276,17 @@ function PanelContent({
                         </>
                     )}
                 </dl>
-                {candidate && (
-                    <p className="matching-details-style-summary">
-                        {candidate.travelStyleMatch ? (
-                            <>
-                                <strong>{t("profileSetup.styleTitle")}</strong>
-                                <span title={t("matchingFlow.styleMatchLabel")}>
-                                    <Tag
-                                        tone="primary"
-                                        label={t("matchingFlow.styleMatchScore", {
-                                            score: new Intl.NumberFormat(i18n.resolvedLanguage, {
-                                                style: "percent",
-                                                maximumFractionDigits: 2,
-                                            }).format(candidate.travelStyleMatch.score / 100),
-                                        })}
-                                    />
-                                </span>
-                            </>
-                        ) : (
-                            t("matchingFlow.styleUnavailable")
-                        )}
-                    </p>
-                )}
-                {(registration || candidate.travelStyleMatch) && (
-                    <dl className="matching-conditions-summary matching-details-panel__styles">
-                        {(
-                            [
-                                ["planning", "planning", "journey-plan"],
-                                ["pace", "daily-pace", "journey-pace"],
-                                ["together", "time-together", "journey-together"],
-                                ["spending", "spending", "journey-budget"],
-                            ] as const
-                        ).map(([name, code, icon]) => {
-                            const item = candidate?.travelStyleMatch?.items.find(
-                                (entry) => entry.code === code,
-                            );
-                            const score = registration
-                                ? registration.travelStyle[code]
-                                : item?.candidateScore;
-                            const level = ([1, 2, 3, 4, 5] as const).find(
-                                (value) => value === score,
-                            );
-                            const myLevel = ([1, 2, 3, 4, 5] as const).find(
-                                (value) => value === item?.myScore,
-                            );
-                            const discuss =
-                                item?.similarity === "SOMEWHAT_DIFFERENT" ||
-                                item?.similarity === "DIFFERENT";
-                            return (
-                                <div
-                                    key={code}
-                                    className={
-                                        discuss ? "matching-style-needs-discussion" : undefined
-                                    }
-                                >
-                                    <dt>
-                                        <Icon name={icon} />
-                                        {t(`matchingFlow.styleLabels.${name}`)}
-                                    </dt>
-                                    <dd>
-                                        <div className="matching-details-style-value">
-                                            <span>
-                                                {level
-                                                    ? t(
-                                                          `matchingFlow.styleDegrees.${name}.${level}`,
-                                                      )
-                                                    : t("matchingFlow.profileMissing")}
-                                            </span>
-                                            {item && (
-                                                <small>
-                                                    {t(
-                                                        `matchingFlow.styleSimilarity.${item.similarity}`,
-                                                    )}
-                                                </small>
-                                            )}
-                                        </div>
-                                        {item && myLevel && (
-                                            <small className="matching-details-comparison">
-                                                {t("matchingFlow.styleMine", {
-                                                    value: t(
-                                                        `matchingFlow.styleDegrees.${name}.${myLevel}`,
-                                                    ),
-                                                })}
-                                            </small>
-                                        )}
-                                    </dd>
-                                </div>
-                            );
-                        })}
-                    </dl>
-                )}
+                <RecruitmentStyleDetails candidate={candidate} registration={registration} />
             </div>
             <footer className="matching-details-panel__footer">
+                {registration && requestAction}
                 {onViewResults && (
                     <Button key={postId} variant="highlight" onClick={onViewResults}>
-                        {t("roamMatePreview.openMatches")}
+                        {t("roamMatePreview.viewResults")}
                     </Button>
                 )}
                 <div className="matching-details-panel__actions">
+                    {candidate && requestAction}
                     {registration && status === "ACTIVE" && onEdit && (
                         <Button
                             variant="edit"

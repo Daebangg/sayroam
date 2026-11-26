@@ -1,3 +1,4 @@
+import { previewRequestIds } from "@/data/preview";
 import type { CandidateResult } from "@/hooks/matching.types";
 
 type Candidate = CandidateResult["candidates"][number];
@@ -101,6 +102,9 @@ const featuredCandidates: Candidate[] = [
     },
     {
         searchId: 42,
+        requestId: 503,
+        requestStatus: "PENDING",
+        direction: "SENT",
         updatedAt: "2026-12-12T15:30:00Z",
         nickname: "파도",
         profileImageUrl: "/brand/avatars/traveler.svg",
@@ -118,6 +122,9 @@ const featuredCandidates: Candidate[] = [
     },
     {
         searchId: 53,
+        requestId: previewRequestIds.accepted,
+        requestStatus: "ACCEPTED",
+        direction: "SENT",
         updatedAt: "2026-12-13T15:30:00Z",
         nickname: "윤슬",
         profileImageUrl: "/brand/avatars/poet.svg",
@@ -185,6 +192,31 @@ export const roamMateCandidates: CandidateResult["candidates"] = [
         gender: sampleGenders[index % sampleGenders.length] ?? null,
         travelStyleMatch: index % 2 === 0 ? similarStyle : styleToDiscuss,
         searchId: 100 + index,
+        ...(index === 0 && {
+            requestId: 504,
+            requestStatus: "REJECTED" as const,
+            direction: "SENT" as const,
+        }),
+        ...((index === 2 || index === 5) && {
+            requestId: 600 + index,
+            requestStatus: "ACCEPTED" as const,
+            direction: "SENT" as const,
+        }),
+        ...((index === 3 || index === 6) && {
+            requestId: 600 + index,
+            requestStatus: "PENDING" as const,
+            direction: "SENT" as const,
+        }),
+        ...((index === 4 || index === 7) && {
+            requestId: 600 + index,
+            requestStatus: "REJECTED" as const,
+            direction: "SENT" as const,
+        }),
+        ...(index === 1 && {
+            requestId: previewRequestIds.received,
+            requestStatus: "PENDING" as const,
+            direction: "RECEIVED" as const,
+        }),
         updatedAt: "2026-12-14T15:30:00Z",
         nickname,
         title,

@@ -310,6 +310,17 @@ test("인증 무효화 후 늦은 조회 응답이 다른 계정 상태를 복�
     assert.deepEqual(controller.getSnapshot().notifications, []);
 });
 
+test("요청·수락·거절 알림이 포함된 목록에서 요청 상세 대상을 보존한다", () => {
+    const types = ["COMPANION_REQUEST", "COMPANION_ACCEPTED", "COMPANION_REJECTED"] as const;
+    const notifications = types.map((type, index) => ({
+        ...notification(4 - index),
+        type,
+        targetId: 37,
+        targetType: "COMPANION_REQUEST",
+    }));
+    assert.deepEqual(validateNotificationList({ notifications }, 200).notifications, notifications);
+});
+
 test("잘못된 알림 ID·정렬·개수·날짜 응답을 화면 상태에 넣지 않음", () => {
     const invalid = (error: unknown): boolean =>
         error instanceof ApiError && error.kind === "invalid-response";
