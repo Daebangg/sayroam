@@ -29,6 +29,7 @@ import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.messaging.simp.stomp.StompHeaders;
 import org.springframework.messaging.simp.stomp.StompSession;
 import org.springframework.messaging.simp.stomp.StompSessionHandlerAdapter;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
 import org.springframework.security.oauth2.jwt.JwsHeader;
 import org.springframework.security.oauth2.jwt.JwtClaimsSet;
@@ -40,6 +41,7 @@ import org.springframework.web.socket.client.standard.StandardWebSocketClient;
 import org.springframework.web.socket.messaging.WebSocketStompClient;
 
 import java.lang.reflect.Type;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
@@ -60,6 +62,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 class ChatStompIntegrationTest extends DatabaseIntegrationTest {
     private static final Object PROBE = Map.of("probe", true);
+    private static final ThreadPoolTaskScheduler RECEIPT_SCHEDULER = receiptScheduler();
     private static final String CLIENT_MESSAGE_ID = "6f1c2b6e-8a57-4b7a-9d3e-2f4a1c7e9b10";
     private static final String EMAIL = "user@example.com";
 
@@ -233,6 +236,73 @@ class ChatStompIntegrationTest extends DatabaseIntegrationTest {
 
         // then
         assertThat(frames.messages.poll(5, TimeUnit.SECONDS)).isEmpty();
+    }
+
+    @Test
+    void 방_채널을_receipt와_함께_구독하면_등록_뒤_RECEIPT를_받는다() throws Exception {
+        // given
+        Long userId = saveUser();
+        Long roomId = roomService.create(userId, "제주 3박 4일");
+        StompSession session = connect(tokenOf(userId)).get(5, TimeUnit.SECONDS);
+
+        // when
+        CompletableFuture<Void> receipt = subscribeWithReceipt(session, "/topic/rooms/" + roomId, new ReceivedFrames());
+
+        // then
+        assertThat(receipt).succeedsWithin(Duration.ofSeconds(5));
+        session.disconnect();
+    }
+
+    @Test
+    void RECEIPT를_받은_직후_보낸_멤버_신호를_받는다() throws Exception {
+        // given
+        Long ownerId = saveUser();
+        Long friendId = saveUser();
+        Long roomId = roomService.createForTrip();
+        roomService.join(roomId, ownerId);
+        StompSession session = connect(tokenOf(ownerId)).get(5, TimeUnit.SECONDS);
+        ReceivedFrames frames = new ReceivedFrames();
+        subscribeWithReceipt(session, "/topic/rooms/" + roomId + "/members", frames).get(5, TimeUnit.SECONDS);
+
+        // when
+        roomService.join(roomId, friendId);
+
+        // then
+        assertThat(frames.messages.poll(5, TimeUnit.SECONDS)).isEmpty();
+        session.disconnect();
+    }
+
+    @Test
+    void 거부된_구독에는_RECEIPT를_보내지_않는다() throws Exception {
+        // given
+        Long ownerId = saveUser();
+        Long otherUserId = saveUser();
+        Long roomId = roomService.create(ownerId, "제주 3박 4일");
+        ConnectionEvents events = new ConnectionEvents();
+        StompSession session = connect(tokenOf(otherUserId), events).get(5, TimeUnit.SECONDS);
+
+        // when
+        CompletableFuture<Void> receipt = subscribeWithReceipt(session, "/topic/rooms/" + roomId, new ReceivedFrames());
+
+        // then
+        assertThat(events.closed.get(5, TimeUnit.SECONDS)).isNotNull();
+        assertThat(receipt).isNotDone();
+    }
+
+    @Test
+    void 개인_큐는_receipt와_함께_구독해도_RECEIPT를_보내지_않는다() throws Exception {
+        // given
+        Long userId = saveUser();
+        StompSession session = connect(tokenOf(userId)).get(5, TimeUnit.SECONDS);
+        ReceivedFrames frames = new ReceivedFrames();
+
+        // when
+        CompletableFuture<Void> receipt = subscribeWithReceipt(session, "/user/queue/messages", frames);
+
+        // then
+        awaitSubscribed(frames, () -> messagingTemplate.convertAndSendToUser(userId.toString(), "/queue/messages", PROBE));
+        assertThat(receipt).failsWithin(Duration.ofMillis(500));
+        session.disconnect();
     }
 
     @Test
@@ -591,6 +661,15 @@ class ChatStompIntegrationTest extends DatabaseIntegrationTest {
         return frames;
     }
 
+    private CompletableFuture<Void> subscribeWithReceipt(StompSession session, String destination, ReceivedFrames frames) {
+        StompHeaders headers = new StompHeaders();
+        headers.setDestination(destination);
+        headers.setReceipt(UUID.randomUUID().toString());
+        CompletableFuture<Void> receipt = new CompletableFuture<>();
+        session.subscribe(headers, frames).addReceiptTask(() -> receipt.complete(null));
+        return receipt;
+    }
+
     private void send(StompSession session, Long roomId, String clientMessageId, String content) {
         StompHeaders headers = new StompHeaders();
         headers.setDestination("/app/rooms/" + roomId + "/messages");
@@ -636,6 +715,9 @@ class ChatStompIntegrationTest extends DatabaseIntegrationTest {
     private CompletableFuture<StompSession> connect(String token, ConnectionEvents events) {
         WebSocketStompClient client = new WebSocketStompClient(new StandardWebSocketClient());
         client.setMessageConverter(new JacksonJsonMessageConverter());
+        // 클라이언트가 RECEIPT를 추적하려면 스케줄러가 있어야 한다. 하트비트는 지금처럼 끈다.
+        client.setTaskScheduler(RECEIPT_SCHEDULER);
+        client.setDefaultHeartbeat(new long[]{0, 0});
         StompHeaders headers = new StompHeaders();
         if (token != null) {
             headers.add("Authorization", "Bearer " + token);
@@ -695,5 +777,13 @@ class ChatStompIntegrationTest extends DatabaseIntegrationTest {
     private Long saveUser() {
         User user = User.builder().nickname("회원").role(Role.USER).build();
         return userRepository.save(user).getId();
+    }
+
+    private static ThreadPoolTaskScheduler receiptScheduler() {
+        ThreadPoolTaskScheduler scheduler = new ThreadPoolTaskScheduler();
+        scheduler.setDaemon(true);
+        scheduler.setThreadNamePrefix("stomp-test-receipt-");
+        scheduler.initialize();
+        return scheduler;
     }
 }
