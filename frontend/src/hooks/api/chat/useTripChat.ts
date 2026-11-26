@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { api } from "@/api/api";
 import { openChatSocket, type ChatSocket } from "@/api/chat/chatSocket";
+import { runOneAtATime } from "./runOneAtATime";
 import type {
     ChatConnection,
     ChatMessage,
@@ -105,29 +106,6 @@ function mergeMessages(current: ChatMessage[], incoming: ChatMessage[]): ChatMes
     const added = incoming.filter((message) => !known.has(message.messageId));
     if (added.length === 0) return current;
     return [...current, ...added].sort((a, b) => a.messageId - b.messageId);
-}
-
-/** 한 번에 하나만 돌린다. 도는 중에 다시 요청되면 끝난 뒤 한 번 더 돌린다. */
-function runOneAtATime(task: () => Promise<void>, signal: AbortSignal): () => Promise<void> {
-    let running: Promise<void> | null = null;
-    let again = false;
-    return () => {
-        if (running) {
-            again = true;
-            return running;
-        }
-        running = (async () => {
-            try {
-                do {
-                    again = false;
-                    await task();
-                } while (again && !signal.aborted);
-            } finally {
-                running = null;
-            }
-        })();
-        return running;
-    };
 }
 
 /**
