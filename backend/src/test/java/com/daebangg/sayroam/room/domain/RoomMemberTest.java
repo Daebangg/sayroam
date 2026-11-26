@@ -105,6 +105,31 @@ class RoomMemberTest {
         assertThat(member.getJoinedAt()).isEqualTo(NOW);
     }
 
+    @Test
+    void 나간_멤버가_다시_참여하면_참여_상태가_바뀌었다고_알린다() {
+        // given
+        RoomMember member = RoomMember.join(room, 1L, NOW);
+        member.leave(NOW.plusHours(1));
+
+        // when
+        boolean changed = member.rejoin(NOW.plusHours(2));
+
+        // then
+        assertThat(changed).isTrue();
+    }
+
+    @Test
+    void 참여_중인_멤버를_다시_참여시키면_바뀐_것이_없다고_알린다() {
+        // given
+        RoomMember member = RoomMember.join(room, 1L, NOW);
+
+        // when
+        boolean changed = member.rejoin(NOW.plusHours(1));
+
+        // then
+        assertThat(changed).isFalse();
+    }
+
     private RoomMember joinedMember() {
         return RoomMember.join(room, 2L, NOW);
     }

@@ -19,4 +19,12 @@ public interface RoomMemberQueryJpaRepository extends RoomMemberQueryRepository,
             where m.room.id = :roomId
             """)
     List<RoomMemberProfileResult> findProfiles(@Param("roomId") Long roomId);
+
+    @Override
+    @Query("""
+            select m.room.id
+            from RoomMember m
+            where m.userId = :userId
+            """)
+    List<Long> findRoomIdsByUserId(@Param("userId") Long userId);
 }

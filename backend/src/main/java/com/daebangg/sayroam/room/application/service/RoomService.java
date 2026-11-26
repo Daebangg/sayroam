@@ -9,6 +9,7 @@ import com.daebangg.sayroam.room.domain.RoomMemberRepository;
 import com.daebangg.sayroam.room.domain.RoomMemberStatus;
 import com.daebangg.sayroam.room.domain.RoomRepository;
 import com.daebangg.sayroam.room.domain.error.RoomErrorCode;
+import com.daebangg.sayroam.room.domain.event.RoomMemberJoined;
 import com.daebangg.sayroam.room.domain.event.RoomMemberLeft;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
@@ -18,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 @Transactional(readOnly = true)
@@ -44,9 +46,15 @@ public class RoomService {
     @Transactional
     public void join(Long roomId, Long userId) {
         LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);
-        roomMemberRepository.findByRoomIdAndUserId(roomId, userId)
-                .ifPresentOrElse(member -> member.rejoin(now),
-                        () -> roomMemberRepository.save(RoomMember.join(roomRepository.getReferenceById(roomId), userId, now)));
+        Optional<RoomMember> member = roomMemberRepository.findByRoomIdAndUserId(roomId, userId);
+        if (member.isEmpty()) {
+            roomMemberRepository.save(RoomMember.join(roomRepository.getReferenceById(roomId), userId, now));
+            eventPublisher.publishEvent(new RoomMemberJoined(roomId, userId));
+            return;
+        }
+        if (member.get().rejoin(now)) {
+            eventPublisher.publishEvent(new RoomMemberJoined(roomId, userId));
+        }
     }
 
     @Transactional
@@ -71,6 +79,10 @@ public class RoomService {
     public List<RoomMemberProfileResult> findMembers(Long roomId, Long userId) {
         ensureJoined(roomId, userId);
         return roomMemberQueryRepository.findProfiles(roomId);
+    }
+
+    public List<Long> findRoomIds(Long userId) {
+        return roomMemberQueryRepository.findRoomIdsByUserId(userId);
     }
 
     private RoomMember getMember(Long roomId, Long userId) {
