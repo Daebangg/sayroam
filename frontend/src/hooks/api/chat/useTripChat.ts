@@ -18,7 +18,7 @@ type TripChat = {
     /** 아직 서버 확인을 받지 못한 내 메시지. 보낸 순서 */
     outgoing: OutgoingMessage[];
     members: RoomMember[];
-    /** 다시 연결된 뒤 명단이나 놓친 메시지를 받지 못해 빠진 내용이 있을 수 있다. */
+    /** 재연결이나 멤버 변화 신호 뒤 명단·놓친 메시지를 받지 못해 빠진 내용이 있을 수 있다. */
     syncFailed: boolean;
     send: (content: string) => void;
     retry: (clientMessageId: string) => void;
@@ -133,6 +133,8 @@ export function useTripChat(roomId: number | null, myUserId: number): TripChat {
         // 놓친 메시지 조회 위치. 실시간 메시지는 앞 구간이 아직 조회되지 않았을 수 있어 조회 결과로만 옮긴다.
         let fetchedUntil = 0;
         let connectedBefore = false;
+        // 첫 조회가 실패했으면 재연결 때도 전체 조회로 다시 시작해 불러오기 실패 화면에서 벗어난다.
+        let loaded = false;
 
         function receive(incoming: ChatMessage[]) {
             if (incoming.length === 0) return;
@@ -176,6 +178,7 @@ export function useTripChat(roomId: number | null, myUserId: number): TripChat {
             Promise.all([loadMembers(), catchUp()])
                 .then(() => {
                     if (signal.aborted) return;
+                    loaded = true;
                     setStatus("ready");
                     setSyncFailed(false);
                 })
@@ -195,11 +198,12 @@ export function useTripChat(roomId: number | null, myUserId: number): TripChat {
                 });
         };
 
-        // 구독을 마친 뒤 조회해야 그 사이에 온 메시지와 멤버 변화가 빠지지 않는다. 중복 메시지는 messageId로 거른다.
+        // 구독 요청을 보낸 뒤 조회해 그 사이에 온 메시지와 멤버 변화를 함께 받는다. 중복 메시지는 messageId로 거른다.
+        // 서버는 구독을 비동기로 등록하고 확인 응답을 주지 않아 아주 짧은 틈이 남지만, 다음 신호나 재연결 때 맞춰진다.
         socket.current = openChatSocket(room, {
             onConnected: () => {
                 setConnection("connected");
-                if (connectedBefore) resync.current();
+                if (loaded) resync.current();
                 else loadAll.current();
                 connectedBefore = true;
             },
@@ -208,7 +212,12 @@ export function useTripChat(roomId: number | null, myUserId: number): TripChat {
                 outbox.failAll();
             },
             onMessage: (message) => receive([message]),
-            onMembersChanged: () => void loadMembers().catch(() => undefined),
+            // 명단을 받지 못하면 이름 표시가 지난 상태로 남으므로 다시 맞추기 안내를 띄운다.
+            // 명단 갱신이 성공해도 메시지 쪽 빠진 구간이 있을 수 있어 여기서는 안내를 지우지 않는다.
+            onMembersChanged: () =>
+                void loadMembers().catch(() => {
+                    if (!signal.aborted) setSyncFailed(true);
+                }),
             onSendError: (error) => outbox.fail(error.clientMessageId),
             onClosed: () => {
                 setConnection("closed");
