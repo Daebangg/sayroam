@@ -64,6 +64,14 @@ public class RoomService {
         eventPublisher.publishEvent(new RoomMemberLeft(roomId, userId));
     }
 
+    // 탈퇴할 때 부른다. 화면 갱신은 UserWithdrawn이, 연결 종료는 LoginsInvalidated가 맡으므로 RoomMemberLeft는 보내지 않는다
+    @Transactional
+    public void leaveAll(Long userId) {
+        LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);
+        roomMemberRepository.findAllByUserIdAndStatus(userId, RoomMemberStatus.JOINED)
+                .forEach(member -> member.leave(now));
+    }
+
     public void ensureJoined(Long roomId, Long userId) {
         getJoinedMember(roomId, userId);
     }

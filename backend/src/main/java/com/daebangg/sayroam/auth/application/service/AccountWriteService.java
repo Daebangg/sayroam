@@ -11,6 +11,7 @@ import com.daebangg.sayroam.notification.application.dto.CreateNotificationComma
 import com.daebangg.sayroam.notification.application.port.out.NotificationDeletion;
 import com.daebangg.sayroam.notification.application.service.NotificationService;
 import com.daebangg.sayroam.notification.domain.NotificationType;
+import com.daebangg.sayroam.room.application.service.RoomService;
 import com.daebangg.sayroam.travelstyle.application.port.out.TravelStyleDeletion;
 import com.daebangg.sayroam.user.domain.User;
 import com.daebangg.sayroam.user.domain.UserCredential;
@@ -38,15 +39,17 @@ public class AccountWriteService {
     private final ApplicationEventPublisher events;
     private final AccountPersistenceFailures failures;
     private final TransactionTemplate transaction;
+    private final RoomService roomService;
 
     public AccountWriteService(UserRepository users, TravelStyleDeletion travelStyles,
                                NotificationDeletion notifications, ApplicationEventPublisher events,
                                AccountPersistenceFailures failures, PlatformTransactionManager manager,
-                               NotificationService notificationService) {
+                               NotificationService notificationService, RoomService roomService) {
         this.users = users;
         this.travelStyles = travelStyles;
         this.notifications = notifications;
         this.notificationService = notificationService;
+        this.roomService = roomService;
         this.events = events;
         this.failures = failures;
         this.transaction = new TransactionTemplate(manager);
@@ -113,6 +116,7 @@ public class AccountWriteService {
             User user = lockVerifiedUser(userId, verifiedEmail, expectedAuthVersion, AuthErrorCode.ACCOUNT_DELETION_CONFLICT);
             travelStyles.deleteForUser(userId);
             notifications.deleteForUser(userId);
+            roomService.leaveAll(userId);
             user.withdraw(LocalDateTime.now(ZoneOffset.UTC));
             publishInvalidation(userId);
             events.publishEvent(new UserWithdrawn(userId));
