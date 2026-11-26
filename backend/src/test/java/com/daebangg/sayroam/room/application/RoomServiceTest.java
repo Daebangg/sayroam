@@ -409,6 +409,69 @@ class RoomServiceTest extends DatabaseIntegrationTest {
         assertThat(roomIds).containsExactlyInAnyOrder(joinedRoomId, leftRoomId);
     }
 
+    @Test
+    void 회원이_참여_중인_방을_모두_나간다() {
+        // given
+        Long userId = saveUser();
+        Long otherId = saveUser();
+        Long firstRoomId = roomService.createForTrip();
+        Long secondRoomId = roomService.createForTrip();
+        roomService.join(firstRoomId, userId);
+        roomService.join(firstRoomId, otherId);
+        roomService.join(secondRoomId, userId);
+
+        // when
+        roomService.leaveAll(userId);
+
+        // then
+        assertThat(roomService.countJoinedMembers(firstRoomId)).isEqualTo(1);
+        assertThat(roomService.countJoinedMembers(secondRoomId)).isZero();
+        assertThatCode(() -> roomService.ensureJoined(firstRoomId, otherId))
+                .doesNotThrowAnyException();
+    }
+
+    @Test
+    void 이미_나간_방이_있어도_참여_중인_방만_나간다() {
+        // given
+        Long userId = saveUser();
+        Long joinedRoomId = roomService.createForTrip();
+        Long leftRoomId = roomService.createForTrip();
+        roomService.join(joinedRoomId, userId);
+        roomService.join(leftRoomId, userId);
+        roomService.leave(leftRoomId, userId);
+
+        // when
+        roomService.leaveAll(userId);
+
+        // then
+        assertThat(roomService.countJoinedMembers(joinedRoomId)).isZero();
+        assertThat(roomService.countJoinedMembers(leftRoomId)).isZero();
+    }
+
+    @Test
+    void 참여_중인_방이_없어도_실패하지_않는다() {
+        // given
+        Long userId = saveUser();
+
+        // when & then
+        assertThatCode(() -> roomService.leaveAll(userId)).doesNotThrowAnyException();
+    }
+
+    @Test
+    void 모든_방을_나가도_멤버_나감_이벤트를_발행하지_않는다() {
+        // given
+        Long userId = saveUser();
+        Long roomId = roomService.createForTrip();
+        roomService.join(roomId, userId);
+        events.clear();
+
+        // when
+        roomService.leaveAll(userId);
+
+        // then
+        assertThat(events.stream(RoomMemberLeft.class)).isEmpty();
+    }
+
     private Long saveUser() {
         User user = User.builder().nickname("방장").role(Role.USER).build();
         return userRepository.save(user).getId();
