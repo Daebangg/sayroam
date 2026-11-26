@@ -15,6 +15,8 @@ type ChatSocketHandlers = {
     onDisconnected: () => void;
     /** 방 채널과 내 전송 확인 채널로 받은 메시지. 같은 메시지가 두 채널로 올 수 있다. */
     onMessage: (message: ChatMessage) => void;
+    /** 참여·나감·프로필 변경·탈퇴로 멤버 명단이 바뀌었다. 내용은 없으므로 명단을 다시 받는다. */
+    onMembersChanged: () => void;
     onSendError: (error: ChatSendError) => void;
     /** 방에 참여 중이 아니거나 로그인이 풀려 더 연결하지 않는다. */
     onClosed: () => void;
@@ -71,6 +73,7 @@ export function openChatSocket(roomId: number, handlers: ChatSocketHandlers): Ch
                 if (message?.roomId === roomId) handlers.onMessage(message);
             };
             client.subscribe(`/topic/rooms/${roomId}`, receive);
+            client.subscribe(`/topic/rooms/${roomId}/members`, () => handlers.onMembersChanged());
             client.subscribe("/user/queue/messages", receive);
             client.subscribe("/user/queue/errors", (frame) => {
                 const error = parseChatSendError(frame.body);

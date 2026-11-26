@@ -201,9 +201,7 @@ function TripPlanner({ trip, detail, myUserId }: TripPlannerProps) {
     }
 
     function toggleChat() {
-        if (panel === "chat") return setPanel(null);
-        setPanel("chat");
-        chat.recheck();
+        setPanel(panel === "chat" ? null : "chat");
     }
 
     function openInvite() {

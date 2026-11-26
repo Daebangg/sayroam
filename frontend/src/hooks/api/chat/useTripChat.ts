@@ -17,15 +17,13 @@ type TripChat = {
     /** 아직 서버 확인을 받지 못한 내 메시지. 보낸 순서 */
     outgoing: OutgoingMessage[];
     members: RoomMember[];
-    /** 다시 연결된 뒤 놓친 메시지를 받지 못해 빠진 구간이 있을 수 있다. */
+    /** 다시 연결된 뒤 명단이나 놓친 메시지를 받지 못해 빠진 내용이 있을 수 있다. */
     syncFailed: boolean;
     send: (content: string) => void;
     retry: (clientMessageId: string) => void;
     discard: (clientMessageId: string) => void;
     retrySync: () => void;
     reload: () => void;
-    /** 채팅을 열 때 참여 멤버를 다시 확인한다. 친구가 들어와 있으면 연결을 시작한다. */
-    recheck: () => void;
 };
 
 const PAGE_SIZE = 100;
@@ -109,8 +107,32 @@ function mergeMessages(current: ChatMessage[], incoming: ChatMessage[]): ChatMes
     return [...current, ...added].sort((a, b) => a.messageId - b.messageId);
 }
 
+/** 한 번에 하나만 돌린다. 도는 중에 다시 요청되면 끝난 뒤 한 번 더 돌린다. */
+function runOneAtATime(task: () => Promise<void>, signal: AbortSignal): () => Promise<void> {
+    let running: Promise<void> | null = null;
+    let again = false;
+    return () => {
+        if (running) {
+            again = true;
+            return running;
+        }
+        running = (async () => {
+            try {
+                do {
+                    again = false;
+                    await task();
+                } while (again && !signal.aborted);
+            } finally {
+                running = null;
+            }
+        })();
+        return running;
+    };
+}
+
 /**
- * 여행 상세에 있는 동안 채팅방에 연결해 둔다. 참여 멤버가 나뿐이면 대화할 사람이 없어 연결하지 않는다.
+ * 여행 상세에 있는 동안 혼자여도 채팅방에 연결해 둔다.
+ * 연결될 때마다 명단과 놓친 메시지를 받고, 연결된 동안의 멤버 변화는 서버 신호를 받아 명단을 다시 받는다.
  * 패널을 닫아도 받은 메시지와 연결을 유지해 다시 열면 바로 보여 준다.
  */
 export function useTripChat(roomId: number | null, myUserId: number): TripChat {
@@ -124,19 +146,14 @@ export function useTripChat(roomId: number | null, myUserId: number): TripChat {
     const socket = useRef<ChatSocket | null>(null);
     const loadAll = useRef<() => void>(() => undefined);
     const resync = useRef<() => void>(() => undefined);
-    const recheckMembers = useRef<() => void>(() => undefined);
 
     useEffect(() => {
         if (roomId === null) return;
         const room = roomId;
         const controller = new AbortController();
         const { signal } = controller;
-        const memberIds = new Set<number>();
         // 놓친 메시지 조회 위치. 실시간 메시지는 앞 구간이 아직 조회되지 않았을 수 있어 조회 결과로만 옮긴다.
         let fetchedUntil = 0;
-        let catchingUp: Promise<void> | null = null;
-        let catchUpAgain = false;
-        let loadingMembers: Promise<RoomMember[]> | null = null;
         let connectedBefore = false;
 
         function receive(incoming: ChatMessage[]) {
@@ -148,30 +165,16 @@ export function useTripChat(roomId: number | null, myUserId: number): TripChat {
                     confirmed.add(message.clientMessageId);
             });
             outbox.remove(confirmed);
-            // 채팅 중 새로 들어온 멤버가 보낸 메시지면 명단을 다시 받는다.
-            if (
-                incoming.some(
-                    (message) => message.senderId !== null && !memberIds.has(message.senderId),
-                )
-            )
-                void loadMembers().catch(() => undefined);
         }
 
-        function loadMembers(): Promise<RoomMember[]> {
-            loadingMembers ??= api
-                .call("findMembers", { params: { path: { roomId: room } }, signal })
-                .then(({ members: list }) => {
-                    if (!signal.aborted) {
-                        list.forEach((member) => memberIds.add(member.userId));
-                        setMembers(list);
-                    }
-                    return list;
-                })
-                .finally(() => {
-                    loadingMembers = null;
-                });
-            return loadingMembers;
-        }
+        // 신호를 받기 전에 시작한 조회는 바뀌기 전 명단을 읽었을 수 있어, 도는 중에 온 신호는 끝난 뒤 한 번 더 받는다.
+        const loadMembers = runOneAtATime(async () => {
+            const { members: list } = await api.call("findMembers", {
+                params: { path: { roomId: room } },
+                signal,
+            });
+            if (!signal.aborted) setMembers(list);
+        }, signal);
 
         async function loadMessagesAfter(): Promise<void> {
             for (;;) {
@@ -189,24 +192,7 @@ export function useTripChat(roomId: number | null, myUserId: number): TripChat {
             }
         }
 
-        // 이어 받기는 하나씩만 돌린다. 도는 중에 다시 요청되면 끝난 뒤 한 번 더 받는다.
-        function catchUp(): Promise<void> {
-            if (catchingUp) {
-                catchUpAgain = true;
-                return catchingUp;
-            }
-            catchingUp = (async () => {
-                try {
-                    do {
-                        catchUpAgain = false;
-                        await loadMessagesAfter();
-                    } while (catchUpAgain && !signal.aborted);
-                } finally {
-                    catchingUp = null;
-                }
-            })();
-            return catchingUp;
-        }
+        const catchUp = runOneAtATime(loadMessagesAfter, signal);
 
         loadAll.current = () => {
             Promise.all([loadMembers(), catchUp()])
@@ -220,9 +206,9 @@ export function useTripChat(roomId: number | null, myUserId: number): TripChat {
                 });
         };
 
-        // 다시 연결된 뒤 놓친 메시지를 받지 못하면 받은 메시지는 그대로 두고 빠진 구간이 있다고 알린다.
+        // 다시 연결된 뒤 명단이나 놓친 메시지를 받지 못하면 받은 것은 그대로 두고 빠진 내용이 있다고 알린다.
         resync.current = () => {
-            catchUp()
+            Promise.all([loadMembers(), catchUp()])
                 .then(() => {
                     if (!signal.aborted) setSyncFailed(false);
                 })
@@ -231,43 +217,28 @@ export function useTripChat(roomId: number | null, myUserId: number): TripChat {
                 });
         };
 
-        // 구독을 마친 뒤 이어 받아야 그 사이에 온 메시지가 빠지지 않는다. 중복은 messageId로 거른다.
-        function startChat() {
-            if (socket.current || signal.aborted) return;
-            socket.current = openChatSocket(room, {
-                onConnected: () => {
-                    setConnection("connected");
-                    resync.current();
-                    if (connectedBefore) void loadMembers().catch(() => undefined);
-                    connectedBefore = true;
-                },
-                onDisconnected: () => {
-                    setConnection("reconnecting");
-                    outbox.failAll();
-                },
-                onMessage: (message) => receive([message]),
-                onSendError: (error) => outbox.fail(error.clientMessageId),
-                onClosed: () => {
-                    setConnection("closed");
-                    outbox.failAll();
-                },
-            });
-            loadAll.current();
-        }
-
-        // 친구가 들어와 둘 이상이 되면 그때 연결한다. 혼자면 명단만 받고 끝낸다.
-        recheckMembers.current = () => {
-            loadMembers()
-                .then((list) => {
-                    if (signal.aborted) return;
-                    if (list.filter((member) => member.status === "JOINED").length > 1) startChat();
-                    else setStatus("ready");
-                })
-                .catch(() => {
-                    if (!signal.aborted && !socket.current) setStatus("failed");
-                });
-        };
-        recheckMembers.current();
+        // 구독을 마친 뒤 조회해야 그 사이에 온 메시지와 멤버 변화가 빠지지 않는다. 중복 메시지는 messageId로 거른다.
+        socket.current = openChatSocket(room, {
+            onConnected: () => {
+                setConnection("connected");
+                if (connectedBefore) resync.current();
+                else loadAll.current();
+                connectedBefore = true;
+            },
+            onDisconnected: () => {
+                setConnection("reconnecting");
+                outbox.failAll();
+            },
+            onMessage: (message) => receive([message]),
+            onMembersChanged: () => void loadMembers().catch(() => undefined),
+            onSendError: (error) => outbox.fail(error.clientMessageId),
+            onClosed: () => {
+                setConnection("closed");
+                outbox.failAll();
+                // 한 번도 연결되지 못하고 멈췄으면 불러오는 중으로 남지 않게 한다.
+                if (!connectedBefore) setStatus("failed");
+            },
+        });
 
         return () => {
             controller.abort();
@@ -304,13 +275,7 @@ export function useTripChat(roomId: number | null, myUserId: number): TripChat {
 
     function reload() {
         setStatus("loading");
-        if (socket.current) loadAll.current();
-        else recheckMembers.current();
-    }
-
-    // 채팅 패널을 열 때 부른다. 그사이 친구가 참여했으면 연결을 시작한다.
-    function recheck() {
-        if (!socket.current) recheckMembers.current();
+        loadAll.current();
     }
 
     if (roomId === null)
@@ -326,7 +291,6 @@ export function useTripChat(roomId: number | null, myUserId: number): TripChat {
             discard,
             retrySync,
             reload,
-            recheck,
         };
     return {
         status,
@@ -340,6 +304,5 @@ export function useTripChat(roomId: number | null, myUserId: number): TripChat {
         discard,
         retrySync,
         reload,
-        recheck,
     };
 }
