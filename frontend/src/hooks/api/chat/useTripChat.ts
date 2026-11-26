@@ -198,8 +198,7 @@ export function useTripChat(roomId: number | null, myUserId: number): TripChat {
                 });
         };
 
-        // 구독 요청을 보낸 뒤 조회해 그 사이에 온 메시지와 멤버 변화를 함께 받는다. 중복 메시지는 messageId로 거른다.
-        // 서버는 구독을 비동기로 등록하고 확인 응답을 주지 않아 아주 짧은 틈이 남지만, 다음 신호나 재연결 때 맞춰진다.
+        // 서버가 구독 등록을 확인한 뒤 조회해 그 사이에 온 메시지와 멤버 변화를 함께 받는다. 중복 메시지는 messageId로 거른다.
         socket.current = openChatSocket(room, {
             onConnected: () => {
                 setConnection("connected");

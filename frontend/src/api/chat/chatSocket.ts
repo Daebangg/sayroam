@@ -10,7 +10,7 @@ import {
 } from "./chatResponse.ts";
 
 type ChatSocketHandlers = {
-    /** 연결과 구독이 끝났다. 다시 연결될 때마다 불리므로 그 사이 놓친 메시지를 여기서 이어 받는다. */
+    /** 연결되고 서버가 방 채널 구독 등록을 확인했다. 다시 연결될 때마다 불리므로 그 사이 놓친 내용을 여기서 이어 받는다. */
     onConnected: () => void;
     onDisconnected: () => void;
     /** 방 채널과 내 전송 확인 채널로 받은 메시지. 같은 메시지가 두 채널로 올 수 있다. */
@@ -72,14 +72,27 @@ export function openChatSocket(roomId: number, handlers: ChatSocketHandlers): Ch
                 const message = parseChatMessage(frame.body);
                 if (message?.roomId === roomId) handlers.onMessage(message);
             };
-            client.subscribe(`/topic/rooms/${roomId}`, receive);
-            client.subscribe(`/topic/rooms/${roomId}/members`, () => handlers.onMembersChanged());
             client.subscribe("/user/queue/messages", receive);
             client.subscribe("/user/queue/errors", (frame) => {
                 const error = parseChatSendError(frame.body);
                 if (error) handlers.onSendError(error);
             });
-            handlers.onConnected();
+            // 방 채널은 서버가 등록을 마쳤다고 RECEIPT로 알려 준 뒤에 조회해야 그 사이 변화를 놓치지 않는다.
+            // 개인 큐는 내가 보낸 메시지의 응답만 오고 방 채널과 조회로도 맞춰지므로 기다리지 않는다.
+            let pending = 2;
+            const subscribeConfirmed = (
+                destination: string,
+                callback: (frame: IMessage) => void,
+            ) => {
+                const receipt = crypto.randomUUID();
+                client.watchForReceipt(receipt, () => {
+                    pending -= 1;
+                    if (pending === 0) handlers.onConnected();
+                });
+                client.subscribe(destination, callback, { receipt });
+            };
+            subscribeConfirmed(`/topic/rooms/${roomId}`, receive);
+            subscribeConfirmed(`/topic/rooms/${roomId}/members`, () => handlers.onMembersChanged());
         },
         onStompError: (frame: IFrame) => {
             // 방을 나갔거나 내보내져 구독이 거절되면 다시 연결해도 같은 결과라 멈춘다.
