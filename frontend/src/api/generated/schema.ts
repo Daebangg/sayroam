@@ -692,13 +692,7 @@ export interface paths {
         delete: operations["leave"];
         options?: never;
         head?: never;
-        /**
-         * 읽은 위치 기록
-         * @description 참여 중인 방에서 마지막으로 본 메시지 ID를 기록합니다. 안 읽은 메시지 개수는 이 위치 이후로 셉니다.
-         *     지금 읽은 위치보다 앞선 값은 무시하므로 늦게 도착한 요청이나 다른 기기의 요청이 위치를 되돌리지 않습니다.
-         *     같은 요청을 반복해도 204입니다.
-         */
-        patch: operations["advanceLastRead"];
+        patch?: never;
         trace?: never;
     };
     "/api/rooms/{roomId}/messages": {
@@ -741,6 +735,28 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/api/rooms/{roomId}/read-position": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * 읽은 위치 기록
+         * @description 참여 중인 방에서 마지막으로 본 메시지 ID를 기록합니다. 안 읽은 메시지 개수는 이 위치 이후로 셉니다.
+         *     그 방에 있는 메시지만 기록할 수 있습니다. 지금 읽은 위치보다 앞선 값은 무시하므로
+         *     늦게 도착한 요청이나 다른 기기의 요청이 위치를 되돌리지 않습니다. 같은 요청을 반복해도 204입니다.
+         */
+        patch: operations["advanceLastRead"];
         trace?: never;
     };
     "/api/trip-members": {
@@ -2218,6 +2234,15 @@ export interface components {
         };
         /** @description 400: INVALID_INPUT 또는 Spring 요청 오류. 검증 실패 시 errors 포함 */
         BadRequest: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/problem+json": components["schemas"]["ApiProblem"];
+            };
+        };
+        /** @description 404: CHAT_MESSAGE_NOT_FOUND. 없는 메시지이거나 다른 방의 메시지. 둘을 구분하지 않음 */
+        ChatMessageNotFound: {
             headers: {
                 [name: string]: unknown;
             };
@@ -3973,39 +3998,6 @@ export interface operations {
             503: components["responses"]["AuthenticationUnavailable"];
         };
     };
-    advanceLastRead: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /**
-                 * @description 방 ID
-                 * @example 7
-                 */
-                roomId: number;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ReadPositionRequest"];
-            };
-        };
-        responses: {
-            /** @description 기록 완료 */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            400: components["responses"]["BadRequest"];
-            401: components["responses"]["Unauthorized"];
-            403: components["responses"]["RoomAccessDenied"];
-            500: components["responses"]["InternalServerError"];
-            503: components["responses"]["AuthenticationUnavailable"];
-        };
-    };
     findAfter: {
         parameters: {
             query?: {
@@ -4068,6 +4060,40 @@ export interface operations {
             };
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["RoomAccessDenied"];
+            500: components["responses"]["InternalServerError"];
+            503: components["responses"]["AuthenticationUnavailable"];
+        };
+    };
+    advanceLastRead: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /**
+                 * @description 방 ID
+                 * @example 7
+                 */
+                roomId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReadPositionRequest"];
+            };
+        };
+        responses: {
+            /** @description 기록 완료 */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["RoomAccessDenied"];
+            404: components["responses"]["ChatMessageNotFound"];
             500: components["responses"]["InternalServerError"];
             503: components["responses"]["AuthenticationUnavailable"];
         };
@@ -4558,7 +4584,7 @@ export const apiRoutes = {
     },
     advanceLastRead: {
         method: "patch",
-        path: "/api/rooms/{roomId}/members/me",
+        path: "/api/rooms/{roomId}/read-position",
         auth: "required",
         csrf: false,
         responses: { "204": false },

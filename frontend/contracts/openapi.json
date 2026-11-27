@@ -87,6 +87,14 @@
                 },
                 "description": "400: INVALID_INPUT 또는 Spring 요청 오류. 검증 실패 시 errors 포함"
             },
+            "ChatMessageNotFound": {
+                "content": {
+                    "application/problem+json": {
+                        "schema": { "$ref": "#/components/schemas/ApiProblem" }
+                    }
+                },
+                "description": "404: CHAT_MESSAGE_NOT_FOUND. 없는 메시지이거나 다른 방의 메시지. 둘을 구분하지 않음"
+            },
             "CompanionCandidateSearchUnavailable": {
                 "content": {
                     "application/problem+json": {
@@ -4019,39 +4027,6 @@
                 "security": [{ "bearerAuth": [] }],
                 "summary": "채팅방 나가기",
                 "tags": ["Room"]
-            },
-            "patch": {
-                "description": "참여 중인 방에서 마지막으로 본 메시지 ID를 기록합니다. 안 읽은 메시지 개수는 이 위치 이후로 셉니다.\n지금 읽은 위치보다 앞선 값은 무시하므로 늦게 도착한 요청이나 다른 기기의 요청이 위치를 되돌리지 않습니다.\n같은 요청을 반복해도 204입니다.\n",
-                "operationId": "advanceLastRead",
-                "parameters": [
-                    {
-                        "description": "방 ID",
-                        "example": 7,
-                        "in": "path",
-                        "name": "roomId",
-                        "required": true,
-                        "schema": { "format": "int64", "type": "integer" }
-                    }
-                ],
-                "requestBody": {
-                    "content": {
-                        "application/json": {
-                            "schema": { "$ref": "#/components/schemas/ReadPositionRequest" }
-                        }
-                    },
-                    "required": true
-                },
-                "responses": {
-                    "204": { "description": "기록 완료" },
-                    "400": { "$ref": "#/components/responses/BadRequest" },
-                    "401": { "$ref": "#/components/responses/Unauthorized" },
-                    "403": { "$ref": "#/components/responses/RoomAccessDenied" },
-                    "500": { "$ref": "#/components/responses/InternalServerError" },
-                    "503": { "$ref": "#/components/responses/AuthenticationUnavailable" }
-                },
-                "security": [{ "bearerAuth": [] }],
-                "summary": "읽은 위치 기록",
-                "tags": ["Room"]
             }
         },
         "/api/rooms/{roomId}/messages": {
@@ -4148,6 +4123,42 @@
                 },
                 "security": [{ "bearerAuth": [] }],
                 "summary": "채팅 메시지 요약 조회",
+                "tags": ["Chat"]
+            }
+        },
+        "/api/rooms/{roomId}/read-position": {
+            "patch": {
+                "description": "참여 중인 방에서 마지막으로 본 메시지 ID를 기록합니다. 안 읽은 메시지 개수는 이 위치 이후로 셉니다.\n그 방에 있는 메시지만 기록할 수 있습니다. 지금 읽은 위치보다 앞선 값은 무시하므로\n늦게 도착한 요청이나 다른 기기의 요청이 위치를 되돌리지 않습니다. 같은 요청을 반복해도 204입니다.\n",
+                "operationId": "advanceLastRead",
+                "parameters": [
+                    {
+                        "description": "방 ID",
+                        "example": 7,
+                        "in": "path",
+                        "name": "roomId",
+                        "required": true,
+                        "schema": { "format": "int64", "type": "integer" }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": { "$ref": "#/components/schemas/ReadPositionRequest" }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "204": { "description": "기록 완료" },
+                    "400": { "$ref": "#/components/responses/BadRequest" },
+                    "401": { "$ref": "#/components/responses/Unauthorized" },
+                    "403": { "$ref": "#/components/responses/RoomAccessDenied" },
+                    "404": { "$ref": "#/components/responses/ChatMessageNotFound" },
+                    "500": { "$ref": "#/components/responses/InternalServerError" },
+                    "503": { "$ref": "#/components/responses/AuthenticationUnavailable" }
+                },
+                "security": [{ "bearerAuth": [] }],
+                "summary": "읽은 위치 기록",
                 "tags": ["Chat"]
             }
         },
