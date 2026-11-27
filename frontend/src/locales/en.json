@@ -258,6 +258,7 @@
             "CUSTOM": "Added on map"
         },
         "chat": "Chat",
+        "chatUnread": "Chat, {{count}} unread",
         "chatClose": "Close chat",
         "chatMembers": "{{count}} members",
         "chatInputLabel": "Message",

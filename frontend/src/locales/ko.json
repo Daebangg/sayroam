@@ -258,6 +258,7 @@
             "CUSTOM": "직접 추가"
         },
         "chat": "채팅방",
+        "chatUnread": "채팅방, 읽지 않은 메시지 {{count}}개",
         "chatClose": "채팅방 닫기",
         "chatMembers": "멤버 {{count}}명",
         "chatInputLabel": "메시지 입력",

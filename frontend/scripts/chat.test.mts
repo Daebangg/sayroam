@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { runOneAtATime } from "../src/hooks/api/chat/runOneAtATime.ts";
+import { latestMessageId, unreadCount } from "../src/hooks/api/chat/unreadCount.ts";
+import type { ChatMessage } from "../src/api/chat/chatResponse.ts";
 
 function deferred() {
     let resolve!: () => void;
@@ -86,4 +88,39 @@ test("취소되면 보류된 요청을 실행하지 않음", async () => {
     await running;
 
     assert.equal(calls, 1);
+});
+
+const ME = 1;
+const OTHER = 2;
+
+function message(messageId: number, senderId: number | null): ChatMessage {
+    return {
+        messageId,
+        roomId: 7,
+        senderId,
+        clientMessageId: null,
+        content: "안녕",
+        createdAt: "2026-11-27T00:00:00Z",
+    };
+}
+
+test("서버 개수에 기준 이후 도착한 다른 회원의 메시지를 더함", () => {
+    const messages = [message(10, OTHER), message(11, OTHER), message(12, ME)];
+
+    assert.equal(unreadCount(messages, ME, { count: 3, until: 10 }, null), 4);
+});
+
+test("서버 개수를 받기 전에는 0", () => {
+    assert.equal(unreadCount([message(10, OTHER)], ME, null, null), 0);
+});
+
+test("패널을 닫은 뒤에는 본 위치 이후 다른 회원의 메시지만 셈", () => {
+    const messages = [message(10, OTHER), message(11, ME), message(12, OTHER)];
+
+    assert.equal(unreadCount(messages, ME, { count: 5, until: 9 }, 10), 1);
+});
+
+test("가장 뒤 메시지 ID를 읽은 위치로 사용하고 메시지가 없으면 0", () => {
+    assert.equal(latestMessageId([message(10, OTHER), message(12, ME)]), 12);
+    assert.equal(latestMessageId([]), 0);
 });

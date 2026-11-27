@@ -50,6 +50,16 @@ export function validateChatMessages(value: unknown, status: number): ChatMessag
     return value;
 }
 
+export function validateChatMessageSummary(
+    value: unknown,
+    status: number,
+): components["schemas"]["ChatMessageSummaryResponse"] {
+    const count = record(value) ? value.unreadCount : undefined;
+    if (typeof count !== "number" || !Number.isSafeInteger(count) || count < 0)
+        throw new ApiError("invalid-response", { status });
+    return { unreadCount: count };
+}
+
 export function validateRoomMembers(
     value: unknown,
     status: number,
