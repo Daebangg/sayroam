@@ -155,6 +155,33 @@ class RoomServiceTest extends DatabaseIntegrationTest {
     }
 
     @Test
+    void 읽은_위치를_옮기면_저장된다() {
+        // given
+        Long userId = saveUser();
+        Long roomId = createRoomJoinedBy(userId);
+
+        // when
+        roomService.advanceLastRead(roomId, userId, 120L);
+
+        // then
+        assertThat(roomMemberRepository.findByRoomIdAndUserId(roomId, userId))
+                .hasValueSatisfying(member -> assertThat(member.getLastReadMessageId()).isEqualTo(120L));
+    }
+
+    @Test
+    void 참여하지_않은_방의_읽은_위치는_옮길_수_없다() {
+        // given
+        Long ownerId = saveUser();
+        Long nonMemberId = saveUser();
+        Long roomId = createRoomJoinedBy(ownerId);
+
+        // when & then
+        assertThatThrownBy(() -> roomService.advanceLastRead(roomId, nonMemberId, 120L))
+                .isInstanceOfSatisfying(BusinessException.class,
+                        e -> assertThat(e.getErrorCode()).isEqualTo(RoomErrorCode.ROOM_ACCESS_DENIED));
+    }
+
+    @Test
     void 방_멤버의_닉네임과_프로필_이미지를_돌려준다() {
         // given
         Long ownerId = saveUser("민수", "https://example.com/minsu.png");

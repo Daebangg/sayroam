@@ -64,6 +64,11 @@ public class RoomService {
                 .forEach(member -> member.leave(now));
     }
 
+    @Transactional
+    public void advanceLastRead(Long roomId, Long userId, Long messageId) {
+        getMember(roomId, userId).advanceLastRead(messageId);
+    }
+
     public void ensureJoined(Long roomId, Long userId) {
         getJoinedMember(roomId, userId);
     }
