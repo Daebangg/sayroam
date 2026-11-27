@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { runOneAtATime } from "../src/hooks/api/chat/runOneAtATime.ts";
+import { createReadPositionSender } from "../src/hooks/api/chat/readPositionSender.ts";
 import { latestMessageId, unreadCount } from "../src/hooks/api/chat/unreadCount.ts";
 import type { ChatMessage } from "../src/api/chat/chatResponse.ts";
 
@@ -123,4 +124,122 @@ test("패널을 닫은 뒤에는 본 위치 이후 다른 회원의 메시지만
 test("가장 뒤 메시지 ID를 읽은 위치로 사용하고 메시지가 없으면 0", () => {
     assert.equal(latestMessageId([message(10, OTHER), message(12, ME)]), 12);
     assert.equal(latestMessageId([]), 0);
+});
+
+function fakeClock() {
+    let now = 0;
+    let nextId = 1;
+    const timers = new Map<number, { at: number; run: () => void }>();
+    return {
+        timers: {
+            now: () => now,
+            setTimeout(run: () => void, ms: number): number {
+                const id = nextId++;
+                timers.set(id, { at: now + ms, run });
+                return id;
+            },
+            clearTimeout(id: number): void {
+                timers.delete(id);
+            },
+        },
+        advance(ms: number) {
+            now += ms;
+            for (const [id, timer] of [...timers].sort((a, b) => a[1].at - b[1].at)) {
+                if (timer.at > now) continue;
+                timers.delete(id);
+                timer.run();
+            }
+        },
+    };
+}
+
+function recordingSender(clock: ReturnType<typeof fakeClock>, fail = false) {
+    const sent: number[] = [];
+    const sender = createReadPositionSender(
+        (id) => {
+            sent.push(id);
+            return fail ? Promise.reject(new Error("failed")) : Promise.resolve();
+        },
+        { idleMs: 1000, maxWaitMs: 5000 },
+        clock.timers,
+    );
+    return { sent, sender };
+}
+
+test("연달아 표시하면 조용해진 뒤 가장 큰 ID만 한 번 보냄", () => {
+    const clock = fakeClock();
+    const { sent, sender } = recordingSender(clock);
+
+    sender.mark(10);
+    clock.advance(500);
+    sender.mark(11);
+    clock.advance(500);
+    sender.mark(12);
+    clock.advance(999);
+    assert.deepEqual(sent, []);
+    clock.advance(1);
+
+    assert.deepEqual(sent, [12]);
+});
+
+test("계속 표시돼도 최대 대기 시간 안에는 보냄", () => {
+    const clock = fakeClock();
+    const { sent, sender } = recordingSender(clock);
+
+    for (let id = 1; id <= 10; id += 1) {
+        sender.mark(id);
+        clock.advance(600);
+    }
+
+    assert.deepEqual(sent.slice(0, 1), [9]);
+});
+
+test("flush하면 기다리지 않고 보내고, 보낼 것이 없으면 보내지 않음", () => {
+    const clock = fakeClock();
+    const { sent, sender } = recordingSender(clock);
+
+    sender.flush();
+    sender.mark(7);
+    sender.flush();
+    clock.advance(5000);
+
+    assert.deepEqual(sent, [7]);
+});
+
+test("이미 보낸 ID 이하는 다시 보내지 않음", () => {
+    const clock = fakeClock();
+    const { sent, sender } = recordingSender(clock);
+
+    sender.mark(7);
+    sender.flush();
+    sender.mark(7);
+    sender.mark(5);
+    sender.flush();
+
+    assert.deepEqual(sent, [7]);
+});
+
+test("보내기에 실패하면 같은 ID를 다시 표시할 때 다시 보냄", async () => {
+    const clock = fakeClock();
+    const { sent, sender } = recordingSender(clock, true);
+
+    sender.mark(7);
+    sender.flush();
+    await Promise.resolve();
+    await Promise.resolve();
+    sender.mark(7);
+    sender.flush();
+
+    assert.deepEqual(sent, [7, 7]);
+});
+
+test("정리하면 기다리던 전송을 취소함", () => {
+    const clock = fakeClock();
+    const { sent, sender } = recordingSender(clock);
+
+    sender.mark(7);
+    sender.dispose();
+    clock.advance(5000);
+
+    assert.deepEqual(sent, []);
 });
