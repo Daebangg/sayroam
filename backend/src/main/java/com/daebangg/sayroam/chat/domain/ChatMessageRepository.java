@@ -11,4 +11,6 @@ public interface ChatMessageRepository {
     Optional<ChatMessage> findBySenderIdAndClientMessageId(Long senderId, String clientMessageId);
 
     List<ChatMessage> findVisibleAfter(Long roomId, Long afterId, LocalDateTime joinedAt, int size);
+
+    long countUnread(Long roomId, Long userId, Long afterId, LocalDateTime joinedAt);
 }

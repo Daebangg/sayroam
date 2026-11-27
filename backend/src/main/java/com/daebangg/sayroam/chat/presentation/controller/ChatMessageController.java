@@ -4,6 +4,7 @@ import com.daebangg.sayroam.auth.domain.AuthenticatedAccount;
 import com.daebangg.sayroam.chat.application.service.ChatMessageService;
 import com.daebangg.sayroam.chat.presentation.api.ChatMessageApi;
 import com.daebangg.sayroam.chat.presentation.dto.ChatMessageResponse;
+import com.daebangg.sayroam.chat.presentation.dto.ChatMessageSummaryResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -34,5 +35,13 @@ public class ChatMessageController implements ChatMessageApi {
                 .toList();
 
         return ResponseEntity.ok(messages);
+    }
+
+    @Override
+    @GetMapping(value = "/api/rooms/{roomId}/messages/summary", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<ChatMessageSummaryResponse> getSummary(
+            @AuthenticationPrincipal AuthenticatedAccount account,
+            @PathVariable Long roomId) {
+        return ResponseEntity.ok(new ChatMessageSummaryResponse(chatMessageService.countUnread(roomId, account.userId())));
     }
 }

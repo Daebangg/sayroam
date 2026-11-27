@@ -115,8 +115,44 @@ class ChatMessageControllerTest {
         then(chatMessageService).shouldHaveNoInteractions();
     }
 
+    @Test
+    void 안_읽은_개수를_조회하면_200과_개수를_응답한다() throws Exception {
+        // given
+        given(chatMessageService.countUnread(ROOM_ID, USER_ID)).willReturn(3L);
+
+        // when & then
+        mvc.perform(summaryRequest().with(loggedIn()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.unreadCount").value(3));
+    }
+
+    @Test
+    void 방_멤버가_아니면_안_읽은_개수_조회에_403과_에러_코드를_응답한다() throws Exception {
+        // given
+        given(chatMessageService.countUnread(ROOM_ID, USER_ID))
+                .willThrow(new BusinessException(RoomErrorCode.ROOM_ACCESS_DENIED));
+
+        // when & then
+        mvc.perform(summaryRequest().with(loggedIn()))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("ROOM_ACCESS_DENIED"));
+    }
+
+    @Test
+    void 로그인하지_않으면_안_읽은_개수_조회에_401을_응답한다() throws Exception {
+        // when & then
+        mvc.perform(summaryRequest())
+                .andExpect(status().isUnauthorized());
+
+        then(chatMessageService).shouldHaveNoInteractions();
+    }
+
     private MockHttpServletRequestBuilder findAfterRequest() {
         return get("/api/rooms/{roomId}/messages", ROOM_ID);
+    }
+
+    private MockHttpServletRequestBuilder summaryRequest() {
+        return get("/api/rooms/{roomId}/messages/summary", ROOM_ID);
     }
 
     private RequestPostProcessor loggedIn() {

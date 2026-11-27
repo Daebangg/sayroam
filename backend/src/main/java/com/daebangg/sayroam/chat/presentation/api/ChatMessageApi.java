@@ -2,6 +2,7 @@ package com.daebangg.sayroam.chat.presentation.api;
 
 import com.daebangg.sayroam.auth.domain.AuthenticatedAccount;
 import com.daebangg.sayroam.chat.presentation.dto.ChatMessageResponse;
+import com.daebangg.sayroam.chat.presentation.dto.ChatMessageSummaryResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -40,5 +41,22 @@ public interface ChatMessageApi {
             @Parameter(description = "한 번에 조회할 최대 개수",
                     schema = @Schema(type = "integer", format = "int32", minimum = "1", maximum = "100", defaultValue = "100"))
             @Min(1) @Max(100) int size);
+
+    @Operation(operationId = "getChatMessageSummary", summary = "채팅 메시지 요약 조회",
+            description = """
+                    참여 중인 방에서 읽은 위치 이후 다른 회원이 보낸 메시지 개수를 조회합니다.
+                    입장 전 메시지와 내가 보낸 메시지는 세지 않습니다. 읽은 위치를 기록한 적이 없으면 입장 후 메시지를 모두 셉니다.
+                    """,
+            security = @SecurityRequirement(name = "bearerAuth"))
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "조회 성공"),
+            @ApiResponse(responseCode = "401", ref = "#/components/responses/Unauthorized"),
+            @ApiResponse(responseCode = "403", ref = "#/components/responses/RoomAccessDenied"),
+            @ApiResponse(responseCode = "503", ref = "#/components/responses/AuthenticationUnavailable"),
+            @ApiResponse(responseCode = "500", ref = "#/components/responses/InternalServerError")
+    })
+    ResponseEntity<ChatMessageSummaryResponse> getSummary(
+            @Parameter(hidden = true) @AuthenticationPrincipal AuthenticatedAccount account,
+            @Parameter(description = "방 ID", example = "7") Long roomId);
 }
 

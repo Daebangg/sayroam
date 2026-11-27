@@ -1,6 +1,7 @@
 package com.daebangg.sayroam.room.application.service;
 
 import com.daebangg.sayroam.global.exception.BusinessException;
+import com.daebangg.sayroam.room.application.dto.ReadPositionResult;
 import com.daebangg.sayroam.room.application.dto.RoomMemberProfileResult;
 import com.daebangg.sayroam.room.application.port.out.RoomMemberQueryRepository;
 import com.daebangg.sayroam.room.domain.Room;
@@ -79,6 +80,10 @@ public class RoomService {
 
     public LocalDateTime getJoinedAt(Long roomId, Long userId) {
         return getJoinedMember(roomId, userId).getJoinedAt();
+    }
+
+    public ReadPositionResult getReadPosition(Long roomId, Long userId) {
+        return ReadPositionResult.from(getJoinedMember(roomId, userId));
     }
 
     public List<RoomMemberProfileResult> findMembers(Long roomId, Long userId) {

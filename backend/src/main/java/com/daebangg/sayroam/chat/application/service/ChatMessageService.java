@@ -4,6 +4,7 @@ import com.daebangg.sayroam.chat.application.dto.ChatMessageResult;
 import com.daebangg.sayroam.chat.domain.ChatMessage;
 import com.daebangg.sayroam.chat.domain.ChatMessageRepository;
 import com.daebangg.sayroam.chat.domain.event.ChatMessageSent;
+import com.daebangg.sayroam.room.application.dto.ReadPositionResult;
 import com.daebangg.sayroam.room.application.service.RoomService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
@@ -43,6 +44,11 @@ public class ChatMessageService {
                 .stream()
                 .map(ChatMessageResult::from)
                 .toList();
+    }
+
+    public long countUnread(Long roomId, Long userId) {
+        ReadPositionResult position = roomService.getReadPosition(roomId, userId);
+        return chatMessageRepository.countUnread(roomId, userId, position.lastReadMessageId(), position.joinedAt());
     }
 
 }

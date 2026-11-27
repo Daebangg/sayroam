@@ -3,8 +3,8 @@ package com.daebangg.sayroam.chat.application;
 import com.daebangg.sayroam.chat.application.dto.ChatMessageResult;
 import com.daebangg.sayroam.chat.application.service.ChatMessageService;
 import com.daebangg.sayroam.chat.domain.ChatMessage;
-import com.daebangg.sayroam.chat.infrastructure.persistence.ChatMessageJpaRepository;
 import com.daebangg.sayroam.chat.domain.event.ChatMessageSent;
+import com.daebangg.sayroam.chat.infrastructure.persistence.ChatMessageJpaRepository;
 import com.daebangg.sayroam.global.exception.BusinessException;
 import com.daebangg.sayroam.room.application.service.RoomService;
 import com.daebangg.sayroam.room.domain.error.RoomErrorCode;
@@ -20,7 +20,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.test.context.event.ApplicationEvents;
 import org.springframework.test.context.event.RecordApplicationEvents;
-import org.springframework.transaction.support.TransactionTemplate;
 
 import java.util.List;
 import java.util.UUID;
@@ -41,9 +40,6 @@ class ChatMessageServiceTest extends DatabaseIntegrationTest {
 
     @Autowired
     RoomService roomService;
-
-    @Autowired
-    TransactionTemplate transactionTemplate;
 
     @Autowired
     UserJpaRepository userRepository;
@@ -294,6 +290,108 @@ class ChatMessageServiceTest extends DatabaseIntegrationTest {
         assertThat(messages)
                 .extracting(ChatMessageResult::content)
                 .containsExactly("재입장 후");
+    }
+
+    @Test
+    void 처음_읽기_전이면_입장_후_다른_사람이_보낸_메시지를_모두_센다() {
+        // given
+        Long memberId = saveUser();
+        Long otherId = saveUser();
+        Long roomId = createRoomJoinedBy(memberId);
+        joinRoom(roomId, otherId);
+        chatMessageService.send(roomId, memberId, UUID.randomUUID().toString(), "1");
+        chatMessageService.send(roomId, memberId, UUID.randomUUID().toString(), "2");
+
+        // when
+        long unreadCount = chatMessageService.countUnread(roomId, otherId);
+
+        // then
+        assertThat(unreadCount).isEqualTo(2);
+
+    }
+
+    @Test
+    void 내가_보낸_메시지는_세지_않는다() {
+        // given
+        Long memberId = saveUser();
+        Long myId = saveUser();
+        Long roomId = createRoomJoinedBy(memberId);
+        joinRoom(roomId, myId);
+        chatMessageService.send(roomId, memberId, UUID.randomUUID().toString(), "남의 메시지");
+        chatMessageService.send(roomId, myId, UUID.randomUUID().toString(), "내 메시지");
+
+        // when
+        long unreadCount = chatMessageService.countUnread(roomId, myId);
+
+        // then
+        assertThat(unreadCount).isEqualTo(1);
+    }
+
+    @Test
+    void 입장_전_메시지는_세지_않는다() {
+        // given
+        Long ownerId = saveUser();
+        Long memberId = saveUser();
+        Long roomId = createRoomJoinedBy(ownerId);
+        chatMessageService.send(roomId, ownerId, UUID.randomUUID().toString(), "입장 전");
+        joinRoom(roomId, memberId);
+        chatMessageService.send(roomId, ownerId, UUID.randomUUID().toString(), "입장 후");
+
+        // when
+        long unreadCount = chatMessageService.countUnread(roomId, memberId);
+
+        // then
+        assertThat(unreadCount).isEqualTo(1);
+    }
+
+    @Test
+    void 다른_방의_메시지는_세지_않는다() {
+        // given
+        Long ownerId = saveUser();
+        Long memberId = saveUser();
+        Long roomId = createRoomJoinedBy(ownerId);
+        Long otherRoomId = createRoomJoinedBy(ownerId);
+        joinRoom(roomId, memberId);
+        joinRoom(otherRoomId, memberId);
+        chatMessageService.send(roomId, ownerId, UUID.randomUUID().toString(), "제주 방");
+        chatMessageService.send(otherRoomId, ownerId, UUID.randomUUID().toString(), "부산 방");
+
+        // when
+        long unreadCount = chatMessageService.countUnread(roomId, memberId);
+
+        // then
+        assertThat(unreadCount).isEqualTo(1);
+    }
+
+    @Test
+    void 멤버가_아니면_안_읽은_개수_조회를_거부한다() {
+        // given
+        Long ownerId = saveUser();
+        Long nonMemberId = saveUser();
+        Long roomId = createRoomJoinedBy(ownerId);
+
+        // when & then
+        assertThatThrownBy(() -> chatMessageService.countUnread(roomId, nonMemberId))
+                .isInstanceOfSatisfying(BusinessException.class,
+                        e -> assertThat(e.getErrorCode()).isEqualTo(RoomErrorCode.ROOM_ACCESS_DENIED));
+    }
+
+    @Test
+    void 읽은_위치_이후_메시지만_센다() {
+        // given
+        Long ownerId = saveUser();
+        Long memberId = saveUser();
+        Long roomId = createRoomJoinedBy(ownerId);
+        joinRoom(roomId, memberId);
+        ChatMessageResult read = chatMessageService.send(roomId, ownerId, UUID.randomUUID().toString(), "읽음");
+        chatMessageService.send(roomId, ownerId, UUID.randomUUID().toString(), "안 읽음");
+        roomService.advanceLastRead(roomId, memberId, read.messageId());
+
+        // when
+        long unreadCount = chatMessageService.countUnread(roomId, memberId);
+
+        // then
+        assertThat(unreadCount).isEqualTo(1);
     }
 
     private void joinRoom(Long roomId, Long userId) {
