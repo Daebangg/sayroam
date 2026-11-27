@@ -23,6 +23,7 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.test.context.event.ApplicationEvents;
 import org.springframework.test.context.event.RecordApplicationEvents;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -412,6 +413,25 @@ class ChatMessageServiceTest extends DatabaseIntegrationTest {
         // then
         assertThat(summary.unreadCount()).isEqualTo(1);
         assertThat(summary.lastMessageId()).isEqualTo(mine.messageId());
+    }
+
+    @Test
+    void 기준_메시지_이후의_메시지는_안_읽은_개수에_세지_않는다() {
+        // given
+        Long ownerId = saveUser();
+        Long memberId = saveUser();
+        Long roomId = createRoomJoinedBy(ownerId);
+        joinRoom(roomId, memberId);
+        chatMessageService.send(roomId, ownerId, UUID.randomUUID().toString(), "1");
+        ChatMessageResult until = chatMessageService.send(roomId, ownerId, UUID.randomUUID().toString(), "2");
+        chatMessageService.send(roomId, ownerId, UUID.randomUUID().toString(), "기준 이후");
+        LocalDateTime joinedAt = roomService.getJoinedAt(roomId, memberId);
+
+        // when
+        long unreadCount = chatMessageRepository.countUnread(roomId, memberId, null, until.messageId(), joinedAt);
+
+        // then
+        assertThat(unreadCount).isEqualTo(2);
     }
 
     @Test

@@ -14,7 +14,7 @@ public interface ChatMessageRepository {
 
     List<ChatMessage> findVisibleAfter(Long roomId, Long afterId, LocalDateTime joinedAt, int size);
 
-    long countUnread(Long roomId, Long userId, Long afterId, LocalDateTime joinedAt);
+    long countUnread(Long roomId, Long userId, Long afterId, Long untilId, LocalDateTime joinedAt);
 
     long findLastMessageId(Long roomId);
 }

@@ -60,9 +60,10 @@ public class ChatMessageService {
 
     public ChatMessageSummaryResult getSummary(Long roomId, Long userId) {
         ReadPositionResult position = roomService.getReadPosition(roomId, userId);
+        long lastMessageId = chatMessageRepository.findLastMessageId(roomId);
         long unreadCount = chatMessageRepository.countUnread(
-                roomId, userId, position.lastReadMessageId(), position.joinedAt());
-        return new ChatMessageSummaryResult(unreadCount, chatMessageRepository.findLastMessageId(roomId));
+                roomId, userId, position.lastReadMessageId(), lastMessageId, position.joinedAt());
+        return new ChatMessageSummaryResult(unreadCount, lastMessageId);
     }
 
 }
