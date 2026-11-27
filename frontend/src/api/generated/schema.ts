@@ -1311,6 +1311,12 @@ export interface components {
         ChatMessageSummaryResponse: {
             /**
              * Format: int64
+             * @description 개수를 센 시점의 방의 마지막 메시지 ID. 이보다 뒤에 받은 메시지는 개수에 포함되지 않음. 메시지가 없으면 0
+             * @example 10
+             */
+            lastMessageId: number;
+            /**
+             * Format: int64
              * @description 읽은 위치 이후 다른 회원이 보낸 메시지 개수. 입장 전 메시지와 내가 보낸 메시지는 세지 않음
              * @example 3
              */
