@@ -155,7 +155,7 @@ class RoomServiceTest extends DatabaseIntegrationTest {
     }
 
     @Test
-    void 읽은_위치를_옮기면_저장된다() {
+    void 처음_읽으면_읽은_위치를_기록한다() {
         // given
         Long userId = saveUser();
         Long roomId = createRoomJoinedBy(userId);
@@ -164,21 +164,50 @@ class RoomServiceTest extends DatabaseIntegrationTest {
         roomService.advanceLastRead(roomId, userId, 120L);
 
         // then
-        assertThat(roomMemberRepository.findByRoomIdAndUserId(roomId, userId))
-                .hasValueSatisfying(member -> assertThat(member.getLastReadMessageId()).isEqualTo(120L));
+        assertThat(lastReadMessageId(roomId, userId)).isEqualTo(120L);
     }
 
     @Test
-    void 참여하지_않은_방의_읽은_위치는_옮길_수_없다() {
+    void 더_뒤의_메시지를_읽으면_읽은_위치를_옮긴다() {
         // given
-        Long ownerId = saveUser();
-        Long nonMemberId = saveUser();
-        Long roomId = createRoomJoinedBy(ownerId);
+        Long userId = saveUser();
+        Long roomId = createRoomJoinedBy(userId);
+        roomService.advanceLastRead(roomId, userId, 120L);
 
-        // when & then
-        assertThatThrownBy(() -> roomService.advanceLastRead(roomId, nonMemberId, 120L))
-                .isInstanceOfSatisfying(BusinessException.class,
-                        e -> assertThat(e.getErrorCode()).isEqualTo(RoomErrorCode.ROOM_ACCESS_DENIED));
+        // when
+        roomService.advanceLastRead(roomId, userId, 150L);
+
+        // then
+        assertThat(lastReadMessageId(roomId, userId)).isEqualTo(150L);
+    }
+
+    @Test
+    void 저장된_위치보다_앞선_메시지를_읽어도_읽은_위치를_유지한다() {
+        // given
+        Long userId = saveUser();
+        Long roomId = createRoomJoinedBy(userId);
+        roomService.advanceLastRead(roomId, userId, 150L);
+
+        // when
+        roomService.advanceLastRead(roomId, userId, 120L);
+
+        // then
+        assertThat(lastReadMessageId(roomId, userId)).isEqualTo(150L);
+    }
+
+    @Test
+    void 나간_멤버의_읽은_위치는_바꾸지_않는다() {
+        // given
+        Long userId = saveUser();
+        Long roomId = createRoomJoinedBy(userId);
+        roomService.advanceLastRead(roomId, userId, 120L);
+        roomService.leave(roomId, userId);
+
+        // when
+        roomService.advanceLastRead(roomId, userId, 150L);
+
+        // then
+        assertThat(lastReadMessageId(roomId, userId)).isEqualTo(120L);
     }
 
     @Test
@@ -483,6 +512,10 @@ class RoomServiceTest extends DatabaseIntegrationTest {
     private void withdraw(Long userId) {
         transactionTemplate.executeWithoutResult(status -> userRepository.findById(userId).orElseThrow()
                 .withdraw(LocalDateTime.now(ZoneOffset.UTC)));
+    }
+
+    private Long lastReadMessageId(Long roomId, Long userId) {
+        return roomMemberRepository.findByRoomIdAndUserId(roomId, userId).orElseThrow().getLastReadMessageId();
     }
 
     private Long createRoomJoinedBy(Long userId) {

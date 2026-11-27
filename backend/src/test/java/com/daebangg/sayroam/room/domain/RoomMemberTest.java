@@ -118,56 +118,6 @@ class RoomMemberTest {
         assertThat(changed).isFalse();
     }
 
-    @Test
-    void 처음_읽으면_읽은_위치를_기록한다() {
-        // given
-        RoomMember member = joinedMember();
-
-        // when
-        member.advanceLastRead(120L);
-
-        // then
-        assertThat(member.getLastReadMessageId()).isEqualTo(120L);
-    }
-
-    @Test
-    void 더_뒤의_메시지를_읽으면_읽은_위치를_옮긴다() {
-        // given
-        RoomMember member = joinedMember();
-        member.advanceLastRead(120L);
-
-        // when
-        member.advanceLastRead(150L);
-
-        // then
-        assertThat(member.getLastReadMessageId()).isEqualTo(150L);
-    }
-
-    @Test
-    void 앞선_메시지를_읽어도_읽은_위치를_되돌리지_않는다() {
-        // given
-        RoomMember member = joinedMember();
-        member.advanceLastRead(150L);
-
-        // when
-        member.advanceLastRead(120L);
-
-        // then
-        assertThat(member.getLastReadMessageId()).isEqualTo(150L);
-    }
-
-    @Test
-    void 나간_멤버는_읽은_위치를_옮길_수_없다() {
-        // given
-        RoomMember member = leftMember();
-
-        // when & then
-        assertThatThrownBy(() -> member.advanceLastRead(120L))
-                .isInstanceOfSatisfying(BusinessException.class,
-                        e -> assertThat(e.getErrorCode()).isEqualTo(RoomErrorCode.ROOM_ACCESS_DENIED));
-        assertThat(member.getLastReadMessageId()).isNull();
-    }
-
     private RoomMember joinedMember() {
         return RoomMember.join(room, 2L, NOW);
     }

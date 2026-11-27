@@ -86,14 +86,6 @@ public class RoomMember extends BaseTimeEntity {
         this.leftAt = leftAt;
     }
 
-    public void advanceLastRead(Long messageId) {
-        ensureJoined();
-        if (lastReadMessageId != null && lastReadMessageId >= messageId) {
-            return;
-        }
-        this.lastReadMessageId = messageId;
-    }
-
     public void ensureJoined() {
         if (status != RoomMemberStatus.JOINED) {
             throw new BusinessException(RoomErrorCode.ROOM_ACCESS_DENIED);

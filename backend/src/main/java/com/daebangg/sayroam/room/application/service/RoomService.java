@@ -67,7 +67,7 @@ public class RoomService {
 
     @Transactional
     public void advanceLastRead(Long roomId, Long userId, Long messageId) {
-        getMember(roomId, userId).advanceLastRead(messageId);
+        roomMemberRepository.advanceLastRead(roomId, userId, messageId);
     }
 
     public void ensureJoined(Long roomId, Long userId) {
