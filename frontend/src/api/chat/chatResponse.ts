@@ -54,10 +54,13 @@ export function validateChatMessageSummary(
     value: unknown,
     status: number,
 ): components["schemas"]["ChatMessageSummaryResponse"] {
-    const count = record(value) ? value.unreadCount : undefined;
-    if (typeof count !== "number" || !Number.isSafeInteger(count) || count < 0)
+    if (!record(value) || !count(value.unreadCount) || !count(value.lastMessageId))
         throw new ApiError("invalid-response", { status });
-    return { unreadCount: count };
+    return { unreadCount: value.unreadCount, lastMessageId: value.lastMessageId };
+}
+
+function count(value: unknown): value is number {
+    return typeof value === "number" && Number.isSafeInteger(value) && value >= 0;
 }
 
 export function validateRoomMembers(

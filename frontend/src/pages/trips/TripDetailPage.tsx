@@ -139,13 +139,14 @@ function TripPlanner({ trip, detail, myUserId }: TripPlannerProps) {
     const search = usePlaceSearch(addingKey === null ? "" : query);
     // 패널을 닫아도 연결과 받은 메시지를 유지하도록 페이지에서 연결한다. 채팅방이 없으면 연결하지 않는다.
     const chat = useTripChat(trip.roomId, myUserId);
-    const chatUnreadCount = useChatUnread(
-        trip.roomId,
-        chat.status,
-        chat.messages,
+    const chatUnreadCount = useChatUnread({
+        roomId: trip.roomId,
+        status: chat.status,
+        messages: chat.messages,
+        syncedUntil: chat.syncedUntil,
         myUserId,
-        panel === "chat" && chat.status === "ready",
-    );
+        reading: panel === "chat" && chat.status === "ready",
+    });
     const addingSection = sections.find((section) => section.key === addingKey);
 
     function notify(message: string, tone: ToastTone = "success") {

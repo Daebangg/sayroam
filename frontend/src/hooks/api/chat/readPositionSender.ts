@@ -40,7 +40,9 @@ export function createReadPositionSender(
         pending = null;
         sent = messageId;
         send(messageId).catch(() => {
-            if (sent === messageId) sent = previous;
+            if (sent !== messageId) return;
+            sent = previous;
+            if (pending === null || pending < messageId) pending = messageId;
         });
     }
 

@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { runOneAtATime } from "../src/hooks/api/chat/runOneAtATime.ts";
 import { createReadPositionSender } from "../src/hooks/api/chat/readPositionSender.ts";
+import { createSummaryLoader, type ChatSummary } from "../src/hooks/api/chat/summaryLoader.ts";
 import { latestMessageId, unreadCount } from "../src/hooks/api/chat/unreadCount.ts";
 import type { ChatMessage } from "../src/api/chat/chatResponse.ts";
 
@@ -242,4 +243,114 @@ test("정리하면 기다리던 전송을 취소함", () => {
     clock.advance(5000);
 
     assert.deepEqual(sent, []);
+});
+
+test("서버 기준 ID 이하로 응답 전에 도착한 메시지는 다시 더하지 않음", () => {
+    const messages = [message(9, OTHER), message(10, OTHER), message(11, OTHER)];
+
+    assert.equal(unreadCount(messages, ME, { count: 2, until: 10 }, null), 3);
+});
+
+test("서버 기준 이후 도착한 메시지가 없으면 서버 개수를 그대로 보여 줌", () => {
+    const messages = [message(9, OTHER), message(10, OTHER)];
+
+    assert.equal(unreadCount(messages, ME, { count: 2, until: 10 }, null), 2);
+});
+
+test("보내기에 실패하면 새로 표시하지 않아도 다음 flush 때 다시 보냄", async () => {
+    const clock = fakeClock();
+    let fail = true;
+    const sent: number[] = [];
+    const sender = createReadPositionSender(
+        (id) => {
+            sent.push(id);
+            return fail ? Promise.reject(new Error("failed")) : Promise.resolve();
+        },
+        { idleMs: 1000, maxWaitMs: 5000 },
+        clock.timers,
+    );
+
+    sender.mark(7);
+    sender.flush();
+    await Promise.resolve();
+    await Promise.resolve();
+    fail = false;
+    sender.flush();
+    sender.flush();
+
+    assert.deepEqual(sent, [7, 7]);
+});
+
+function deferredSummary() {
+    let resolve!: (summary: ChatSummary) => void;
+    let reject!: (error: unknown) => void;
+    const promise = new Promise<ChatSummary>((done, fail) => {
+        resolve = done;
+        reject = fail;
+    });
+    return { promise, resolve, reject };
+}
+
+async function settle() {
+    for (let i = 0; i < 5; i += 1) await Promise.resolve();
+}
+
+test("요약 조회가 실패하면 다음 요청 때 다시 조회하고, 성공한 뒤에는 다시 조회하지 않음", async () => {
+    const calls: ReturnType<typeof deferredSummary>[] = [];
+    const loaded: ChatSummary[] = [];
+    const loader = createSummaryLoader(
+        () => {
+            const call = deferredSummary();
+            calls.push(call);
+            return call.promise;
+        },
+        (summary) => loaded.push(summary),
+    );
+
+    loader.request();
+    calls[0].reject(new Error("failed"));
+    await settle();
+    loader.request();
+    calls[1].resolve({ unreadCount: 3, lastMessageId: 10 });
+    await settle();
+    loader.request();
+
+    assert.equal(calls.length, 2);
+    assert.deepEqual(loaded, [{ unreadCount: 3, lastMessageId: 10 }]);
+    assert.equal(
+        unreadCount([message(10, OTHER), message(11, OTHER)], ME, { count: 3, until: 10 }, null),
+        4,
+    );
+});
+
+test("요약 조회 중에 다시 요청해도 한 번만 조회", () => {
+    let calls = 0;
+    const loader = createSummaryLoader(
+        () => {
+            calls += 1;
+            return new Promise<ChatSummary>(() => undefined);
+        },
+        () => undefined,
+    );
+
+    loader.request();
+    loader.request();
+
+    assert.equal(calls, 1);
+});
+
+test("정리한 뒤 도착한 요약은 반영하지 않음", async () => {
+    const call = deferredSummary();
+    const loaded: ChatSummary[] = [];
+    const loader = createSummaryLoader(
+        () => call.promise,
+        (summary) => loaded.push(summary),
+    );
+
+    loader.request();
+    loader.dispose();
+    call.resolve({ unreadCount: 3, lastMessageId: 10 });
+    await settle();
+
+    assert.deepEqual(loaded, []);
 });
