@@ -25,4 +25,17 @@ public interface ChatMessageJpaRepository extends ChatMessageRepository, JpaRepo
             ORDER BY m.id ASC
             """)
     List<ChatMessage> findVisibleAfter(Long roomId, Long afterId, LocalDateTime joinedAt, Limit limit);
+
+    @Override
+    @Query("""
+            SELECT COUNT(m)
+            FROM ChatMessage m
+            WHERE m.roomId = :roomId AND m.id > COALESCE(:afterId, 0) AND m.id <= :untilId
+                AND m.senderId <> :userId AND m.createdAt >= :joinedAt
+            """)
+    long countUnread(Long roomId, Long userId, Long afterId, Long untilId, LocalDateTime joinedAt);
+
+    @Override
+    @Query("SELECT COALESCE(MAX(m.id), 0) FROM ChatMessage m WHERE m.roomId = :roomId")
+    long findLastMessageId(Long roomId);
 }

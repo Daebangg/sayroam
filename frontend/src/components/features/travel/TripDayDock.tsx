@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { Button, Icon, Tooltip } from "@/components/ui";
+import { Button, Icon, NotificationBadge, Tooltip } from "@/components/ui";
 import { formatDayDate, formatMonthDayParts } from "@/i18n/locale";
 import type { TripSection } from "./tripDays";
 
@@ -8,6 +8,8 @@ type TripDayDockProps = {
     activeKey: string;
     onSelect: (key: string) => void;
     chatOpen: boolean;
+    /** 패널을 닫아 둔 동안 다른 회원이 보낸 안 읽은 메시지 개수 */
+    chatUnreadCount: number;
     onToggleChat: () => void;
     inviteOpen: boolean;
     onToggleInvite: () => void;
@@ -18,12 +20,17 @@ export function TripDayDock({
     activeKey,
     onSelect,
     chatOpen,
+    chatUnreadCount,
     onToggleChat,
     inviteOpen,
     onToggleInvite,
 }: TripDayDockProps) {
     const { t, i18n } = useTranslation();
     const language = i18n.resolvedLanguage ?? "ko";
+    const chatLabel =
+        chatUnreadCount > 0
+            ? t("tripDetail.chatUnread", { count: chatUnreadCount })
+            : t("tripDetail.chat");
     return (
         <nav className="trip-day-dock" aria-label={t("tripDetail.dockLabel")}>
             {sections.map((section) => {
@@ -56,12 +63,21 @@ export function TripDayDock({
             <Tooltip content={t("tripDetail.chat")}>
                 <Button
                     variant="plain"
-                    className="trip-day-dock__item"
-                    aria-label={t("tripDetail.chat")}
+                    className="trip-day-dock__item trip-day-dock__chat"
+                    aria-label={chatLabel}
                     aria-pressed={chatOpen}
                     onClick={onToggleChat}
                 >
                     <Icon name="conversation" />
+                    {chatUnreadCount > 0 && (
+                        <span className="trip-day-dock__badge" aria-hidden="true">
+                            <NotificationBadge
+                                count={chatUnreadCount}
+                                maxCount={99}
+                                label={chatLabel}
+                            />
+                        </span>
+                    )}
                 </Button>
             </Tooltip>
             <Tooltip content={t("tripDetail.invite")}>

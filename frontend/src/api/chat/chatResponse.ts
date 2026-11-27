@@ -50,6 +50,19 @@ export function validateChatMessages(value: unknown, status: number): ChatMessag
     return value;
 }
 
+export function validateChatMessageSummary(
+    value: unknown,
+    status: number,
+): components["schemas"]["ChatMessageSummaryResponse"] {
+    if (!record(value) || !count(value.unreadCount) || !count(value.lastMessageId))
+        throw new ApiError("invalid-response", { status });
+    return { unreadCount: value.unreadCount, lastMessageId: value.lastMessageId };
+}
+
+function count(value: unknown): value is number {
+    return typeof value === "number" && Number.isSafeInteger(value) && value >= 0;
+}
+
 export function validateRoomMembers(
     value: unknown,
     status: number,

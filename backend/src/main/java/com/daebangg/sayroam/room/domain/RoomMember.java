@@ -45,7 +45,7 @@ public class RoomMember extends BaseTimeEntity {
     @Column(nullable = false, length = 20)
     private RoomMemberStatus status;
 
-    // 안 읽은 메시지 수 계산용. 연관관계 없이 값으로만 둔다
+    @Getter
     private Long lastReadMessageId;
 
     @Column(nullable = false)

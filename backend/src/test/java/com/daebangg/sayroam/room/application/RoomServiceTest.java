@@ -155,6 +155,62 @@ class RoomServiceTest extends DatabaseIntegrationTest {
     }
 
     @Test
+    void 처음_읽으면_읽은_위치를_기록한다() {
+        // given
+        Long userId = saveUser();
+        Long roomId = createRoomJoinedBy(userId);
+
+        // when
+        roomService.advanceLastRead(roomId, userId, 120L);
+
+        // then
+        assertThat(lastReadMessageId(roomId, userId)).isEqualTo(120L);
+    }
+
+    @Test
+    void 더_뒤의_메시지를_읽으면_읽은_위치를_옮긴다() {
+        // given
+        Long userId = saveUser();
+        Long roomId = createRoomJoinedBy(userId);
+        roomService.advanceLastRead(roomId, userId, 120L);
+
+        // when
+        roomService.advanceLastRead(roomId, userId, 150L);
+
+        // then
+        assertThat(lastReadMessageId(roomId, userId)).isEqualTo(150L);
+    }
+
+    @Test
+    void 저장된_위치보다_앞선_메시지를_읽어도_읽은_위치를_유지한다() {
+        // given
+        Long userId = saveUser();
+        Long roomId = createRoomJoinedBy(userId);
+        roomService.advanceLastRead(roomId, userId, 150L);
+
+        // when
+        roomService.advanceLastRead(roomId, userId, 120L);
+
+        // then
+        assertThat(lastReadMessageId(roomId, userId)).isEqualTo(150L);
+    }
+
+    @Test
+    void 나간_멤버의_읽은_위치는_바꾸지_않는다() {
+        // given
+        Long userId = saveUser();
+        Long roomId = createRoomJoinedBy(userId);
+        roomService.advanceLastRead(roomId, userId, 120L);
+        roomService.leave(roomId, userId);
+
+        // when
+        roomService.advanceLastRead(roomId, userId, 150L);
+
+        // then
+        assertThat(lastReadMessageId(roomId, userId)).isEqualTo(120L);
+    }
+
+    @Test
     void 방_멤버의_닉네임과_프로필_이미지를_돌려준다() {
         // given
         Long ownerId = saveUser("민수", "https://example.com/minsu.png");
@@ -456,6 +512,10 @@ class RoomServiceTest extends DatabaseIntegrationTest {
     private void withdraw(Long userId) {
         transactionTemplate.executeWithoutResult(status -> userRepository.findById(userId).orElseThrow()
                 .withdraw(LocalDateTime.now(ZoneOffset.UTC)));
+    }
+
+    private Long lastReadMessageId(Long roomId, Long userId) {
+        return roomMemberRepository.findByRoomIdAndUserId(roomId, userId).orElseThrow().getLastReadMessageId();
     }
 
     private Long createRoomJoinedBy(Long userId) {

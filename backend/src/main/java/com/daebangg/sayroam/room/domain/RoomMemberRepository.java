@@ -12,4 +12,6 @@ public interface RoomMemberRepository {
     List<RoomMember> findAllByUserIdAndStatus(Long userId, RoomMemberStatus status);
 
     long countByRoomIdAndStatus(Long roomId, RoomMemberStatus status);
+
+    int advanceLastRead(Long roomId, Long userId, Long messageId);
 }
