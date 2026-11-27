@@ -56,7 +56,8 @@ pnpm install --frozen-lockfile
 실패하므로 기존 프로세스를 확인하거나 `pnpm dev --port 5174`처럼 포트를 지정합니다.
 `pnpm preview`는 먼저 `pnpm build`를 실행해야 하며 운영 서버로 사용하지 않습니다.
 `frontend/` 안에서는 `pnpm dev`, `pnpm typecheck`, `pnpm lint`, `pnpm build`, `pnpm preview`를
-직접 실행할 수 있습니다. 저장소 루트에는 프론트엔드 명령이나 Node 의존성을 두지 않습니다.
+직접 실행할 수 있습니다. 루트에서는 [통합 make 명령](../README.md#루트-개발-명령)으로 같은 작업을
+호출할 수 있습니다. Node 의존성과 도구 설정은 계속 `frontend/`에서만 관리합니다.
 
 ### 자동 CI
 
