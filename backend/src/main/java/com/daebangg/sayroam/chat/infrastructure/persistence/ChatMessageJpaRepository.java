@@ -34,4 +34,8 @@ public interface ChatMessageJpaRepository extends ChatMessageRepository, JpaRepo
                 AND m.senderId <> :userId AND m.createdAt >= :joinedAt
             """)
     long countUnread(Long roomId, Long userId, Long afterId, LocalDateTime joinedAt);
+
+    @Override
+    @Query("SELECT COALESCE(MAX(m.id), 0) FROM ChatMessage m WHERE m.roomId = :roomId")
+    long findLastMessageId(Long roomId);
 }

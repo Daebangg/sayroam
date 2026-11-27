@@ -55,6 +55,6 @@ public class ChatMessageController implements ChatMessageApi {
     public ResponseEntity<ChatMessageSummaryResponse> getSummary(
             @AuthenticationPrincipal AuthenticatedAccount account,
             @PathVariable Long roomId) {
-        return ResponseEntity.ok(new ChatMessageSummaryResponse(chatMessageService.countUnread(roomId, account.userId())));
+        return ResponseEntity.ok(ChatMessageSummaryResponse.from(chatMessageService.getSummary(roomId, account.userId())));
     }
 }

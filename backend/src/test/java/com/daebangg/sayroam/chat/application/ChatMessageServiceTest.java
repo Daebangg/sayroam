@@ -1,6 +1,7 @@
 package com.daebangg.sayroam.chat.application;
 
 import com.daebangg.sayroam.chat.application.dto.ChatMessageResult;
+import com.daebangg.sayroam.chat.application.dto.ChatMessageSummaryResult;
 import com.daebangg.sayroam.chat.application.service.ChatMessageService;
 import com.daebangg.sayroam.chat.domain.ChatMessage;
 import com.daebangg.sayroam.chat.domain.error.ChatErrorCode;
@@ -304,7 +305,7 @@ class ChatMessageServiceTest extends DatabaseIntegrationTest {
         chatMessageService.send(roomId, memberId, UUID.randomUUID().toString(), "2");
 
         // when
-        long unreadCount = chatMessageService.countUnread(roomId, otherId);
+        long unreadCount = chatMessageService.getSummary(roomId, otherId).unreadCount();
 
         // then
         assertThat(unreadCount).isEqualTo(2);
@@ -322,7 +323,7 @@ class ChatMessageServiceTest extends DatabaseIntegrationTest {
         chatMessageService.send(roomId, myId, UUID.randomUUID().toString(), "내 메시지");
 
         // when
-        long unreadCount = chatMessageService.countUnread(roomId, myId);
+        long unreadCount = chatMessageService.getSummary(roomId, myId).unreadCount();
 
         // then
         assertThat(unreadCount).isEqualTo(1);
@@ -339,7 +340,7 @@ class ChatMessageServiceTest extends DatabaseIntegrationTest {
         chatMessageService.send(roomId, ownerId, UUID.randomUUID().toString(), "입장 후");
 
         // when
-        long unreadCount = chatMessageService.countUnread(roomId, memberId);
+        long unreadCount = chatMessageService.getSummary(roomId, memberId).unreadCount();
 
         // then
         assertThat(unreadCount).isEqualTo(1);
@@ -358,7 +359,7 @@ class ChatMessageServiceTest extends DatabaseIntegrationTest {
         chatMessageService.send(otherRoomId, ownerId, UUID.randomUUID().toString(), "부산 방");
 
         // when
-        long unreadCount = chatMessageService.countUnread(roomId, memberId);
+        long unreadCount = chatMessageService.getSummary(roomId, memberId).unreadCount();
 
         // then
         assertThat(unreadCount).isEqualTo(1);
@@ -372,7 +373,7 @@ class ChatMessageServiceTest extends DatabaseIntegrationTest {
         Long roomId = createRoomJoinedBy(ownerId);
 
         // when & then
-        assertThatThrownBy(() -> chatMessageService.countUnread(roomId, nonMemberId))
+        assertThatThrownBy(() -> chatMessageService.getSummary(roomId, nonMemberId))
                 .isInstanceOfSatisfying(BusinessException.class,
                         e -> assertThat(e.getErrorCode()).isEqualTo(RoomErrorCode.ROOM_ACCESS_DENIED));
     }
@@ -389,10 +390,42 @@ class ChatMessageServiceTest extends DatabaseIntegrationTest {
         roomService.advanceLastRead(roomId, memberId, read.messageId());
 
         // when
-        long unreadCount = chatMessageService.countUnread(roomId, memberId);
+        long unreadCount = chatMessageService.getSummary(roomId, memberId).unreadCount();
 
         // then
         assertThat(unreadCount).isEqualTo(1);
+    }
+
+    @Test
+    void 요약에_개수를_센_시점의_마지막_메시지_ID를_함께_돌려준다() {
+        // given
+        Long ownerId = saveUser();
+        Long memberId = saveUser();
+        Long roomId = createRoomJoinedBy(ownerId);
+        joinRoom(roomId, memberId);
+        chatMessageService.send(roomId, ownerId, UUID.randomUUID().toString(), "남의 메시지");
+        ChatMessageResult mine = chatMessageService.send(roomId, memberId, UUID.randomUUID().toString(), "내 메시지");
+
+        // when
+        ChatMessageSummaryResult summary = chatMessageService.getSummary(roomId, memberId);
+
+        // then
+        assertThat(summary.unreadCount()).isEqualTo(1);
+        assertThat(summary.lastMessageId()).isEqualTo(mine.messageId());
+    }
+
+    @Test
+    void 메시지가_없으면_요약의_마지막_메시지_ID는_0이다() {
+        // given
+        Long userId = saveUser();
+        Long roomId = createRoomJoinedBy(userId);
+
+        // when
+        ChatMessageSummaryResult summary = chatMessageService.getSummary(roomId, userId);
+
+        // then
+        assertThat(summary.unreadCount()).isZero();
+        assertThat(summary.lastMessageId()).isZero();
     }
 
     @Test

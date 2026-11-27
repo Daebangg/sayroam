@@ -1,6 +1,7 @@
 package com.daebangg.sayroam.chat.application.service;
 
 import com.daebangg.sayroam.chat.application.dto.ChatMessageResult;
+import com.daebangg.sayroam.chat.application.dto.ChatMessageSummaryResult;
 import com.daebangg.sayroam.chat.domain.ChatMessage;
 import com.daebangg.sayroam.chat.domain.ChatMessageRepository;
 import com.daebangg.sayroam.chat.domain.error.ChatErrorCode;
@@ -57,9 +58,11 @@ public class ChatMessageService {
         roomService.advanceLastRead(roomId, userId, messageId);
     }
 
-    public long countUnread(Long roomId, Long userId) {
+    public ChatMessageSummaryResult getSummary(Long roomId, Long userId) {
         ReadPositionResult position = roomService.getReadPosition(roomId, userId);
-        return chatMessageRepository.countUnread(roomId, userId, position.lastReadMessageId(), position.joinedAt());
+        long unreadCount = chatMessageRepository.countUnread(
+                roomId, userId, position.lastReadMessageId(), position.joinedAt());
+        return new ChatMessageSummaryResult(unreadCount, chatMessageRepository.findLastMessageId(roomId));
     }
 
 }

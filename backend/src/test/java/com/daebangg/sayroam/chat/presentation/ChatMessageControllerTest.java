@@ -4,6 +4,7 @@ import com.daebangg.sayroam.auth.domain.AuthenticatedAccount;
 import com.daebangg.sayroam.auth.presentation.cookie.RefreshCookieProperties;
 import com.daebangg.sayroam.auth.presentation.cookie.RefreshTokenCookie;
 import com.daebangg.sayroam.chat.application.dto.ChatMessageResult;
+import com.daebangg.sayroam.chat.application.dto.ChatMessageSummaryResult;
 import com.daebangg.sayroam.chat.application.service.ChatMessageService;
 import com.daebangg.sayroam.chat.domain.error.ChatErrorCode;
 import com.daebangg.sayroam.chat.presentation.controller.ChatMessageController;
@@ -120,20 +121,21 @@ class ChatMessageControllerTest {
     }
 
     @Test
-    void 안_읽은_개수를_조회하면_200과_개수를_응답한다() throws Exception {
+    void 안_읽은_개수를_조회하면_200과_개수와_기준_메시지_ID를_응답한다() throws Exception {
         // given
-        given(chatMessageService.countUnread(ROOM_ID, USER_ID)).willReturn(3L);
+        given(chatMessageService.getSummary(ROOM_ID, USER_ID)).willReturn(new ChatMessageSummaryResult(3L, 10L));
 
         // when & then
         mvc.perform(summaryRequest().with(loggedIn()))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.unreadCount").value(3));
+                .andExpect(jsonPath("$.unreadCount").value(3))
+                .andExpect(jsonPath("$.lastMessageId").value(10));
     }
 
     @Test
     void 방_멤버가_아니면_안_읽은_개수_조회에_403과_에러_코드를_응답한다() throws Exception {
         // given
-        given(chatMessageService.countUnread(ROOM_ID, USER_ID))
+        given(chatMessageService.getSummary(ROOM_ID, USER_ID))
                 .willThrow(new BusinessException(RoomErrorCode.ROOM_ACCESS_DENIED));
 
         // when & then
