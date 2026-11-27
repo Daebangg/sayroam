@@ -1,4 +1,4 @@
-package com.daebangg.sayroam.room.presentation.dto;
+package com.daebangg.sayroam.chat.presentation.dto;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotNull;

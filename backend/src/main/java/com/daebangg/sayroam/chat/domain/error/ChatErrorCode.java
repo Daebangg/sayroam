@@ -10,7 +10,8 @@ import lombok.RequiredArgsConstructor;
 public enum ChatErrorCode implements ErrorCode {
     CHAT_CONTENT_BLANK(ErrorType.INVALID, "CHAT_CONTENT_BLANK", "Message content must not be blank"),
     CHAT_CONTENT_TOO_LONG(ErrorType.INVALID, "CHAT_CONTENT_TOO_LONG", "Message content must be 500 characters or less"),
-    CHAT_CLIENT_MESSAGE_ID_INVALID(ErrorType.INVALID, "CHAT_CLIENT_MESSAGE_ID_INVALID", "Client message ID must be a valid UUID");
+    CHAT_CLIENT_MESSAGE_ID_INVALID(ErrorType.INVALID, "CHAT_CLIENT_MESSAGE_ID_INVALID", "Client message ID must be a valid UUID"),
+    CHAT_MESSAGE_NOT_FOUND(ErrorType.NOT_FOUND, "CHAT_MESSAGE_NOT_FOUND", "Message is not found in the room");
 
     private final ErrorType type;
     private final String code;

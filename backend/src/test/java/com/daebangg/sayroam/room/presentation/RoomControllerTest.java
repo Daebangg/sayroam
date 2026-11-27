@@ -13,13 +13,10 @@ import com.daebangg.sayroam.room.domain.error.RoomErrorCode;
 import com.daebangg.sayroam.room.presentation.controller.RoomController;
 import com.daebangg.sayroam.user.domain.Role;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
-import org.springframework.http.MediaType;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -35,7 +32,6 @@ import static org.mockito.BDDMockito.willThrow;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -89,36 +85,6 @@ class RoomControllerTest {
     }
 
     @Test
-    void 읽은_위치를_옮기면_204를_응답한다() throws Exception {
-        // when & then
-        mvc.perform(advanceLastReadRequest("{\"lastReadMessageId\": 120}").with(로그인()))
-                .andExpect(status().isNoContent());
-
-        then(roomService).should().advanceLastRead(ROOM_ID, USER_ID, 120L);
-    }
-
-    @Test
-    void 읽은_메시지_ID가_없으면_400을_응답하고_옮기지_않는다() throws Exception {
-        // when & then
-        mvc.perform(advanceLastReadRequest("{}").with(로그인()))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value("INVALID_INPUT"));
-
-        then(roomService).shouldHaveNoInteractions();
-    }
-
-    @ParameterizedTest
-    @ValueSource(longs = {0L, -1L})
-    void 읽은_메시지_ID가_양수가_아니면_400을_응답하고_옮기지_않는다(long lastReadMessageId) throws Exception {
-        // when & then
-        mvc.perform(advanceLastReadRequest("{\"lastReadMessageId\": " + lastReadMessageId + "}").with(로그인()))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value("INVALID_INPUT"));
-
-        then(roomService).shouldHaveNoInteractions();
-    }
-
-    @Test
     void 멤버_목록을_조회하면_200과_멤버를_응답한다() throws Exception {
         // given
         given(roomService.findMembers(ROOM_ID, USER_ID)).willReturn(List.of(
@@ -160,12 +126,6 @@ class RoomControllerTest {
 
     private MockHttpServletRequestBuilder leaveRequest() {
         return delete("/api/rooms/{roomId}/members/me", ROOM_ID);
-    }
-
-    private MockHttpServletRequestBuilder advanceLastReadRequest(String body) {
-        return patch("/api/rooms/{roomId}/members/me", ROOM_ID)
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(body);
     }
 
     private MockHttpServletRequestBuilder findMembersRequest() {

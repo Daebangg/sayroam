@@ -5,6 +5,7 @@ import com.daebangg.sayroam.auth.presentation.cookie.RefreshCookieProperties;
 import com.daebangg.sayroam.auth.presentation.cookie.RefreshTokenCookie;
 import com.daebangg.sayroam.chat.application.dto.ChatMessageResult;
 import com.daebangg.sayroam.chat.application.service.ChatMessageService;
+import com.daebangg.sayroam.chat.domain.error.ChatErrorCode;
 import com.daebangg.sayroam.chat.presentation.controller.ChatMessageController;
 import com.daebangg.sayroam.global.exception.BusinessException;
 import com.daebangg.sayroam.global.security.ActiveAccountJwtConverter;
@@ -18,6 +19,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.http.MediaType;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -30,8 +32,10 @@ import java.util.List;
 
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
+import static org.mockito.BDDMockito.willThrow;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -147,8 +151,65 @@ class ChatMessageControllerTest {
         then(chatMessageService).shouldHaveNoInteractions();
     }
 
+    @Test
+    void 읽은_위치를_옮기면_204를_응답한다() throws Exception {
+        // when & then
+        mvc.perform(readPositionRequest("{\"lastReadMessageId\": 120}").with(loggedIn()))
+                .andExpect(status().isNoContent());
+
+        then(chatMessageService).should().advanceLastRead(ROOM_ID, USER_ID, 120L);
+    }
+
+    @Test
+    void 읽은_메시지_ID가_없으면_400을_응답하고_옮기지_않는다() throws Exception {
+        // when & then
+        mvc.perform(readPositionRequest("{}").with(loggedIn()))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("INVALID_INPUT"));
+
+        then(chatMessageService).shouldHaveNoInteractions();
+    }
+
+    @ParameterizedTest
+    @ValueSource(longs = {0L, -1L})
+    void 읽은_메시지_ID가_양수가_아니면_400을_응답하고_옮기지_않는다(long lastReadMessageId) throws Exception {
+        // when & then
+        mvc.perform(readPositionRequest("{\"lastReadMessageId\": " + lastReadMessageId + "}").with(loggedIn()))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("INVALID_INPUT"));
+
+        then(chatMessageService).shouldHaveNoInteractions();
+    }
+
+    @Test
+    void 방에_없는_메시지면_404와_에러_코드를_응답한다() throws Exception {
+        // given
+        willThrow(new BusinessException(ChatErrorCode.CHAT_MESSAGE_NOT_FOUND))
+                .given(chatMessageService).advanceLastRead(ROOM_ID, USER_ID, 120L);
+
+        // when & then
+        mvc.perform(readPositionRequest("{\"lastReadMessageId\": 120}").with(loggedIn()))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("CHAT_MESSAGE_NOT_FOUND"));
+    }
+
+    @Test
+    void 로그인하지_않으면_읽은_위치_기록에_401을_응답한다() throws Exception {
+        // when & then
+        mvc.perform(readPositionRequest("{\"lastReadMessageId\": 120}"))
+                .andExpect(status().isUnauthorized());
+
+        then(chatMessageService).shouldHaveNoInteractions();
+    }
+
     private MockHttpServletRequestBuilder findAfterRequest() {
         return get("/api/rooms/{roomId}/messages", ROOM_ID);
+    }
+
+    private MockHttpServletRequestBuilder readPositionRequest(String body) {
+        return patch("/api/rooms/{roomId}/read-position", ROOM_ID)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(body);
     }
 
     private MockHttpServletRequestBuilder summaryRequest() {

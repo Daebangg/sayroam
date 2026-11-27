@@ -3,6 +3,7 @@ package com.daebangg.sayroam.chat.presentation.api;
 import com.daebangg.sayroam.auth.domain.AuthenticatedAccount;
 import com.daebangg.sayroam.chat.presentation.dto.ChatMessageResponse;
 import com.daebangg.sayroam.chat.presentation.dto.ChatMessageSummaryResponse;
+import com.daebangg.sayroam.chat.presentation.dto.ReadPositionRequest;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -10,6 +11,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import org.springframework.http.ResponseEntity;
@@ -41,6 +43,27 @@ public interface ChatMessageApi {
             @Parameter(description = "한 번에 조회할 최대 개수",
                     schema = @Schema(type = "integer", format = "int32", minimum = "1", maximum = "100", defaultValue = "100"))
             @Min(1) @Max(100) int size);
+
+    @Operation(operationId = "advanceLastRead", summary = "읽은 위치 기록",
+            description = """
+                    참여 중인 방에서 마지막으로 본 메시지 ID를 기록합니다. 안 읽은 메시지 개수는 이 위치 이후로 셉니다.
+                    그 방에 있는 메시지만 기록할 수 있습니다. 지금 읽은 위치보다 앞선 값은 무시하므로
+                    늦게 도착한 요청이나 다른 기기의 요청이 위치를 되돌리지 않습니다. 같은 요청을 반복해도 204입니다.
+                    """,
+            security = @SecurityRequirement(name = "bearerAuth"))
+    @ApiResponses({
+            @ApiResponse(responseCode = "204", description = "기록 완료"),
+            @ApiResponse(responseCode = "400", ref = "#/components/responses/BadRequest"),
+            @ApiResponse(responseCode = "401", ref = "#/components/responses/Unauthorized"),
+            @ApiResponse(responseCode = "403", ref = "#/components/responses/RoomAccessDenied"),
+            @ApiResponse(responseCode = "404", ref = "#/components/responses/ChatMessageNotFound"),
+            @ApiResponse(responseCode = "503", ref = "#/components/responses/AuthenticationUnavailable"),
+            @ApiResponse(responseCode = "500", ref = "#/components/responses/InternalServerError")
+    })
+    ResponseEntity<Void> advanceLastRead(
+            @Parameter(hidden = true) @AuthenticationPrincipal AuthenticatedAccount account,
+            @Parameter(description = "방 ID", example = "7") Long roomId,
+            @Valid ReadPositionRequest request);
 
     @Operation(operationId = "getChatMessageSummary", summary = "채팅 메시지 요약 조회",
             description = """

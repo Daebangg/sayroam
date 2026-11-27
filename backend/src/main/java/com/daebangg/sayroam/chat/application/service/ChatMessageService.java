@@ -3,7 +3,9 @@ package com.daebangg.sayroam.chat.application.service;
 import com.daebangg.sayroam.chat.application.dto.ChatMessageResult;
 import com.daebangg.sayroam.chat.domain.ChatMessage;
 import com.daebangg.sayroam.chat.domain.ChatMessageRepository;
+import com.daebangg.sayroam.chat.domain.error.ChatErrorCode;
 import com.daebangg.sayroam.chat.domain.event.ChatMessageSent;
+import com.daebangg.sayroam.global.exception.BusinessException;
 import com.daebangg.sayroam.room.application.dto.ReadPositionResult;
 import com.daebangg.sayroam.room.application.service.RoomService;
 import lombok.RequiredArgsConstructor;
@@ -44,6 +46,15 @@ public class ChatMessageService {
                 .stream()
                 .map(ChatMessageResult::from)
                 .toList();
+    }
+
+    @Transactional
+    public void advanceLastRead(Long roomId, Long userId, Long messageId) {
+        roomService.ensureJoined(roomId, userId);
+        if (!chatMessageRepository.existsByIdAndRoomId(messageId, roomId)) {
+            throw new BusinessException(ChatErrorCode.CHAT_MESSAGE_NOT_FOUND);
+        }
+        roomService.advanceLastRead(roomId, userId, messageId);
     }
 
     public long countUnread(Long roomId, Long userId) {
