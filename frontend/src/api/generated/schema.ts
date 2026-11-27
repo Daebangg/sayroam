@@ -692,7 +692,13 @@ export interface paths {
         delete: operations["leave"];
         options?: never;
         head?: never;
-        patch?: never;
+        /**
+         * 읽은 위치 기록
+         * @description 참여 중인 방에서 마지막으로 본 메시지 ID를 기록합니다. 안 읽은 메시지 개수는 이 위치 이후로 셉니다.
+         *     지금 읽은 위치보다 앞선 값은 무시하므로 늦게 도착한 요청이나 다른 기기의 요청이 위치를 되돌리지 않습니다.
+         *     같은 요청을 반복해도 204입니다.
+         */
+        patch: operations["advanceLastRead"];
         trace?: never;
     };
     "/api/rooms/{roomId}/messages": {
@@ -708,6 +714,27 @@ export interface paths {
          *     응답 개수가 size와 같으면 마지막 messageId를 afterId로 다시 요청합니다.
          */
         get: operations["findAfter"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/rooms/{roomId}/messages/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 채팅 메시지 요약 조회
+         * @description 참여 중인 방에서 읽은 위치 이후 다른 회원이 보낸 메시지 개수를 조회합니다.
+         *     입장 전 메시지와 내가 보낸 메시지는 세지 않습니다. 읽은 위치를 기록한 적이 없으면 입장 후 메시지를 모두 셉니다.
+         */
+        get: operations["getChatMessageSummary"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1265,6 +1292,14 @@ export interface components {
              */
             senderId: number | null;
         };
+        ChatMessageSummaryResponse: {
+            /**
+             * Format: int64
+             * @description 읽은 위치 이후 다른 회원이 보낸 메시지 개수. 입장 전 메시지와 내가 보낸 메시지는 세지 않음
+             * @example 3
+             */
+            unreadCount: number;
+        };
         CompanionCandidateListResponse: {
             candidates: components["schemas"]["Candidate"][];
             hasNext: boolean;
@@ -1699,6 +1734,14 @@ export interface components {
              * @constant
              */
             isRead: true;
+        };
+        ReadPositionRequest: {
+            /**
+             * Format: int64
+             * @description 화면에서 마지막으로 본 메시지 ID. 지금 읽은 위치보다 앞선 값은 무시합니다
+             * @example 120
+             */
+            lastReadMessageId: number;
         };
         /** @description 모집에만 저장하는 4문항 점수. 각 점수는 1~5의 정수입니다. */
         RecruitmentTravelStyleRequest: {
@@ -3930,6 +3973,39 @@ export interface operations {
             503: components["responses"]["AuthenticationUnavailable"];
         };
     };
+    advanceLastRead: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /**
+                 * @description 방 ID
+                 * @example 7
+                 */
+                roomId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReadPositionRequest"];
+            };
+        };
+        responses: {
+            /** @description 기록 완료 */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["RoomAccessDenied"];
+            500: components["responses"]["InternalServerError"];
+            503: components["responses"]["AuthenticationUnavailable"];
+        };
+    };
     findAfter: {
         parameters: {
             query?: {
@@ -3960,6 +4036,36 @@ export interface operations {
                 };
             };
             400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["RoomAccessDenied"];
+            500: components["responses"]["InternalServerError"];
+            503: components["responses"]["AuthenticationUnavailable"];
+        };
+    };
+    getChatMessageSummary: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /**
+                 * @description 방 ID
+                 * @example 7
+                 */
+                roomId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 조회 성공 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChatMessageSummaryResponse"];
+                };
+            };
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["RoomAccessDenied"];
             500: components["responses"]["InternalServerError"];
@@ -4450,6 +4556,13 @@ export const apiRoutes = {
         csrf: false,
         responses: { "201": true },
     },
+    advanceLastRead: {
+        method: "patch",
+        path: "/api/rooms/{roomId}/members/me",
+        auth: "required",
+        csrf: false,
+        responses: { "204": false },
+    },
     change: {
         method: "patch",
         path: "/api/auth/password",
@@ -4544,6 +4657,13 @@ export const apiRoutes = {
     findMembers: {
         method: "get",
         path: "/api/rooms/{roomId}/members",
+        auth: "required",
+        csrf: false,
+        responses: { "200": true },
+    },
+    getChatMessageSummary: {
+        method: "get",
+        path: "/api/rooms/{roomId}/messages/summary",
         auth: "required",
         csrf: false,
         responses: { "200": true },
