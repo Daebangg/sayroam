@@ -1,5 +1,7 @@
 package com.daebangg.sayroam.auth.infrastructure.persistence;
 
+import com.daebangg.sayroam.global.logging.SafeLog;
+import lombok.extern.slf4j.Slf4j;
 import com.daebangg.sayroam.auth.application.dto.SocialIdentity;
 import com.daebangg.sayroam.auth.application.port.out.SocialAuthStore;
 import com.daebangg.sayroam.auth.domain.error.AuthErrorCode;
@@ -18,6 +20,7 @@ import java.util.List;
 import java.util.Optional;
 
 /** OAuth의 짧은 상태만 저장한다. 결과 원문·토큰·이메일을 키 또는 로그에 넣지 않는다. */
+@Slf4j
 @Repository
 public class RedisSocialAuthStore implements SocialAuthStore {
     private static final DefaultRedisScript<Long> SAVE = new DefaultRedisScript<>();
@@ -69,6 +72,8 @@ public class RedisSocialAuthStore implements SocialAuthStore {
             if (result == null) throw new AuthException(AuthErrorCode.SOCIAL_AUTH_UNAVAILABLE);
             return result == 1L;
         } catch (DataAccessException exception) {
+            SafeLog.atWarn(log, exception).addKeyValue("event", "social_auth_redis_failed")
+                    .log("Authentication Redis operation failed");
             throw new AuthException(AuthErrorCode.SOCIAL_AUTH_UNAVAILABLE, exception);
         }
     }
@@ -78,6 +83,8 @@ public class RedisSocialAuthStore implements SocialAuthStore {
             String payload = redis.execute(CONSUME, List.of(key(namespace, digest)), provider, browser);
             return payload == null ? Optional.empty() : Optional.of(json.readValue(payload, type));
         } catch (DataAccessException exception) {
+            SafeLog.atWarn(log, exception).addKeyValue("event", "social_auth_redis_failed")
+                    .log("Authentication Redis operation failed");
             throw new AuthException(AuthErrorCode.SOCIAL_AUTH_UNAVAILABLE, exception);
         } catch (JacksonException exception) {
             throw new IllegalStateException("Invalid stored OAuth state");

@@ -1,5 +1,6 @@
 package com.daebangg.sayroam.auth.infrastructure.persistence;
 
+import com.daebangg.sayroam.global.logging.SafeLog;
 import com.daebangg.sayroam.auth.application.port.out.AccountVerificationStore;
 import com.daebangg.sayroam.auth.domain.VerificationDigests;
 import com.daebangg.sayroam.auth.domain.error.AuthErrorCode;
@@ -117,7 +118,8 @@ public class RedisAccountVerificationStore implements AccountVerificationStore {
             if (result == null) throw new IllegalStateException("Missing account verification script result");
             return result;
         } catch (DataAccessException exception) {
-            log.warn("Account verification Redis operation failed: {}", exception.getClass().getSimpleName());
+            SafeLog.atWarn(log, exception).addKeyValue("event", "account_verification_redis_failed")
+                    .log("Account verification Redis operation failed");
             throw new AuthException(AuthErrorCode.EMAIL_VERIFICATION_UNAVAILABLE, exception);
         }
     }

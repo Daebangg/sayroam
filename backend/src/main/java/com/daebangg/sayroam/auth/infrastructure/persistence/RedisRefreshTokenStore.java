@@ -1,5 +1,7 @@
 package com.daebangg.sayroam.auth.infrastructure.persistence;
 
+import com.daebangg.sayroam.global.logging.SafeLog;
+import lombok.extern.slf4j.Slf4j;
 import com.daebangg.sayroam.auth.application.port.out.RefreshTokenStore;
 import com.daebangg.sayroam.auth.domain.error.AuthErrorCode;
 import com.daebangg.sayroam.auth.domain.error.AuthException;
@@ -11,6 +13,7 @@ import org.springframework.stereotype.Repository;
 
 import java.util.List;
 
+@Slf4j
 @Repository
 public class RedisRefreshTokenStore implements RefreshTokenStore {
     private static final DefaultRedisScript<Long> CREATE = new DefaultRedisScript<>();
@@ -97,6 +100,8 @@ public class RedisRefreshTokenStore implements RefreshTokenStore {
             }
             return result;
         } catch (DataAccessException exception) {
+            SafeLog.atWarn(log, exception).addKeyValue("event", "refresh_token_redis_failed")
+                    .log("Authentication Redis operation failed");
             // 원문 토큰·해시·접속 정보는 로그에 기록하지 않는다. 불확실한 작업을 자동 재시도하지 않는다.
             throw new AuthException(AuthErrorCode.AUTHENTICATION_UNAVAILABLE, exception);
         }

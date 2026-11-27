@@ -1,5 +1,6 @@
 package com.daebangg.sayroam.place.infrastructure.client;
 
+import com.daebangg.sayroam.global.logging.SafeLog;
 import com.daebangg.sayroam.global.exception.BusinessException;
 import com.daebangg.sayroam.place.application.dto.PlaceSearchItem;
 import com.daebangg.sayroam.place.application.dto.PlaceSearchQuery;
@@ -105,7 +106,7 @@ public class TourApiPlaceCatalog implements PlaceCatalog {
                     found.address(),
                     new Coordinate(found.latitude(), found.longitude())));
         } catch (BusinessException e) {
-            log.warn("TourAPI place rejected: contentId={}", found.sourceId());
+            log.atDebug().addKeyValue("event", "tour_api_place_rejected").log("TourAPI place rejected");
             return Optional.empty();
         }
     }
@@ -123,8 +124,9 @@ public class TourApiPlaceCatalog implements PlaceCatalog {
                     .retrieve()
                     .body(JsonNode.class);
         } catch (RestClientException e) {
-            // 응답 본문과 요청 URL에 서비스 키가 있을 수 있어 원인 메시지를 밖으로 내보내지 않는다.
-            throw searchFailed();
+            // 응답 본문과 요청 URL에 서비스 키가 있을 수 있어 메시지·URL은 기록하지 않는다.
+            SafeLog.atWarn(log, e).addKeyValue("event", "tour_api_request_failed").log("TourAPI request failed");
+            throw new BusinessException(PlaceErrorCode.PLACE_SEARCH_FAILED);
         }
     }
 
@@ -193,7 +195,7 @@ public class TourApiPlaceCatalog implements PlaceCatalog {
             new Coordinate(latitude, longitude);
             return true;
         } catch (BusinessException e) {
-            log.warn("TourAPI place rejected: contentId={}", sourceId);
+            log.atDebug().addKeyValue("event", "tour_api_place_rejected").log("TourAPI place rejected");
             return false;
         }
     }
@@ -216,6 +218,7 @@ public class TourApiPlaceCatalog implements PlaceCatalog {
     }
 
     private BusinessException searchFailed() {
+        log.atWarn().addKeyValue("event", "tour_api_response_invalid").log("TourAPI response invalid");
         return new BusinessException(PlaceErrorCode.PLACE_SEARCH_FAILED);
     }
 

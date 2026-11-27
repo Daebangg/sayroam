@@ -1,5 +1,6 @@
 package com.daebangg.sayroam.auth.application.service;
 
+import com.daebangg.sayroam.global.logging.SafeLog;
 import com.daebangg.sayroam.auth.application.dto.SocialAccountResult;
 import com.daebangg.sayroam.auth.application.dto.SocialIdentity;
 import com.daebangg.sayroam.auth.application.port.out.AccountPersistenceFailures;
@@ -149,8 +150,8 @@ public class AccountWriteService {
                     userId, NotificationType.WELCOME, null, null, "account-signup:" + userId,
                     "Welcome to SayRoam! Your next adventure starts here.")));
         } catch (RuntimeException exception) {
-            log.warn("Welcome notification creation failed for user {}: {}", userId,
-                    exception.getClass().getSimpleName());
+            SafeLog.atWarn(log, exception).addKeyValue("event", "welcome_notification_failed")
+                    .addKeyValue("userId", userId).log("Welcome notification creation failed");
         }
     }
 
@@ -166,7 +167,8 @@ public class AccountWriteService {
             if (!failures.isUnavailable(exception)) {
                 throw exception;
             }
-            log.warn("Account write failed with {}: {}", unavailable, exception.getClass().getSimpleName());
+            SafeLog.atWarn(log, exception).addKeyValue("event", "account_write_failed")
+                    .addKeyValue("errorCode", unavailable.getCode()).log("Account write failed");
             throw new AuthException(unavailable, exception);
         }
     }

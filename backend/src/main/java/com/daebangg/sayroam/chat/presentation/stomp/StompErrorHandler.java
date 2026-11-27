@@ -3,6 +3,11 @@ package com.daebangg.sayroam.chat.presentation.stomp;
 import com.daebangg.sayroam.global.exception.BusinessException;
 import com.daebangg.sayroam.global.exception.CommonErrorCode;
 import com.daebangg.sayroam.global.exception.ErrorCode;
+import com.daebangg.sayroam.global.exception.ErrorType;
+import com.daebangg.sayroam.global.logging.SafeLog;
+import com.daebangg.sayroam.global.logging.WebSocketLog;
+import org.slf4j.event.Level;
+import org.slf4j.spi.LoggingEventBuilder;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
 import org.springframework.stereotype.Component;
@@ -16,7 +21,17 @@ public class StompErrorHandler extends StompSubProtocolErrorHandler {
                                              Throwable cause, StompHeaderAccessor clientHeaderAccessor) {
         // 서버가 직접 보낸 ERROR 프레임은 원인 예외가 없고 코드가 이미 담겨 있다.
         if (cause != null) {
-            errorHeaderAccessor.setMessage(errorCodeOf(cause).getCode());
+            ErrorCode code = errorCodeOf(cause);
+            errorHeaderAccessor.setMessage(code.getCode());
+            boolean unexpected = code.getType() == ErrorType.INTERNAL || code.getType() == ErrorType.UNAVAILABLE
+                    || code.getType() == ErrorType.EXTERNAL_FAILURE;
+            String command = clientHeaderAccessor == null || clientHeaderAccessor.getCommand() == null
+                    ? "ERROR" : clientHeaderAccessor.getCommand().name();
+            LoggingEventBuilder event = WebSocketLog.event(unexpected ? Level.ERROR : Level.WARN,
+                    "websocket_frame_rejected", command, clientHeaderAccessor == null ? null : clientHeaderAccessor.getSessionId())
+                    .addKeyValue("errorCode", code.getCode());
+            if (unexpected) event = SafeLog.withFailure(event, cause);
+            event.log("WebSocket inbound frame rejected");
         }
         return super.handleInternal(errorHeaderAccessor, errorPayload, cause, clientHeaderAccessor);
     }

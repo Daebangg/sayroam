@@ -2,6 +2,8 @@ package com.daebangg.sayroam.chat.infrastructure.messaging;
 
 import com.daebangg.sayroam.chat.application.port.out.ChatConnectionCloser;
 import com.daebangg.sayroam.global.exception.ErrorCode;
+import com.daebangg.sayroam.global.logging.WebSocketLog;
+import org.slf4j.event.Level;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.messaging.MessageChannel;
 import org.springframework.messaging.simp.stomp.StompCommand;
@@ -24,6 +26,9 @@ public class StompChatConnectionCloser implements ChatConnectionCloser {
         accessor.setSessionId(sessionId);
         accessor.setMessage(errorCode.getCode());
         accessor.setLeaveMutable(true);
-        clientOutboundChannel.send(MessageBuilder.createMessage(new byte[0], accessor.getMessageHeaders()));
+        boolean sent = clientOutboundChannel.send(MessageBuilder.createMessage(new byte[0], accessor.getMessageHeaders()));
+        WebSocketLog.event(sent ? Level.INFO : Level.WARN, sent ? "websocket_close_requested" : "websocket_close_not_sent",
+                sent ? "CLOSE" : "CLOSE_FAILED", sessionId).addKeyValue("errorCode", errorCode.getCode())
+                .log("WebSocket close requested");
     }
 }

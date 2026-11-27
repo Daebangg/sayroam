@@ -4,6 +4,7 @@ import com.daebangg.sayroam.auth.domain.event.LoginsInvalidated;
 import com.daebangg.sayroam.chat.application.port.out.ChatConnectionCloser;
 import com.daebangg.sayroam.global.exception.CommonErrorCode;
 import com.daebangg.sayroam.global.exception.ErrorCode;
+import com.daebangg.sayroam.global.logging.SafeLog;
 import com.daebangg.sayroam.room.domain.error.RoomErrorCode;
 import com.daebangg.sayroam.room.domain.event.RoomMemberLeft;
 import lombok.extern.slf4j.Slf4j;
@@ -59,7 +60,8 @@ public class StompSessionRevoker {
         try {
             sessionCloser.close(sessionId, errorCode);
         } catch (RuntimeException exception) {
-            log.warn("Failed to close revoked STOMP session: {}", sessionId, exception);
+            SafeLog.atWarn(log, exception).addKeyValue("event", "stomp_session_revoke_failed")
+                    .addKeyValue("errorCode", errorCode.getCode()).log("Failed to close revoked STOMP session");
         }
     }
 }

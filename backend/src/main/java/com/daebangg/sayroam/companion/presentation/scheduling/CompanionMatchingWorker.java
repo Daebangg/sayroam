@@ -3,6 +3,8 @@ package com.daebangg.sayroam.companion.presentation.scheduling;
 import com.daebangg.sayroam.companion.application.dto.CompanionMatchingClaim;
 import com.daebangg.sayroam.companion.application.service.CompanionMatchingService;
 import com.daebangg.sayroam.companion.domain.event.CompanionMatchingRequested;
+import com.daebangg.sayroam.global.logging.LogContext;
+import com.daebangg.sayroam.global.logging.SafeLog;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -63,11 +65,18 @@ public class CompanionMatchingWorker {
         } catch (TaskRejectedException exception) {
             scheduled.set(false);
             // 커밋된 작업은 DB에 남아 시작 시 확인 또는 주기적 복구에서 처리한다.
-            log.warn("Companion matching dispatch failed: {}", exception.getClass().getSimpleName());
+            SafeLog.atWarn(log, exception).addKeyValue("event", "matching_dispatch_failed")
+                    .log("Companion matching dispatch failed");
         }
     }
 
     private void run() {
+        try (LogContext ignored = LogContext.task(null)) {
+            runBatches();
+        }
+    }
+
+    private void runBatches() {
         boolean hasMore = false;
         try {
             requested.set(false);
@@ -87,21 +96,27 @@ public class CompanionMatchingWorker {
             try {
                 next = matching.claim();
             } catch (RuntimeException exception) {
-                log.warn("Companion matching claim failed: {}", exception.getClass().getSimpleName());
+                SafeLog.atWarn(log, exception).addKeyValue("event", "matching_claim_failed")
+                        .log("Companion matching claim failed");
                 return false;
             }
             if (next.isEmpty()) {
                 return false;
             }
             CompanionMatchingClaim claim = next.get();
-            try {
-                matching.process(claim);
-            } catch (RuntimeException exception) {
-                log.warn("Companion matching job {} failed: {}", claim.jobId(), exception.getClass().getSimpleName());
+            try (LogContext ignored = LogContext.job(claim.jobId())) {
                 try {
-                    matching.retry(claim);
-                } catch (RuntimeException retryException) {
-                    log.warn("Companion matching retry {} failed: {}", claim.jobId(), retryException.getClass().getSimpleName());
+                    matching.process(claim);
+                    log.atDebug().addKeyValue("event", "matching_job_completed").log("Matching job completed");
+                } catch (RuntimeException exception) {
+                    SafeLog.atWarn(log, exception).addKeyValue("event", "matching_job_failed")
+                            .log("Companion matching job failed");
+                    try {
+                        matching.retry(claim);
+                    } catch (RuntimeException retryException) {
+                        SafeLog.atWarn(log, retryException).addKeyValue("event", "matching_retry_failed")
+                                .log("Companion matching retry failed");
+                    }
                 }
             }
         }

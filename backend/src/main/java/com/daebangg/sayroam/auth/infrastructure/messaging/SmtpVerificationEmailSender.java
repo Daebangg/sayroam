@@ -1,5 +1,6 @@
 package com.daebangg.sayroam.auth.infrastructure.messaging;
 
+import com.daebangg.sayroam.global.logging.SafeLog;
 import com.daebangg.sayroam.auth.application.port.out.VerificationEmailSender;
 import com.daebangg.sayroam.auth.domain.AccountVerificationPurpose;
 import com.daebangg.sayroam.auth.domain.error.AuthErrorCode;
@@ -70,7 +71,8 @@ public class SmtpVerificationEmailSender implements VerificationEmailSender {
             mailSender.send(message);
         } catch (MailException | MessagingException exception) {
             // SMTP 응답·이메일·인증 코드·접속 비밀값은 클라이언트나 로그로 전달하지 않는다.
-            log.warn("Verification email delivery failed: {}", exception.getClass().getSimpleName());
+            SafeLog.atWarn(log, exception).addKeyValue("event", "verification_email_failed")
+                    .log("Verification email delivery failed");
             throw new AuthException(AuthErrorCode.EMAIL_DELIVERY_FAILED, exception);
         }
     }

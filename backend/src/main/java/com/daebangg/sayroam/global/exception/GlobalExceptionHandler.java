@@ -3,7 +3,8 @@ package com.daebangg.sayroam.global.exception;
 import com.daebangg.sayroam.auth.domain.error.AuthErrorCode;
 import com.daebangg.sayroam.auth.domain.error.AuthException;
 import com.daebangg.sayroam.auth.presentation.cookie.RefreshTokenCookie;
-import lombok.extern.slf4j.Slf4j;
+import com.daebangg.sayroam.global.web.RequestLoggingFilter;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.*;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.AuthenticationException;
@@ -11,13 +12,13 @@ import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.context.request.ServletWebRequest;
 import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 
 import java.util.List;
 import java.util.Map;
 
-@Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
@@ -30,7 +31,8 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
     // 우리가 던지는 예외
     @ExceptionHandler(BusinessException.class)
-    public ResponseEntity<ProblemDetail> handleBusiness(BusinessException e) {
+    public ResponseEntity<ProblemDetail> handleBusiness(BusinessException e, HttpServletRequest request) {
+        RequestLoggingFilter.recordError(request, e.getErrorCode().getCode(), null);
         ProblemDetail body = ApiProblems.of(e.getErrorCode());
         ResponseEntity.BodyBuilder response = ResponseEntity.status(body.getStatus()).cacheControl(CacheControl.noStore());
         if (e.getErrorCode().getType() == ErrorType.UNAUTHENTICATED) {
@@ -40,7 +42,8 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     }
 
     @ExceptionHandler(AuthException.class)
-    public ResponseEntity<ProblemDetail> handleAuth(AuthException exception) {
+    public ResponseEntity<ProblemDetail> handleAuth(AuthException exception, HttpServletRequest request) {
+        RequestLoggingFilter.recordError(request, exception.getErrorCode().getCode(), null);
         ProblemDetail problem = ApiProblems.of(exception.getErrorCode());
         ResponseEntity.BodyBuilder response = ResponseEntity.status(problem.getStatus()).cacheControl(CacheControl.noStore());
         if (exception.getErrorCode() == AuthErrorCode.REFRESH_TOKEN_INVALID
@@ -90,6 +93,9 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         if (response != null && response.getBody() instanceof ProblemDetail problemDetail && !hasCode(problemDetail)) {
             problemDetail.setProperty(CODE, toCode(status));
         }
+        if (request instanceof ServletWebRequest servletRequest) {
+            RequestLoggingFilter.recordError(servletRequest.getRequest(), toCode(status), status.is5xxServerError() ? e : null);
+        }
         return response;
     }
 
@@ -99,10 +105,10 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         throw e;
     }
 
-    // 그 외 전부 -> 500, 내부 정보 숨기고 로그만
+    // 진단 정보는 요청 완료 로그 한 곳에서 기록한다. 공개 응답 계약은 유지한다.
     @ExceptionHandler(Exception.class)
-    public ResponseEntity<ProblemDetail> handleUnexpected(Exception e) {
-        log.error("Unhandled exception", e);
+    public ResponseEntity<ProblemDetail> handleUnexpected(Exception e, HttpServletRequest request) {
+        RequestLoggingFilter.recordError(request, CommonErrorCode.INTERNAL_SERVER_ERROR.getCode(), e);
         ProblemDetail body = ApiProblems.of(CommonErrorCode.INTERNAL_SERVER_ERROR);
         return ResponseEntity.status(body.getStatus()).body(body);
     }

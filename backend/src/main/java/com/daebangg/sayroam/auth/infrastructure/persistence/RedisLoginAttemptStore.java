@@ -1,5 +1,7 @@
 package com.daebangg.sayroam.auth.infrastructure.persistence;
 
+import com.daebangg.sayroam.global.logging.SafeLog;
+import lombok.extern.slf4j.Slf4j;
 import com.daebangg.sayroam.auth.application.port.out.LoginAttemptStore;
 import com.daebangg.sayroam.auth.domain.VerificationDigests;
 import com.daebangg.sayroam.auth.domain.error.AuthErrorCode;
@@ -13,6 +15,7 @@ import org.springframework.stereotype.Repository;
 import java.time.Duration;
 import java.util.List;
 
+@Slf4j
 @Repository
 public class RedisLoginAttemptStore implements LoginAttemptStore {
     private static final String PREFIX = "sayroam:auth:{login-attempts}:";
@@ -45,6 +48,8 @@ public class RedisLoginAttemptStore implements LoginAttemptStore {
             }
             return new Evaluation(Duration.ofMillis(wait.longValue()), attempts.intValue());
         } catch (DataAccessException exception) {
+            SafeLog.atWarn(log, exception).addKeyValue("event", "login_attempt_redis_failed")
+                    .log("Authentication Redis operation failed");
             // 저장 결과가 불확실하면 검증·발급을 진행하거나 자동 재시도하지 않는다.
             throw new AuthException(AuthErrorCode.LOGIN_ATTEMPTS_UNAVAILABLE, exception);
         }

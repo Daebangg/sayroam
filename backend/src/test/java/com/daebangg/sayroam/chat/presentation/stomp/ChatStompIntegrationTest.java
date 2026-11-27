@@ -5,6 +5,8 @@ import com.daebangg.sayroam.auth.application.service.AccountWriteService;
 import com.daebangg.sayroam.auth.infrastructure.security.AccessTokenProperties;
 import com.daebangg.sayroam.chat.infrastructure.persistence.ChatMessageJpaRepository;
 import com.daebangg.sayroam.global.exception.CommonErrorCode;
+import com.daebangg.sayroam.global.logging.LogCapture;
+import com.daebangg.sayroam.global.logging.WebSocketLog;
 import com.daebangg.sayroam.room.application.service.RoomService;
 import com.daebangg.sayroam.room.domain.Room;
 import com.daebangg.sayroam.room.domain.RoomMember;
@@ -58,6 +60,7 @@ import java.util.concurrent.TimeoutException;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.awaitility.Awaitility.await;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 class ChatStompIntegrationTest extends DatabaseIntegrationTest {
@@ -122,11 +125,19 @@ class ChatStompIntegrationTest extends DatabaseIntegrationTest {
         Long userId = saveUser();
 
         // when
-        StompSession session = connect(tokenOf(userId)).get(5, TimeUnit.SECONDS);
-
-        // then
-        assertThat(session.isConnected()).isTrue();
-        session.disconnect();
+        try (LogCapture capture = new LogCapture(WebSocketLog.class)) {
+            StompSession session = connect(tokenOf(userId)).get(5, TimeUnit.SECONDS);
+            assertThat(session.isConnected()).isTrue();
+            await().atMost(Duration.ofSeconds(5)).untilAsserted(() ->
+                    assertThat(capture.events()).anySatisfy(event ->
+                            assertThat(event.getKeyValuePairs().toString()).contains("websocket_connected")));
+            session.disconnect();
+            await().atMost(Duration.ofSeconds(5)).untilAsserted(() ->
+                    assertThat(capture.events()).anySatisfy(event ->
+                            assertThat(event.getKeyValuePairs().toString()).contains("websocket_disconnected", "durationMs", "closeCode")));
+            assertThat(capture.events().stream().filter(event -> event.getKeyValuePairs().toString().contains("websocket_disconnected")))
+                    .hasSize(1);
+        }
     }
 
     @Test
@@ -138,9 +149,14 @@ class ChatStompIntegrationTest extends DatabaseIntegrationTest {
 
     @Test
     void 잘못된_토큰으로_연결하면_거부한다() {
-        // when & then
-        assertThatThrownBy(() -> connect("invalid-token").get(5, TimeUnit.SECONDS))
-                .isInstanceOf(ExecutionException.class);
+        try (LogCapture capture = new LogCapture(WebSocketLog.class)) {
+            assertThatThrownBy(() -> connect("invalid-token").get(5, TimeUnit.SECONDS))
+                    .isInstanceOf(ExecutionException.class);
+            await().atMost(Duration.ofSeconds(5)).untilAsserted(() ->
+                    assertThat(capture.events()).anySatisfy(event ->
+                            assertThat(event.getKeyValuePairs().toString()).contains("websocket_frame_rejected", "UNAUTHENTICATED")
+                                    .doesNotContain("invalid-token")));
+        }
     }
 
     @Test
