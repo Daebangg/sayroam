@@ -114,9 +114,9 @@ function mergeMessages(current: ChatMessage[], incoming: ChatMessage[]): ChatMes
 }
 
 /**
- * 여행 상세에 있는 동안 혼자여도 채팅방에 연결해 둔다.
- * 연결될 때마다 명단과 놓친 메시지를 받고, 연결된 동안의 멤버 변화는 서버 신호를 받아 명단을 다시 받는다.
- * 패널을 닫아도 받은 메시지와 연결을 유지해 다시 열면 바로 보여 준다.
+ * 여행 상세에 있는 동안 혼자여도 앱 공용 연결 위에서 채팅방을 구독해 둔다.
+ * 구독이 확인될 때마다 명단과 놓친 메시지를 받고, 그 뒤의 멤버 변화는 서버 신호를 받아 명단을 다시 받는다.
+ * 패널을 닫아도 받은 메시지와 구독을 유지해 다시 열면 바로 보여 준다. 화면을 떠나면 이 방 구독만 해제한다.
  */
 export function useTripChat(roomId: number | null, myUserId: number): TripChat {
     const [status, setStatus] = useState<TripChatStatus>("loading");

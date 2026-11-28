@@ -85,6 +85,16 @@ export function parseChatSendError(body: string): ChatSendError | null {
         : null;
 }
 
+/** 개인 방 알림. 모르는 type은 새로 추가된 알림이므로 버린다. */
+export type RoomNotice = { type: "LEFT"; roomId: number };
+
+export function parseRoomNotice(body: string): RoomNotice | null {
+    const value = parseJson(body);
+    return record(value) && value.type === "LEFT" && id(value.roomId)
+        ? { type: "LEFT", roomId: value.roomId }
+        : null;
+}
+
 function parseJson(body: string): unknown {
     try {
         return JSON.parse(body);

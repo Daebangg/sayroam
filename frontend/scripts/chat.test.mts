@@ -4,7 +4,7 @@ import { runOneAtATime } from "../src/hooks/api/chat/runOneAtATime.ts";
 import { createReadPositionSender } from "../src/hooks/api/chat/readPositionSender.ts";
 import { createSummaryLoader, type ChatSummary } from "../src/hooks/api/chat/summaryLoader.ts";
 import { latestMessageId, unreadCount } from "../src/hooks/api/chat/unreadCount.ts";
-import type { ChatMessage } from "../src/api/chat/chatResponse.ts";
+import { parseRoomNotice, type ChatMessage } from "../src/api/chat/chatResponse.ts";
 
 function deferred() {
     let resolve!: () => void;
@@ -353,4 +353,15 @@ test("정리한 뒤 도착한 요약은 반영하지 않음", async () => {
     await settle();
 
     assert.deepEqual(loaded, []);
+});
+
+test("방 나감 알림은 type과 방 ID를 읽음", () => {
+    assert.deepEqual(parseRoomNotice('{"type":"LEFT","roomId":7}'), { type: "LEFT", roomId: 7 });
+});
+
+test("모르는 type이나 형식이 맞지 않는 방 알림은 버림", () => {
+    assert.equal(parseRoomNotice('{"type":"JOINED","roomId":7}'), null);
+    assert.equal(parseRoomNotice('{"type":"LEFT","roomId":0}'), null);
+    assert.equal(parseRoomNotice('{"type":"LEFT"}'), null);
+    assert.equal(parseRoomNotice("not json"), null);
 });

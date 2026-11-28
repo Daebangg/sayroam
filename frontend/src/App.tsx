@@ -13,6 +13,7 @@ import { AuthDialog } from "@/pages/auth/AuthDialog";
 import { MemberGate } from "@/components/features/auth/MemberGate";
 import { AuthNotice } from "@/components/features/auth/AuthNotice";
 import { useAuthSession } from "@/hooks/api/auth/useAuthSession";
+import { useRealtimeConnection } from "@/hooks/api/realtime/useRealtimeConnection";
 import type { LoginInput } from "@/hooks/auth.types";
 import { isMemberPath, pagePaths } from "@/routing/paths";
 import { getMockupScreen } from "@/routing/mockups";
@@ -97,6 +98,9 @@ export default function App() {
     const auth = useAuthSession(socialReturn !== null);
     const checkSession = auth.check;
     const authBusy = ["checking", "signingIn", "signingOut"].includes(auth.status);
+    useRealtimeConnection(
+        auth.user && auth.status !== "signingOut" && !mockupScreen ? auth.user.userId : null,
+    );
     const modalOnlyAuthMessage =
         auth.message?.startsWith("social") ||
         auth.message === "credentials" ||
