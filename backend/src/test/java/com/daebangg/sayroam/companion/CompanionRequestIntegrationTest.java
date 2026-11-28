@@ -78,7 +78,16 @@ class CompanionRequestIntegrationTest extends DatabaseIntegrationTest {
 
     @AfterEach
     void cleanUp() {
+        List<Long> roomIds = jdbc.queryForList("""
+                SELECT room_id FROM companion_request
+                WHERE sender_id IN (?, ?) AND room_id IS NOT NULL
+                """, Long.class, sender.getId(), receiver.getId());
         jdbc.update("DELETE FROM companion_request WHERE sender_id IN (?, ?)", sender.getId(), receiver.getId());
+        for (Long roomId : roomIds) {
+            jdbc.update("DELETE FROM chat_message WHERE room_id = ?", roomId);
+            jdbc.update("DELETE FROM room_member WHERE room_id = ?", roomId);
+            jdbc.update("DELETE FROM room WHERE id = ?", roomId);
+        }
         for (User member : List.of(sender, receiver, outsider)) {
             jdbc.update("DELETE FROM notification WHERE receiver_id = ?", member.getId());
             jdbc.update("DELETE FROM companion_search WHERE user_id = ?", member.getId());
