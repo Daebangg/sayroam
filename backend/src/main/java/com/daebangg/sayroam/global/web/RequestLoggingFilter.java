@@ -97,7 +97,6 @@ public class RequestLoggingFilter extends OncePerRequestFilter {
         try (LogContext ignored = LogContext.request(state.requestId)) {
             int status = response.getStatus();
             if (status < 400 && state.failed) status = 500;
-            if (status < 400 && state.timedOut) status = 503;
             long durationMs = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - state.startedAt);
             String method = METHODS.contains(request.getMethod()) ? request.getMethod() : "OTHER";
             // Spring이 등록한 템플릿만 사용한다. 보안 필터에서 거절되거나 없는 경로는 원문을 남기지 않는다.
@@ -114,6 +113,7 @@ public class RequestLoggingFilter extends OncePerRequestFilter {
                     .addKeyValue("status", status)
                     .addKeyValue("durationMs", durationMs);
             if (state.errorCode != null) event.addKeyValue("errorCode", state.errorCode);
+            if (state.timedOut) event.addKeyValue("timedOut", true);
             event.log("HTTP request completed");
         }
     }

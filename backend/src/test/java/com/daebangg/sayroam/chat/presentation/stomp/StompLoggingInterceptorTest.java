@@ -56,7 +56,14 @@ class StompLoggingInterceptorTest {
             interceptor.postSend(frame(StompCommand.SEND, "/private-destination"), channel, true);
             interceptor.postSend(frame(StompCommand.SEND, "/private-destination"), channel, false);
 
-            assertThat(capture.events()).hasSize(4).allSatisfy(event -> assertThat(event.getLevel()).isEqualTo(Level.DEBUG));
+            assertThat(capture.events()).hasSize(4).allSatisfy(event -> {
+                assertThat(event.getLevel()).isEqualTo(Level.DEBUG);
+                assertThat(event.getKeyValuePairs().toString()).doesNotContain("987", "private-destination", "private-token", "private-body");
+                assertThat(event.getFormattedMessage()).doesNotContain("private-destination", "private-token", "private-body");
+                assertThat(event.getArgumentArray()).isNullOrEmpty();
+                assertThat(event.getMDCPropertyMap().toString()).doesNotContain("private-token", "private-body");
+                assertThat(event.getThrowableProxy()).isNull();
+            });
             WebSocketLogConverter converter = new WebSocketLogConverter();
             assertThat(converter.convert(capture.events().getFirst()))
                     .isEqualTo("WS SEND /app/rooms/{roomId}/messages · session=session-");

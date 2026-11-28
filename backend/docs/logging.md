@@ -125,6 +125,7 @@ make backend-run APP_ARGS='--spring.profiles.active=local --logging.level.com.da
 | `status` | 완료 시 HTTP 상태 |
 | `durationMs` | 단조 시계로 측정한 전체 처리 시간 |
 | `errorCode` | MVC·Security가 처리한 오류의 공개 코드가 있는 경우 |
+| `timedOut` | 비동기 타임아웃 발생 시 `true`. 복구 여부와 관계없이 `status`는 최종 응답 상태를 사용 |
 | `exceptionType`, `exceptionFrames` | 예기치 않은 장애에 한해 허용된 예외 유형·호출 위치 |
 
 실제 경로 변수·검색어·쿼리 문자열·본문·헤더·쿠키·회원 이메일·IP는 완료 로그에 넣지 않습니다.

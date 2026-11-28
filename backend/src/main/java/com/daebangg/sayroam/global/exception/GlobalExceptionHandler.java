@@ -90,11 +90,13 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
             HttpHeaders headers,
             HttpStatusCode status, WebRequest request) {
         ResponseEntity<Object> response = super.handleExceptionInternal(e, body, headers, status, request);
-        if (response != null && response.getBody() instanceof ProblemDetail problemDetail && !hasCode(problemDetail)) {
-            problemDetail.setProperty(CODE, toCode(status));
+        String errorCode = toCode(status);
+        if (response != null && response.getBody() instanceof ProblemDetail problemDetail) {
+            if (!hasCode(problemDetail)) problemDetail.setProperty(CODE, errorCode);
+            if (problemDetail.getProperties().get(CODE) instanceof String responseCode) errorCode = responseCode;
         }
         if (request instanceof ServletWebRequest servletRequest) {
-            RequestLoggingFilter.recordError(servletRequest.getRequest(), toCode(status), status.is5xxServerError() ? e : null);
+            RequestLoggingFilter.recordError(servletRequest.getRequest(), errorCode, status.is5xxServerError() ? e : null);
         }
         return response;
     }

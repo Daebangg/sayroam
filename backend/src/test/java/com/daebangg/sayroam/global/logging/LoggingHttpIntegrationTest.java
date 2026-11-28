@@ -16,6 +16,7 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.context.request.async.DeferredResult;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 
@@ -76,6 +77,27 @@ class LoggingHttpIntegrationTest extends DatabaseIntegrationTest {
         }
     }
 
+    @Test
+    void realAsyncTimeoutRecoveryLogsTheSuccessfulFinalStatus() throws Exception {
+        try (LogCapture capture = new LogCapture(RequestLoggingFilter.class);
+             HttpClient client = HttpClient.newHttpClient()) {
+            HttpResponse<String> response = client.send(request("/api/logging-probe/timeout-recovered"), HttpResponse.BodyHandlers.ofString());
+            assertThat(response.statusCode()).isEqualTo(200);
+            assertThat(response.body()).isEqualTo("recovered");
+            await().atMost(Duration.ofSeconds(5)).untilAsserted(() -> assertThat(capture.events()).hasSize(1));
+            ILoggingEvent event = capture.events().getFirst();
+            assertThat(event.getLevel()).isEqualTo(ch.qos.logback.classic.Level.INFO);
+            assertThat(event.getMDCPropertyMap()).containsEntry("requestId", response.headers().firstValue("X-Request-ID").orElseThrow());
+            assertThat(event.getKeyValuePairs()).anySatisfy(pair -> {
+                assertThat(pair.key).isEqualTo("status");
+                assertThat(pair.value).isEqualTo(200);
+            }).anySatisfy(pair -> {
+                assertThat(pair.key).isEqualTo("timedOut");
+                assertThat(pair.value).isEqualTo(true);
+            });
+        }
+    }
+
     private HttpRequest request(String path) {
         return HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + port + path))
                 .timeout(Duration.ofSeconds(10)).GET().build();
@@ -106,6 +128,13 @@ class LoggingHttpIntegrationTest extends DatabaseIntegrationTest {
         @GetMapping("/api/logging-probe/failure")
         String failure() {
             throw new IllegalStateException("private-secret");
+        }
+
+        @GetMapping("/api/logging-probe/timeout-recovered")
+        DeferredResult<String> timeoutRecovered() {
+            DeferredResult<String> result = new DeferredResult<>(50L);
+            result.onTimeout(() -> result.setResult("recovered"));
+            return result;
         }
     }
 }

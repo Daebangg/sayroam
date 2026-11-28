@@ -65,7 +65,12 @@ public class StartupChecks implements AutoCloseable {
                 submit("OAuth", "Kakao", () -> oauth("kakao")),
                 submit("OAuth", "Naver", () -> oauth("naver")));
         List<Result> results = new ArrayList<>();
+        boolean interrupted = false;
         for (Pending check : pending) {
+            if (interrupted) {
+                results.add(new Result(check.service, check.stack, Status.TIMEOUT, "interrupted", elapsed(startedAt)));
+                continue;
+            }
             try {
                 Outcome outcome = check.future.get(Math.max(0, deadline - System.nanoTime()), TimeUnit.NANOSECONDS);
                 results.add(new Result(check.service, check.stack, outcome.status, outcome.proof, outcome.durationMs));
@@ -80,6 +85,7 @@ public class StartupChecks implements AutoCloseable {
                         .log("Startup dependency check failed");
                 results.add(new Result(check.service, check.stack, Status.FAILED, "probe failed", elapsed(startedAt)));
             } catch (InterruptedException exception) {
+                interrupted = true;
                 pending.forEach(task -> task.future.cancel(true));
                 Thread.currentThread().interrupt();
                 results.add(new Result(check.service, check.stack, Status.TIMEOUT, "interrupted", elapsed(startedAt)));

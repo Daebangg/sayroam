@@ -16,6 +16,10 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.Statement;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
@@ -98,6 +102,59 @@ class StartupChecksTest {
                 StartupChecks.Report report = checks.checkAll();
                 assertThat(result(report, "Google").status()).isEqualTo(StartupChecks.Status.TIMEOUT);
                 assertThat(report.durationMs()).isLessThan(1500);
+            }
+        }
+    }
+
+    @Test
+    void interruptionReturnsAllResultsAndPreservesTheCallerInterrupt() throws Exception {
+        CountDownLatch probesStarted = new CountDownLatch(2);
+        CountDownLatch release = new CountDownLatch(1);
+        DataSource source = mock(DataSource.class);
+        when(source.getConnection()).thenAnswer(invocation -> {
+            probesStarted.countDown();
+            release.await();
+            return mock(Connection.class);
+        });
+        StringRedisTemplate redis = mock(StringRedisTemplate.class);
+        when(redis.execute(org.mockito.ArgumentMatchers.<RedisCallback<String>>any())).thenAnswer(invocation -> {
+            probesStarted.countDown();
+            release.await();
+            return "PONG";
+        });
+        try (GenericApplicationContext context = new GenericApplicationContext()) {
+            context.registerBean(DataSource.class, () -> source);
+            context.registerBean(StringRedisTemplate.class, () -> redis);
+            context.refresh();
+            try (StartupChecks checks = new StartupChecks(context, 5000, (provider, client) -> "unused")) {
+                CompletableFuture<StartupChecks.Report> completed = new CompletableFuture<>();
+                AtomicBoolean interrupted = new AtomicBoolean();
+                Thread caller = Thread.ofPlatform().unstarted(() -> {
+                    try {
+                        completed.complete(checks.checkAll());
+                    } catch (Exception exception) {
+                        completed.completeExceptionally(exception);
+                    } finally {
+                        interrupted.set(Thread.currentThread().isInterrupted());
+                    }
+                });
+                caller.start();
+                try {
+                    assertThat(probesStarted.await(5, TimeUnit.SECONDS)).isTrue();
+                    caller.interrupt();
+                    caller.join(5000);
+                    assertThat(caller.isAlive()).isFalse();
+                    StartupChecks.Report report = completed.get(1, TimeUnit.SECONDS);
+                    assertThat(report.results()).hasSize(6).allSatisfy(result -> {
+                        assertThat(result.status()).isEqualTo(StartupChecks.Status.TIMEOUT);
+                        assertThat(result.proof()).isEqualTo("interrupted");
+                    });
+                    assertThat(interrupted).isTrue();
+                } finally {
+                    release.countDown();
+                    caller.interrupt();
+                    caller.join(5000);
+                }
             }
         }
     }

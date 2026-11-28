@@ -61,7 +61,8 @@ public class StompSessionRevoker {
             sessionCloser.close(sessionId, errorCode);
         } catch (RuntimeException exception) {
             SafeLog.atWarn(log, exception).addKeyValue("event", "stomp_session_revoke_failed")
-                    .addKeyValue("errorCode", errorCode.getCode()).log("Failed to close revoked STOMP session");
+                    .addKeyValue("sessionId", sessionId).addKeyValue("errorCode", errorCode.getCode())
+                    .log("Failed to close revoked STOMP session");
         }
     }
 }

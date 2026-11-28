@@ -10,20 +10,29 @@ import com.daebangg.sayroam.global.exception.GlobalExceptionHandler;
 import com.daebangg.sayroam.global.logging.LogCapture;
 import com.daebangg.sayroam.global.security.SecurityProblemHandler;
 import jakarta.servlet.AsyncContext;
+import jakarta.servlet.AsyncEvent;
+import jakarta.servlet.AsyncListener;
 import jakarta.servlet.DispatcherType;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.slf4j.MDC;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
+import org.springframework.mock.web.MockAsyncContext;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.InsufficientAuthenticationException;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.HandlerMapping;
 import tools.jackson.databind.json.JsonMapper;
@@ -34,6 +43,7 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.setup.MockMvcBuilders.standaloneSetup;
@@ -98,6 +108,14 @@ class RequestLoggingFilterTest {
     }
 
     @Test
+    void validationErrorsUseTheSameCodeInTheResponseAndLog() throws Exception {
+        mvc.perform(post("/api/logging-validation").contentType("application/json").content("{\"name\":\"\"}"))
+                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("INVALID_INPUT"));
+        assertThat(capture.events()).hasSize(1);
+        assertThat(fields(capture.events().getFirst())).containsEntry("errorCode", "INVALID_INPUT");
+    }
+
+    @Test
     void securityRejectionsAreLoggedWithoutEchoingUnmappedSensitivePaths() throws Exception {
         SecurityProblemHandler handler = new SecurityProblemHandler(JsonMapper.builder().build());
         MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/private-address@example.test");
@@ -138,6 +156,24 @@ class RequestLoggingFilterTest {
         assertThat(capture.events()).hasSize(1);
         assertThat(fields(capture.events().getFirst())).containsEntry("status", 202).containsEntry("route", "/api/async");
         assertThat(capture.events().getFirst().getMDCPropertyMap()).containsEntry("requestId", id);
+        assertThat(MDC.getCopyOfContextMap()).isNullOrEmpty();
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {200, 302, 503})
+    void asyncTimeoutRetainsTheFinalResponseStatusAndRecordsASeparateFlag(int status) throws Exception {
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/timeout");
+        request.setAsyncSupported(true);
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        filter.doFilter(request, response, (incoming, outgoing) -> incoming.startAsync());
+        MockAsyncContext context = (MockAsyncContext) request.getAsyncContext();
+        for (AsyncListener listener : context.getListeners()) listener.onTimeout(new AsyncEvent(context, request, response));
+        response.setStatus(status);
+        context.complete();
+        assertThat(response.getStatus()).isEqualTo(status);
+        assertThat(capture.events()).hasSize(1);
+        assertThat(capture.events().getFirst().getLevel()).isEqualTo(status >= 500 ? Level.ERROR : Level.INFO);
+        assertThat(fields(capture.events().getFirst())).containsEntry("status", status).containsEntry("timedOut", true);
         assertThat(MDC.getCopyOfContextMap()).isNullOrEmpty();
     }
 
@@ -189,5 +225,10 @@ class RequestLoggingFilterTest {
 
         @GetMapping("/api/notifications/summary")
         String polling() { return "ok"; }
+
+        @PostMapping("/api/logging-validation")
+        String validate(@Valid @RequestBody Input input) { return "ok"; }
     }
+
+    record Input(@NotBlank String name) { }
 }

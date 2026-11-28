@@ -2,6 +2,7 @@ package com.daebangg.sayroam.chat.infrastructure.messaging;
 
 import com.daebangg.sayroam.auth.domain.event.LoginsInvalidated;
 import com.daebangg.sayroam.chat.presentation.stomp.ChatPrincipal;
+import com.daebangg.sayroam.global.logging.LogCapture;
 import com.daebangg.sayroam.room.domain.event.RoomMemberLeft;
 import org.junit.jupiter.api.Test;
 import org.springframework.messaging.Message;
@@ -119,6 +120,31 @@ class StompSessionRevokerTest {
         // when & then
         assertThatCode(() -> failingRevoker.onLoginsInvalidated(new LoginsInvalidated(USER_ID)))
                 .doesNotThrowAnyException();
+    }
+
+    @Test
+    void 종료_실패_세션을_기록하고_나머지_세션도_처리한다() {
+        connect("phone", USER_ID);
+        connect("laptop", USER_ID);
+        List<String> attempted = new ArrayList<>();
+        StompSessionRevoker failingRevoker = new StompSessionRevoker(userRegistry,
+                new StompChatConnectionCloser((message, timeout) -> {
+                    String sessionId = SimpMessageHeaderAccessor.getSessionId(message.getHeaders());
+                    attempted.add(sessionId);
+                    if (sessionId.equals("phone")) throw new IllegalStateException("private-channel-message");
+                    return sentFrames.add(message);
+                }));
+
+        try (LogCapture capture = new LogCapture(StompSessionRevoker.class)) {
+            assertThatCode(() -> failingRevoker.onLoginsInvalidated(new LoginsInvalidated(USER_ID)))
+                    .doesNotThrowAnyException();
+            assertThat(attempted).containsExactlyInAnyOrder("phone", "laptop");
+            assertThat(closedSessionIds()).containsExactly("laptop");
+            assertThat(capture.events()).hasSize(1);
+            assertThat(capture.events().getFirst().getKeyValuePairs().toString())
+                    .contains("sessionId=\"phone\"", "UNAUTHENTICATED", "stomp_session_revoke_failed")
+                    .doesNotContain("private-channel-message");
+        }
     }
 
     private void connect(String sessionId, Long userId) {
