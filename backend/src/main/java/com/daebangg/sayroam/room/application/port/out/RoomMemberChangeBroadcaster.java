@@ -1,4 +1,4 @@
-package com.daebangg.sayroam.chat.application.port.out;
+package com.daebangg.sayroam.room.application.port.out;
 
 
 public interface RoomMemberChangeBroadcaster {

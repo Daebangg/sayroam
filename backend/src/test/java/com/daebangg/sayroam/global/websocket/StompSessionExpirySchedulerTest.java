@@ -1,6 +1,6 @@
-package com.daebangg.sayroam.chat.presentation.stomp;
+package com.daebangg.sayroam.global.websocket;
 
-import com.daebangg.sayroam.chat.application.port.out.ChatConnectionCloser;
+import com.daebangg.sayroam.global.websocket.StompSessionCloser;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.messaging.Message;
@@ -26,7 +26,7 @@ class StompSessionExpirySchedulerTest {
     private static final Instant EXPIRES_AT = Instant.parse("2026-11-07T10:00:00Z");
 
     private final TaskScheduler taskScheduler = mock(TaskScheduler.class);
-    private final ChatConnectionCloser sessionCloser = mock(ChatConnectionCloser.class);
+    private final StompSessionCloser sessionCloser = mock(StompSessionCloser.class);
     private final StompSessionExpiryScheduler scheduler =
             new StompSessionExpiryScheduler(taskScheduler, sessionCloser);
 
@@ -35,7 +35,7 @@ class StompSessionExpirySchedulerTest {
         // given
         ScheduledFuture<?> expiration = mock(ScheduledFuture.class);
         doReturn(expiration).when(taskScheduler).schedule(any(Runnable.class), any(Instant.class));
-        ChatPrincipal principal = new ChatPrincipal(7L, 0L, EXPIRES_AT);
+        StompPrincipal principal = new StompPrincipal(7L, 0L, EXPIRES_AT);
         scheduler.onConnected(new SessionConnectedEvent(this, sessionMessage(), principal));
 
         // when
@@ -53,7 +53,7 @@ class StompSessionExpirySchedulerTest {
 
         // when
         scheduler.onConnected(new SessionConnectedEvent(this, sessionMessage(),
-                new ChatPrincipal(7L, 0L, EXPIRES_AT)));
+                new StompPrincipal(7L, 0L, EXPIRES_AT)));
 
         // then
         then(taskScheduler).should().schedule(any(Runnable.class), eq(EXPIRES_AT));
@@ -64,7 +64,7 @@ class StompSessionExpirySchedulerTest {
         // given
         ScheduledFuture<?> expiration = mock(ScheduledFuture.class);
         doReturn(expiration).when(taskScheduler).schedule(any(Runnable.class), any(Instant.class));
-        ChatPrincipal principal = new ChatPrincipal(7L, 0L, EXPIRES_AT);
+        StompPrincipal principal = new StompPrincipal(7L, 0L, EXPIRES_AT);
         scheduler.onConnected(new SessionConnectedEvent(this, sessionMessage(), principal));
         ArgumentCaptor<Runnable> task = ArgumentCaptor.forClass(Runnable.class);
         then(taskScheduler).should().schedule(task.capture(), eq(EXPIRES_AT));

@@ -1,4 +1,4 @@
-package com.daebangg.sayroam.chat.infrastructure.messaging;
+package com.daebangg.sayroam.global.websocket;
 
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageChannel;

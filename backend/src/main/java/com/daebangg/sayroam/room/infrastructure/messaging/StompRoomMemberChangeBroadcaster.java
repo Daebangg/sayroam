@@ -1,6 +1,6 @@
-package com.daebangg.sayroam.chat.infrastructure.messaging;
+package com.daebangg.sayroam.room.infrastructure.messaging;
 
-import com.daebangg.sayroam.chat.application.port.out.RoomMemberChangeBroadcaster;
+import com.daebangg.sayroam.room.application.port.out.RoomMemberChangeBroadcaster;
 import lombok.RequiredArgsConstructor;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Component;

@@ -1,9 +1,9 @@
-package com.daebangg.sayroam.chat.presentation.stomp;
+package com.daebangg.sayroam.global.websocket;
 
 import java.security.Principal;
 import java.time.Instant;
 
-public record ChatPrincipal(Long userId, long authVersion, Instant expiresAt) implements Principal {
+public record StompPrincipal(Long userId, long authVersion, Instant expiresAt) implements Principal {
     @Override
     public String getName() {
         return userId.toString();

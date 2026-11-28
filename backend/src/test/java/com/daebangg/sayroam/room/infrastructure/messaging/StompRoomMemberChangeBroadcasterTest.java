@@ -1,4 +1,4 @@
-package com.daebangg.sayroam.chat.infrastructure.messaging;
+package com.daebangg.sayroam.room.infrastructure.messaging;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.messaging.simp.SimpMessagingTemplate;

@@ -4,12 +4,13 @@ import com.daebangg.sayroam.auth.domain.error.AuthErrorCode;
 import com.daebangg.sayroam.auth.domain.error.AuthException;
 import com.daebangg.sayroam.auth.application.service.AccountAuthenticationService;
 import com.daebangg.sayroam.chat.application.dto.ChatMessageResult;
-import com.daebangg.sayroam.chat.application.port.out.ChatConnectionCloser;
 import com.daebangg.sayroam.chat.application.service.ChatMessageService;
 import com.daebangg.sayroam.chat.presentation.dto.ChatErrorResponse;
 import com.daebangg.sayroam.chat.presentation.dto.ChatMessageRequest;
 import com.daebangg.sayroam.chat.presentation.dto.ChatMessageResponse;
 import com.daebangg.sayroam.global.exception.BusinessException;
+import com.daebangg.sayroam.global.websocket.StompPrincipal;
+import com.daebangg.sayroam.global.websocket.StompSessionCloser;
 import lombok.RequiredArgsConstructor;
 import org.springframework.messaging.handler.annotation.DestinationVariable;
 import org.springframework.messaging.handler.annotation.Header;
@@ -25,11 +26,11 @@ import org.springframework.stereotype.Controller;
 public class ChatMessageStompController {
     private final ChatMessageService chatMessageService;
     private final AccountAuthenticationService accountAuthenticationService;
-    private final ChatConnectionCloser sessionCloser;
+    private final StompSessionCloser sessionCloser;
 
     @MessageMapping("/rooms/{roomId}/messages")
     @SendToUser("/queue/messages")
-    public ChatMessageResponse send(@DestinationVariable Long roomId, ChatPrincipal principal,
+    public ChatMessageResponse send(@DestinationVariable Long roomId, StompPrincipal principal,
                                     @Payload ChatMessageRequest request) {
         accountAuthenticationService.ensureActive(principal.userId(), principal.authVersion());
         ChatMessageResult result = chatMessageService.send(roomId, principal.userId(), request.clientMessageId(), request.content());

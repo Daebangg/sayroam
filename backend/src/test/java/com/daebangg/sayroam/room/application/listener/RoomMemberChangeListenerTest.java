@@ -1,6 +1,6 @@
-package com.daebangg.sayroam.chat.application.listener;
+package com.daebangg.sayroam.room.application.listener;
 
-import com.daebangg.sayroam.chat.application.port.out.RoomMemberChangeBroadcaster;
+import com.daebangg.sayroam.room.application.port.out.RoomMemberChangeBroadcaster;
 import com.daebangg.sayroam.room.application.service.RoomService;
 import com.daebangg.sayroam.room.infrastructure.persistence.RoomJpaRepository;
 import com.daebangg.sayroam.room.infrastructure.persistence.RoomMemberJpaRepository;

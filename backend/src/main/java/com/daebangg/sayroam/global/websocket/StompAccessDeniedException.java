@@ -1,4 +1,4 @@
-package com.daebangg.sayroam.chat.presentation.stomp;
+package com.daebangg.sayroam.global.websocket;
 
 import com.daebangg.sayroam.global.exception.CommonErrorCode;
 

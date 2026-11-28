@@ -574,7 +574,26 @@ class ChatStompIntegrationTest extends DatabaseIntegrationTest {
     }
 
     @Test
-    void 방을_나가면_그_방을_구독한_연결을_즉시_종료한다() throws Exception {
+    void 방을_나가면_개인_큐로_나간_방을_받는다() throws Exception {
+        // given
+        Long userId = saveUser();
+        Long roomId = createRoomJoinedBy(userId);
+        StompSession session = connect(tokenOf(userId)).get(5, TimeUnit.SECONDS);
+        ReceivedFrames notices = subscribeUserQueue(session, userId, "/queue/rooms");
+
+        // when
+        roomService.leave(roomId, userId);
+
+        // then
+        Map<String, Object> notice = notices.messages.poll(5, TimeUnit.SECONDS);
+        assertThat(notice).isNotNull();
+        assertThat(notice.get("type")).isEqualTo("LEFT");
+        assertThat(((Number) notice.get("roomId")).longValue()).isEqualTo(roomId);
+    }
+
+    // 클라이언트는 알림을 받고 구독을 해제해야 한다. 유예 시간 뒤에도 남아 있으면 서버가 연결을 끊는다.
+    @Test
+    void 방을_나간_뒤_구독을_해제하지_않으면_그_방을_구독한_연결을_종료한다() throws Exception {
         // given
         Long userId = saveUser();
         Long roomId = createRoomJoinedBy(userId);
@@ -586,13 +605,13 @@ class ChatStompIntegrationTest extends DatabaseIntegrationTest {
         roomService.leave(roomId, userId);
 
         // then
-        StompHeaders error = events.errorFrame.get(5, TimeUnit.SECONDS);
+        StompHeaders error = events.errorFrame.get(10, TimeUnit.SECONDS);
         assertThat(error.getFirst("message")).isEqualTo(RoomErrorCode.ROOM_ACCESS_DENIED.getCode());
         assertThat(events.closed.get(5, TimeUnit.SECONDS)).isNotNull();
     }
 
     @Test
-    void 방을_나가면_멤버_채널을_구독한_연결도_종료한다() throws Exception {
+    void 방을_나간_뒤_구독을_해제하지_않으면_멤버_채널을_구독한_연결도_종료한다() throws Exception {
         // given
         Long userId = saveUser();
         Long roomId = createRoomJoinedBy(userId);
@@ -606,7 +625,7 @@ class ChatStompIntegrationTest extends DatabaseIntegrationTest {
         // then
         // 나간 회원에게도 멤버 변화 신호가 같은 연결로 동시에 나가 ERROR 프레임보다 연결 종료가 먼저 도착할 수 있다.
         // 오류 코드는 방 채널 종료 테스트가 확인하고, 여기서는 연결이 끊기는지만 확인한다.
-        assertThat(events.closed.get(5, TimeUnit.SECONDS)).isNotNull();
+        assertThat(events.closed.get(10, TimeUnit.SECONDS)).isNotNull();
     }
 
     @Test

@@ -1,4 +1,4 @@
-package com.daebangg.sayroam.chat.presentation.stomp;
+package com.daebangg.sayroam.global.websocket;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Configuration;
@@ -8,12 +8,13 @@ import org.springframework.web.socket.config.annotation.EnableWebSocketMessageBr
 import org.springframework.web.socket.config.annotation.StompEndpointRegistry;
 import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerConfigurer;
 
-// 클라이언트 프레임을 받는 진입점 설정
+// STOMP 엔드포인트와 내장 브로커 설정
 @Configuration
 @EnableWebSocketMessageBroker
 @RequiredArgsConstructor
 public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     private final StompAuthInterceptor stompAuthInterceptor;
+    private final StompAuthorizationInterceptor stompAuthorizationInterceptor;
     private final StompErrorHandler stompErrorHandler;
 
     @Override
@@ -24,11 +25,16 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     @Override
     public void configureMessageBroker(MessageBrokerRegistry registry) {
+        registry.enableSimpleBroker("/topic", "/queue");
         registry.setApplicationDestinationPrefixes("/app");
     }
 
+    // preSend는 등록 순서대로 실행된다. 권한은 인증이 붙인 principal을 쓰므로 인증 다음에 둔다.
+    // RECEIPT는 브로커가 구독을 등록한 뒤(afterMessageHandled)에 동작하므로 위치와 무관하다.
+    // 클라이언트는 구독 RECEIPT를 받은 뒤 명단·메시지를 조회해 그 사이의 변경을 놓치지 않는다.
     @Override
     public void configureClientInboundChannel(ChannelRegistration registration) {
-        registration.interceptors(stompAuthInterceptor);
+        registration.interceptors(stompAuthInterceptor, stompAuthorizationInterceptor,
+                new StompSubscribeReceiptInterceptor());
     }
 }

@@ -1,6 +1,5 @@
-package com.daebangg.sayroam.chat.presentation.stomp;
+package com.daebangg.sayroam.global.websocket;
 
-import com.daebangg.sayroam.chat.application.port.out.ChatConnectionCloser;
 import com.daebangg.sayroam.global.exception.CommonErrorCode;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.event.EventListener;
@@ -18,18 +17,18 @@ import java.util.concurrent.ScheduledFuture;
 @Component
 public class StompSessionExpiryScheduler {
     private final TaskScheduler taskScheduler;
-    private final ChatConnectionCloser sessionCloser;
+    private final StompSessionCloser sessionCloser;
     private final Map<String, ScheduledFuture<?>> expirations = new ConcurrentHashMap<>();
 
     public StompSessionExpiryScheduler(@Qualifier("messageBrokerTaskScheduler") TaskScheduler taskScheduler,
-                                       ChatConnectionCloser sessionCloser) {
+                                       StompSessionCloser sessionCloser) {
         this.taskScheduler = taskScheduler;
         this.sessionCloser = sessionCloser;
     }
 
     @EventListener
     public void onConnected(SessionConnectedEvent event) {
-        if (event.getUser() instanceof ChatPrincipal principal) {
+        if (event.getUser() instanceof StompPrincipal principal) {
             String sessionId = SimpMessageHeaderAccessor.getSessionId(event.getMessage().getHeaders());
             expirations.put(sessionId, taskScheduler.schedule(() -> {
                 // 연결 종료 이벤트가 먼저 처리된 경우에도 항목이 남지 않게 한다.

@@ -78,7 +78,8 @@ domain은 어떤 계층도 참조하지 않습니다. infrastructure는 applicat
 - 저장 외의 역할(메일 발송, 결제 등)을 구현할 때는 역할 이름의 하위 패키지를 위 목록에 먼저 추가합니다.
 - 여러 도메인이 쓰는 값 객체는 `common/domain`, 전역 설정·예외·범용 헬퍼는 `global`에 둡니다.
 - REST 외 진입점은 `presentation` 아래 프로토콜 이름의 하위 패키지(예: `stomp/`)에 두고, 그 안은 종류별로 나누지 않습니다.
-- STOMP 설정은 방향에 따라 나눕니다. 엔드포인트·인증 인터셉터·에러 핸들러처럼 클라이언트 프레임을 받는 설정은 `presentation/stomp/WebSocketConfig`, 내장 브로커와 그 기능을 보완하는 인터셉터(구독 RECEIPT)는 `infrastructure/messaging/StompBrokerConfig`에 둡니다. Spring이 `WebSocketMessageBrokerConfigurer`를 모두 모아 적용하므로 서로 참조하지 않습니다.
+- 도메인과 무관한 웹소켓 연결 기반은 계층을 나누지 않고 `global/websocket`에 둡니다. 엔드포인트·내장 브로커 설정(`WebSocketConfig`), 인증(`StompAuthInterceptor`)·경로 권한(`StompAuthorizationInterceptor`) 인터셉터, 구독 RECEIPT 보완, 연결 principal, 에러 프레임 변환, 서버 측 연결 종료(`StompSessionCloser`), 토큰 만료·로그인 무효화 시 종료가 대상입니다. global은 도메인 경로를 모르며, 도메인 채널의 구독 권한은 각 도메인이 `StompSubscriptionAuthorizer`를 구현해 판단합니다.
+- 도메인별 구독·전송 처리(STOMP 컨트롤러, 구독자 전송, 구독 권한, 구독 회수)는 각 도메인의 `presentation/stomp/`와 `infrastructure/messaging/`에 둡니다. 목적지·본문·종료 코드 계약은 [실시간 연결](websocket.md)을 따릅니다.
 - 서버 안에서 발행된 도메인 이벤트에 반응해 조회·판단을 거쳐 다른 서비스나 out 포트를 호출하는 리스너는 `application/listener/`에 둡니다. 판단 없이 이벤트를 그대로 내보내기만 하는 리스너(`ChatMessageBroadcaster`)는 `infrastructure/messaging/`에 둘 수 있습니다.
 - 주기 실행처럼 서비스를 시작시키는 백그라운드 진입점은 `presentation/scheduling/`에 둡니다. 이벤트·주기 실행을 함께 받아 작업을 돌리는 워커(`CompanionMatchingWorker`)도 여기에 둡니다. 작업 선점·재시도·트랜잭션은 application 서비스가 담당합니다.
 
