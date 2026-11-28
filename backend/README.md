@@ -26,6 +26,7 @@ Google·Kakao·Naver OAuth의 클라이언트 발급·개인 설정과 단계별
 운영 Refresh 쿠키는 기본 Secure=true이고, HTTP `local` 프로필에서만 false를 사용합니다.
 롬 메이트 요청·수락·거절 API와 만료·알림 정책은 [롬 메이트 요청](docs/companion-requests.md)을 참고하세요.
 알림함의 목록 조회·읽음 상태 변경·삭제 API는 [알림함 기본 API](docs/notification-inbox.md)를 참고하세요.
+채팅 실시간 연결의 목적지·알림·연결 종료 계약은 [실시간 연결(STOMP)](docs/websocket.md)을 참고하세요.
 
 ```properties
 spring.datasource.url=jdbc:mysql://localhost:3306/sayroam
