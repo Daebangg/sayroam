@@ -1,5 +1,6 @@
 package com.daebangg.sayroam.auth.infrastructure.persistence;
 
+import com.daebangg.sayroam.global.logging.SafeLog;
 import com.daebangg.sayroam.auth.application.port.out.PasswordResetStore;
 import com.daebangg.sayroam.auth.domain.VerificationDigests;
 import com.daebangg.sayroam.auth.domain.error.AuthErrorCode;
@@ -107,7 +108,8 @@ public class RedisPasswordResetStore implements PasswordResetStore {
             if (result == null) throw new IllegalStateException("Missing password reset script result");
             return result;
         } catch (DataAccessException exception) {
-            log.warn("Password reset Redis operation failed: {}", exception.getClass().getSimpleName());
+            SafeLog.atWarn(log, exception).addKeyValue("event", "password_reset_redis_failed")
+                    .log("Password reset Redis operation failed");
             throw new AuthException(AuthErrorCode.EMAIL_VERIFICATION_UNAVAILABLE, exception);
         }
     }

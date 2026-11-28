@@ -1,5 +1,6 @@
 package com.daebangg.sayroam.auth.infrastructure.persistence;
 
+import com.daebangg.sayroam.global.logging.SafeLog;
 import com.daebangg.sayroam.auth.application.port.out.EmailVerificationStore;
 import com.daebangg.sayroam.auth.domain.VerificationDigests;
 import com.daebangg.sayroam.auth.domain.error.AuthErrorCode;
@@ -126,7 +127,8 @@ public class RedisEmailVerificationStore implements EmailVerificationStore {
             return result;
         } catch (DataAccessException exception) {
             // 이메일·IP·코드·Redis 접속 비밀값은 로그에 기록하지 않는다.
-            log.warn("Email verification Redis operation failed: {}", exception.getClass().getSimpleName());
+            SafeLog.atWarn(log, exception).addKeyValue("event", "email_verification_redis_failed")
+                    .log("Email verification Redis operation failed");
             throw new AuthException(AuthErrorCode.EMAIL_VERIFICATION_UNAVAILABLE, exception);
         }
     }

@@ -2,6 +2,8 @@ package com.daebangg.sayroam.companion.presentation.scheduling;
 
 import com.daebangg.sayroam.companion.application.dto.CompanionMatchingClaim;
 import com.daebangg.sayroam.companion.application.service.CompanionMatchingService;
+import com.daebangg.sayroam.global.logging.LogCapture;
+import org.slf4j.MDC;
 import org.junit.jupiter.api.Test;
 import org.springframework.core.task.TaskExecutor;
 import org.springframework.core.task.TaskRejectedException;
@@ -20,6 +22,30 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class CompanionMatchingWorkerTest {
+    @Test
+    void failedJobsUseTheirOwnIdWithoutTheTriggeringRequestOrClaimToken() {
+        CompanionMatchingService matching = mock(CompanionMatchingService.class);
+        CompanionMatchingClaim claim = new CompanionMatchingClaim(219, "private-claim-token");
+        Queue<Runnable> executions = new ArrayDeque<>();
+        CompanionMatchingWorker worker = new CompanionMatchingWorker(matching, executions::add);
+        when(matching.claim()).thenReturn(Optional.of(claim)).thenReturn(Optional.empty());
+        doThrow(new IllegalStateException("private-email@example.test private-claim-token")).when(matching).process(claim);
+        MDC.put("requestId", "unrelated-trigger");
+        try (LogCapture capture = new LogCapture(CompanionMatchingWorker.class)) {
+            worker.requestRun();
+            executions.remove().run();
+            assertThat(capture.events()).hasSize(1);
+            assertThat(capture.events().getFirst().getMDCPropertyMap()).containsEntry("jobId", "219")
+                    .containsKey("taskId").doesNotContainKey("requestId");
+            assertThat(capture.events().getFirst().getKeyValuePairs().toString())
+                    .doesNotContain("private-email", "private-claim-token");
+            assertThat(MDC.get("requestId")).isEqualTo("unrelated-trigger");
+            verify(matching).retry(claim);
+        } finally {
+            MDC.clear();
+        }
+    }
+
     @Test
     void coalescesBurstsAndContinuesAfterTenBatchesWithoutWaitingForRecovery() {
         CompanionMatchingService matching = mock(CompanionMatchingService.class);

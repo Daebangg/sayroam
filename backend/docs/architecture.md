@@ -181,6 +181,18 @@ Swagger 애너테이션(`io.swagger.v3.oas.annotations.*`)은 `presentation/api`
 - 이름은 컨트롤러와 짝을 맞춥니다(`TripController implements TripApi`).
 - 기준 구현은 `trip/presentation`의 `TripApi`와 `TripController`입니다.
 
+## 로그 규약
+
+새 기능과 오류 경로의 로그는 아래 기준을 따릅니다. 환경별 설정·이벤트 필드·검증 방법은 [로그 구성과 요청 추적](logging.md)을 참고합니다.
+
+- 일반 로그는 SLF4J `log`를 사용하고, 고정된 메시지와 `event` 이름에 검색 필드를 `addKeyValue`로 추가합니다. 색상·출력 형식은 공통 Logback 설정에서 관리합니다.
+- INFO는 주요 처리 결과, WARN은 외부 연동 실패·재시도 등 복구 가능한 실패, ERROR는 예상하지 못한 서버 장애, DEBUG는 정상 반복 조회·구독·작업 완료에 사용합니다.
+- 예외 진단은 `SafeLog.atWarn(log, exception)`·`SafeLog.atError(log, exception)`를 사용합니다. 일반 `log`에 예외 객체·`getMessage()`·`toString()`을 넘기지 않습니다. `SafeLog`는 예외 메시지 대신 유형과 제한된 호출 위치를 기록합니다.
+- HTTP 완료는 `RequestLoggingFilter`에서 한 번 기록합니다. 서비스·컨트롤러에서 같은 요청 완료나 예외 진단을 중복 기록하지 않고, 응답 오류 코드와 최종 상태를 로그에도 유지합니다. 예상 가능한 업무 오류에 스택을 남기지 않습니다.
+- 새 비동기 실행기·스케줄러에는 `LoggingTaskDecorator`를 적용하고, 작업 범위는 `LogContext`로 관리해 종료 시 MDC를 복원합니다. 여러 요청을 묶는 작업에 최초 요청 ID를 공통으로 붙이지 않고 `taskId`·`jobId`로 구분합니다.
+- WebSocket 이벤트는 `WebSocketLog`를 사용하며, 연결·해제·거절·종료 요청에 `sessionId`를 남깁니다. 수신 프레임 기록과 메시지 저장·전달 성공을 구분합니다.
+- 비밀번호·토큰·쿠키·인증 코드·이메일·외부 비밀값·채팅 본문을 기록하지 않습니다. DTO·요청/응답 본문·쿼리·헤더 전체와 원문 URI·목적지를 기록하지 않고 허용된 경로 템플릿만 사용합니다.
+
 ## 포트 사용 기준
 
 포트는 **우리 서비스가 외부 시스템을 호출할 때(out 방향)만** 만듭니다. 외부가 우리 서비스를 호출하는 쪽(in 방향)은 이미 의존 방향이 안쪽이므로 인터페이스를 두지 않습니다.

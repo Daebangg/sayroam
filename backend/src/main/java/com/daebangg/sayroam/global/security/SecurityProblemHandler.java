@@ -2,6 +2,7 @@ package com.daebangg.sayroam.global.security;
 
 import com.daebangg.sayroam.global.exception.ApiProblems;
 import com.daebangg.sayroam.global.exception.CommonErrorCode;
+import com.daebangg.sayroam.global.web.RequestLoggingFilter;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.http.MediaType;
@@ -29,6 +30,7 @@ public final class SecurityProblemHandler implements AuthenticationEntryPoint, A
     public void commence(HttpServletRequest request, HttpServletResponse response,
                          AuthenticationException exception) throws IOException {
         boolean unavailable = exception instanceof AuthenticationServiceException;
+        if (unavailable) RequestLoggingFilter.recordError(request, CommonErrorCode.AUTHENTICATION_UNAVAILABLE.getCode(), exception);
         if (!unavailable) {
             response.setHeader(HttpHeaders.WWW_AUTHENTICATE, "Bearer");
         }
@@ -45,6 +47,7 @@ public final class SecurityProblemHandler implements AuthenticationEntryPoint, A
 
     private void write(HttpServletRequest request, HttpServletResponse response,
                        CommonErrorCode code) throws IOException {
+        RequestLoggingFilter.recordError(request, code.getCode(), null);
         ProblemDetail problem = ApiProblems.of(code);
         problem.setInstance(URI.create(request.getRequestURI()));
         response.setStatus(problem.getStatus());

@@ -1,5 +1,7 @@
 # 로컬 앱 개발 환경
 
+- [환경별 로그·요청 ID·백그라운드 작업 추적과 운영 보관 기준](docs/logging.md)
+
 Spring Boot의 기본 프로필 설정 파일을 사용합니다. 앱 전용 `.env`나 별도 import는 사용하지 않습니다.
 실행 디렉터리인 `backend/` 아래 `config/application-local.properties`를 `local` 프로필에서 자동으로 읽습니다.
 이 파일은 소스 리소스 밖에 있으므로 앱 JAR에 포함되지 않습니다.

@@ -1,6 +1,7 @@
 package com.daebangg.sayroam.chat.application.listener;
 
 import com.daebangg.sayroam.chat.application.port.out.RoomMemberChangeBroadcaster;
+import com.daebangg.sayroam.global.logging.SafeLog;
 import com.daebangg.sayroam.room.application.service.RoomService;
 import com.daebangg.sayroam.room.domain.event.RoomMemberJoined;
 import com.daebangg.sayroam.room.domain.event.RoomMemberLeft;
@@ -45,7 +46,8 @@ public class RoomMemberChangeListener {
         try {
             roomService.findRoomIds(userId).forEach(this::broadcast);
         } catch (RuntimeException exception) {
-            log.warn("Failed to find rooms for member change: userId={}", userId, exception);
+            SafeLog.atWarn(log, exception).addKeyValue("event", "member_change_rooms_failed")
+                    .addKeyValue("userId", userId).log("Failed to find rooms for member change");
         }
     }
 
@@ -53,7 +55,8 @@ public class RoomMemberChangeListener {
         try {
             broadcaster.broadcast(roomId);
         } catch (RuntimeException exception) {
-            log.warn("Failed to broadcast member change: roomId={}", roomId, exception);
+            SafeLog.atWarn(log, exception).addKeyValue("event", "member_change_broadcast_failed")
+                    .addKeyValue("roomId", roomId).log("Failed to broadcast member change");
         }
     }
 }

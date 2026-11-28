@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
+    <springProperty name="ROOT_LEVEL" source="logging.level.root" defaultValue="INFO"/>
+
+    <springProfile name="local">
+        <conversionRule conversionWord="httpRequest"
+                        class="com.daebangg.sayroam.global.logging.HttpRequestLogConverter"/>
+        <conversionRule conversionWord="webSocket"
+                        class="com.daebangg.sayroam.global.logging.WebSocketLogConverter"/>
+        <springProperty name="REQUEST_CONSOLE_PATTERN" source="logging.pattern.request-console"
+                        defaultValue="%d{HH:mm:ss.SSS} %level %httpRequest%n"/>
+        <include resource="org/springframework/boot/logging/logback/console-appender.xml"/>
+        <appender name="HTTP_CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+            <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+                <level>${CONSOLE_LOG_THRESHOLD}</level>
+            </filter>
+            <encoder>
+                <pattern>${REQUEST_CONSOLE_PATTERN}</pattern>
+                <charset>${CONSOLE_LOG_CHARSET}</charset>
+            </encoder>
+        </appender>
+        <logger name="com.daebangg.sayroam.global.web.RequestLoggingFilter" additivity="false">
+            <appender-ref ref="HTTP_CONSOLE"/>
+        </logger>
+        <appender name="WEBSOCKET_CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+            <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+                <level>${CONSOLE_LOG_THRESHOLD}</level>
+            </filter>
+            <encoder>
+                <pattern>%clr(%d{HH:mm:ss.SSS}){faint} %clr(%level) %webSocket%n</pattern>
+                <charset>${CONSOLE_LOG_CHARSET}</charset>
+            </encoder>
+        </appender>
+        <logger name="com.daebangg.sayroam.global.logging.WebSocketLog" additivity="false">
+            <appender-ref ref="WEBSOCKET_CONSOLE"/>
+        </logger>
+        <appender name="STARTUP_CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+            <encoder>
+                <pattern>%msg%n</pattern>
+                <charset>${CONSOLE_LOG_CHARSET}</charset>
+            </encoder>
+        </appender>
+        <logger name="com.daebangg.sayroam.global.logging.StartupSummary" additivity="false">
+            <appender-ref ref="STARTUP_CONSOLE"/>
+        </logger>
+        <root level="${ROOT_LEVEL}">
+            <appender-ref ref="CONSOLE"/>
+        </root>
+    </springProfile>
+
+    <springProfile name="!local">
+        <include resource="org/springframework/boot/logging/logback/structured-console-appender.xml"/>
+        <root level="${ROOT_LEVEL}">
+            <appender-ref ref="CONSOLE"/>
+        </root>
+    </springProfile>
+</configuration>
