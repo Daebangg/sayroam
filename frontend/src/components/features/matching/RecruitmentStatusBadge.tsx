@@ -8,6 +8,7 @@ const badges = {
     ACTIVE: { label: "matchingFlow.active", tone: "brand" },
     MATCHED: { label: "roamMatePreview.matched", tone: "success" },
     CLOSED: { label: "matchingFlow.closed", tone: "danger" },
+    CONFIRMED: { label: "companionRequests.ACCEPTED", tone: "success" },
 } as const;
 
 export function RecruitmentStatusBadge({ status }: { status: RecruitmentStatus }) {

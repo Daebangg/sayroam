@@ -15,6 +15,7 @@ import com.daebangg.sayroam.notification.application.dto.CreateNotificationComma
 import com.daebangg.sayroam.notification.application.service.NotificationService;
 import com.daebangg.sayroam.notification.domain.NotificationTargetType;
 import com.daebangg.sayroam.notification.domain.NotificationType;
+import com.daebangg.sayroam.room.application.service.RoomService;
 import com.daebangg.sayroam.user.domain.User;
 import com.daebangg.sayroam.user.domain.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -44,6 +45,7 @@ public class CompanionRequestService {
     private final DestinationRepository destinations;
     private final UserRepository users;
     private final NotificationService notifications;
+    private final RoomService rooms;
 
     @Transactional(isolation = Isolation.READ_COMMITTED)
     public CompanionRequestResult send(long userId, long searchId, long candidateSearchId) {
@@ -82,6 +84,11 @@ public class CompanionRequestService {
     public CompanionRequestResult respond(long userId, long requestId, CompanionRequest.Decision decision) {
         long otherId = requests.findOtherMemberId(requestId, userId).orElseThrow(this::requestNotFound);
         lockMembers(userId, otherId);
+        List<Long> searchIds = requests.findSearchIdsForMember(requestId, userId);
+        if (searchIds.size() != 2) throw requestNotFound();
+        searchIds.forEach(this::lockSearch);
+        // 단건 요청을 먼저 잠그지 않고, 두 모집의 대기 요청을 ID 순으로 함께 잠근다.
+        List<CompanionRequest> pending = requests.findPendingForUpdate(searchIds);
         CompanionRequest request = ownedRequest(userId, requestId);
         if (request.direction(userId) != CompanionRequest.Direction.RECEIVED) {
             throw new BusinessException(CommonErrorCode.ACCESS_DENIED);
@@ -89,11 +96,24 @@ public class CompanionRequestService {
         expireIfInvalid(request);
         if (request.respond(decision, LocalDateTime.now(ZoneOffset.UTC))) {
             boolean accepted = decision == CompanionRequest.Decision.ACCEPTED;
+            if (accepted) {
+                confirm(request, pending);
+            }
             notify(request.getSenderId(), request,
                     accepted ? NotificationType.COMPANION_ACCEPTED : NotificationType.COMPANION_REJECTED,
                     accepted ? "Your Roam Mate request was accepted." : "Your Roam Mate request was declined.");
         }
         return result(request, userId);
+    }
+
+    private void confirm(CompanionRequest request, List<CompanionRequest> pending) {
+        request.confirmSearches();
+        Long roomId = rooms.createForCompanion();
+        rooms.join(roomId, request.getSenderId());
+        rooms.join(roomId, request.getReceiverId());
+        request.linkRoom(roomId);
+        // 수락된 요청의 expire()는 상태를 바꾸지 않는다.
+        pending.forEach(CompanionRequest::expire);
     }
 
     @Transactional(isolation = Isolation.READ_COMMITTED)

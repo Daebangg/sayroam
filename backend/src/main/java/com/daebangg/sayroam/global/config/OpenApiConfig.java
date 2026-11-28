@@ -226,10 +226,15 @@ public class OpenApiConfig {
                                 + "TRAVEL_STYLE_REQUIRED(모집에 저장할 여행 스타일 4문항 응답 필요)"))
                 .addResponses("CompanionSearchStatusConflict", problemResponse(
                         "409: COMPANION_SEARCH_DESTINATION_REQUIRED(재개할 등록에 여행지가 없음), "
+                                + "COMPANION_SEARCH_CONFIRMED(동행 확정된 모집은 변경 불가), "
                                 + "COMPANION_SEARCH_LIMIT_EXCEEDED(활성 모집 최대 3개 초과), "
                                 + "TRAVEL_STYLE_REQUIRED(모집에 저장할 여행 스타일 4문항 응답 필요)"))
+                .addResponses("CompanionSearchUpdateConflict", problemResponse(
+                        "409: COMPANION_SEARCH_CONFIRMED(동행 확정된 모집은 수정 불가), "
+                                + "TRAVEL_STYLE_REQUIRED(모집에 저장할 여행 스타일 4문항 응답 필요)"))
                 .addResponses("CompanionCandidateSearchUnavailable", problemResponse(
-                        "409: COMPANION_SEARCH_CLOSED(종료), COMPANION_SEARCH_DESTINATION_REQUIRED(기준 여행지 선택 필요), TRAVEL_STYLE_REQUIRED(STYLE 정렬에 4문항 응답 필요)"))
+                        "409: COMPANION_SEARCH_CLOSED(종료), COMPANION_SEARCH_CONFIRMED(동행 확정), "
+                                + "COMPANION_SEARCH_DESTINATION_REQUIRED(기준 여행지 선택 필요), TRAVEL_STYLE_REQUIRED(STYLE 정렬에 4문항 응답 필요)"))
                 .addResponses("TripPlaceBadRequest", problemResponse("400: INVALID_INPUT(장소 ID 누락, 1보다 작은 일차, 255자 초과 메모, errors 포함), TRIP_DAY_OUT_OF_RANGE(여행 기간을 벗어난 일차) 또는 Spring 요청 오류"))
                 .addResponses("TripCustomPlaceBadRequest", problemResponse("400: INVALID_INPUT(이름 누락·100자 초과, 위도·경도 누락 또는 범위 초과, 1보다 작은 일차, 255자 초과 메모, errors 포함), TRIP_DAY_OUT_OF_RANGE(여행 기간을 벗어난 일차) 또는 Spring 요청 오류"))
                 .addResponses("TripPlaceNotFound", problemResponse("404: TRIP_NOT_FOUND(없는 여행이거나 장소를 추가할 수 없는 여행. 둘을 구분하지 않음) 또는 PLACE_NOT_FOUND(TourAPI에 없거나 여행에 담을 수 없는 장소)"))

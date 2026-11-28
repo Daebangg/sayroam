@@ -109,6 +109,7 @@ public class CompanionSearch extends BaseTimeEntity {
     public void update(Long destinationId, TravelPeriod period, Gender preferredGender, AgeRange preferredAgeRange,
                        String title, @Nullable String introduction, @Nullable Boolean showAge,
                        @Nullable Boolean showGender) {
+        ensureNotConfirmed();
         if (destinationId == null || period == null) {
             throw new BusinessException(CommonErrorCode.INVALID_INPUT);
         }
@@ -131,6 +132,12 @@ public class CompanionSearch extends BaseTimeEntity {
         matchingRevision++;
     }
 
+    private void ensureNotConfirmed() {
+        if (status == CompanionSearchStatus.CONFIRMED) {
+            throw new BusinessException(CompanionSearchErrorCode.COMPANION_SEARCH_CONFIRMED);
+        }
+    }
+
     private String normalizeText(@Nullable String text, int maxLength) {
         if (text == null || text.isBlank()) {
             return null;
@@ -143,6 +150,7 @@ public class CompanionSearch extends BaseTimeEntity {
     }
 
     public void updateTravelStyle(Map<String, Integer> answers) {
+        ensureNotConfirmed();
         this.travelStyle = new RecruitmentTravelStyle(answers);
         matchingRevision++;
     }
@@ -164,9 +172,10 @@ public class CompanionSearch extends BaseTimeEntity {
     }
 
     public void changeStatus(CompanionSearchStatus status) {
-        if (status == null) {
+        if (status == null || status == CompanionSearchStatus.CONFIRMED) {
             throw new BusinessException(CommonErrorCode.INVALID_INPUT);
         }
+        ensureNotConfirmed();
         if (isReopening(status) && destinationId == null) {
             throw new BusinessException(CompanionSearchErrorCode.COMPANION_SEARCH_DESTINATION_REQUIRED);
         }
@@ -177,6 +186,12 @@ public class CompanionSearch extends BaseTimeEntity {
             matchingRevision++;
         }
         this.status = status;
+    }
+
+    public void confirm() {
+        validateCandidateSearch();
+        status = CompanionSearchStatus.CONFIRMED;
+        matchingRevision++;
     }
 
     public boolean isReopening(@Nullable CompanionSearchStatus targetStatus) {
@@ -199,7 +214,8 @@ public class CompanionSearch extends BaseTimeEntity {
     }
 
     public void validateCandidateSearch() {
-        if (status == CompanionSearchStatus.CLOSED) {
+        ensureNotConfirmed();
+        if (status != CompanionSearchStatus.ACTIVE) {
             throw new BusinessException(CompanionSearchErrorCode.COMPANION_SEARCH_CLOSED);
         }
         if (destinationId == null) {

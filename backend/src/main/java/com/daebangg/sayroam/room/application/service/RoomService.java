@@ -33,7 +33,12 @@ public class RoomService {
 
     @Transactional
     public Long createForTrip() {
-        return roomRepository.save(new Room()).getId();
+        return roomRepository.save(Room.createForTrip()).getId();
+    }
+
+    @Transactional
+    public Long createForCompanion() {
+        return roomRepository.save(Room.createForCompanion()).getId();
     }
 
     @Transactional

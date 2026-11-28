@@ -50,11 +50,76 @@ class SayroamApplicationTests extends DatabaseIntegrationTest {
                 SELECT COUNT(*) FROM information_schema.tables
                 WHERE table_schema = DATABASE() AND table_type = 'BASE TABLE'
                 """, Integer.class)).isEqualTo(21);
-        assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("26");
+        assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("28");
         flyway.validate();
         assertThat(flyway.migrate().migrationsExecuted).isZero();
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM flyway_schema_history WHERE success = 1",
-                Integer.class)).isEqualTo(26);
+                Integer.class)).isEqualTo(28);
+    }
+
+    @Test
+    void 버전_27은_기존_방의_연결을_유지하며_여행과_동행_유형을_채운다() {
+        try (MySQLContainer mysql = new MySQLContainer("mysql:8.4")
+                .withCommand("--log-bin-trust-function-creators=1")) {
+            mysql.start();
+            DriverManagerDataSource source = new DriverManagerDataSource(
+                    mysql.getJdbcUrl(), mysql.getUsername(), mysql.getPassword());
+            Flyway.configure().dataSource(source).target("26").load().migrate();
+            JdbcTemplate db = new JdbcTemplate(source);
+            db.update("""
+                    INSERT INTO users (id, nickname, role, created_at, updated_at)
+                    VALUES (10, '회원 가', 'USER', NOW(), NOW()), (20, '회원 나', 'USER', NOW(), NOW())
+                    """);
+            db.update("""
+                    INSERT INTO room (id, created_at, updated_at)
+                    VALUES (1, NOW(), NOW()), (2, NOW(), NOW()), (3, NOW(), NOW()), (4, NOW(), NOW())
+                    """);
+            db.update("""
+                    INSERT INTO companion_search (id, user_id, region, start_date, end_date, status, created_at, updated_at)
+                    VALUES (1, 20, '서울', '2026-12-01', '2026-12-04', 'CLOSED', NOW(), NOW())
+                    """);
+            db.update("""
+                    INSERT INTO companion_request (sender_id, receiver_id, companion_search_id, room_id,
+                        status, created_at, updated_at)
+                    VALUES (10, 20, 1, 2, 'ACCEPTED', NOW(), NOW()), (10, 20, 1, 3, 'ACCEPTED', NOW(), NOW())
+                    """);
+            Long destinationId = db.queryForObject("SELECT MIN(id) FROM destination", Long.class);
+            db.update("""
+                    INSERT INTO trip (created_by, room_id, destination_id, title, start_date, end_date, created_at, updated_at)
+                    VALUES (10, 1, ?, '여행 방', '2026-12-01', '2026-12-04', NOW(), NOW()),
+                           (10, 3, ?, '기존 동행 여행 방', '2026-12-01', '2026-12-04', NOW(), NOW())
+                    """, destinationId, destinationId);
+            db.update("""
+                    INSERT INTO room_member (room_id, user_id, status, notification_muted, joined_at, created_at, updated_at)
+                    VALUES (2, 10, 'JOINED', 0, NOW(), NOW(), NOW()), (2, 20, 'JOINED', 0, NOW(), NOW(), NOW())
+                    """);
+            db.update("""
+                    INSERT INTO chat_message (room_id, sender_id, type, content, created_at, updated_at)
+                    VALUES (2, 10, 'TEXT', '기존 대화', NOW(), NOW())
+                    """);
+
+            Flyway upgraded = Flyway.configure().dataSource(source).target("27").load();
+            assertThat(upgraded.migrate().migrationsExecuted).isEqualTo(1);
+
+            assertThat(db.queryForList("SELECT room_type FROM room ORDER BY id", String.class))
+                    .containsExactly("TRIP", "COMPANION", "TRIP", "TRIP");
+            assertThat(db.queryForList("SELECT room_id FROM trip ORDER BY room_id", Long.class))
+                    .containsExactly(1L, 3L);
+            assertThat(db.queryForList("SELECT room_id FROM companion_request ORDER BY room_id", Long.class))
+                    .containsExactly(2L, 3L);
+            assertThat(db.queryForObject("SELECT COUNT(*) FROM room_member WHERE room_id = 2", Integer.class))
+                    .isEqualTo(2);
+            assertThat(db.queryForObject("SELECT content FROM chat_message WHERE room_id = 2", String.class))
+                    .isEqualTo("기존 대화");
+            assertThatThrownBy(() -> db.update("""
+                    INSERT INTO room (room_type, created_at, updated_at) VALUES (NULL, NOW(), NOW())
+                    """)).isInstanceOf(DataAccessException.class);
+            assertThatThrownBy(() -> db.update("""
+                    INSERT INTO room (room_type, created_at, updated_at) VALUES ('DIRECT', NOW(), NOW())
+                    """)).isInstanceOf(DataAccessException.class);
+            upgraded.validate();
+            assertThat(upgraded.migrate().migrationsExecuted).isZero();
+        }
     }
 
     @Test
@@ -479,7 +544,7 @@ class SayroamApplicationTests extends DatabaseIntegrationTest {
         Long destinationId = entityManager.createQuery(
                 "select d.id from Destination d where d.name = :name", Long.class)
                 .setParameter("name", "제주").getSingleResult();
-        Room room = new Room();
+        Room room = Room.createForTrip();
         entityManager.persist(room);
         Trip trip = new Trip(user.getId(), destinationId, period, "제주 여행");
         trip.linkRoom(room.getId());
@@ -512,7 +577,7 @@ class SayroamApplicationTests extends DatabaseIntegrationTest {
                 """)).isInstanceOf(DataIntegrityViolationException.class);
 
         Long userId = jdbc.queryForObject("SELECT id FROM users WHERE email = 'member@example.test'", Long.class);
-        jdbc.update("INSERT INTO room (created_at, updated_at) VALUES (NOW(), NOW())");
+        jdbc.update("INSERT INTO room (room_type, created_at, updated_at) VALUES ('TRIP', NOW(), NOW())");
         Long roomId = jdbc.queryForObject("SELECT id FROM room", Long.class);
         String insertMember = """
                 INSERT INTO room_member (room_id, user_id, status, notification_muted, joined_at, created_at, updated_at)

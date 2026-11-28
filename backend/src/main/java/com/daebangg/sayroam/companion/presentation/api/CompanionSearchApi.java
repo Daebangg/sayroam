@@ -73,19 +73,21 @@ public interface CompanionSearchApi {
 
     @Operation(operationId = "updateCompanionSearch", summary = "동행 매칭 조건 수정",
             description = "등록의 조건을 교체하며 종료 상태는 유지합니다. 종료한 기존 모집도 여행 스타일을 보완한 뒤 재개할 수 있습니다. 희망 성별과 나이 조건, 제목은 생략하면 해제합니다. "
-                    + "소개글과 내 정보 공개 설정, 여행 스타일은 생략하거나 null이면 유지합니다. 기존 모집에 여행 스타일 저장값이 없으면 4문항을 보내야 합니다.")
+                    + "소개글과 내 정보 공개 설정, 여행 스타일은 생략하거나 null이면 유지합니다. 기존 모집에 여행 스타일 저장값이 없으면 4문항을 보내야 합니다. "
+                    + "동행 확정(CONFIRMED)된 모집은 수정할 수 없습니다.")
     @ApiResponse(responseCode = "200", description = "수정 완료")
     @ApiResponse(responseCode = "400", ref = "#/components/responses/BadRequest")
     @ApiResponse(responseCode = "401", ref = "#/components/responses/Unauthorized")
     @ApiResponse(responseCode = "404", ref = "#/components/responses/CompanionSearchNotFound")
-    @ApiResponse(responseCode = "409", ref = "#/components/responses/TravelStyleRequired")
+    @ApiResponse(responseCode = "409", ref = "#/components/responses/CompanionSearchUpdateConflict")
     ResponseEntity<CompanionSearchResponse> update(@Parameter(hidden = true) AuthenticatedAccount account,
                                                    long searchId, SaveCompanionSearchRequest request);
 
     @Operation(operationId = "closeCompanionSearch", summary = "동행 모집 종료 또는 재개",
             description = "CLOSED는 모집 종료, ACTIVE는 모집 재개입니다. 이미 같은 상태인 등록에도 요청할 수 있습니다. "
                     + "재개하려면 활성 여행지와 해당 모집에 저장된 여행 스타일 4문항 응답이 필요하며, 활성 모집이 3개 미만이어야 합니다. "
-                    + "이미 ACTIVE인 등록에 같은 요청을 반복하면 한도와 무관하게 성공합니다.")
+                    + "이미 ACTIVE인 등록에 같은 요청을 반복하면 한도와 무관하게 성공합니다. "
+                    + "CONFIRMED는 수락 처리로만 전환되며 직접 지정할 수 없고, 확정된 모집은 종료·재개할 수 없습니다.")
     @ApiResponse(responseCode = "200", description = "상태 변경 완료")
     @ApiResponse(responseCode = "400", ref = "#/components/responses/BadRequest")
     @ApiResponse(responseCode = "401", ref = "#/components/responses/Unauthorized")

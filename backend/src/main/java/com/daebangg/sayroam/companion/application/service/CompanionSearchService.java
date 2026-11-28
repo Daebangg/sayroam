@@ -177,6 +177,7 @@ public class CompanionSearchService {
 
     @Transactional(isolation = Isolation.READ_COMMITTED)
     public CompanionSearchResult update(long userId, long id, SaveCompanionSearchCommand command) {
+        lockOwner(userId);
         CompanionSearch search = findMineForUpdate(userId, id);
         requireActiveDestination(command.destinationId());
         if (command.travelStyle() != null) {
