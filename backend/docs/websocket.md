@@ -1,6 +1,6 @@
 # 실시간 연결(STOMP)
 
-채팅방 메시지와 멤버 변화, 개인 알림을 STOMP over WebSocket으로 주고받는 계약입니다. 클라이언트는 탭(앱 인스턴스)마다 연결 하나를 열고, 그 연결 안에서 필요한 채널을 구독·해제합니다. 한 회원은 탭·기기 수만큼 연결을 가질 수 있으며 서버는 같은 회원의 연결을 회원 ID로 묶어 관리합니다.
+채팅방 메시지와 멤버 변화, 개인 알림을 STOMP over WebSocket으로 주고받는 계약입니다. 클라이언트는 로그인한 동안 탭(앱 인스턴스)마다 연결 하나를 유지하고, 그 연결 안에서 필요한 채널을 구독·해제합니다. 한 회원은 탭·기기 수만큼 연결을 가질 수 있으며 서버는 같은 회원의 연결을 회원 ID로 묶어 관리합니다.
 
 ## 연결
 
@@ -15,13 +15,13 @@
 | `/user/queue/messages` | SUBSCRIBE | 연결 직후 한 번 | 내가 보낸 메시지의 저장 결과. 같은 회원의 모든 연결로 간다 |
 | `/user/queue/errors` | SUBSCRIBE | 연결 직후 한 번 | 내 전송이 실패한 이유. 보낸 연결로만 간다 |
 | `/user/queue/rooms` | SUBSCRIBE | 연결 직후 한 번 | 방 멤버십 알림 |
-| `/topic/rooms/{roomId}` | SUBSCRIBE | 채팅 패널을 열 때 | 방에 저장된 메시지 |
-| `/topic/rooms/{roomId}/members` | SUBSCRIBE | 채팅 패널을 열 때 | 멤버 변화 신호(빈 본문). 받으면 명단을 다시 조회한다 |
+| `/topic/rooms/{roomId}` | SUBSCRIBE | 방 화면(여행 상세)에 들어갈 때 | 방에 저장된 메시지 |
+| `/topic/rooms/{roomId}/members` | SUBSCRIBE | 방 화면(여행 상세)에 들어갈 때 | 멤버 변화 신호(빈 본문). 받으면 명단을 다시 조회한다 |
 | `/app/rooms/{roomId}/messages` | SEND | 메시지 전송 | `{"clientMessageId": "<UUID>", "content": "안녕"}` |
 
 - 방 채널은 그 방에 참여 중인 회원만 구독할 수 있습니다. 아니면 `ROOM_ACCESS_DENIED` ERROR 프레임을 받고 연결이 닫힙니다.
 - 방 채널은 `receipt` 헤더와 함께 구독하고, RECEIPT를 받은 뒤 명단·메시지를 조회해야 그 사이의 변화를 놓치지 않습니다. 개인 큐에는 RECEIPT를 보내지 않습니다.
-- 채팅 패널을 닫을 때는 연결을 끊지 않고 그 방 채널 두 개만 UNSUBSCRIBE합니다.
+- 방 화면을 떠날 때는 연결을 끊지 않고 그 방 채널 두 개만 UNSUBSCRIBE합니다. 패널을 닫아도 안 읽은 개수를 세기 위해 화면에 있는 동안은 구독을 유지합니다.
 - 위 목록 밖의 구독(`/queue/**` 직접 구독 포함)과 `/app/**` 밖으로의 SEND(`/topic/**`·`/queue/**`·`/user/**` 직접 전송 포함)는 `ACCESS_DENIED` ERROR 프레임을 받고 연결이 닫힙니다. 정상 클라이언트는 이 경우를 만들지 않습니다.
 
 ## 메시지 본문
