@@ -101,16 +101,38 @@ public class CompanionSearch extends BaseTimeEntity {
     private CompanionSearch(Long userId, Long destinationId, TravelPeriod period, Gender preferredGender,
                             AgeRange preferredAgeRange, String title, @Nullable String introduction,
                             @Nullable Boolean showAge, @Nullable Boolean showGender) {
+        if (userId == null || userId <= 0) {
+            throw new BusinessException(CommonErrorCode.INVALID_INPUT);
+        }
         this.userId = userId;
         this.status = CompanionSearchStatus.ACTIVE;
         update(destinationId, period, preferredGender, preferredAgeRange, title, introduction, showAge, showGender);
+    }
+
+    public CompanionRequest requestTo(long userId, CompanionSearch other, LocalDate today) {
+        requireOwnedBy(userId);
+        ensureRequestableWith(other, today);
+        return new CompanionRequest(this, other);
+    }
+
+    private void requireOwnedBy(long userId) {
+        if (this.userId != userId) {
+            throw new BusinessException(CompanionSearchErrorCode.COMPANION_SEARCH_NOT_FOUND);
+        }
+    }
+
+    private void ensureRequestableWith(CompanionSearch other, LocalDate today) {
+        if (other == null || !canMatch(today) || !other.canMatch(today)
+                || !destinationId.equals(other.destinationId) || !period.overlaps(other.period)) {
+            throw new BusinessException(CompanionSearchErrorCode.COMPANION_CANDIDATE_UNAVAILABLE);
+        }
     }
 
     public void update(Long destinationId, TravelPeriod period, Gender preferredGender, AgeRange preferredAgeRange,
                        String title, @Nullable String introduction, @Nullable Boolean showAge,
                        @Nullable Boolean showGender) {
         ensureNotConfirmed();
-        if (destinationId == null || period == null) {
+        if (destinationId == null || destinationId <= 0 || period == null) {
             throw new BusinessException(CommonErrorCode.INVALID_INPUT);
         }
         String normalizedTitle = normalizeText(title, MAX_TITLE_LENGTH);
@@ -128,14 +150,8 @@ public class CompanionSearch extends BaseTimeEntity {
         this.region = null;
         this.period = period;
         this.preferredGender = preferredGender;
-        this.preferredAgeRange = preferredAgeRange;
+        this.preferredAgeRange = preferredAgeRange == null ? new AgeRange(null, null) : preferredAgeRange;
         matchingRevision++;
-    }
-
-    private void ensureNotConfirmed() {
-        if (status == CompanionSearchStatus.CONFIRMED) {
-            throw new BusinessException(CompanionSearchErrorCode.COMPANION_SEARCH_CONFIRMED);
-        }
     }
 
     private String normalizeText(@Nullable String text, int maxLength) {
@@ -155,22 +171,6 @@ public class CompanionSearch extends BaseTimeEntity {
         matchingRevision++;
     }
 
-    public Map<String, Integer> travelStyleAnswers() {
-        return travelStyle == null ? Map.of() : travelStyle.answers();
-    }
-
-    public void requireCompleteTravelStyle() {
-        if (!TravelStyleMatch.isComplete(travelStyleAnswers())) {
-            throw new BusinessException(CompanionSearchErrorCode.TRAVEL_STYLE_REQUIRED);
-        }
-    }
-
-    public static void validateActiveSearchCount(long activeCount) {
-        if (activeCount >= MAX_ACTIVE_SEARCHES) {
-            throw new BusinessException(CompanionSearchErrorCode.COMPANION_SEARCH_LIMIT_EXCEEDED);
-        }
-    }
-
     public void changeStatus(CompanionSearchStatus status) {
         if (status == null || status == CompanionSearchStatus.CONFIRMED) {
             throw new BusinessException(CommonErrorCode.INVALID_INPUT);
@@ -188,7 +188,7 @@ public class CompanionSearch extends BaseTimeEntity {
         this.status = status;
     }
 
-    public void confirm() {
+    void confirm() {
         validateCandidateSearch();
         status = CompanionSearchStatus.CONFIRMED;
         matchingRevision++;
@@ -198,13 +198,21 @@ public class CompanionSearch extends BaseTimeEntity {
         return status == CompanionSearchStatus.CLOSED && targetStatus == CompanionSearchStatus.ACTIVE;
     }
 
-    public boolean canMatch(long revision, LocalDate today) {
-        return matchingRevision == revision && status == CompanionSearchStatus.ACTIVE
+    public boolean canMatch(LocalDate today) {
+        return status == CompanionSearchStatus.ACTIVE
                 && destinationId != null && !period.endDate().isBefore(today);
     }
 
+    public boolean canMatch(long revision, LocalDate today) {
+        return matchingRevision == revision && canMatch(today);
+    }
+
+    public Map<String, Integer> travelStyleAnswers() {
+        return travelStyle == null ? Map.of() : travelStyle.answers();
+    }
+
     public CompanionMatchingStatus matchingStatus(@Nullable CompanionMatchingJob job, LocalDate today) {
-        if (!canMatch(matchingRevision, today)) {
+        if (!canMatch(today)) {
             return CompanionMatchingStatus.SKIPPED;
         }
         if (job == null || job.getSearchId() != id || job.getMatchingRevision() != matchingRevision) {
@@ -220,6 +228,24 @@ public class CompanionSearch extends BaseTimeEntity {
         }
         if (destinationId == null) {
             throw new BusinessException(CompanionSearchErrorCode.COMPANION_SEARCH_DESTINATION_REQUIRED);
+        }
+    }
+
+    public void requireCompleteTravelStyle() {
+        if (!TravelStyleMatch.isComplete(travelStyleAnswers())) {
+            throw new BusinessException(CompanionSearchErrorCode.TRAVEL_STYLE_REQUIRED);
+        }
+    }
+
+    public static void validateActiveSearchCount(long activeCount) {
+        if (activeCount >= MAX_ACTIVE_SEARCHES) {
+            throw new BusinessException(CompanionSearchErrorCode.COMPANION_SEARCH_LIMIT_EXCEEDED);
+        }
+    }
+
+    private void ensureNotConfirmed() {
+        if (status == CompanionSearchStatus.CONFIRMED) {
+            throw new BusinessException(CompanionSearchErrorCode.COMPANION_SEARCH_CONFIRMED);
         }
     }
 }

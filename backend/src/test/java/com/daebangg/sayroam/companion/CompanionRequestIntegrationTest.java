@@ -3,8 +3,7 @@ package com.daebangg.sayroam.companion;
 import com.daebangg.sayroam.auth.application.port.out.AccessTokenIssuer;
 import com.daebangg.sayroam.companion.application.dto.CompanionRequestResult;
 import com.daebangg.sayroam.companion.application.dto.SaveCompanionSearchCommand;
-import com.daebangg.sayroam.companion.application.service.CompanionRequestService;
-import com.daebangg.sayroam.companion.application.service.CompanionSearchService;
+import com.daebangg.sayroam.companion.application.service.CompanionService;
 import com.daebangg.sayroam.companion.domain.CompanionRequest;
 import com.daebangg.sayroam.companion.domain.CompanionRequestStatus;
 import com.daebangg.sayroam.companion.domain.CompanionSearchStatus;
@@ -17,6 +16,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
@@ -40,8 +40,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @AutoConfigureMockMvc
 class CompanionRequestIntegrationTest extends DatabaseIntegrationTest {
-    @Autowired CompanionRequestService requests;
-    @Autowired CompanionSearchService searches;
+    @Autowired CompanionService companionService;
     @Autowired UserRepository users;
     @Autowired AccessTokenIssuer tokens;
     @Autowired JdbcTemplate jdbc;
@@ -62,8 +61,8 @@ class CompanionRequestIntegrationTest extends DatabaseIntegrationTest {
         receiver = member("받은 회원");
         outsider = member("다른 회원");
         destination = jdbc.queryForObject("SELECT id FROM destination WHERE name = '서울'", Long.class);
-        source = searches.create(sender.getId(), conditions(today)).id();
-        target = searches.create(receiver.getId(), conditions(today)).id();
+        source = companionService.create(sender.getId(), conditions(today)).id();
+        target = companionService.create(receiver.getId(), conditions(today)).id();
     }
 
     private User member(String name) {
@@ -93,6 +92,19 @@ class CompanionRequestIntegrationTest extends DatabaseIntegrationTest {
             jdbc.update("DELETE FROM companion_search WHERE user_id = ?", member.getId());
             jdbc.update("DELETE FROM users WHERE id = ?", member.getId());
         }
+    }
+
+    @Test
+    void cannotSendARequestUsingAnotherMembersRecruitment() throws Exception {
+        String path = "/api/companion-searches/" + source + "/requests";
+        mvc.perform(post(path).servletPath(path).header("Authorization", bearer(outsider))
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"candidateSearchId\":" + target + "}"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("COMPANION_SEARCH_NOT_FOUND"));
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM companion_request WHERE sender_search_id = ?",
+                Long.class, source)).isZero();
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM notification WHERE receiver_id = ? AND type = 'COMPANION_REQUEST'",
+                Long.class, receiver.getId())).isZero();
     }
 
     @ParameterizedTest
@@ -138,17 +150,52 @@ class CompanionRequestIntegrationTest extends DatabaseIntegrationTest {
                             viewer == sender ? "COMPANION_" + decision.name() : "COMPANION_REQUEST"));
         }
         if (decision == CompanionRequest.Decision.REJECTED) {
-            assertThat(requests.send(receiver.getId(), target, source).status()).isEqualTo(CompanionRequestStatus.REJECTED);
-            long alternative = searches.create(sender.getId(), conditions(today)).id();
+            assertThat(companionService.send(receiver.getId(), target, source).status()).isEqualTo(CompanionRequestStatus.REJECTED);
+            long alternative = companionService.create(sender.getId(), conditions(today)).id();
             mvc.perform(get(candidates).servletPath(candidates).header("Authorization", bearer(receiver)))
                     .andExpect(jsonPath("$.candidates[?(@.searchId == " + source + ")]").isEmpty())
                     .andExpect(jsonPath("$.candidates[?(@.searchId == " + alternative + ")].canRequest")
                             .value(org.hamcrest.Matchers.contains(true)));
+        } else {
+            CompanionRequestResult accepted = companionService.find(sender.getId(), id);
+            assertThat(accepted.roomId()).isNotNull();
+            assertThat(companionService.send(sender.getId(), source, target).roomId()).isEqualTo(accepted.roomId());
+            assertThat(companionService.send(receiver.getId(), target, source).roomId()).isEqualTo(accepted.roomId());
+            assertThat(jdbc.queryForList("SELECT status FROM companion_search WHERE id IN (?, ?)",
+                    String.class, source, target)).containsOnly("CONFIRMED");
+            assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM room_member WHERE room_id = ? AND status = 'JOINED'",
+                    Long.class, accepted.roomId())).isEqualTo(2);
         }
     }
 
     private String bearer(User member) {
         return "Bearer " + tokens.issue(member.getId(), member.getAuthVersion()).accessToken();
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = {true, false})
+    void revalidatesBothMembersAgePreferencesBeforeAccepting(boolean senderProfileChanged) {
+        jdbc.update("UPDATE users SET gender = 'MALE', birth_date = ? WHERE id = ?", today.minusYears(30), sender.getId());
+        jdbc.update("UPDATE users SET gender = 'FEMALE', birth_date = ? WHERE id = ?", today.minusYears(25), receiver.getId());
+        jdbc.update("UPDATE companion_search SET preferred_gender = 'FEMALE', preferred_min_age = 25, preferred_max_age = 25 WHERE id = ?", source);
+        jdbc.update("UPDATE companion_search SET preferred_gender = 'MALE', preferred_min_age = 30, preferred_max_age = 30 WHERE id = ?", target);
+        long requestId = companionService.send(sender.getId(), source, target).requestId();
+
+        User changed = senderProfileChanged ? sender : receiver;
+        LocalDate changedBirthDate = today.minusYears(senderProfileChanged ? 31 : 26);
+        jdbc.update("UPDATE users SET birth_date = ? WHERE id = ?", changedBirthDate, changed.getId());
+
+        assertThat(companionService.find(sender.getId(), requestId).status()).isEqualTo(CompanionRequestStatus.EXPIRED);
+        assertThat(companionService.find(receiver.getId(), requestId).status()).isEqualTo(CompanionRequestStatus.EXPIRED);
+        assertThat(jdbc.queryForObject("SELECT status FROM companion_request WHERE id = ?", String.class, requestId))
+                .isEqualTo("PENDING");
+        CompanionRequestResult response = companionService.respond(receiver.getId(), requestId, CompanionRequest.Decision.ACCEPTED);
+        assertThat(response.status()).isEqualTo(CompanionRequestStatus.EXPIRED);
+        assertThat(response.roomId()).isNull();
+        assertThat(jdbc.queryForObject("SELECT status FROM companion_request WHERE id = ?", String.class, requestId))
+                .isEqualTo("EXPIRED");
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM notification WHERE receiver_id = ? AND type = 'COMPANION_ACCEPTED'",
+                Long.class, sender.getId())).isZero();
     }
 
     @Test
@@ -157,11 +204,11 @@ class CompanionRequestIntegrationTest extends DatabaseIntegrationTest {
         try (ExecutorService pool = Executors.newFixedThreadPool(2)) {
             Future<CompanionRequestResult> one = pool.submit(() -> {
                 start.await();
-                return requests.send(sender.getId(), source, target);
+                return companionService.send(sender.getId(), source, target);
             });
             Future<CompanionRequestResult> two = pool.submit(() -> {
                 start.await();
-                return requests.send(receiver.getId(), target, source);
+                return companionService.send(receiver.getId(), target, source);
             });
             start.countDown();
             CompanionRequestResult first = one.get(15, TimeUnit.SECONDS);
@@ -175,29 +222,36 @@ class CompanionRequestIntegrationTest extends DatabaseIntegrationTest {
 
     @Test
     void elapsedOverlapExpiresAtReadTimeWithoutARecruitmentEdit() {
-        long id = requests.send(sender.getId(), source, target).requestId();
+        long id = companionService.send(sender.getId(), source, target).requestId();
         jdbc.update("UPDATE companion_search SET start_date = ?, end_date = ? WHERE id IN (?, ?)",
                 today.minusDays(4), today.minusDays(1), source, target);
-        assertThat(requests.list(receiver.getId(), target, CompanionRequestStatus.EXPIRED))
+        assertThat(companionService.list(receiver.getId(), target, CompanionRequestStatus.EXPIRED))
                 .extracting(CompanionRequestResult::requestId).containsExactly(id);
-        assertThat(requests.respond(receiver.getId(), id, CompanionRequest.Decision.ACCEPTED).status())
+        assertThat(companionService.list(receiver.getId(), target, CompanionRequestStatus.PENDING)).isEmpty();
+        assertThat(companionService.find(sender.getId(), id).status()).isEqualTo(CompanionRequestStatus.EXPIRED);
+        // 조회는 현재 유효성으로 상태를 계산하고, 저장된 상태는 변경하지 않는다.
+        assertThat(jdbc.queryForObject("SELECT status FROM companion_request WHERE id = ?", String.class, id))
+                .isEqualTo("PENDING");
+        assertThat(companionService.respond(receiver.getId(), id, CompanionRequest.Decision.ACCEPTED).status())
                 .isEqualTo(CompanionRequestStatus.EXPIRED);
+        assertThat(jdbc.queryForObject("SELECT status FROM companion_request WHERE id = ?", String.class, id))
+                .isEqualTo("EXPIRED");
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM notification WHERE target_type = 'COMPANION_REQUEST' AND target_id = ?",
                 Long.class, id)).isOne();
     }
 
     @Test
     void invalidatedRequestsStayExpiredAfterConditionsAreRestored() {
-        long id = requests.send(sender.getId(), source, target).requestId();
-        searches.update(receiver.getId(), target, conditions(today.plusMonths(1)));
-        searches.update(receiver.getId(), target, conditions(today));
-        assertThat(requests.respond(receiver.getId(), id, CompanionRequest.Decision.ACCEPTED).status())
+        long id = companionService.send(sender.getId(), source, target).requestId();
+        companionService.update(receiver.getId(), target, conditions(today.plusMonths(1)));
+        companionService.update(receiver.getId(), target, conditions(today));
+        assertThat(companionService.respond(receiver.getId(), id, CompanionRequest.Decision.ACCEPTED).status())
                 .isEqualTo(CompanionRequestStatus.EXPIRED);
 
-        long another = searches.create(sender.getId(), conditions(today)).id();
-        long closed = requests.send(sender.getId(), another, target).requestId();
-        searches.changeStatus(receiver.getId(), target, CompanionSearchStatus.CLOSED);
-        searches.changeStatus(receiver.getId(), target, CompanionSearchStatus.ACTIVE);
-        assertThat(requests.find(sender.getId(), closed).status()).isEqualTo(CompanionRequestStatus.EXPIRED);
+        long another = companionService.create(sender.getId(), conditions(today)).id();
+        long closed = companionService.send(sender.getId(), another, target).requestId();
+        companionService.changeStatus(receiver.getId(), target, CompanionSearchStatus.CLOSED);
+        companionService.changeStatus(receiver.getId(), target, CompanionSearchStatus.ACTIVE);
+        assertThat(companionService.find(sender.getId(), closed).status()).isEqualTo(CompanionRequestStatus.EXPIRED);
     }
 }

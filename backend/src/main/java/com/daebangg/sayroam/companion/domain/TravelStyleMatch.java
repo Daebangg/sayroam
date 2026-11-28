@@ -1,6 +1,7 @@
 package com.daebangg.sayroam.companion.domain;
 
 import com.daebangg.sayroam.travelstyle.domain.TravelStyleItem;
+import com.daebangg.sayroam.travelstyle.domain.UserTravelStyle;
 
 import java.util.List;
 import java.util.Map;
@@ -11,7 +12,7 @@ public record TravelStyleMatch(double score, Category category, List<Item> items
     public static boolean isComplete(Map<String, Integer> answers) {
         return QUESTION_CODES.stream().allMatch(code -> {
             Integer score = answers.get(code);
-            return score != null && score >= 1 && score <= 5;
+            return score != null && score >= UserTravelStyle.MIN_SCORE && score <= UserTravelStyle.MAX_SCORE;
         });
     }
 
@@ -24,7 +25,8 @@ public record TravelStyleMatch(double score, Category category, List<Item> items
         int totalDifference = items.stream().mapToInt(Item::difference).sum();
         Category category = items.stream().allMatch(item -> item.difference() <= 1)
                 ? Category.SIMILAR : Category.NEEDS_DISCUSSION;
-        return new TravelStyleMatch(100.0 * (1.0 - totalDifference / 16.0), category, items);
+        double maxDifference = QUESTION_CODES.size() * (UserTravelStyle.MAX_SCORE - UserTravelStyle.MIN_SCORE);
+        return new TravelStyleMatch(100.0 * (1.0 - totalDifference / maxDifference), category, items);
     }
 
     public enum Category { SIMILAR, NEEDS_DISCUSSION }

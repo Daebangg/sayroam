@@ -1,6 +1,8 @@
 package com.daebangg.sayroam.companion.domain;
 
 import com.daebangg.sayroam.global.entity.BaseTimeEntity;
+import com.daebangg.sayroam.global.exception.BusinessException;
+import com.daebangg.sayroam.global.exception.CommonErrorCode;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -19,6 +21,8 @@ import java.time.LocalDateTime;
 @Table(name = "companion_matching_job")
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class CompanionMatchingJob extends BaseTimeEntity {
+    public static final int MAX_CLAIM_TOKEN_LENGTH = 36;
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Getter
@@ -39,7 +43,7 @@ public class CompanionMatchingJob extends BaseTimeEntity {
     @Column(nullable = false)
     private int attempts;
     private LocalDateTime availableAt;
-    @Column(length = 36)
+    @Column(length = MAX_CLAIM_TOKEN_LENGTH)
     private String claimToken;
 
     public CompanionMatchingJob(CompanionSearch search, LocalDateTime now) {
@@ -50,6 +54,10 @@ public class CompanionMatchingJob extends BaseTimeEntity {
     }
 
     public void claim(String token, LocalDateTime now) {
+        if (token == null || token.isBlank()
+                || token.codePointCount(0, token.length()) > MAX_CLAIM_TOKEN_LENGTH || now == null) {
+            throw new BusinessException(CommonErrorCode.INVALID_INPUT);
+        }
         status = CompanionMatchingJobStatus.PROCESSING;
         claimToken = token;
         attempts = Math.min(attempts + 1, 30);

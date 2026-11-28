@@ -1,7 +1,7 @@
 package com.daebangg.sayroam.companion;
 
 import com.daebangg.sayroam.companion.application.dto.SaveCompanionSearchCommand;
-import com.daebangg.sayroam.companion.application.service.CompanionSearchService;
+import com.daebangg.sayroam.companion.application.service.CompanionService;
 import com.daebangg.sayroam.companion.presentation.scheduling.CompanionMatchingWorker;
 import com.daebangg.sayroam.support.DatabaseIntegrationTest;
 import com.daebangg.sayroam.user.domain.Role;
@@ -38,7 +38,7 @@ import static org.mockito.Mockito.verify;
 @TestPropertySource(properties = {"app.companion.matching.enabled=true", "app.companion.matching.recovery-delay-ms=3600000"})
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 class CompanionMatchingEventIntegrationTest extends DatabaseIntegrationTest {
-    @Autowired CompanionSearchService searches;
+    @Autowired CompanionService companionService;
     @Autowired UserRepository users;
     @Autowired JdbcTemplate jdbc;
     @Autowired PlatformTransactionManager transactions;
@@ -62,8 +62,8 @@ class CompanionMatchingEventIntegrationTest extends DatabaseIntegrationTest {
         LocalDate start = LocalDate.now(ZoneId.of("Asia/Seoul")).plusDays(10);
         SaveCompanionSearchCommand conditions = new SaveCompanionSearchCommand(destination, start, start.plusDays(3),
                 null, null, null, null, null, null, null);
-        long first = searches.create(member(), conditions).id();
-        long second = searches.create(member(), conditions).id();
+        long first = companionService.create(member(), conditions).id();
+        long second = companionService.create(member(), conditions).id();
         await().atMost(Duration.ofSeconds(15)).untilAsserted(() -> {
             assertThat(jdbc.queryForObject("""
                     SELECT COUNT(*) FROM companion_matching_job
@@ -88,7 +88,7 @@ class CompanionMatchingEventIntegrationTest extends DatabaseIntegrationTest {
         long destination = jdbc.queryForObject("SELECT id FROM destination WHERE name = '서울'", Long.class);
         LocalDate start = LocalDate.now(ZoneId.of("Asia/Seoul")).plusDays(10);
         new TransactionTemplate(transactions).executeWithoutResult(status -> {
-            searches.create(owner, new SaveCompanionSearchCommand(destination, start, start.plusDays(3),
+            companionService.create(owner, new SaveCompanionSearchCommand(destination, start, start.plusDays(3),
                     null, null, null, null, null, null, null));
             verify(worker, never()).onMatchingRequested(any());
             status.setRollbackOnly();
@@ -113,7 +113,7 @@ class CompanionMatchingEventIntegrationTest extends DatabaseIntegrationTest {
         LocalDate start = LocalDate.now(ZoneId.of("Asia/Seoul")).plusDays(10);
         long owner = member();
         long source = new TransactionTemplate(transactions).execute(status -> {
-            long id = searches.create(owner, new SaveCompanionSearchCommand(destination, start, start.plusDays(3),
+            long id = companionService.create(owner, new SaveCompanionSearchCommand(destination, start, start.plusDays(3),
                     null, null, null, null, null, null, null)).id();
             // 커밋 전 별도 스레드는 이 작업을 볼 수 없다. 커밋 이후 이벤트가 다시 깨워야 한다.
             worker.requestRun();

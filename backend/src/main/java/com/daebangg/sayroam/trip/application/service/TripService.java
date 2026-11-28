@@ -1,7 +1,7 @@
 package com.daebangg.sayroam.trip.application.service;
 
 import com.daebangg.sayroam.common.domain.TravelPeriod;
-import com.daebangg.sayroam.destination.domain.DestinationRepository;
+import com.daebangg.sayroam.destination.application.service.DestinationService;
 import com.daebangg.sayroam.global.exception.BusinessException;
 import com.daebangg.sayroam.place.application.service.PlaceService;
 import com.daebangg.sayroam.place.domain.Coordinate;
@@ -36,7 +36,7 @@ public class TripService {
     private final TripPlaceRepository tripPlaceRepository;
     private final PlaceService placeService;
     private final RoomService roomService;
-    private final DestinationRepository destinationRepository;
+    private final DestinationService destinationService;
 
     @Transactional
     public Long create(Long userId, CreateTripCommand command) {
@@ -50,7 +50,7 @@ public class TripService {
     }
 
     private void requireActiveDestination(Long destinationId) {
-        if (!destinationRepository.existsByIdAndActiveTrue(destinationId)) {
+        if (!destinationService.isAvailable(destinationId)) {
             throw new BusinessException(TripErrorCode.TRIP_DESTINATION_UNAVAILABLE);
         }
     }

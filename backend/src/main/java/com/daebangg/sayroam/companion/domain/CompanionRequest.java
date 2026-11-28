@@ -19,6 +19,7 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Entity
@@ -69,7 +70,7 @@ public class CompanionRequest extends BaseTimeEntity {
 
     private LocalDateTime respondedAt;
 
-    public CompanionRequest(CompanionSearch sender, CompanionSearch receiver) {
+    CompanionRequest(CompanionSearch sender, CompanionSearch receiver) {
         if (sender.getUserId().equals(receiver.getUserId())) {
             throw new BusinessException(CompanionSearchErrorCode.COMPANION_CANDIDATE_UNAVAILABLE);
         }
@@ -80,36 +81,38 @@ public class CompanionRequest extends BaseTimeEntity {
         this.status = CompanionRequestStatus.PENDING;
     }
 
-    public Direction direction(long userId) {
-        if (senderId == userId) return Direction.SENT;
-        if (receiverId == userId) return Direction.RECEIVED;
-        throw new BusinessException(CompanionSearchErrorCode.COMPANION_REQUEST_NOT_FOUND);
-    }
-
-    public long otherMemberId(long userId) {
-        return direction(userId) == Direction.SENT ? receiverId : senderId;
-    }
-
-    public boolean respond(Decision decision, LocalDateTime now) {
+    public boolean respond(long userId, Decision decision, boolean matchingAvailable, LocalDateTime now) {
+        requireReceiver(userId);
+        if (decision == null || now == null) {
+            throw new BusinessException(CommonErrorCode.INVALID_INPUT);
+        }
+        expireIfUnavailable(matchingAvailable);
         if (status == decision.status || status == CompanionRequestStatus.EXPIRED) return false;
         if (status != CompanionRequestStatus.PENDING) {
             throw new BusinessException(CompanionSearchErrorCode.COMPANION_REQUEST_ALREADY_ANSWERED);
         }
+        if (decision == Decision.ACCEPTED) {
+            senderSearch.validateCandidateSearch();
+            receiverSearch.validateCandidateSearch();
+        }
         status = decision.status;
         respondedAt = now;
+        if (decision == Decision.ACCEPTED) {
+            confirmSearches();
+        }
         return true;
     }
 
-    public void confirmSearches() {
+    private void requireReceiver(long userId) {
+        if (direction(userId) != Direction.RECEIVED) {
+            throw new BusinessException(CommonErrorCode.ACCESS_DENIED);
+        }
+    }
+
+    private void confirmSearches() {
         ensureAccepted();
         senderSearch.confirm();
         receiverSearch.confirm();
-    }
-
-    private void ensureAccepted() {
-        if (status != CompanionRequestStatus.ACCEPTED) {
-            throw new BusinessException(CommonErrorCode.INVALID_INPUT);
-        }
     }
 
     public void linkRoom(Long roomId) {
@@ -124,7 +127,43 @@ public class CompanionRequest extends BaseTimeEntity {
     }
 
     public void expire() {
-        if (status == CompanionRequestStatus.PENDING) status = CompanionRequestStatus.EXPIRED;
+        expireIfUnavailable(false);
+    }
+
+    public void expireIfUnavailable(boolean available) {
+        status = currentStatus(available);
+    }
+
+    public Direction direction(long userId) {
+        if (senderId == userId) return Direction.SENT;
+        if (receiverId == userId) return Direction.RECEIVED;
+        throw new BusinessException(CompanionSearchErrorCode.COMPANION_REQUEST_NOT_FOUND);
+    }
+
+    public long otherMemberId(long userId) {
+        return direction(userId) == Direction.SENT ? receiverId : senderId;
+    }
+
+    public boolean canMatch(LocalDate today) {
+        return senderSearch.canMatch(today) && receiverSearch.canMatch(today);
+    }
+
+    public Long matchingDestinationId() {
+        return senderSearch.getDestinationId();
+    }
+
+    public boolean isPending() {
+        return status == CompanionRequestStatus.PENDING;
+    }
+
+    public CompanionRequestStatus currentStatus(boolean available) {
+        return isPending() && !available ? CompanionRequestStatus.EXPIRED : status;
+    }
+
+    private void ensureAccepted() {
+        if (status != CompanionRequestStatus.ACCEPTED) {
+            throw new BusinessException(CommonErrorCode.INVALID_INPUT);
+        }
     }
 
     public enum Direction { SENT, RECEIVED }

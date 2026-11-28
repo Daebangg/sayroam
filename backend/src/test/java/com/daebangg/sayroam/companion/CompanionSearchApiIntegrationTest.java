@@ -28,6 +28,7 @@ import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.startsWith;
 import static org.hamcrest.Matchers.nullValue;
 import static org.hamcrest.Matchers.contains;
+import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -206,6 +207,61 @@ class CompanionSearchApiIntegrationTest extends DatabaseIntegrationTest {
             contract.andExpect(jsonPath("$.paths['/api/companion-candidates'].get.parameters[?(@.name == '"
                     + question + "')].schema.type").value(contains("integer")));
         }
+    }
+
+    @Test
+    void publishesCandidateRequestsAsFlatQueryParametersWithTheirExistingDefaults() throws Exception {
+        ResultActions contract = mvc.perform(get("/v3/api-docs").servletPath("/v3/api-docs"))
+                .andExpect(status().isOk());
+        String registered = "$.paths['/api/companion-searches/{searchId}/candidates'].get";
+        String preview = "$.paths['/api/companion-candidates'].get";
+        contract.andExpect(jsonPath(registered + ".parameters[*].name")
+                        .value(containsInAnyOrder("searchId", "q", "page", "size", "sort")))
+                .andExpect(jsonPath(preview + ".parameters[*].name")
+                        .value(containsInAnyOrder("destinationId", "startDate", "endDate", "preferredGender",
+                                "preferredMinAge", "preferredMaxAge", "q", "page", "size", "sort",
+                                "planning", "dailyPace", "timeTogether", "spending")));
+        for (String operation : List.of(registered, preview)) {
+            String parameters = operation + ".parameters";
+            contract.andExpect(jsonPath(parameters + "[?(@.name == 'q')].schema.maxLength").value(contains(80)))
+                    .andExpect(jsonPath(parameters + "[?(@.name == 'page')].schema.default").value(contains(0)))
+                    .andExpect(jsonPath(parameters + "[?(@.name == 'size')].schema.default").value(contains(20)))
+                    .andExpect(jsonPath(parameters + "[?(@.name == 'size')].schema.maximum").value(contains(100)))
+                    .andExpect(jsonPath(parameters + "[?(@.name == 'sort')].schema.default").value(contains("OVERLAP")))
+                    .andExpect(jsonPath(operation + ".requestBody").doesNotExist());
+            for (String optional : List.of("q", "page", "size", "sort")) {
+                contract.andExpect(jsonPath(parameters + "[?(@.name == '" + optional + "')].required")
+                        .value(contains(false)));
+            }
+        }
+        for (String required : List.of("destinationId", "startDate", "endDate")) {
+            contract.andExpect(jsonPath(preview + ".parameters[?(@.name == '" + required + "')].required")
+                    .value(contains(true)));
+        }
+    }
+
+    @Test
+    void publishesSearchAndRequestOperationsWithTheirOwnResponseCodes() throws Exception {
+        mvc.perform(get("/v3/api-docs").servletPath("/v3/api-docs"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.paths['/api/companion-searches'].post.operationId").value("createCompanionSearch"))
+                .andExpect(jsonPath("$.paths['/api/companion-searches'].post.tags").value(contains("CompanionSearch")))
+                .andExpect(jsonPath("$.paths['/api/companion-searches'].post.responses['201']").exists())
+                .andExpect(jsonPath("$.paths['/api/companion-searches'].post.responses['200']").doesNotExist())
+                .andExpect(jsonPath("$.paths['/api/companion-candidates'].get.operationId").value("previewCompanionCandidates"))
+                .andExpect(jsonPath("$.paths['/api/companion-searches/{searchId}/requests'].post.operationId")
+                        .value("sendCompanionRequest"))
+                .andExpect(jsonPath("$.paths['/api/companion-searches/{searchId}/requests'].post.tags")
+                        .value(contains("CompanionRequest")))
+                .andExpect(jsonPath("$.paths['/api/companion-searches/{searchId}/requests'].post.responses['200']").exists())
+                .andExpect(jsonPath("$.paths['/api/companion-searches/{searchId}/requests'].post.responses['201']").doesNotExist())
+                .andExpect(jsonPath("$.paths['/api/companion-searches/{searchId}/requests'].post.responses['401']['$ref']")
+                        .value("#/components/responses/Unauthorized"))
+                .andExpect(jsonPath("$.paths['/api/companion-requests/{requestId}'].patch.operationId")
+                        .value("respondToCompanionRequest"))
+                .andExpect(jsonPath("$.paths['/api/companion-requests/{requestId}'].patch.responses['403']['$ref']")
+                        .value("#/components/responses/Forbidden"))
+                .andExpect(jsonPath("$.paths['/api/companion-requests/{requestId}'].patch.security[0].bearerAuth").isArray());
     }
 
     @Test

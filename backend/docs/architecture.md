@@ -4,7 +4,7 @@
 
 ## 목적
 
-헥사고날 아키텍처의 **의존성 방향 원칙만 지키고, 포트는 효과가 큰 곳에만 둡니다.** 유스케이스마다 in/out 포트를 모두 만드는 방식은 인터페이스와 매핑 코드가 늘어 구조 파악과 변경 비용이 커지므로 쓰지 않습니다.
+클린 아키텍처의 **의존성 방향과 간소화 DDD를 따르고, 포트는 효과가 큰 곳에만 둡니다.** 도메인 객체가 업무 규칙을 책임지고 서비스가 유스케이스의 흐름을 조정합니다. 유스케이스마다 in/out 포트를 모두 만드는 방식은 인터페이스와 매핑 코드가 늘어 구조 파악과 변경 비용이 커지므로 쓰지 않습니다.
 
 > 비즈니스 로직을 기술과 전달 방식(웹, DB, 외부 API)에서 분리해, 기술이 바뀌어도 비즈니스 로직은 그대로 두고 기술 없이도 테스트할 수 있게 합니다.
 
@@ -102,6 +102,8 @@ domain은 어떤 계층도 참조하지 않습니다. infrastructure는 applicat
 - 외부에서 들어오는 요청·메시지를 받는 코드는 `presentation`, 외부로 나가는 저장·발송·호출 구현은 `infrastructure`에 둡니다. 같은 기술이라도 방향에 따라 계층이 달라집니다. 예: STOMP 메시지를 받는 컨트롤러는 `presentation`, 구독자에게 메시지를 내보내는 구현은 `infrastructure`.
 - 서비스는 흐름 조정(조회, 호출 순서, 트랜잭션)만 담당합니다. application에서 쓰는 스프링 기능은 `@Service`, `@Transactional`, 이벤트 발행처럼 특정 기술 구현에 묶이지 않는 것으로 한정합니다.
 - 서비스 간 호출은 허용합니다. 순환 참조가 생기면 공통 로직을 도메인이나 별도 서비스로 분리합니다.
+- 하나의 서비스에서 도메인 Repository와 Query Repository를 함께 주입받습니다. 조회·변경만을 이유로 서비스를 나누지 않으며, 기본 구현은 `TripService`를 따릅니다. 배치 작업의 선점·재시도처럼 실행 흐름과 트랜잭션 경계가 다르면 별도 서비스를 유지할 수 있습니다.
+- 의존성 필드는 타입의 대상과 역할을 드러냅니다. 예: `tripRepository`, `tripQueryRepository`, `companionRequestRepository`, `roomService`, `eventPublisher`. `users`, `requests`, `service` 같은 축약명은 사용하지 않습니다.
 - presentation이 application 밖을 참조할 수 있는 예외는 다음과 같습니다.
   - 컨트롤러가 인증 주체로 받는 `auth.domain.AuthenticatedAccount`
   - 백그라운드 진입점이 수신하는 `domain.event` 이벤트. 이벤트에는 식별자 같은 불변 값만 담고, 작업 상태는 application 서비스에서 다시 조회합니다.
@@ -115,6 +117,7 @@ domain은 어떤 계층도 참조하지 않습니다. infrastructure는 applicat
 ### 규칙을 가진 객체에게 맡기기
 
 - 엔티티는 생성자와 변경 메서드에서 자신의 불변식을 직접 검증합니다. 위반하면 `ErrorCode`를 담은 `BusinessException`을 던집니다.
+- 소유권·상태 검증을 별도 호출해야만 안전한 변경 API를 만들지 않습니다. 공개 업무 메서드가 필요한 검증을 내부에서 반드시 수행하고, 해당 메서드만 사용하는 검증은 private으로 둡니다. 도메인 내부 협력을 위한 생성자·메서드는 package-private으로 제한할 수 있습니다.
 - 서비스와 컨트롤러는 엔티티의 값을 꺼내 비교하거나 문자열 형식을 검사해 도메인 규칙을 판단하지 않습니다. 객체에게 일을 시킵니다.
 - 서비스에 `if (x.getStatus() == ...)` 같은 분기나 `a.getB().getC()` 체인이 생기면 그 책임을 해당 객체로 옮깁니다.
 - getter는 협력에 필요한 것만 엽니다. 작성 방식은 [백엔드 지침의 엔티티 getter](../AGENTS.md#엔티티-getter)를 따릅니다.
@@ -230,7 +233,7 @@ class TossPaymentGateway implements PaymentGateway {
 
 ## 리포지토리 규약
 
-서비스는 domain의 **순수 리포지토리 인터페이스만** 주입받습니다. `JpaRepository`를 상속한 인터페이스는 infrastructure에만 둡니다.
+서비스는 domain의 **순수 리포지토리 인터페이스**와 application의 **조회 전용 인터페이스**를 주입받습니다. `JpaRepository`를 상속한 인터페이스는 infrastructure에만 둡니다.
 
 ### 기본 구조
 
@@ -257,11 +260,16 @@ public interface OrderJpaRepository extends OrderRepository, JpaRepository<Order
 - domain 인터페이스에는 application이 실제로 쓰는 메서드만 선언합니다. 테스트 정리(`deleteAllInBatch` 등)처럼 그 밖의 연산이 필요한 테스트는 infrastructure 타입(`OrderJpaRepository`)을 주입받습니다.
 - 리포지토리에 메서드를 추가하면 `DatabaseIntegrationTest` 기반 통합 테스트로 실제 쿼리가 동작하는지 확인합니다.
 
-### 복잡한 조회
+### 엔티티 조회와 조합 조회
 
-- 화면용 조회, 동적 검색, 통계처럼 도메인 로직과 무관한 조회는 조회 전용 리포지토리로 분리합니다.
+- 업무를 수행할 엔티티의 조회·저장·잠금은 도메인 Repository에 둡니다. 단순 조회라는 이유만으로 Query Repository로 옮기지 않습니다.
+- 여러 테이블을 조인해 필요한 데이터를 조합하는 조회는 Query Repository에 두고 DTO로 반환합니다. 예: `TripQueryRepository`의 여행·여행지·참여 권한 조회, 여행 장소·장소 정보 조회.
+- SQL에 조인이나 서브쿼리가 있다는 이유만으로 모두 Query Repository로 옮기지 않습니다. 변경 대상 엔티티를 권한 조건과 함께 잠그는 `TripRepository.findAccessibleForUpdate`와 엔티티 연관을 로딩하는 fetch join은 도메인 Repository에 둘 수 있습니다.
 - 인터페이스(`OrderQueryRepository`)는 `application/port/out`에 두고, 구현(`OrderQueryRepositoryImpl`)은 `infrastructure/persistence`에 둡니다.
 - 조회 결과는 엔티티가 아니라 조회 전용 DTO로 반환합니다.
+- 다른 도메인의 데이터가 포함된 조합 조회도 필요한 필드만 Query Repository로 조회합니다. 다른 도메인의 규칙을 실행하거나 상태를 바꿀 때는 해당 Service를 호출합니다. 예: 후보의 공개 프로필은 Query Repository, 채팅방 생성·참여는 `RoomService`, 알림 생성은 `NotificationService`.
+- 여행지 이용 가능 여부처럼 다른 도메인이 관리하는 공통 판단은 해당 Service에 맡깁니다. Trip·Companion은 `DestinationService.isAvailable`을 사용하고, 기능별 오류 응답과 후속 처리는 각 호출자가 담당합니다. 서비스 호출은 기존 트랜잭션에 참여하며 잠금·재검증 시점을 유지합니다.
+- 조회는 업무 상태를 저장하거나 쓰기 잠금을 획득하지 않습니다. 시각에 따라 달라지는 표시 상태는 도메인에서 계산하고, 실제 상태 전환은 변경 작업 안에서 검증·저장합니다.
 
 ### 일부 메서드를 직접 구현할 때
 

@@ -6,12 +6,13 @@ import com.daebangg.sayroam.user.application.dto.UpdateUserProfileCommand;
 import com.daebangg.sayroam.user.application.dto.UserLoginMethodsResult;
 import com.daebangg.sayroam.user.application.dto.UserProfileResult;
 import com.daebangg.sayroam.user.domain.User;
-import com.daebangg.sayroam.user.domain.error.UserErrorCode;
 import com.daebangg.sayroam.user.domain.UserRepository;
+import com.daebangg.sayroam.user.domain.error.UserErrorCode;
 import com.daebangg.sayroam.user.domain.event.UserProfileChanged;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import javax.imageio.ImageIO;
@@ -26,7 +27,9 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.time.LocalDate;
 import java.util.Base64;
+import java.util.Collection;
 import java.util.Iterator;
+import java.util.LinkedHashSet;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.Optional;
@@ -42,6 +45,16 @@ public class UserService {
 
     private final UserRepository userRepository;
     private final ApplicationEventPublisher eventPublisher;
+
+    /** 호출한 변경 작업의 트랜잭션 안에서 회원을 ID 순으로 잠근다. 탈퇴한 회원은 반환하지 않는다. */
+    @Transactional(propagation = Propagation.MANDATORY)
+    public Set<Long> lockActiveUsers(Collection<Long> userIds) {
+        Set<Long> activeUserIds = new LinkedHashSet<>();
+        userIds.stream().distinct().sorted().forEach(userId ->
+                userRepository.findForUpdateByIdAndDeletedAtIsNull(userId)
+                        .ifPresent(user -> activeUserIds.add(user.getId())));
+        return Set.copyOf(activeUserIds);
+    }
 
     @Transactional(readOnly = true)
     public UserLoginMethodsResult getLoginMethods(long userId, long expectedAuthVersion) {
