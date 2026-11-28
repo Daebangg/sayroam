@@ -3,6 +3,7 @@ package com.daebangg.sayroam.companion.domain;
 import com.daebangg.sayroam.companion.domain.error.CompanionSearchErrorCode;
 import com.daebangg.sayroam.global.entity.BaseTimeEntity;
 import com.daebangg.sayroam.global.exception.BusinessException;
+import com.daebangg.sayroam.global.exception.CommonErrorCode;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -54,6 +55,7 @@ public class CompanionRequest extends BaseTimeEntity {
     @Column(insertable = false, updatable = false)
     private Long secondSearchId;
 
+    @Getter
     @Column(name = "room_id", unique = true)
     private Long roomId;
 
@@ -96,6 +98,29 @@ public class CompanionRequest extends BaseTimeEntity {
         status = decision.status;
         respondedAt = now;
         return true;
+    }
+
+    public void confirmSearches() {
+        ensureAccepted();
+        senderSearch.confirm();
+        receiverSearch.confirm();
+    }
+
+    private void ensureAccepted() {
+        if (status != CompanionRequestStatus.ACCEPTED) {
+            throw new BusinessException(CommonErrorCode.INVALID_INPUT);
+        }
+    }
+
+    public void linkRoom(Long roomId) {
+        ensureAccepted();
+        if (roomId == null || roomId <= 0) {
+            throw new BusinessException(CommonErrorCode.INVALID_INPUT);
+        }
+        if (this.roomId != null) {
+            throw new BusinessException(CompanionSearchErrorCode.COMPANION_REQUEST_ALREADY_ANSWERED);
+        }
+        this.roomId = roomId;
     }
 
     public void expire() {

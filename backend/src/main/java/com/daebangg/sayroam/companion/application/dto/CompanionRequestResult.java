@@ -14,6 +14,7 @@ import java.util.Map;
 
 public record CompanionRequestResult(long requestId, long searchId, long candidateSearchId,
                                      CompanionRequestStatus status, CompanionRequest.Direction direction,
+                                     @Nullable Long roomId,
                                      @Nullable CandidateProfile candidate) {
     public static CompanionRequestResult from(CompanionRequest request, long userId, @Nullable User profile,
                                                LocalDate today) {
@@ -22,7 +23,7 @@ public record CompanionRequestResult(long requestId, long searchId, long candida
         CompanionSearch mine = sent ? request.getSenderSearch() : request.getReceiverSearch();
         CompanionSearch other = sent ? request.getReceiverSearch() : request.getSenderSearch();
         return new CompanionRequestResult(request.getId(), mine.getId(), other.getId(), request.getStatus(),
-                direction, profile == null ? null : CandidateProfile.from(mine, other, profile, today));
+                direction, request.getRoomId(), profile == null ? null : CandidateProfile.from(mine, other, profile, today));
     }
 
     public record CandidateProfile(@Nullable String title, @Nullable String introduction, String nickname,

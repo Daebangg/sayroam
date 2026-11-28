@@ -12,12 +12,12 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class RoomMemberTest {
     private static final LocalDateTime NOW = LocalDateTime.of(2026, 11, 9, 12, 0);
-    private final Room room = new Room();
+    private final Room room = Room.createForTrip();
 
     @Test
     void 참여_중인_멤버면_방_접근을_허용한다() {
         // given
-        RoomMember member = RoomMember.join(new Room(), 1L, NOW);
+        RoomMember member = RoomMember.join(Room.createForTrip(), 1L, NOW);
 
         assertThatCode(member::ensureJoined)
                 .doesNotThrowAnyException();

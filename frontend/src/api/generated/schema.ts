@@ -416,7 +416,7 @@ export interface paths {
         head?: never;
         /**
          * 받은 요청 수락 또는 거절
-         * @description 이미 만료된 요청에는 EXPIRED를 반환합니다. 같은 응답은 반복해도 결과가 유지됩니다.
+         * @description 수락 시 양쪽 모집을 동행 확정으로 종료하고 두 사람이 참여하는 채팅방을 생성합니다. 나머지 대기 요청은 만료됩니다. 이미 만료된 요청에는 EXPIRED를 반환하며, 같은 응답을 반복해도 같은 결과와 채팅방을 반환합니다.
          */
         patch: operations["respondToCompanionRequest"];
         trace?: never;
@@ -451,7 +451,7 @@ export interface paths {
         get?: never;
         /**
          * 동행 매칭 조건 수정
-         * @description 등록의 조건을 교체하며 종료 상태는 유지합니다. 종료한 기존 모집도 여행 스타일을 보완한 뒤 재개할 수 있습니다. 희망 성별과 나이 조건, 제목은 생략하면 해제합니다. 소개글과 내 정보 공개 설정, 여행 스타일은 생략하거나 null이면 유지합니다. 기존 모집에 여행 스타일 저장값이 없으면 4문항을 보내야 합니다.
+         * @description 등록의 조건을 교체하며 종료 상태는 유지합니다. 종료한 기존 모집도 여행 스타일을 보완한 뒤 재개할 수 있습니다. 희망 성별과 나이 조건, 제목은 생략하면 해제합니다. 소개글과 내 정보 공개 설정, 여행 스타일은 생략하거나 null이면 유지합니다. 기존 모집에 여행 스타일 저장값이 없으면 4문항을 보내야 합니다. 동행 확정(CONFIRMED)된 모집은 수정할 수 없습니다.
          */
         put: operations["updateCompanionSearch"];
         post?: never;
@@ -460,7 +460,7 @@ export interface paths {
         head?: never;
         /**
          * 동행 모집 종료 또는 재개
-         * @description CLOSED는 모집 종료, ACTIVE는 모집 재개입니다. 이미 같은 상태인 등록에도 요청할 수 있습니다. 재개하려면 활성 여행지와 해당 모집에 저장된 여행 스타일 4문항 응답이 필요하며, 활성 모집이 3개 미만이어야 합니다. 이미 ACTIVE인 등록에 같은 요청을 반복하면 한도와 무관하게 성공합니다.
+         * @description CLOSED는 모집 종료, ACTIVE는 모집 재개입니다. 이미 같은 상태인 등록에도 요청할 수 있습니다. 재개하려면 활성 여행지와 해당 모집에 저장된 여행 스타일 4문항 응답이 필요하며, 활성 모집이 3개 미만이어야 합니다. 이미 ACTIVE인 등록에 같은 요청을 반복하면 한도와 무관하게 성공합니다. CONFIRMED는 수락 처리로만 전환되며 직접 지정할 수 없고, 확정된 모집은 종료·재개할 수 없습니다.
          */
         patch: operations["closeCompanionSearch"];
         trace?: never;
@@ -1122,6 +1122,7 @@ export interface components {
             | "COMPANION_REQUEST_ALREADY_ANSWERED"
             | "COMPANION_REQUEST_NOT_FOUND"
             | "COMPANION_SEARCH_CLOSED"
+            | "COMPANION_SEARCH_CONFIRMED"
             | "COMPANION_SEARCH_DESTINATION_REQUIRED"
             | "COMPANION_SEARCH_LIMIT_EXCEEDED"
             | "COMPANION_SEARCH_NOT_FOUND"
@@ -1269,7 +1270,7 @@ export interface components {
             updatedAt: string;
         };
         ChangeCompanionSearchStatusRequest: {
-            /** @description ACTIVE는 모집 재개, CLOSED는 모집 종료 */
+            /** @description ACTIVE는 모집 재개, CLOSED는 모집 종료. CONFIRMED는 요청 수락으로만 전환되며 직접 지정할 수 없습니다. 동행 확정된 모집의 상태는 변경할 수 없습니다. */
             status: components["schemas"]["CompanionSearchStatus"];
         };
         ChatMessageResponse: {
@@ -1348,6 +1349,11 @@ export interface components {
             direction: "SENT" | "RECEIVED";
             /** Format: int64 */
             requestId: number;
+            /**
+             * Format: int64
+             * @description 수락된 요청의 채팅방 ID. 수락 전 또는 채팅 연결 전의 과거 요청은 null
+             */
+            roomId: number | null;
             /** Format: int64 */
             searchId: number;
             /** @enum {string} */
@@ -1388,7 +1394,7 @@ export interface components {
             /** Format: date */
             startDate: string;
             /** @enum {string} */
-            status: "ACTIVE" | "CLOSED";
+            status: "ACTIVE" | "CLOSED" | "CONFIRMED";
             title: string | null;
             /** @description 모집에 저장된 4문항 점수. 기존 미설정 모집은 빈 객체이며 수정으로 보완해야 합니다. */
             travelStyle: {
@@ -1398,7 +1404,7 @@ export interface components {
             updatedAt: string;
         };
         /** @enum {string} */
-        CompanionSearchStatus: "ACTIVE" | "CLOSED";
+        CompanionSearchStatus: "ACTIVE" | "CLOSED" | "CONFIRMED";
         CreateTripRequest: {
             /**
              * Format: int64
@@ -2256,7 +2262,7 @@ export interface components {
                 "application/problem+json": components["schemas"]["ApiProblem"];
             };
         };
-        /** @description 409: COMPANION_SEARCH_CLOSED(종료), COMPANION_SEARCH_DESTINATION_REQUIRED(기준 여행지 선택 필요), TRAVEL_STYLE_REQUIRED(STYLE 정렬에 4문항 응답 필요) */
+        /** @description 409: COMPANION_SEARCH_CLOSED(종료), COMPANION_SEARCH_CONFIRMED(동행 확정), COMPANION_SEARCH_DESTINATION_REQUIRED(기준 여행지 선택 필요), TRAVEL_STYLE_REQUIRED(STYLE 정렬에 4문항 응답 필요) */
         CompanionCandidateSearchUnavailable: {
             headers: {
                 [name: string]: unknown;
@@ -2337,8 +2343,17 @@ export interface components {
                 "application/problem+json": components["schemas"]["ApiProblem"];
             };
         };
-        /** @description 409: COMPANION_SEARCH_DESTINATION_REQUIRED(재개할 등록에 여행지가 없음), COMPANION_SEARCH_LIMIT_EXCEEDED(활성 모집 최대 3개 초과), TRAVEL_STYLE_REQUIRED(모집에 저장할 여행 스타일 4문항 응답 필요) */
+        /** @description 409: COMPANION_SEARCH_DESTINATION_REQUIRED(재개할 등록에 여행지가 없음), COMPANION_SEARCH_CONFIRMED(동행 확정된 모집은 변경 불가), COMPANION_SEARCH_LIMIT_EXCEEDED(활성 모집 최대 3개 초과), TRAVEL_STYLE_REQUIRED(모집에 저장할 여행 스타일 4문항 응답 필요) */
         CompanionSearchStatusConflict: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/problem+json": components["schemas"]["ApiProblem"];
+            };
+        };
+        /** @description 409: COMPANION_SEARCH_CONFIRMED(동행 확정된 모집은 수정 불가), TRAVEL_STYLE_REQUIRED(모집에 저장할 여행 스타일 4문항 응답 필요) */
+        CompanionSearchUpdateConflict: {
             headers: {
                 [name: string]: unknown;
             };
@@ -3560,7 +3575,7 @@ export interface operations {
             400: components["responses"]["BadRequest"];
             401: components["responses"]["Unauthorized"];
             404: components["responses"]["CompanionSearchNotFound"];
-            409: components["responses"]["TravelStyleRequired"];
+            409: components["responses"]["CompanionSearchUpdateConflict"];
         };
     };
     closeCompanionSearch: {

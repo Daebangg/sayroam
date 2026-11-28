@@ -24,6 +24,13 @@ interface CompanionRequestJpaRepository extends CompanionRequestRepository, Repo
     Optional<Long> findOtherMemberId(long id, long userId);
 
     @Override
+    @Query("select s.id from CompanionSearch s where exists (select r.id from CompanionRequest r "
+            + "where r.id = :id and r.senderSearch.id is not null "
+            + "and (r.senderId = :userId or r.receiverId = :userId) "
+            + "and (r.senderSearch.id = s.id or r.receiverSearch.id = s.id)) order by s.id")
+    List<Long> findSearchIdsForMember(long id, long userId);
+
+    @Override
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select r from CompanionRequest r where r.id = :id and r.senderSearch.id is not null "
             + "and (r.senderId = :userId or r.receiverId = :userId)")
@@ -38,4 +45,11 @@ interface CompanionRequestJpaRepository extends CompanionRequestRepository, Repo
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select r from CompanionRequest r where " + FOR_SEARCH + " and r.status = PENDING order by r.id")
     List<CompanionRequest> findPendingForUpdate(long searchId);
+
+    @Override
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select r from CompanionRequest r where r.senderSearch.id is not null "
+            + "and (r.senderSearch.id in :searchIds or r.receiverSearch.id in :searchIds) "
+            + "and r.status = PENDING order by r.id")
+    List<CompanionRequest> findPendingForUpdate(List<Long> searchIds);
 }

@@ -28,7 +28,9 @@ public interface CompanionRequestApi {
     @ApiResponse(responseCode = "404", ref = "#/components/responses/CompanionRequestNotFound")
     @ApiResponse(responseCode = "409", ref = "#/components/responses/CompanionRequestAlreadyAnswered")
     @Operation(operationId = "respondToCompanionRequest", summary = "받은 요청 수락 또는 거절",
-            description = "이미 만료된 요청에는 EXPIRED를 반환합니다. 같은 응답은 반복해도 결과가 유지됩니다.")
+            description = "수락 시 양쪽 모집을 동행 확정으로 종료하고 두 사람이 참여하는 채팅방을 생성합니다. "
+                    + "나머지 대기 요청은 만료됩니다. 이미 만료된 요청에는 EXPIRED를 반환하며, "
+                    + "같은 응답을 반복해도 같은 결과와 채팅방을 반환합니다.")
     CompanionRequestResponse respond(@Parameter(hidden = true) AuthenticatedAccount account, long requestId, RespondCompanionRequest body);
 
     @ApiResponse(responseCode = "404", ref = "#/components/responses/CompanionRequestNotFound")

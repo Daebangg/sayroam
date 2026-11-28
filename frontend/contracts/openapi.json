@@ -101,7 +101,7 @@
                         "schema": { "$ref": "#/components/schemas/ApiProblem" }
                     }
                 },
-                "description": "409: COMPANION_SEARCH_CLOSED(종료), COMPANION_SEARCH_DESTINATION_REQUIRED(기준 여행지 선택 필요), TRAVEL_STYLE_REQUIRED(STYLE 정렬에 4문항 응답 필요)"
+                "description": "409: COMPANION_SEARCH_CLOSED(종료), COMPANION_SEARCH_CONFIRMED(동행 확정), COMPANION_SEARCH_DESTINATION_REQUIRED(기준 여행지 선택 필요), TRAVEL_STYLE_REQUIRED(STYLE 정렬에 4문항 응답 필요)"
             },
             "CompanionCandidateUnavailable": {
                 "content": {
@@ -173,7 +173,15 @@
                         "schema": { "$ref": "#/components/schemas/ApiProblem" }
                     }
                 },
-                "description": "409: COMPANION_SEARCH_DESTINATION_REQUIRED(재개할 등록에 여행지가 없음), COMPANION_SEARCH_LIMIT_EXCEEDED(활성 모집 최대 3개 초과), TRAVEL_STYLE_REQUIRED(모집에 저장할 여행 스타일 4문항 응답 필요)"
+                "description": "409: COMPANION_SEARCH_DESTINATION_REQUIRED(재개할 등록에 여행지가 없음), COMPANION_SEARCH_CONFIRMED(동행 확정된 모집은 변경 불가), COMPANION_SEARCH_LIMIT_EXCEEDED(활성 모집 최대 3개 초과), TRAVEL_STYLE_REQUIRED(모집에 저장할 여행 스타일 4문항 응답 필요)"
+            },
+            "CompanionSearchUpdateConflict": {
+                "content": {
+                    "application/problem+json": {
+                        "schema": { "$ref": "#/components/schemas/ApiProblem" }
+                    }
+                },
+                "description": "409: COMPANION_SEARCH_CONFIRMED(동행 확정된 모집은 수정 불가), TRAVEL_STYLE_REQUIRED(모집에 저장할 여행 스타일 4문항 응답 필요)"
             },
             "EmailCodeAttemptsExceeded": {
                 "content": {
@@ -814,6 +822,7 @@
                     "COMPANION_REQUEST_ALREADY_ANSWERED",
                     "COMPANION_REQUEST_NOT_FOUND",
                     "COMPANION_SEARCH_CLOSED",
+                    "COMPANION_SEARCH_CONFIRMED",
                     "COMPANION_SEARCH_DESTINATION_REQUIRED",
                     "COMPANION_SEARCH_LIMIT_EXCEEDED",
                     "COMPANION_SEARCH_NOT_FOUND",
@@ -1001,7 +1010,7 @@
                 "properties": {
                     "status": {
                         "$ref": "#/components/schemas/CompanionSearchStatus",
-                        "description": "ACTIVE는 모집 재개, CLOSED는 모집 종료"
+                        "description": "ACTIVE는 모집 재개, CLOSED는 모집 종료. CONFIRMED는 요청 수락으로만 전환되며 직접 지정할 수 없습니다. 동행 확정된 모집의 상태는 변경할 수 없습니다."
                     }
                 },
                 "required": ["status"],
@@ -1116,6 +1125,11 @@
                     "candidateSearchId": { "format": "int64", "type": "integer" },
                     "direction": { "enum": ["SENT", "RECEIVED"], "type": "string" },
                     "requestId": { "format": "int64", "type": "integer" },
+                    "roomId": {
+                        "description": "수락된 요청의 채팅방 ID. 수락 전 또는 채팅 연결 전의 과거 요청은 null",
+                        "format": "int64",
+                        "type": ["integer", "null"]
+                    },
                     "searchId": { "format": "int64", "type": "integer" },
                     "status": {
                         "enum": ["PENDING", "ACCEPTED", "REJECTED", "EXPIRED"],
@@ -1127,6 +1141,7 @@
                     "candidateSearchId",
                     "direction",
                     "requestId",
+                    "roomId",
                     "searchId",
                     "status"
                 ],
@@ -1177,7 +1192,7 @@
                     "showAge": { "type": "boolean" },
                     "showGender": { "type": "boolean" },
                     "startDate": { "format": "date", "type": "string" },
-                    "status": { "enum": ["ACTIVE", "CLOSED"], "type": "string" },
+                    "status": { "enum": ["ACTIVE", "CLOSED", "CONFIRMED"], "type": "string" },
                     "title": { "type": ["string", "null"] },
                     "travelStyle": {
                         "additionalProperties": { "format": "int32", "type": "integer" },
@@ -1205,7 +1220,10 @@
                 ],
                 "type": "object"
             },
-            "CompanionSearchStatus": { "enum": ["ACTIVE", "CLOSED"], "type": "string" },
+            "CompanionSearchStatus": {
+                "enum": ["ACTIVE", "CLOSED", "CONFIRMED"],
+                "type": "string"
+            },
             "CreateTripRequest": {
                 "properties": {
                     "destinationId": {
@@ -3338,7 +3356,7 @@
                 "tags": ["CompanionRequest"]
             },
             "patch": {
-                "description": "이미 만료된 요청에는 EXPIRED를 반환합니다. 같은 응답은 반복해도 결과가 유지됩니다.",
+                "description": "수락 시 양쪽 모집을 동행 확정으로 종료하고 두 사람이 참여하는 채팅방을 생성합니다. 나머지 대기 요청은 만료됩니다. 이미 만료된 요청에는 EXPIRED를 반환하며, 같은 응답을 반복해도 같은 결과와 채팅방을 반환합니다.",
                 "operationId": "respondToCompanionRequest",
                 "parameters": [
                     {
@@ -3432,7 +3450,7 @@
         },
         "/api/companion-searches/{searchId}": {
             "patch": {
-                "description": "CLOSED는 모집 종료, ACTIVE는 모집 재개입니다. 이미 같은 상태인 등록에도 요청할 수 있습니다. 재개하려면 활성 여행지와 해당 모집에 저장된 여행 스타일 4문항 응답이 필요하며, 활성 모집이 3개 미만이어야 합니다. 이미 ACTIVE인 등록에 같은 요청을 반복하면 한도와 무관하게 성공합니다.",
+                "description": "CLOSED는 모집 종료, ACTIVE는 모집 재개입니다. 이미 같은 상태인 등록에도 요청할 수 있습니다. 재개하려면 활성 여행지와 해당 모집에 저장된 여행 스타일 4문항 응답이 필요하며, 활성 모집이 3개 미만이어야 합니다. 이미 ACTIVE인 등록에 같은 요청을 반복하면 한도와 무관하게 성공합니다. CONFIRMED는 수락 처리로만 전환되며 직접 지정할 수 없고, 확정된 모집은 종료·재개할 수 없습니다.",
                 "operationId": "closeCompanionSearch",
                 "parameters": [
                     {
@@ -3471,7 +3489,7 @@
                 "tags": ["CompanionSearch"]
             },
             "put": {
-                "description": "등록의 조건을 교체하며 종료 상태는 유지합니다. 종료한 기존 모집도 여행 스타일을 보완한 뒤 재개할 수 있습니다. 희망 성별과 나이 조건, 제목은 생략하면 해제합니다. 소개글과 내 정보 공개 설정, 여행 스타일은 생략하거나 null이면 유지합니다. 기존 모집에 여행 스타일 저장값이 없으면 4문항을 보내야 합니다.",
+                "description": "등록의 조건을 교체하며 종료 상태는 유지합니다. 종료한 기존 모집도 여행 스타일을 보완한 뒤 재개할 수 있습니다. 희망 성별과 나이 조건, 제목은 생략하면 해제합니다. 소개글과 내 정보 공개 설정, 여행 스타일은 생략하거나 null이면 유지합니다. 기존 모집에 여행 스타일 저장값이 없으면 4문항을 보내야 합니다. 동행 확정(CONFIRMED)된 모집은 수정할 수 없습니다.",
                 "operationId": "updateCompanionSearch",
                 "parameters": [
                     {
@@ -3501,7 +3519,7 @@
                     "400": { "$ref": "#/components/responses/BadRequest" },
                     "401": { "$ref": "#/components/responses/Unauthorized" },
                     "404": { "$ref": "#/components/responses/CompanionSearchNotFound" },
-                    "409": { "$ref": "#/components/responses/TravelStyleRequired" }
+                    "409": { "$ref": "#/components/responses/CompanionSearchUpdateConflict" }
                 },
                 "security": [{ "bearerAuth": [] }],
                 "summary": "동행 매칭 조건 수정",

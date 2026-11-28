@@ -10,13 +10,16 @@ import org.jspecify.annotations.Nullable;
 
 import java.time.LocalDate;
 
-@Schema(requiredProperties = {"requestId", "searchId", "candidateSearchId", "status", "direction", "candidate"})
+@Schema(requiredProperties = {"requestId", "searchId", "candidateSearchId", "status", "direction", "roomId", "candidate"})
 public record CompanionRequestResponse(long requestId, long searchId, long candidateSearchId,
                                        CompanionRequestStatus status, CompanionRequest.Direction direction,
+                                       @Schema(description = "수락된 요청의 채팅방 ID. 수락 전 또는 채팅 연결 전의 과거 요청은 null")
+                                       @Nullable Long roomId,
                                        @Nullable RequestCandidate candidate) {
     public static CompanionRequestResponse from(CompanionRequestResult result) {
         return new CompanionRequestResponse(result.requestId(), result.searchId(), result.candidateSearchId(),
-                result.status(), result.direction(), result.candidate() == null ? null : RequestCandidate.from(result.candidate()));
+                result.status(), result.direction(), result.roomId(),
+                result.candidate() == null ? null : RequestCandidate.from(result.candidate()));
     }
 
     @Schema(requiredProperties = {"title", "introduction", "nickname", "profileImageUrl", "startDate", "endDate",

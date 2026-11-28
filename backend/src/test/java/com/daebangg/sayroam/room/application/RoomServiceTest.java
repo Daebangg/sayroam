@@ -3,7 +3,9 @@ package com.daebangg.sayroam.room.application;
 import com.daebangg.sayroam.global.exception.BusinessException;
 import com.daebangg.sayroam.room.application.dto.RoomMemberProfileResult;
 import com.daebangg.sayroam.room.application.service.RoomService;
+import com.daebangg.sayroam.room.domain.Room;
 import com.daebangg.sayroam.room.domain.RoomMemberStatus;
+import com.daebangg.sayroam.room.domain.RoomType;
 import com.daebangg.sayroam.room.domain.error.RoomErrorCode;
 import com.daebangg.sayroam.room.domain.event.RoomMemberJoined;
 import com.daebangg.sayroam.room.domain.event.RoomMemberLeft;
@@ -59,6 +61,16 @@ class RoomServiceTest extends DatabaseIntegrationTest {
         roomMemberRepository.deleteAllInBatch();
         roomRepository.deleteAllInBatch();
         userRepository.deleteAllInBatch();
+    }
+
+    @Test
+    void 여행과_동행_방을_각각의_유형으로_저장하고_조회한다() {
+        Long tripRoomId = roomService.createForTrip();
+        Long companionRoomId = roomService.createForCompanion();
+
+        assertThat(tripRoomId).isNotEqualTo(companionRoomId);
+        assertThat(roomRepository.findById(tripRoomId)).map(Room::getType).contains(RoomType.TRIP);
+        assertThat(roomRepository.findById(companionRoomId)).map(Room::getType).contains(RoomType.COMPANION);
     }
 
     @Test
