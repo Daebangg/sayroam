@@ -18,7 +18,12 @@ public class DestinationService {
     public static final int MAX_QUERY_LENGTH = 80;
     private static final Pattern WHITESPACE = Pattern.compile("\\s+", Pattern.UNICODE_CHARACTER_CLASS);
 
-    private final DestinationRepository destinations;
+    private final DestinationRepository destinationRepository;
+
+    @Transactional(readOnly = true)
+    public boolean isAvailable(Long destinationId) {
+        return destinationRepository.existsByIdAndActiveTrue(destinationId);
+    }
 
     @Transactional(readOnly = true)
     public List<DestinationResult> findDestinations(@Nullable String query) {
@@ -26,6 +31,6 @@ public class DestinationService {
             throw new BusinessException(CommonErrorCode.INVALID_INPUT);
         }
         String searchText = query == null ? "" : WHITESPACE.matcher(query).replaceAll("");
-        return destinations.findActiveByName(searchText).stream().map(DestinationResult::from).toList();
+        return destinationRepository.findActiveByName(searchText).stream().map(DestinationResult::from).toList();
     }
 }

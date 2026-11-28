@@ -14,6 +14,7 @@ import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
+import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
@@ -169,6 +170,30 @@ class CompanionCandidateApiIntegrationTest extends DatabaseIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON).content("{\"status\":\"ACTIVE\"}"))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.code").value("COMPANION_SEARCH_DESTINATION_REQUIRED"));
+    }
+
+    @Test
+    void usesTheFirstTwentyOverlapsWhenPagingParametersAreOmittedOrEmpty() throws Exception {
+        long own = search(owner, 0, 3);
+        for (int index = 0; index < 21; index++) {
+            search(member("기본값 후보 " + index, null, null), 0, 3);
+        }
+
+        for (String path : List.of(path(own), "/api/companion-candidates")) {
+            mvc.perform(get(path).servletPath(path).header("Authorization", authorization)
+                            .param("destinationId", Long.toString(seoul)).param("startDate", today.toString())
+                            .param("endDate", today.plusDays(3).toString()))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.candidates.length()").value(20))
+                    .andExpect(jsonPath("$.hasNext").value(true));
+            mvc.perform(get(path).servletPath(path).header("Authorization", authorization)
+                            .param("destinationId", Long.toString(seoul)).param("startDate", today.toString())
+                            .param("endDate", today.plusDays(3).toString())
+                            .param("page", "").param("size", "").param("sort", ""))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.candidates.length()").value(20))
+                    .andExpect(jsonPath("$.hasNext").value(true));
+        }
     }
 
     @Test
@@ -414,8 +439,23 @@ class CompanionCandidateApiIntegrationTest extends DatabaseIntegrationTest {
     @Test
     void rejectsInvalidPreviewConditions() throws Exception {
         String path = "/api/companion-candidates";
+        for (String missing : List.of("destinationId", "startDate", "endDate")) {
+            MockHttpServletRequestBuilder request = get(path).servletPath(path).header("Authorization", authorization);
+            if (!missing.equals("destinationId")) request.param("destinationId", Long.toString(seoul));
+            if (!missing.equals("startDate")) request.param("startDate", today.toString());
+            if (!missing.equals("endDate")) request.param("endDate", today.toString());
+            mvc.perform(request).andExpect(status().isBadRequest());
+        }
         mvc.perform(get(path).servletPath(path).header("Authorization", authorization)
                         .param("destinationId", Long.toString(seoul)).param("startDate", today.toString()))
+                .andExpect(status().isBadRequest());
+        mvc.perform(get(path).servletPath(path).header("Authorization", authorization)
+                        .param("destinationId", Long.toString(seoul)).param("startDate", "invalid-date")
+                        .param("endDate", today.toString()))
+                .andExpect(status().isBadRequest());
+        mvc.perform(get(path).servletPath(path).header("Authorization", authorization)
+                        .param("destinationId", Long.toString(seoul)).param("startDate", today.toString())
+                        .param("endDate", today.toString()).param("sort", "UNKNOWN"))
                 .andExpect(status().isBadRequest());
         mvc.perform(get(path).servletPath(path).header("Authorization", authorization)
                         .param("destinationId", Long.toString(seoul)).param("startDate", today.toString())

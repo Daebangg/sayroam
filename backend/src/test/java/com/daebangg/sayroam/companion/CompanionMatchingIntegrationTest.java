@@ -3,13 +3,13 @@ package com.daebangg.sayroam.companion;
 import com.daebangg.sayroam.common.domain.TravelPeriod;
 import com.daebangg.sayroam.companion.application.dto.CompanionMatchingCandidateResult;
 import com.daebangg.sayroam.companion.application.dto.CompanionMatchingClaim;
+import com.daebangg.sayroam.companion.application.dto.CompanionMatchingSourceResult;
 import com.daebangg.sayroam.companion.application.dto.SaveCompanionSearchCommand;
-import com.daebangg.sayroam.companion.application.port.out.CompanionCandidateQueryRepository;
+import com.daebangg.sayroam.companion.application.port.out.CompanionQueryRepository;
 import com.daebangg.sayroam.companion.application.service.CompanionMatchingService;
-import com.daebangg.sayroam.companion.application.service.CompanionSearchService;
+import com.daebangg.sayroam.companion.application.service.CompanionService;
 import com.daebangg.sayroam.companion.domain.CompanionDiscovery;
 import com.daebangg.sayroam.companion.domain.CompanionDiscoveryRepository;
-import com.daebangg.sayroam.companion.domain.CompanionSearchRepository;
 import com.daebangg.sayroam.companion.domain.CompanionSearchStatus;
 import com.daebangg.sayroam.companion.presentation.scheduling.CompanionMatchingWorker;
 import com.daebangg.sayroam.notification.application.dto.NotificationListQuery;
@@ -58,15 +58,14 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 class CompanionMatchingIntegrationTest extends DatabaseIntegrationTest {
-    @Autowired CompanionSearchService searches;
+    @Autowired CompanionService companionService;
     @Autowired CompanionMatchingService matching;
     @Autowired UserRepository users;
     @Autowired CompanionDiscoveryRepository discoveries;
     @Autowired JdbcTemplate jdbc;
     @Autowired PlatformTransactionManager transactions;
-    @MockitoSpyBean CompanionCandidateQueryRepository candidates;
+    @MockitoSpyBean CompanionQueryRepository candidates;
     @MockitoSpyBean NotificationService notifications;
-    @Autowired CompanionSearchRepository searchRepository;
 
     private final List<Long> members = new ArrayList<>();
     private final LocalDate today = LocalDate.now(ZoneId.of("Asia/Seoul"));
@@ -93,20 +92,20 @@ class CompanionMatchingIntegrationTest extends DatabaseIntegrationTest {
     @Test
     void queuesCommittedCreatesUpdatesAndReopensButNotRepeatedActiveRequests() {
         long member = member(Gender.MALE, 30);
-        long source = searches.create(member, conditions(null, null, null)).id();
+        long source = companionService.create(member, conditions(null, null, null)).id();
         assertThat(jobCount(source)).isEqualTo(1);
-        searches.update(member, source, conditions(null, null, null));
+        companionService.update(member, source, conditions(null, null, null));
         assertThat(jobCount(source)).isEqualTo(2);
-        searches.changeStatus(member, source, CompanionSearchStatus.CLOSED);
+        companionService.changeStatus(member, source, CompanionSearchStatus.CLOSED);
         assertThat(jobCount(source)).isEqualTo(2);
-        searches.changeStatus(member, source, CompanionSearchStatus.ACTIVE);
-        searches.changeStatus(member, source, CompanionSearchStatus.ACTIVE);
+        companionService.changeStatus(member, source, CompanionSearchStatus.ACTIVE);
+        companionService.changeStatus(member, source, CompanionSearchStatus.ACTIVE);
         assertThat(jobCount(source)).isEqualTo(3);
         assertThat(jdbc.queryForObject("SELECT matching_revision FROM companion_search WHERE id = ?",
                 Long.class, source)).isEqualTo(5);
 
         new TransactionTemplate(transactions).executeWithoutResult(status -> {
-            searches.update(member, source, conditions(Gender.FEMALE, 20, 40));
+            companionService.update(member, source, conditions(Gender.FEMALE, 20, 40));
             status.setRollbackOnly();
         });
         assertThat(jobCount(source)).isEqualTo(3);
@@ -121,7 +120,7 @@ class CompanionMatchingIntegrationTest extends DatabaseIntegrationTest {
     void findsEverySearchPairWithMutualConditionsAndPreservesFirstDiscoveryOnReverseJobs() {
         long owner = member(Gender.MALE, 30);
         long other = member(Gender.FEMALE, 28);
-        long source = searches.create(owner, conditions(Gender.FEMALE, 25, 35)).id();
+        long source = companionService.create(owner, conditions(Gender.FEMALE, 25, 35)).id();
         long first = seed(other, destination, today.plusDays(11), today.plusDays(15), "ACTIVE", "MALE", 29, 31);
         long second = seed(other, destination, today.plusDays(10), today.plusDays(12), "ACTIVE", null, null, null);
         seed(member(Gender.FEMALE, 28), destination, today.plusDays(10), today.plusDays(15), "ACTIVE", "FEMALE", null, null);
@@ -149,7 +148,7 @@ class CompanionMatchingIntegrationTest extends DatabaseIntegrationTest {
                 LocalDate.class, source, second)).isEqualTo(today.plusDays(12));
         String created = jdbc.queryForObject("SELECT created_at FROM companion_discovery WHERE first_search_id = ? AND second_search_id = ?",
                 String.class, source, first);
-        searches.update(other, first, conditions(Gender.MALE, 29, 31));
+        companionService.update(other, first, conditions(Gender.MALE, 29, 31));
         drain();
         assertThat(discoveryCount(source)).isEqualTo(2);
         assertThat(jdbc.queryForObject("SELECT created_at FROM companion_discovery WHERE first_search_id = ? AND second_search_id = ?",
@@ -163,27 +162,27 @@ class CompanionMatchingIntegrationTest extends DatabaseIntegrationTest {
         long owner = member(null, null);
         long other = member(null, null);
         seed(other, destination, today.plusDays(10), today.plusDays(15), "ACTIVE", null, null, null);
-        long source = searches.create(owner, conditions(null, null, null)).id();
+        long source = companionService.create(owner, conditions(null, null, null)).id();
         CompanionMatchingClaim stale = matching.claim().orElseThrow();
-        searches.update(owner, source, conditions(null, null, null));
+        companionService.update(owner, source, conditions(null, null, null));
         matching.process(stale);
         assertThat(status(stale)).isEqualTo("SKIPPED");
         CompanionMatchingClaim closed = matching.claim().orElseThrow();
-        searches.changeStatus(owner, source, CompanionSearchStatus.CLOSED);
+        companionService.changeStatus(owner, source, CompanionSearchStatus.CLOSED);
         matching.process(closed);
         assertThat(status(closed)).isEqualTo("SKIPPED");
-        searches.changeStatus(owner, source, CompanionSearchStatus.ACTIVE);
+        companionService.changeStatus(owner, source, CompanionSearchStatus.ACTIVE);
         drain();
         assertThat(discoveryCount(source)).isEqualTo(1);
 
-        long expired = searches.create(owner, new SaveCompanionSearchCommand(destination, today.minusDays(5),
+        long expired = companionService.create(owner, new SaveCompanionSearchCommand(destination, today.minusDays(5),
                 today.minusDays(1), null, null, null, null, null, null, null)).id();
         CompanionMatchingClaim expiredClaim = matching.claim().orElseThrow();
         matching.process(expiredClaim);
         assertThat(status(expiredClaim)).isEqualTo("SKIPPED");
         assertThat(discoveryCount(expired)).isZero();
 
-        long deleted = searches.create(other, conditions(null, null, null)).id();
+        long deleted = companionService.create(other, conditions(null, null, null)).id();
         jdbc.update("UPDATE users SET deleted_at = UTC_TIMESTAMP(6) WHERE id = ?", other);
         drain();
         assertThat(discoveryCount(deleted)).isZero();
@@ -193,7 +192,7 @@ class CompanionMatchingIntegrationTest extends DatabaseIntegrationTest {
     void excludesExpiredOverlapsButIncludesTheKoreanReferenceDay() {
         long owner = member(null, null);
         long other = member(null, null);
-        long source = searches.create(owner, new SaveCompanionSearchCommand(destination, today.minusDays(5),
+        long source = companionService.create(owner, new SaveCompanionSearchCommand(destination, today.minusDays(5),
                 today.plusDays(5), null, null, null, null, null, null, null)).id();
         seed(other, destination, today.minusDays(4), today.minusDays(1), "ACTIVE", null, null, null);
         long todayMatch = seed(other, destination, today.minusDays(4), today, "ACTIVE", null, null, null);
@@ -207,7 +206,7 @@ class CompanionMatchingIntegrationTest extends DatabaseIntegrationTest {
     void usesKeysetBatchesWithoutTruncatingAtOneHundredMatches() {
         long owner = member(null, null);
         long other = member(null, null);
-        long source = searches.create(owner, conditions(null, null, null)).id();
+        long source = companionService.create(owner, conditions(null, null, null)).id();
         for (int index = 0; index < 105; index++) {
             seed(other, destination, today.plusDays(10), today.plusDays(15), "ACTIVE", null, null, null);
         }
@@ -231,7 +230,7 @@ class CompanionMatchingIntegrationTest extends DatabaseIntegrationTest {
     void rollsBackPartialResultsThenRetriesOnlyAfterBackoff() {
         long owner = member(null, null);
         long other = member(null, null);
-        long source = searches.create(owner, conditions(null, null, null)).id();
+        long source = companionService.create(owner, conditions(null, null, null)).id();
         long target = seed(other, destination, today.plusDays(10), today.plusDays(15), "ACTIVE", null, null, null);
         CompanionMatchingClaim claim = matching.claim().orElseThrow();
         doThrow(new IllegalStateException("두 번째 수신자 알림 저장 실패"))
@@ -257,7 +256,7 @@ class CompanionMatchingIntegrationTest extends DatabaseIntegrationTest {
 
     @Test
     void reclaimsInterruptedWorkAndRejectsTheOldWorkersToken() {
-        searches.create(member(null, null), conditions(null, null, null));
+        companionService.create(member(null, null), conditions(null, null, null));
         CompanionMatchingClaim abandoned = matching.claim().orElseThrow();
         assertThat(matching.claim()).isEmpty();
         jdbc.update("UPDATE companion_matching_job SET available_at = UTC_TIMESTAMP(6) - INTERVAL 1 SECOND WHERE id = ?", abandoned.jobId());
@@ -273,16 +272,16 @@ class CompanionMatchingIntegrationTest extends DatabaseIntegrationTest {
 
     @Test
     void concurrentWorkersClaimDifferentJobsAndKeepOneRecordPerPair() throws Exception {
-        searches.create(member(null, null), conditions(null, null, null));
-        searches.create(member(null, null), conditions(null, null, null));
+        companionService.create(member(null, null), conditions(null, null, null));
+        companionService.create(member(null, null), conditions(null, null, null));
         try (ExecutorService executor = Executors.newFixedThreadPool(2)) {
             Future<CompanionMatchingClaim> first = executor.submit(() -> matching.claim().orElseThrow());
             Future<CompanionMatchingClaim> second = executor.submit(() -> matching.claim().orElseThrow());
             CompanionMatchingClaim left = first.get(10, TimeUnit.SECONDS);
             CompanionMatchingClaim right = second.get(10, TimeUnit.SECONDS);
             assertThat(left.jobId()).isNotEqualTo(right.jobId());
-            Future<?> leftResult = executor.submit(() -> processOrRetry(left));
-            Future<?> rightResult = executor.submit(() -> processOrRetry(right));
+            Future<?> leftResult = executor.submit(() -> matching.process(left));
+            Future<?> rightResult = executor.submit(() -> matching.process(right));
             leftResult.get(15, TimeUnit.SECONDS);
             rightResult.get(15, TimeUnit.SECONDS);
         }
@@ -296,8 +295,8 @@ class CompanionMatchingIntegrationTest extends DatabaseIntegrationTest {
 
     @Test
     void olderSnapshotsCannotOverwriteNewerVersionsOrSynthesizeAnUnobservedPair() {
-        long first = searches.create(member(null, null), conditions(null, null, null)).id();
-        long second = searches.create(member(null, null), conditions(null, null, null)).id();
+        long first = companionService.create(member(null, null), conditions(null, null, null)).id();
+        long second = companionService.create(member(null, null), conditions(null, null, null)).id();
         TravelPeriod overlap = new TravelPeriod(today.plusDays(10), today.plusDays(15));
         LocalDateTime foundAt = LocalDateTime.of(2030, 1, 1, 0, 0);
         new TransactionTemplate(transactions).executeWithoutResult(status -> {
@@ -314,7 +313,7 @@ class CompanionMatchingIntegrationTest extends DatabaseIntegrationTest {
 
     @Test
     void workerRunsThePersistentQueue() {
-        long source = searches.create(member(null, null), conditions(null, null, null)).id();
+        long source = companionService.create(member(null, null), conditions(null, null, null)).id();
         seed(member(null, null), destination, today.plusDays(10), today.plusDays(15), "ACTIVE", null, null, null);
         new CompanionMatchingWorker(matching, Runnable::run).requestRun();
         assertThat(discoveryCount(source)).isEqualTo(1);
@@ -326,10 +325,10 @@ class CompanionMatchingIntegrationTest extends DatabaseIntegrationTest {
     void notifiesBothOwnersOnceAndKeepsReadDeletedAndSnapshotValuesOnRediscovery() {
         long owner = member(Gender.MALE, 30);
         long other = member(Gender.FEMALE, 28);
-        long source = searches.create(owner, new SaveCompanionSearchCommand(destination,
+        long source = companionService.create(owner, new SaveCompanionSearchCommand(destination,
                 today.plusDays(10), today.plusDays(15), null, null, null,
                 "제주 동행", null, null, null)).id();
-        long target = searches.create(other, conditions(null, null, null)).id();
+        long target = companionService.create(other, conditions(null, null, null)).id();
         drain();
         assertThat(notificationCount(owner)).isEqualTo(1);
         assertThat(notificationCount(other)).isEqualTo(1);
@@ -351,9 +350,9 @@ class CompanionMatchingIntegrationTest extends DatabaseIntegrationTest {
         notifications.delete(other, deletedId);
         List<Map<String, Object>> before = jdbc.queryForList(
                 "SELECT * FROM notification WHERE receiver_id IN (?, ?) ORDER BY id", owner, other);
-        searches.update(owner, source, conditions(null, null, null));
-        searches.changeStatus(other, target, CompanionSearchStatus.CLOSED);
-        searches.changeStatus(other, target, CompanionSearchStatus.ACTIVE);
+        companionService.update(owner, source, conditions(null, null, null));
+        companionService.changeStatus(other, target, CompanionSearchStatus.CLOSED);
+        companionService.changeStatus(other, target, CompanionSearchStatus.ACTIVE);
         drain();
         assertThat(jdbc.queryForList("SELECT * FROM notification WHERE receiver_id IN (?, ?) ORDER BY id", owner, other))
                 .isEqualTo(before);
@@ -365,16 +364,16 @@ class CompanionMatchingIntegrationTest extends DatabaseIntegrationTest {
         long owner = member(null, null);
         long firstMember = member(null, null);
         long secondMember = member(null, null);
-        long source = searches.create(owner, conditions(null, null, null)).id();
-        searches.create(firstMember, conditions(null, null, null));
-        searches.create(secondMember, conditions(null, null, null));
+        long source = companionService.create(owner, conditions(null, null, null)).id();
+        companionService.create(firstMember, conditions(null, null, null));
+        companionService.create(secondMember, conditions(null, null, null));
         drain();
         assertThat(discoveryCount(source)).isEqualTo(2);
         assertThat(notificationCount(owner)).isEqualTo(1);
         // 첫 작업의 A-B·A-C 안내와, 다른 작업에서 새로 발견한 B-C 안내는 별개다.
         assertThat(notificationCount(firstMember)).isEqualTo(2);
         assertThat(notificationCount(secondMember)).isEqualTo(2);
-        searches.update(owner, source, conditions(null, null, null));
+        companionService.update(owner, source, conditions(null, null, null));
         drain();
         assertThat(notificationCount(owner)).isEqualTo(1);
     }
@@ -383,15 +382,15 @@ class CompanionMatchingIntegrationTest extends DatabaseIntegrationTest {
     @ValueSource(strings = {"read", "delete"})
     void newJobCreatesItsOwnNoticeDespiteAnOlderUnreadNoticeAndKeepsOneAcrossBatches(String action) {
         long owner = member(null, null);
-        long source = searches.create(owner, conditions(null, null, null)).id();
-        searches.create(member(null, null), conditions(null, null, null));
+        long source = companionService.create(owner, conditions(null, null, null)).id();
+        companionService.create(member(null, null), conditions(null, null, null));
         drain();
         long previousNotice = jdbc.queryForObject("SELECT id FROM notification WHERE receiver_id = ?", Long.class, owner);
         long other = member(null, null);
         for (int index = 0; index < 105; index++) {
             seed(other, destination, today.plusDays(10), today.plusDays(15), "ACTIVE", null, null, null);
         }
-        searches.update(owner, source, conditions(null, null, null));
+        companionService.update(owner, source, conditions(null, null, null));
         CompanionMatchingClaim current = matching.claim().orElseThrow();
         matching.process(current);
         assertThat(status(current)).isEqualTo("PENDING");
@@ -418,23 +417,23 @@ class CompanionMatchingIntegrationTest extends DatabaseIntegrationTest {
     @Test
     void onlyNewCandidatesAfterReadOrDeletionCanCreateAnotherGroupedNotice() {
         long owner = member(null, null);
-        long source = searches.create(owner, conditions(null, null, null)).id();
-        searches.create(member(null, null), conditions(null, null, null));
+        long source = companionService.create(owner, conditions(null, null, null)).id();
+        companionService.create(member(null, null), conditions(null, null, null));
         drain();
         long firstNotice = jdbc.queryForObject("SELECT id FROM notification WHERE receiver_id = ?", Long.class, owner);
         notifications.read(owner, firstNotice);
-        searches.update(owner, source, conditions(null, null, null));
+        companionService.update(owner, source, conditions(null, null, null));
         drain();
         assertThat(notificationCount(owner)).isEqualTo(1);
-        searches.create(member(null, null), conditions(null, null, null));
+        companionService.create(member(null, null), conditions(null, null, null));
         drain();
         assertThat(notificationCount(owner)).isEqualTo(2);
         long secondNotice = jdbc.queryForObject("SELECT MAX(id) FROM notification WHERE receiver_id = ?", Long.class, owner);
         notifications.delete(owner, secondNotice);
-        searches.update(owner, source, conditions(null, null, null));
+        companionService.update(owner, source, conditions(null, null, null));
         drain();
         assertThat(notificationCount(owner)).isEqualTo(2);
-        searches.create(member(null, null), conditions(null, null, null));
+        companionService.create(member(null, null), conditions(null, null, null));
         drain();
         assertThat(notificationCount(owner)).isEqualTo(3);
         assertThat(notifications.findAll(new NotificationListQuery(owner, null, 20, true))).hasSize(1);
@@ -445,10 +444,10 @@ class CompanionMatchingIntegrationTest extends DatabaseIntegrationTest {
     void revalidatesCandidatesBeforeSavingDiscoveryAndNotifications(String change) {
         long owner = member(Gender.MALE, 30);
         long other = member(Gender.FEMALE, 28);
-        long source = searches.create(owner, conditions(Gender.FEMALE, 25, 35)).id();
+        long source = companionService.create(owner, conditions(Gender.FEMALE, 25, 35)).id();
         long target = seed(other, destination, today.plusDays(10), today.plusDays(15), "ACTIVE", "MALE", null, null);
         List<CompanionMatchingCandidateResult> snapshot = candidates.findMatchingCandidates(
-                searchRepository.findByIdAndUserId(source, owner).orElseThrow(), today, 0, 100);
+                candidates.findMatchingSource(source).orElseThrow(), today, 0, 100);
         assertThat(snapshot).hasSize(1);
         doAnswer(invocation -> {
             switch (change) {
@@ -460,7 +459,7 @@ class CompanionMatchingIntegrationTest extends DatabaseIntegrationTest {
                 default -> throw new AssertionError(change);
             }
             return snapshot;
-        }).when(candidates).findMatchingCandidates(any(), any(), anyLong(), anyInt());
+        }).when(candidates).findMatchingCandidates(any(CompanionMatchingSourceResult.class), any(), anyLong(), anyInt());
         try {
             drain();
             assertThat(discoveryCount(source)).isZero();
@@ -474,14 +473,6 @@ class CompanionMatchingIntegrationTest extends DatabaseIntegrationTest {
     private long notificationCount(long member) {
         return jdbc.queryForObject("SELECT COUNT(*) FROM notification WHERE receiver_id = ? AND type = 'COMPANION_MATCH_FOUND'",
                 Long.class, member);
-    }
-
-    private void processOrRetry(CompanionMatchingClaim claim) {
-        try {
-            matching.process(claim);
-        } catch (RuntimeException exception) {
-            matching.retry(claim);
-        }
     }
 
     private long member(Gender gender, Integer age) {

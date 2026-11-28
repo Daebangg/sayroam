@@ -24,6 +24,10 @@ public record TravelPeriod(
         }
     }
 
+    public boolean overlaps(TravelPeriod other) {
+        return !startDate.isAfter(other.endDate) && !endDate.isBefore(other.startDate);
+    }
+
     public boolean containsDay(int day) {
         return 1 <= day && day <= days();
     }

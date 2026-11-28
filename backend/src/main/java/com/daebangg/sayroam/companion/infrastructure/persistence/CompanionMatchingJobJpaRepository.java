@@ -25,7 +25,8 @@ public interface CompanionMatchingJobJpaRepository
 
     @Override
     @Lock(LockModeType.PESSIMISTIC_WRITE)
-    Optional<CompanionMatchingJob> findForUpdateById(Long id);
+    @Query("select j from CompanionMatchingJob j where j.id = :jobId")
+    Optional<CompanionMatchingJob> findByIdForUpdate(@Param("jobId") Long jobId);
 
     @Override
     @Query("""

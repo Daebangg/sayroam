@@ -14,9 +14,9 @@ public interface CompanionSearchRepository {
 
     List<CompanionSearch> findByUserIdOrderByIdDesc(Long userId);
 
-    Optional<CompanionSearch> findByIdAndUserId(Long id, Long userId);
+    Optional<CompanionSearch> findAccessible(Long userId, Long searchId);
 
-    Optional<CompanionSearch> findForUpdateById(Long id);
+    Optional<CompanionSearch> findByIdForUpdate(Long searchId);
 
-    Optional<CompanionSearch> findForUpdateByIdAndUserId(Long id, Long userId);
+    Optional<CompanionSearch> findAccessibleForUpdate(Long userId, Long searchId);
 }

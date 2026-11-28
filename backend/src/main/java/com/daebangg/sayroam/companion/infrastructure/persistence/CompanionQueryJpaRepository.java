@@ -1,9 +1,12 @@
 package com.daebangg.sayroam.companion.infrastructure.persistence;
 
+import com.daebangg.sayroam.companion.application.dto.CompanionCandidateMatchQuery;
 import com.daebangg.sayroam.companion.application.dto.CompanionCandidateResult;
 import com.daebangg.sayroam.companion.application.dto.CompanionMatchingCandidateResult;
+import com.daebangg.sayroam.companion.application.dto.CompanionMatchingSourceResult;
+import com.daebangg.sayroam.companion.application.dto.CompanionRequestResult;
 import com.daebangg.sayroam.companion.application.dto.TravelStyleAnswerResult;
-import com.daebangg.sayroam.companion.application.port.out.CompanionCandidateQueryRepository;
+import com.daebangg.sayroam.companion.application.port.out.CompanionQueryRepository;
 import com.daebangg.sayroam.companion.domain.AgeRange;
 import com.daebangg.sayroam.companion.domain.CompanionSearch;
 import com.daebangg.sayroam.user.domain.Gender;
@@ -13,9 +16,10 @@ import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 
-interface CompanionCandidateQueryJpaRepository
-        extends CompanionCandidateQueryRepository, Repository<CompanionSearch, Long> {
+interface CompanionQueryJpaRepository
+        extends CompanionQueryRepository, Repository<CompanionSearch, Long> {
 
     // 화면 후보 조회와 백그라운드 발견에서 같은 필수 조건을 사용한다.
     String ELIGIBLE_CANDIDATES = """
@@ -137,17 +141,18 @@ interface CompanionCandidateQueryJpaRepository
             @Param("spending") Integer spending);
 
     @Override
-    default List<CompanionMatchingCandidateResult> findMatchingCandidates(CompanionSearch source, LocalDate today,
-                                                                          long afterId, int limit) {
-        AgeRange ages = source.getPreferredAgeRange();
-        return findMatchingCandidates(source.getUserId(), source.getDestinationId(), source.getPeriod().startDate(),
-                source.getPeriod().endDate(), source.getPreferredGender(), ages == null ? null : ages.minAge(),
+    default List<CompanionMatchingCandidateResult> findMatchingCandidates(CompanionMatchingSourceResult source,
+                                                                          LocalDate today, long afterId, int limit) {
+        if (source.destinationId() == null) return List.of();
+        AgeRange ages = source.preferredAgeRange();
+        return findMatchingCandidates(source.userId(), source.destinationId(), source.period().startDate(),
+                source.period().endDate(), source.preferredGender(), ages == null ? null : ages.minAge(),
                 ages == null ? null : ages.maxAge(), today, afterId, limit);
     }
 
     @Query("""
             select new com.daebangg.sayroam.companion.application.dto.CompanionMatchingCandidateResult(
-                c.id, c.matchingRevision, greatest(c.period.startDate, :startDate), least(c.period.endDate, :endDate))
+                c.id, c.userId, c.matchingRevision, greatest(c.period.startDate, :startDate), least(c.period.endDate, :endDate))
             from CompanionSearch c
             join User owner on owner.id = :ownerId and owner.deletedAt is null
             join User candidate on candidate.id = c.userId and candidate.deletedAt is null
@@ -169,11 +174,11 @@ interface CompanionCandidateQueryJpaRepository
             @Param("limit") int limit);
 
     @Override
-    default boolean isMatchingCandidate(CompanionSearch source, LocalDate today, long candidateId) {
-        AgeRange ages = source.getPreferredAgeRange();
-        return isMatchingCandidate(source.getUserId(), source.getDestinationId(), source.getPeriod().startDate(),
-                source.getPeriod().endDate(), source.getPreferredGender(), ages == null ? null : ages.minAge(),
-                ages == null ? null : ages.maxAge(), today, candidateId);
+    default boolean isMatchingCandidate(CompanionCandidateMatchQuery query) {
+        AgeRange ages = query.preferredAgeRange();
+        return isMatchingCandidate(query.ownerId(), query.destinationId(), query.period().startDate(),
+                query.period().endDate(), query.preferredGender(), ages == null ? null : ages.minAge(),
+                ages == null ? null : ages.maxAge(), query.today(), query.candidateSearchId());
     }
 
     @Query("""
@@ -205,4 +210,22 @@ interface CompanionCandidateQueryJpaRepository
               and question.code in ('planning', 'daily-pace', 'time-together', 'spending')
             """)
     List<TravelStyleAnswerResult> findTravelStyleAnswers(@Param("userIds") List<Long> userIds);
+
+    @Override
+    @Query("""
+            select distinct new com.daebangg.sayroam.companion.application.dto.CompanionRequestResult$MemberProfile(
+                u.id, u.nickname, u.profileImageUrl, u.birthDate, u.gender)
+            from CompanionSearch s join User u on u.id = s.userId
+            where u.id in :userIds and u.deletedAt is null
+            """)
+    List<CompanionRequestResult.MemberProfile> findMemberProfiles(@Param("userIds") List<Long> userIds);
+
+    @Override
+    @Query("""
+            select new com.daebangg.sayroam.companion.application.dto.CompanionMatchingSourceResult(
+                s.id, s.userId, s.destinationId, s.period, s.preferredGender, s.preferredAgeRange)
+            from CompanionSearch s join User u on u.id = s.userId and u.deletedAt is null
+            where s.id = :searchId
+            """)
+    Optional<CompanionMatchingSourceResult> findMatchingSource(@Param("searchId") long searchId);
 }

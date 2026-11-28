@@ -3,6 +3,7 @@ package com.daebangg.sayroam.companion.domain;
 import com.daebangg.sayroam.companion.domain.error.CompanionSearchErrorCode;
 import com.daebangg.sayroam.global.exception.BusinessException;
 import com.daebangg.sayroam.global.exception.CommonErrorCode;
+import com.daebangg.sayroam.travelstyle.domain.UserTravelStyle;
 import jakarta.persistence.Column;
 import jakarta.persistence.Embeddable;
 import lombok.AccessLevel;
@@ -24,8 +25,9 @@ public class RecruitmentTravelStyle {
     private Integer spending;
 
     public RecruitmentTravelStyle(Map<String, Integer> answers) {
-        if (!TravelStyleMatch.QUESTION_CODES.containsAll(answers.keySet())
-                || answers.values().stream().anyMatch(score -> score != null && (score < 1 || score > 5))) {
+        if (answers == null || !TravelStyleMatch.QUESTION_CODES.containsAll(answers.keySet())
+                || answers.values().stream().anyMatch(score -> score != null
+                && (score < UserTravelStyle.MIN_SCORE || score > UserTravelStyle.MAX_SCORE))) {
             throw new BusinessException(CommonErrorCode.INVALID_INPUT);
         }
         if (!TravelStyleMatch.isComplete(answers)) {

@@ -6,19 +6,26 @@ import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.util.Optional;
 
 public interface CompanionSearchJpaRepository extends CompanionSearchRepository, JpaRepository<CompanionSearch, Long> {
     @Override
     @Query("select s.userId from CompanionSearch s where s.id = :searchId")
-    Optional<Long> findOwnerId(long searchId);
+    Optional<Long> findOwnerId(@Param("searchId") long searchId);
+
+    @Override
+    @Query("select s from CompanionSearch s where s.userId = :userId and s.id = :searchId")
+    Optional<CompanionSearch> findAccessible(@Param("userId") Long userId, @Param("searchId") Long searchId);
 
     @Override
     @Lock(LockModeType.PESSIMISTIC_WRITE)
-    Optional<CompanionSearch> findForUpdateById(Long id);
+    @Query("select s from CompanionSearch s where s.id = :searchId")
+    Optional<CompanionSearch> findByIdForUpdate(@Param("searchId") Long searchId);
 
     @Override
     @Lock(LockModeType.PESSIMISTIC_WRITE)
-    Optional<CompanionSearch> findForUpdateByIdAndUserId(Long id, Long userId);
+    @Query("select s from CompanionSearch s where s.userId = :userId and s.id = :searchId")
+    Optional<CompanionSearch> findAccessibleForUpdate(@Param("userId") Long userId, @Param("searchId") Long searchId);
 }

@@ -1,5 +1,6 @@
 package com.daebangg.sayroam.companion.application.dto;
 
+import com.daebangg.sayroam.companion.domain.CompanionCandidateSort;
 import com.daebangg.sayroam.user.domain.Gender;
 import org.jspecify.annotations.Nullable;
 
@@ -14,6 +15,9 @@ public record PreviewCompanionCandidatesQuery(
         Integer preferredMinAge,
         Integer preferredMaxAge,
         String titleQuery,
-        @Nullable Map<String, Integer> travelStyle
+        @Nullable Map<String, Integer> travelStyle,
+        int page,
+        int size,
+        CompanionCandidateSort sort
 ) {
 }
